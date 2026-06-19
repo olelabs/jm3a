@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "479399136950",
+    "project_id": "jma3a-8b5fa",
+    "storage_bucket": "jma3a-8b5fa.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:479399136950:android:26f3c55d5ae2e4b59a6017",
+        "android_client_info": {
+          "package_name": "com.innovate.jma3a"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBiA6XpJ0am5HXMlNRVvkw_DAWkBBeq-do"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

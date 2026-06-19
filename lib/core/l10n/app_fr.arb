@@ -1,0 +1,243 @@
+{
+  "@@locale": "fr",
+  "appName": "Jma3a",
+  "noInternetConnection": "Pas de connexion internet",
+  "loading": "Chargement…",
+  "retry": "Réessayer",
+  "cancel": "Annuler",
+  "confirm": "Confirmer",
+  "save": "Enregistrer",
+  "done": "Terminé",
+  "next": "Suivant",
+  "back": "Retour",
+  "skip": "Passer",
+  "edit": "Modifier",
+  "delete": "Supprimer",
+  "remove": "Retirer",
+  "close": "Fermer",
+  "yes": "Oui",
+  "no": "Non",
+  "or": "ou",
+  "optional": "Optionnel",
+  "characters": "{count} / {max}",
+  "@characters": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "error": "Une erreur s'est produite",
+  "errorNetwork": "Erreur réseau. Vérifiez votre connexion.",
+  "errorUnexpected": "Une erreur inattendue s'est produite. Réessayez.",
+  "errorNotFound": "Introuvable",
+  "errorForbidden": "Vous n'avez pas la permission de faire ça",
+  "navRooms": "Salles",
+  "navFriends": "Amis",
+  "navMarketplace": "Packs",
+  "navProfile": "Profil",
+  "authWelcome": "Bienvenue sur Jma3a",
+  "authTagline": "Jouez ensemble, partout",
+  "authEmailLabel": "Votre adresse e-mail",
+  "authEmailHint": "Entrez votre e-mail",
+  "authEmailInvalid": "Veuillez entrer une adresse e-mail valide",
+  "authSendOtp": "Envoyer le code",
+  "authSendingOtp": "Envoi en cours…",
+  "authOtpSent": "Code envoyé à {email}",
+  "@authOtpSent": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "authOtpLabel": "Code de vérification",
+  "authOtpHint": "Entrez le code à 6 chiffres",
+  "authOtpVerify": "Vérifier",
+  "authOtpVerifying": "Vérification…",
+  "authOtpResend": "Renvoyer le code",
+  "authOtpResendIn": "Renvoyer dans {seconds}s",
+  "@authOtpResendIn": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "authOtpExpired": "Code expiré. Veuillez en demander un nouveau.",
+  "authOtpInvalid": "Code invalide. Réessayez.",
+  "authOtpMaxAttempts": "Trop de tentatives. Demandez un nouveau code.",
+  "onboardingTitle": "Créer votre profil",
+  "onboardingSubtitle": "Choisissez un nom d'utilisateur pour commencer",
+  "onboardingUsernameLabel": "Nom d'utilisateur",
+  "onboardingUsernameHint": "lettres minuscules, chiffres, tirets bas",
+  "onboardingDisplayNameLabel": "Nom affiché",
+  "onboardingDisplayNameHint": "Comment les autres vous verront",
+  "onboardingContinue": "Continuer",
+  "onboardingUsernameInvalid": "3 à 30 caractères, lettres, chiffres et tirets bas uniquement",
+  "onboardingUsernameTaken": "Ce nom d'utilisateur est déjà pris",
+  "profileTitle": "Profil",
+  "profileEditTitle": "Modifier le profil",
+  "profileBioLabel": "Bio",
+  "profileBioHint": "Parlez un peu de vous",
+  "profileCountryLabel": "Pays",
+  "profileLanguageLabel": "Langue",
+  "profileAvatarChange": "Changer la photo",
+  "profileSaved": "Profil enregistré",
+  "settingsTitle": "Paramètres",
+  "settingsTheme": "Thème",
+  "settingsThemeLight": "Clair",
+  "settingsThemeDark": "Sombre",
+  "settingsThemeSystem": "Système",
+  "settingsLanguage": "Langue",
+  "settingsSignOut": "Se déconnecter",
+  "settingsSignOutConfirm": "Voulez-vous vraiment vous déconnecter ?",
+  "roomsTitle": "Salles",
+  "roomsBrowse": "Parcourir les salles",
+  "roomsCreate": "Créer une salle",
+  "roomsJoinCode": "Rejoindre avec un code",
+  "roomsEnterCode": "Entrez le code d'invitation",
+  "roomsCodeHint": "Code à 6 caractères",
+  "roomsJoin": "Rejoindre",
+  "roomsJoining": "Connexion…",
+  "roomsPublic": "Publique",
+  "roomsPrivate": "Privée",
+  "roomsPlayers": "{current}/{max} joueurs",
+  "@roomsPlayers": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "roomsEmpty": "Aucune salle pour l'instant",
+  "roomsEmptySubtitle": "Créez-en une et invitez vos amis !",
+  "roomsFull": "Salle complète",
+  "roomsBanned": "Vous êtes banni de cette salle",
+  "lobbyTitle": "Salle d'attente",
+  "lobbyWaiting": "En attente de joueurs…",
+  "lobbyReady": "Prêt",
+  "lobbyNotReady": "Pas prêt",
+  "lobbyStartGame": "Démarrer la partie",
+  "lobbySelectGame": "Choisir le jeu",
+  "lobbySelectPack": "Choisir le pack",
+  "lobbyCopied": "Code copié !",
+  "lobbyLeave": "Quitter la salle",
+  "lobbyLeaveConfirm": "Voulez-vous vraiment quitter ?",
+  "lobbyOwnerLeft": "{name} est maintenant propriétaire de la salle",
+  "@lobbyOwnerLeft": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "lobbyPlayerJoined": "{name} a rejoint",
+  "@lobbyPlayerJoined": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "lobbyPlayerLeft": "{name} est parti",
+  "@lobbyPlayerLeft": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "chatPlaceholder": "Dites quelque chose…",
+  "chatMuted": "Vous êtes en sourdine",
+  "chatSend": "Envoyer",
+  "gameSettings": "Paramètres du jeu",
+  "gameSettingsTurnTimer": "Minuteur de tour",
+  "gameSettingsAllowSkip": "Autoriser le passage",
+  "gameSettingsMaxRounds": "Nombre max de tours",
+  "gameSettingsAllowSpicy": "Autoriser le contenu épicé",
+  "gameSettingsSeconds": "{n}s",
+  "@gameSettingsSeconds": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "gameReconnecting": "Reconnexion…",
+  "gameRecovering": "Synchronisation…",
+  "gameConnectionLost": "Connexion perdue",
+  "gameConnectionLostBody": "Impossible de se reconnecter après plusieurs tentatives.",
+  "gameLeaveRoom": "Quitter la salle",
+  "gameTryAgain": "Réessayer",
+  "moderationKick": "Expulser le joueur",
+  "moderationMute": "Mettre en sourdine",
+  "moderationBan": "Bannir de la salle",
+  "moderationKickConfirm": "Expulser {name} de la salle ?",
+  "@moderationKickConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "moderationYouWereKicked": "Vous avez été expulsé de la salle",
+  "moderationYouWereMuted": "Vous avez été mis en sourdine",
+  "moderationGamePaused": "Jeu en pause",
+  "moderationGameResumed": "Jeu repris",
+  "roomsJoinRequestSent": "Demande envoyée ! En attente de l'approbation de l'hôte.",
+  "roomsRequiresApproval": "Cette salle nécessite une approbation pour rejoindre",
+  "roomsJoinApproved": "Votre demande a été approuvée !",
+  "roomsJoinRejected": "Votre demande a été refusée.",
+  "roomsSpectators": "Spectateurs",
+  "roomsSpectatorCount": "{count} regardent",
+  "@roomsSpectatorCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsNotifications": "Notifications",
+  "settingsNotifFriendRequests": "Demandes d'amis",
+  "settingsNotifRoomInvites": "Invitations de salle",
+  "settingsNotifGameActions": "Actions de jeu",
+  "settingsNotifWallet": "Mises à jour du portefeuille",
+  "settingsNotifPackSales": "Ventes de packs",
+  "walletEarnings": "Gains",
+  "walletEarningsTotal": "Total gagné",
+  "walletEarningsThisMonth": "Ce mois-ci",
+  "walletEarningsTotalSales": "Ventes totales",
+  "walletEarningsAvailable": "Disponible",
+  "walletEarningsCommissionRate": "Votre taux",
+  "walletTransactionHistory": "Historique des transactions",
+  "profileGames": "Jeux",
+  "profileFriends": "Amis",
+  "profilePacks": "Packs",
+  "profileFollowers": "Abonnés",
+  "profileFollowing": "Abonnements",
+  "profileNotFound": "Profil introuvable",
+  "profileGamesPlayed": "{count} parties",
+  "@profileGamesPlayed": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gameSettingsSpicy": "Cartes épicées",
+  "gameSettingsRequireApproval": "Approbation requise pour rejoindre",
+  "gameSettingsAllowSpectators": "Autoriser les spectateurs",
+  "lobbyJoinRequests": "Demandes de participation",
+  "lobbyApprove": "Approuver",
+  "lobbyReject": "Refuser",
+  "packCategory": "Catégorie",
+  "packCategoryHint": "Choisir une catégorie",
+  "packCategoryNone": "Aucune catégorie"
+}

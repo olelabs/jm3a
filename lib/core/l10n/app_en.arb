@@ -1,0 +1,243 @@
+{
+  "@@locale": "en",
+  "appName": "Jma3a",
+  "noInternetConnection": "No internet connection",
+  "loading": "Loading…",
+  "retry": "Retry",
+  "cancel": "Cancel",
+  "confirm": "Confirm",
+  "save": "Save",
+  "done": "Done",
+  "next": "Next",
+  "back": "Back",
+  "skip": "Skip",
+  "edit": "Edit",
+  "delete": "Delete",
+  "remove": "Remove",
+  "close": "Close",
+  "yes": "Yes",
+  "no": "No",
+  "or": "or",
+  "optional": "Optional",
+  "characters": "{count} / {max}",
+  "@characters": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "error": "Something went wrong",
+  "errorNetwork": "Network error. Please check your connection.",
+  "errorUnexpected": "An unexpected error occurred. Please try again.",
+  "errorNotFound": "Not found",
+  "errorForbidden": "You don't have permission to do that",
+  "navRooms": "Rooms",
+  "navFriends": "Friends",
+  "navMarketplace": "Packs",
+  "navProfile": "Profile",
+  "authWelcome": "Welcome to Jma3a",
+  "authTagline": "Play together, anywhere",
+  "authEmailLabel": "Your email address",
+  "authEmailHint": "Enter your email",
+  "authEmailInvalid": "Please enter a valid email address",
+  "authSendOtp": "Send code",
+  "authSendingOtp": "Sending…",
+  "authOtpSent": "Code sent to {email}",
+  "@authOtpSent": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "authOtpLabel": "Verification code",
+  "authOtpHint": "Enter 6-digit code",
+  "authOtpVerify": "Verify",
+  "authOtpVerifying": "Verifying…",
+  "authOtpResend": "Resend code",
+  "authOtpResendIn": "Resend in {seconds}s",
+  "@authOtpResendIn": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "authOtpExpired": "Code expired. Please request a new one.",
+  "authOtpInvalid": "Invalid code. Please try again.",
+  "authOtpMaxAttempts": "Too many attempts. Please request a new code.",
+  "onboardingTitle": "Set up your profile",
+  "onboardingSubtitle": "Choose a username to get started",
+  "onboardingUsernameLabel": "Username",
+  "onboardingUsernameHint": "lowercase letters, numbers, underscores",
+  "onboardingDisplayNameLabel": "Display name",
+  "onboardingDisplayNameHint": "How others will see you",
+  "onboardingContinue": "Continue",
+  "onboardingUsernameInvalid": "3–30 characters, letters, numbers, underscores only",
+  "onboardingUsernameTaken": "This username is already taken",
+  "profileTitle": "Profile",
+  "profileEditTitle": "Edit profile",
+  "profileBioLabel": "Bio",
+  "profileBioHint": "Tell others a bit about yourself",
+  "profileCountryLabel": "Country",
+  "profileLanguageLabel": "Language",
+  "profileAvatarChange": "Change photo",
+  "profileSaved": "Profile saved",
+  "settingsTitle": "Settings",
+  "settingsTheme": "Theme",
+  "settingsThemeLight": "Light",
+  "settingsThemeDark": "Dark",
+  "settingsThemeSystem": "System",
+  "settingsLanguage": "Language",
+  "settingsSignOut": "Sign out",
+  "settingsSignOutConfirm": "Are you sure you want to sign out?",
+  "roomsTitle": "Rooms",
+  "roomsBrowse": "Browse rooms",
+  "roomsCreate": "Create room",
+  "roomsJoinCode": "Join with code",
+  "roomsEnterCode": "Enter invite code",
+  "roomsCodeHint": "6-character code",
+  "roomsJoin": "Join",
+  "roomsJoining": "Joining…",
+  "roomsPublic": "Public",
+  "roomsPrivate": "Private",
+  "roomsPlayers": "{current}/{max} players",
+  "@roomsPlayers": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "roomsEmpty": "No rooms right now",
+  "roomsEmptySubtitle": "Create one and invite your friends!",
+  "roomsFull": "Room is full",
+  "roomsBanned": "You are banned from this room",
+  "lobbyTitle": "Lobby",
+  "lobbyWaiting": "Waiting for players…",
+  "lobbyReady": "Ready",
+  "lobbyNotReady": "Not ready",
+  "lobbyStartGame": "Start game",
+  "lobbySelectGame": "Select game",
+  "lobbySelectPack": "Select pack",
+  "lobbyCopied": "Code copied!",
+  "lobbyLeave": "Leave room",
+  "lobbyLeaveConfirm": "Are you sure you want to leave?",
+  "lobbyOwnerLeft": "{name} is now the room owner",
+  "@lobbyOwnerLeft": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "lobbyPlayerJoined": "{name} joined",
+  "@lobbyPlayerJoined": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "lobbyPlayerLeft": "{name} left",
+  "@lobbyPlayerLeft": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "chatPlaceholder": "Say something…",
+  "chatMuted": "You are muted",
+  "chatSend": "Send",
+  "gameSettings": "Game settings",
+  "gameSettingsTurnTimer": "Turn timer",
+  "gameSettingsAllowSkip": "Allow skip",
+  "gameSettingsMaxRounds": "Max rounds",
+  "gameSettingsAllowSpicy": "Allow spicy content",
+  "gameSettingsSeconds": "{n}s",
+  "@gameSettingsSeconds": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "gameReconnecting": "Reconnecting…",
+  "gameRecovering": "Catching up…",
+  "gameConnectionLost": "Connection lost",
+  "gameConnectionLostBody": "Unable to reconnect after multiple attempts.",
+  "gameLeaveRoom": "Leave room",
+  "gameTryAgain": "Try again",
+  "moderationKick": "Kick player",
+  "moderationMute": "Mute player",
+  "moderationBan": "Ban from room",
+  "moderationKickConfirm": "Kick {name} from the room?",
+  "@moderationKickConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "moderationYouWereKicked": "You were removed from the room",
+  "moderationYouWereMuted": "You have been muted",
+  "moderationGamePaused": "Game paused",
+  "moderationGameResumed": "Game resumed",
+  "roomsJoinRequestSent": "Join request sent! Waiting for host approval.",
+  "roomsRequiresApproval": "This room requires approval to join",
+  "roomsJoinApproved": "Your join request was approved!",
+  "roomsJoinRejected": "Your join request was declined.",
+  "roomsSpectators": "Spectators",
+  "roomsSpectatorCount": "{count} watching",
+  "@roomsSpectatorCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsNotifications": "Notifications",
+  "settingsNotifFriendRequests": "Friend requests",
+  "settingsNotifRoomInvites": "Room invites",
+  "settingsNotifGameActions": "Game actions",
+  "settingsNotifWallet": "Wallet updates",
+  "settingsNotifPackSales": "Pack sales",
+  "walletEarnings": "Earnings",
+  "walletEarningsTotal": "Total earned",
+  "walletEarningsThisMonth": "This month",
+  "walletEarningsTotalSales": "Total sales",
+  "walletEarningsAvailable": "Available",
+  "walletEarningsCommissionRate": "Your rate",
+  "walletTransactionHistory": "Transaction history",
+  "profileGames": "Games",
+  "profileFriends": "Friends",
+  "profilePacks": "Packs",
+  "profileFollowers": "Followers",
+  "profileFollowing": "Following",
+  "profileNotFound": "Profile not found",
+  "profileGamesPlayed": "{count} games",
+  "@profileGamesPlayed": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gameSettingsSpicy": "Spicy cards",
+  "gameSettingsRequireApproval": "Require approval to join",
+  "gameSettingsAllowSpectators": "Allow spectators",
+  "lobbyJoinRequests": "Join requests",
+  "lobbyApprove": "Approve",
+  "lobbyReject": "Reject",
+  "packCategory": "Category",
+  "packCategoryHint": "Select a category",
+  "packCategoryNone": "No category"
+}

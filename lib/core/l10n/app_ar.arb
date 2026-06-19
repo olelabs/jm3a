@@ -1,0 +1,243 @@
+{
+  "@@locale": "ar",
+  "appName": "جماعة",
+  "noInternetConnection": "لا يوجد اتصال بالإنترنت",
+  "loading": "جارٍ التحميل…",
+  "retry": "إعادة المحاولة",
+  "cancel": "إلغاء",
+  "confirm": "تأكيد",
+  "save": "حفظ",
+  "done": "تم",
+  "next": "التالي",
+  "back": "رجوع",
+  "skip": "تخطي",
+  "edit": "تعديل",
+  "delete": "حذف",
+  "remove": "إزالة",
+  "close": "إغلاق",
+  "yes": "نعم",
+  "no": "لا",
+  "or": "أو",
+  "optional": "اختياري",
+  "characters": "{count} / {max}",
+  "@characters": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "error": "حدث خطأ ما",
+  "errorNetwork": "خطأ في الشبكة. يرجى التحقق من الاتصال.",
+  "errorUnexpected": "حدث خطأ غير متوقع. يرجى المحاولة مجدداً.",
+  "errorNotFound": "غير موجود",
+  "errorForbidden": "ليس لديك صلاحية للقيام بذلك",
+  "navRooms": "الغرف",
+  "navFriends": "الأصدقاء",
+  "navMarketplace": "الباقات",
+  "navProfile": "الملف الشخصي",
+  "authWelcome": "مرحباً بك في جماعة",
+  "authTagline": "العب مع أصدقائك، في أي مكان",
+  "authEmailLabel": "بريدك الإلكتروني",
+  "authEmailHint": "أدخل بريدك الإلكتروني",
+  "authEmailInvalid": "يرجى إدخال بريد إلكتروني صحيح",
+  "authSendOtp": "إرسال الرمز",
+  "authSendingOtp": "جارٍ الإرسال…",
+  "authOtpSent": "تم إرسال الرمز إلى {email}",
+  "@authOtpSent": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "authOtpLabel": "رمز التحقق",
+  "authOtpHint": "أدخل الرمز المكوّن من 6 أرقام",
+  "authOtpVerify": "تحقق",
+  "authOtpVerifying": "جارٍ التحقق…",
+  "authOtpResend": "إعادة إرسال الرمز",
+  "authOtpResendIn": "إعادة الإرسال خلال {seconds}ث",
+  "@authOtpResendIn": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "authOtpExpired": "انتهت صلاحية الرمز. يرجى طلب رمز جديد.",
+  "authOtpInvalid": "رمز غير صحيح. يرجى المحاولة مجدداً.",
+  "authOtpMaxAttempts": "محاولات كثيرة جداً. يرجى طلب رمز جديد.",
+  "onboardingTitle": "إعداد ملفك الشخصي",
+  "onboardingSubtitle": "اختر اسم مستخدم للبدء",
+  "onboardingUsernameLabel": "اسم المستخدم",
+  "onboardingUsernameHint": "أحرف وأرقام وشرطة سفلية فقط",
+  "onboardingDisplayNameLabel": "الاسم المعروض",
+  "onboardingDisplayNameHint": "كيف سيراك الآخرون",
+  "onboardingContinue": "متابعة",
+  "onboardingUsernameInvalid": "من 3 إلى 30 حرفاً، أحرف وأرقام وشرطة سفلية فقط",
+  "onboardingUsernameTaken": "اسم المستخدم هذا مأخوذ بالفعل",
+  "profileTitle": "الملف الشخصي",
+  "profileEditTitle": "تعديل الملف",
+  "profileBioLabel": "نبذة",
+  "profileBioHint": "أخبر الآخرين عن نفسك",
+  "profileCountryLabel": "البلد",
+  "profileLanguageLabel": "اللغة",
+  "profileAvatarChange": "تغيير الصورة",
+  "profileSaved": "تم حفظ الملف",
+  "settingsTitle": "الإعدادات",
+  "settingsTheme": "المظهر",
+  "settingsThemeLight": "فاتح",
+  "settingsThemeDark": "داكن",
+  "settingsThemeSystem": "تلقائي",
+  "settingsLanguage": "اللغة",
+  "settingsSignOut": "تسجيل الخروج",
+  "settingsSignOutConfirm": "هل أنت متأكد من تسجيل الخروج؟",
+  "roomsTitle": "الغرف",
+  "roomsBrowse": "تصفح الغرف",
+  "roomsCreate": "إنشاء غرفة",
+  "roomsJoinCode": "الانضمام برمز",
+  "roomsEnterCode": "أدخل رمز الدعوة",
+  "roomsCodeHint": "رمز من 6 أحرف",
+  "roomsJoin": "انضمام",
+  "roomsJoining": "جارٍ الانضمام…",
+  "roomsPublic": "عامة",
+  "roomsPrivate": "خاصة",
+  "roomsPlayers": "{current}/{max} لاعبين",
+  "@roomsPlayers": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "roomsEmpty": "لا توجد غرف الآن",
+  "roomsEmptySubtitle": "أنشئ غرفة وادعُ أصدقاءك!",
+  "roomsFull": "الغرفة ممتلئة",
+  "roomsBanned": "أنت محظور من هذه الغرفة",
+  "lobbyTitle": "غرفة الانتظار",
+  "lobbyWaiting": "في انتظار اللاعبين…",
+  "lobbyReady": "جاهز",
+  "lobbyNotReady": "غير جاهز",
+  "lobbyStartGame": "بدء اللعبة",
+  "lobbySelectGame": "اختر اللعبة",
+  "lobbySelectPack": "اختر الباقة",
+  "lobbyCopied": "تم نسخ الرمز!",
+  "lobbyLeave": "مغادرة الغرفة",
+  "lobbyLeaveConfirm": "هل أنت متأكد من المغادرة؟",
+  "lobbyOwnerLeft": "{name} هو مالك الغرفة الآن",
+  "@lobbyOwnerLeft": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "lobbyPlayerJoined": "انضم {name}",
+  "@lobbyPlayerJoined": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "lobbyPlayerLeft": "غادر {name}",
+  "@lobbyPlayerLeft": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "chatPlaceholder": "قل شيئاً…",
+  "chatMuted": "تم كتم صوتك",
+  "chatSend": "إرسال",
+  "gameSettings": "إعدادات اللعبة",
+  "gameSettingsTurnTimer": "وقت الدور",
+  "gameSettingsAllowSkip": "السماح بالتخطي",
+  "gameSettingsMaxRounds": "أقصى عدد جولات",
+  "gameSettingsAllowSpicy": "السماح بالمحتوى الساخن",
+  "gameSettingsSeconds": "{n}ث",
+  "@gameSettingsSeconds": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "gameReconnecting": "جارٍ إعادة الاتصال…",
+  "gameRecovering": "جارٍ المزامنة…",
+  "gameConnectionLost": "انقطع الاتصال",
+  "gameConnectionLostBody": "تعذّر إعادة الاتصال بعد عدة محاولات.",
+  "gameLeaveRoom": "مغادرة الغرفة",
+  "gameTryAgain": "حاول مجدداً",
+  "moderationKick": "طرد اللاعب",
+  "moderationMute": "كتم اللاعب",
+  "moderationBan": "حظر من الغرفة",
+  "moderationKickConfirm": "هل تريد طرد {name}؟",
+  "@moderationKickConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "moderationYouWereKicked": "تم إخراجك من الغرفة",
+  "moderationYouWereMuted": "تم كتم صوتك",
+  "moderationGamePaused": "تم إيقاف اللعبة",
+  "moderationGameResumed": "استُؤنفت اللعبة",
+  "roomsJoinRequestSent": "تم إرسال طلب الانضمام! في انتظار موافقة المضيف.",
+  "roomsRequiresApproval": "هذه الغرفة تتطلب موافقة للانضمام",
+  "roomsJoinApproved": "تمت الموافقة على طلب انضمامك!",
+  "roomsJoinRejected": "تم رفض طلب انضمامك.",
+  "roomsSpectators": "المتفرجون",
+  "roomsSpectatorCount": "{count} يشاهد",
+  "@roomsSpectatorCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsNotifications": "الإشعارات",
+  "settingsNotifFriendRequests": "طلبات الصداقة",
+  "settingsNotifRoomInvites": "دعوات الغرف",
+  "settingsNotifGameActions": "أحداث اللعبة",
+  "settingsNotifWallet": "تحديثات المحفظة",
+  "settingsNotifPackSales": "مبيعات الباقات",
+  "walletEarnings": "الأرباح",
+  "walletEarningsTotal": "إجمالي الأرباح",
+  "walletEarningsThisMonth": "هذا الشهر",
+  "walletEarningsTotalSales": "إجمالي المبيعات",
+  "walletEarningsAvailable": "المتاح",
+  "walletEarningsCommissionRate": "نسبتك",
+  "walletTransactionHistory": "سجل المعاملات",
+  "profileGames": "الألعاب",
+  "profileFriends": "الأصدقاء",
+  "profilePacks": "الباقات",
+  "profileFollowers": "المتابعون",
+  "profileFollowing": "متابَعون",
+  "profileNotFound": "الملف الشخصي غير موجود",
+  "profileGamesPlayed": "{count} لعبة",
+  "@profileGamesPlayed": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gameSettingsSpicy": "بطاقات حارة",
+  "gameSettingsRequireApproval": "يتطلب موافقة للانضمام",
+  "gameSettingsAllowSpectators": "السماح بالمتفرجين",
+  "lobbyJoinRequests": "طلبات الانضمام",
+  "lobbyApprove": "قبول",
+  "lobbyReject": "رفض",
+  "packCategory": "الفئة",
+  "packCategoryHint": "اختر فئة",
+  "packCategoryNone": "بدون فئة"
+}

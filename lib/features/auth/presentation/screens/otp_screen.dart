@@ -9,6 +9,14 @@ import '../../../../core/providers/auth_provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/buttons/j_button.dart';
 
+/// Route arguments for [OtpScreen]. [identifier] is what's actually used to
+/// verify/resend the code — for phone sign-in this is the synthetic
+/// `@phone.jma3a.internal` email Supabase auth is keyed on internally, never
+/// meant to be shown to the user. [phoneNumber] is set only for the phone
+/// flow and is what gets displayed instead; email sign-in leaves it null so
+/// the identifier (a real email) is shown as before.
+typedef OtpScreenArgs = ({String identifier, String? phoneNumber});
+
 /// OTP verification screen.
 ///
 /// Features:
@@ -19,8 +27,22 @@ import '../../../../shared/widgets/buttons/j_button.dart';
 /// - Remaining attempts indicator
 /// - Error state per-box highlighting on failure
 class OtpScreen extends StatefulWidget {
-  const OtpScreen({super.key, required this.email});
-  final String email;
+  const OtpScreen({super.key, required this.identifier, this.phoneNumber});
+
+  /// Value passed to verifyOtp/sendOtp — a real email for the email flow,
+  /// or the internal synthetic email for the phone flow. Never shown to
+  /// the user directly; see [phoneNumber].
+  final String identifier;
+
+  /// The user's real phone number, set only when this screen was reached
+  /// via phone sign-in. Non-null here means the phone flow: display this
+  /// instead of [identifier], and resend via sendPhoneOtp instead of
+  /// sendOtp.
+  final String? phoneNumber;
+
+  /// What to show the user and what resend should re-send to.
+  String get displayIdentifier => phoneNumber ?? identifier;
+  bool get isPhoneFlow => phoneNumber != null;
 
   @override
   State<OtpScreen> createState() => _OtpScreenState();
@@ -111,7 +133,7 @@ class _OtpScreenState extends State<OtpScreen> {
     _focusNodes.forEach((f) => f.unfocus());
 
     final auth = context.read<AuthProvider>();
-    final result = await auth.verifyOtp(widget.email, _otp);
+    final result = await auth.verifyOtp(widget.identifier, _otp);
 
     if (!mounted) return;
 
@@ -133,16 +155,33 @@ class _OtpScreenState extends State<OtpScreen> {
     setState(() { _isResending = true; _hasError = false; _attemptsRemaining = null; });
 
     final auth = context.read<AuthProvider>();
-    final result = await auth.sendOtp(widget.email);
+    // Phone numbers are re-sent through sendPhoneOtp (SMS), not sendOtp
+    // (email) — otherwise a resend would silently try to email the
+    // synthetic @phone.jma3a.internal address, which has no real mailbox.
+    // phoneToSyntheticEmail is deterministic, so widget.identifier stays
+    // valid across resends and doesn't need to change here. The two calls
+    // return differently-shaped records, so branch fully rather than
+    // ternary-assigning to one `result`.
+    bool success;
+    String? errorMessage;
+    if (widget.isPhoneFlow) {
+      final result = await auth.sendPhoneOtp(widget.phoneNumber!);
+      success = result.success;
+      errorMessage = result.errorMessage;
+    } else {
+      final result = await auth.sendOtp(widget.identifier);
+      success = result.success;
+      errorMessage = result.errorMessage;
+    }
 
     if (!mounted) return;
     setState(() => _isResending = false);
 
-    if (result.success) {
+    if (success) {
       _clearAll();
       _startTimer();
     } else {
-      context.showErrorSnackBar(result.errorMessage ?? context.l10n.errorUnexpected);
+      context.showErrorSnackBar(errorMessage ?? context.l10n.errorUnexpected);
     }
   }
 
@@ -182,7 +221,7 @@ class _OtpScreenState extends State<OtpScreen> {
                   children: [
                     const TextSpan(text: 'Code sent to '),
                     TextSpan(
-                      text: widget.email,
+                      text: widget.displayIdentifier,
                       style: TextStyle(
                         color: theme.colorScheme.onSurface,
                         fontWeight: FontWeight.w600,

@@ -91,6 +91,25 @@ class ProfileProvider extends BaseProvider {
     }
   }
 
+  // ── Premium background-color customization ─────────────────────────────────
+  Future<bool> setThemeBackgroundColor(String? hexColor) async {
+    _isSaving = true;
+    _lastFailure = null;
+    notifyListeners();
+
+    try {
+      final updated = await _repository.setThemeBackgroundColor(hexColor);
+      _syncToAuth(updated);
+      return true;
+    } on Failure catch (f) {
+      _lastFailure = f;
+      return false;
+    } finally {
+      _isSaving = false;
+      notifyListeners();
+    }
+  }
+
   // ── Avatar upload ─────────────────────────────────────────────────────────
   Future<bool> uploadAvatar(File imageFile) async {
     _isUploadingAvatar = true;

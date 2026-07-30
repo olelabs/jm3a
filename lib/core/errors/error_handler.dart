@@ -86,9 +86,16 @@ abstract final class ErrorHandler {
 
     // Try to extract structured error from Node.js response shape:
     // { "success": false, "error": { "code": "...", "message": "..." } }
-    final errorBody = body is Map ? (body['error'] as Map?) : null;
+    // Some routes (bugs, now being fixed one by one) instead return a bare
+    // string in `error` — tolerate that shape too instead of an unchecked
+    // `as Map?` cast throwing an unrelated, uncaught TypeError that used to
+    // surface to users as a nonsensical "type 'String' is not a subtype..."
+    // message instead of the actual error.
+    final rawError = body is Map ? body['error'] : null;
+    final errorBody = rawError is Map ? rawError : null;
     final code = errorBody?['code'] as String?;
-    final message = errorBody?['message'] as String?;
+    final message = errorBody?['message'] as String? ??
+        (rawError is String ? rawError : null);
 
     return switch (statusCode) {
       400 => ValidationFailure(

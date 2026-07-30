@@ -1785,6 +1785,15 @@ abstract final class PresenceKey {
   static const joinedAt = 'joined_at';
 }
 
+/// Well-known keys for the multiple independent listeners a room channel
+/// can carry at once (see `RealtimeService`). `room` is RoomProvider's
+/// listener (lives for the whole room visit); `game` is whichever game
+/// screen is currently mounted (comes and goes as rounds start/end).
+abstract final class RoomChannelSubscriber {
+  static const room = 'room';
+  static const game = 'game';
+}
+
 typedef BroadcastHandler = void Function(Map<String, dynamic> payload);
 typedef PresenceHandler = void Function(List<Map<String, dynamic>> presences);
 typedef StatusHandler = void Function(RealtimeSubscribeStatus status);
@@ -1821,12 +1830,15 @@ class _Callbacks {
 }
 
 class _ChannelState {
-  _ChannelState(this.channel, this.callbacks);
+  _ChannelState(this.channel);
   final RealtimeChannel channel;
-  final _Callbacks callbacks;
   RealtimeSubscribeStatus status = RealtimeSubscribeStatus.subscribed;
   final ctrl = StreamController<RealtimeSubscribeStatus>.broadcast();
   final presences = <String, Map<String, dynamic>>{};
+  // Multiple independent listeners fan out from one shared channel, keyed
+  // by subscriberId (see RoomChannelSubscriber) so e.g. a game screen
+  // subscribing/disposing never touches RoomProvider's own listener.
+  final listeners = <String, _Callbacks>{};
 }
 
 class RealtimeService {
@@ -1837,8 +1849,14 @@ class RealtimeService {
   final _supabase = Supabase.instance.client;
   final _channels = <String, _ChannelState>{};
 
+  /// Registers [subscriberId]'s callbacks on the shared channel for
+  /// [roomId]. Multiple independent subscribers (see [RoomChannelSubscriber])
+  /// can hold listeners on the same room channel at once — subscribing under
+  /// one id never touches another id's callbacks, and the underlying
+  /// Supabase channel + presence tracking is created only once per room.
   Future<void> subscribe({
     required String roomId,
+    required String subscriberId,
     required BroadcastHandler onGameState,
     required BroadcastHandler onPlayerAction,
     required BroadcastHandler onSyncRequest,
@@ -1849,35 +1867,8 @@ class RealtimeService {
     required BroadcastHandler onGameStarted,
     required BroadcastHandler onGameEnded,
     required PresenceHandler onPresenceSync,
-    required PresenceHandler onPresenceJoin,
-    required PresenceHandler onPresenceLeave,
     required StatusHandler onStatusChange,
   }) async {
-    // If channel already exists, just update the callbacks in place.
-    // This avoids tearing down and rebuilding the Supabase channel when
-    // a new RoomProvider instance subscribes (e.g. after a widget rebuild).
-    if (_channels.containsKey(roomId)) {
-      final st = _channels[roomId]!;
-      st.callbacks
-        ..onGameState = onGameState
-        ..onPlayerAction = onPlayerAction
-        ..onSyncRequest = onSyncRequest
-        ..onRoomEvent = onRoomEvent
-        ..onChatMessage = onChatMessage
-        ..onModeration = onModeration
-        ..onSettingsChange = onSettingsChange
-        ..onGameStarted = onGameStarted
-        ..onGameEnded = onGameEnded
-        ..onPresenceSync = onPresenceSync
-        ..onStatusChange = onStatusChange;
-      AppLogger.debug('RealtimeService: updated callbacks for room $roomId');
-      // Immediately deliver current presence snapshot to new subscriber
-      if (st.presences.isNotEmpty) {
-        onPresenceSync(st.presences.values.toList());
-      }
-      return;
-    }
-
     final cb = _Callbacks(
       onGameState: onGameState,
       onPlayerAction: onPlayerAction,
@@ -1892,57 +1883,77 @@ class RealtimeService {
       onStatusChange: onStatusChange,
     );
 
+    // If the channel already exists, just add/replace this subscriber's
+    // entry. This avoids tearing down and rebuilding the Supabase channel
+    // — and avoids disturbing any *other* subscriber already registered —
+    // whether it's the same RoomProvider re-subscribing after a rebuild, or
+    // a game screen registering its own 'game' listener alongside 'room'.
+    if (_channels.containsKey(roomId)) {
+      final st = _channels[roomId]!;
+      st.listeners[subscriberId] = cb;
+      AppLogger.debug(
+        'RealtimeService: listener "$subscriberId" registered for room '
+        '$roomId (${st.listeners.length} active)',
+      );
+      // Immediately deliver current presence snapshot to new subscriber
+      if (st.presences.isNotEmpty) {
+        onPresenceSync(st.presences.values.toList());
+      }
+      return;
+    }
+
     final channel = _supabase.channel(
       'room:$roomId',
       opts: const RealtimeChannelConfig(ack: false, self: false),
     );
 
-    final state = _ChannelState(channel, cb);
+    final state = _ChannelState(channel);
+    state.listeners[subscriberId] = cb;
     _channels[roomId] = state; // register early so callbacks resolve
 
     channel
         .onBroadcast(
           event: RoomEvent.gameState,
-          callback: (p) => state.callbacks.onGameState(_s(p)),
+          callback: (p) => _fanOut(state, (c) => c.onGameState, _s(p)),
         )
         .onBroadcast(
           event: RoomEvent.playerAction,
-          callback: (p) => state.callbacks.onPlayerAction(_s(p)),
+          callback: (p) => _fanOut(state, (c) => c.onPlayerAction, _s(p)),
         )
         .onBroadcast(
           event: RoomEvent.syncRequest,
-          callback: (p) => state.callbacks.onSyncRequest(_s(p)),
+          callback: (p) => _fanOut(state, (c) => c.onSyncRequest, _s(p)),
         )
         .onBroadcast(
           event: RoomEvent.roomEvent,
-          callback: (p) => state.callbacks.onRoomEvent(_s(p)),
+          callback: (p) => _fanOut(state, (c) => c.onRoomEvent, _s(p)),
         )
         .onBroadcast(
           event: RoomEvent.chatMessage,
-          callback: (p) => state.callbacks.onChatMessage(_s(p)),
+          callback: (p) => _fanOut(state, (c) => c.onChatMessage, _s(p)),
         )
         .onBroadcast(
           event: RoomEvent.moderation,
-          callback: (p) => state.callbacks.onModeration(_s(p)),
+          callback: (p) => _fanOut(state, (c) => c.onModeration, _s(p)),
         )
         .onBroadcast(
           event: RoomEvent.settingsChange,
-          callback: (p) => state.callbacks.onSettingsChange(_s(p)),
+          callback: (p) => _fanOut(state, (c) => c.onSettingsChange, _s(p)),
         )
         .onBroadcast(
           event: RoomEvent.gameStarted,
-          callback: (p) => state.callbacks.onGameStarted(_s(p)),
+          callback: (p) => _fanOut(state, (c) => c.onGameStarted, _s(p)),
         )
         .onBroadcast(
           event: RoomEvent.gameEnded,
-          callback: (p) => state.callbacks.onGameEnded(_s(p)),
+          callback: (p) => _fanOut(state, (c) => c.onGameEnded, _s(p)),
         )
         .onPresenceSync((_) {
           _rebuildPresences(roomId, state);
           AppLogger.debug(
             'PresenceSync: ${state.presences.length} online in $roomId',
           );
-          state.callbacks.onPresenceSync(state.presences.values.toList());
+          _fanOutPresence(state, state.presences.values.toList());
         })
         .onPresenceJoin((payload) {
           final joined = _extractPresences(payload.newPresences);
@@ -1953,7 +1964,7 @@ class RealtimeService {
           AppLogger.debug(
             'PresenceJoin: ${joined.length} joined, total=${state.presences.length}',
           );
-          state.callbacks.onPresenceSync(state.presences.values.toList());
+          _fanOutPresence(state, state.presences.values.toList());
         })
         .onPresenceLeave((payload) {
           final left = _extractPresences(payload.leftPresences);
@@ -1964,20 +1975,37 @@ class RealtimeService {
           AppLogger.debug(
             'PresenceLeave: ${left.length} left, total=${state.presences.length}',
           );
-          state.callbacks.onPresenceSync(state.presences.values.toList());
+          _fanOutPresence(state, state.presences.values.toList());
         })
         .subscribe((status, err) {
           final st = _channels[roomId];
           if (st == null) return;
           st.status = status;
           st.ctrl.add(status);
-          st.callbacks.onStatusChange(status);
+          for (final cb in st.listeners.values.toList()) {
+            cb.onStatusChange(status);
+          }
           if (err != null) {
             AppLogger.error('Channel $roomId err', error: err);
           } else {
             AppLogger.info('Channel room:$roomId → ${status.name}');
           }
         });
+  }
+
+  /// Removes only [subscriberId]'s callbacks from [roomId]'s channel — the
+  /// channel itself, presence tracking, and any other subscriber's
+  /// callbacks are left untouched. Use this (not [unsubscribe]) when a
+  /// single screen (e.g. a game screen) is done listening but other
+  /// subscribers (e.g. RoomProvider) are still using the room.
+  void unsubscribeListener(String roomId, String subscriberId) {
+    final st = _channels[roomId];
+    if (st == null) return;
+    st.listeners.remove(subscriberId);
+    AppLogger.debug(
+      'RealtimeService: listener "$subscriberId" removed from room '
+      '$roomId (${st.listeners.length} remaining)',
+    );
   }
 
   Future<void> trackPresence(String roomId, Map<String, dynamic> data) async {
@@ -2068,6 +2096,34 @@ class RealtimeService {
       _channels[roomId]?.ctrl.stream;
 
   // ── Internals ─────────────────────────────────────────────────────────────
+
+  /// Dispatches a broadcast payload to every registered listener's handler
+  /// picked out by [selector]. Snapshots the listener list first so a
+  /// handler that synchronously subscribes/unsubscribes (e.g. disposing a
+  /// game screen mid-callback) can't cause a concurrent-modification error.
+  void _fanOut(
+    _ChannelState state,
+    BroadcastHandler Function(_Callbacks) selector,
+    Map<String, dynamic> payload,
+  ) {
+    for (final cb in state.listeners.values.toList()) {
+      try {
+        selector(cb)(payload);
+      } catch (e) {
+        AppLogger.error('RealtimeService: listener callback threw', error: e);
+      }
+    }
+  }
+
+  void _fanOutPresence(_ChannelState state, List<Map<String, dynamic>> snapshot) {
+    for (final cb in state.listeners.values.toList()) {
+      try {
+        cb.onPresenceSync(snapshot);
+      } catch (e) {
+        AppLogger.error('RealtimeService: presence callback threw', error: e);
+      }
+    }
+  }
 
   Future<void> _bcast(
     String roomId,

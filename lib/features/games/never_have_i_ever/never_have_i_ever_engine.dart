@@ -205,6 +205,8 @@
 //   }
 // }
 
+import 'dart:math';
+
 import '../engine/base_game_engine.dart';
 
 // ── Domain ────────────────────────────────────────────────────────────────────
@@ -356,6 +358,7 @@ class NhieState extends GameEngineState {
     int? currentPlayerIndex,
     NhieCard? Function()? currentCard,
     int? roundNumber,
+    int? maxRounds,
     Map<String, NhieVoteEntry>? voteEntries,
     Map<String, int>? scores,
     bool? isVotingOpen,
@@ -368,7 +371,7 @@ class NhieState extends GameEngineState {
     currentPlayerIndex: currentPlayerIndex ?? this.currentPlayerIndex,
     currentCard: currentCard != null ? currentCard() : this.currentCard,
     roundNumber: roundNumber ?? this.roundNumber,
-    maxRounds: maxRounds,
+    maxRounds: maxRounds ?? this.maxRounds,
     voteEntries: voteEntries ?? this.voteEntries,
     scores: scores ?? this.scores,
     isVotingOpen: isVotingOpen ?? this.isVotingOpen,
@@ -460,6 +463,7 @@ class NeverHaveIEverEngine implements BaseGameEngine {
   final GameConfig _config;
   final List<NhieCard> _cards;
   final Set<String> _usedCardIds = {};
+  final _rng = Random();
   late NhieState _state;
 
   @override
@@ -549,10 +553,35 @@ class NeverHaveIEverEngine implements BaseGameEngine {
     _state = NhieState.fromMap(snapshot);
   }
 
+  /// Inject a card into the remaining deck so it can appear during the
+  /// current game. Used for premium session-local custom cards — the card
+  /// is inserted at a random position to avoid always appearing last.
+  /// Also bumps maxRounds if needed so the enlarged deck can't be cut off
+  /// by the round limit before every card (built-in + custom) is drawn.
+  void injectCard(NhieCard card) {
+    final pos = _cards.isNotEmpty ? _rng.nextInt(_cards.length) : 0;
+    _cards.insert(pos, card);
+    final playerCount = _state.playerOrder.length;
+    if (playerCount > 0) {
+      final requiredRounds = (_cards.length / playerCount).ceil();
+      if (requiredRounds > _state.maxRounds) {
+        _state = _state.copyWith(maxRounds: requiredRounds);
+      }
+    }
+  }
+
   @override
   bool get isGameOver => _state.isOver;
 
+  /// Owner-initiated early termination (e.g. every other player has left)
+  /// — bypasses the normal round-completion path straight to game-over so
+  /// the existing `isGameOver` broadcast/persist logic picks it up as-is.
+  void forceEnd() {
+    _state = _state.copyWith(isOver: true);
+  }
+
   NhieState _handleVote(NhieVoteEvent e) {
+    if (!_state.playerOrder.contains(e.userId)) return _state;
     if (!_state.isVotingOpen) return _state;
     if (_state.voteEntries.containsKey(e.userId)) return _state;
 
@@ -580,6 +609,7 @@ class NeverHaveIEverEngine implements BaseGameEngine {
   }
 
   NhieState _handleReaction(NhieReactionEvent e) {
+    if (!_state.playerOrder.contains(e.userId)) return _state;
     // One reaction per player per turn
     if (_state.reactions.any((r) => r.userId == e.userId)) return _state;
     return _state.copyWith(

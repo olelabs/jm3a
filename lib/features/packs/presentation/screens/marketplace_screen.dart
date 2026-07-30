@@ -7,6 +7,7 @@ import '../../../../core/extensions/context_ext.dart';
 import '../../../../core/providers/auth_provider.dart';
 import '../../../../core/router/route_names.dart';
 import '../../../../core/router/app_router.dart';
+import '../../../../core/services/image_cache_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/cards/j_card.dart';
 import '../../../../shared/widgets/feedback/error_view.dart';
@@ -16,6 +17,7 @@ import '../pack_provider.dart';
 import '../widgets/pack_card_widget.dart';
 import '../widgets/pack_download_button.dart';
 import 'my_packs_screen.dart';
+import 'physical_pack_requests_screen.dart';
 
 export '../widgets/pack_card_widget.dart' show PackCard;
 
@@ -79,6 +81,16 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
             snap: true,
             title: Text(context.l10n.navMarketplace),
             actions: [
+              IconButton(
+                icon: const Icon(Icons.local_shipping_outlined),
+                tooltip: 'My Physical Pack Requests',
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const PhysicalPackRequestsScreen(),
+                  ),
+                ),
+              ),
               IconButton(
                 icon: const Icon(Icons.search_rounded),
                 onPressed: () {}, // search screen TODO
@@ -448,16 +460,13 @@ class _PromotedBanner extends StatelessWidget {
               child: Stack(
                 children: [
                   if (pack.coverImageUrl != null)
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: Image.network(
-                        pack.coverImageUrl!,
-                        width: double.infinity,
-                        height: double.infinity,
-                        fit: BoxFit.cover,
-                        color: Colors.black.withOpacity(0.35),
-                        colorBlendMode: BlendMode.darken,
-                      ),
+                    ImageCacheService.instance.packCover(
+                      url: pack.coverImageUrl,
+                      width: double.infinity,
+                      height: double.infinity,
+                      borderRadius: 16,
+                      color: Colors.black.withOpacity(0.35),
+                      colorBlendMode: BlendMode.darken,
                     ),
                   Padding(
                     padding: const EdgeInsets.all(16),

@@ -290,6 +290,9 @@ class WalletProvider extends BaseProvider {
   WalletEntity? get wallet => _wallet;
   int get balanceMru => _wallet?.balanceMru ?? 0;
   String get formattedBalance => _wallet?.formattedBalance ?? '0 MRU';
+  int get earningsBalanceMru => _wallet?.earningsBalanceMru ?? 0;
+  String get formattedEarningsBalance =>
+      _wallet?.formattedEarningsBalance ?? '0 MRU';
   bool get isWalletFrozen => _wallet?.isFrozen ?? false;
   List<WalletTransaction> get transactions => _transactions;
   List<PaymentMethodEntity> get depositMethods => _depositMethods;
@@ -401,12 +404,25 @@ class WalletProvider extends BaseProvider {
 
   // ── Transactions ───────────────────────────────────────────────────────────
 
-  Future<void> loadTransactions({bool reset = false}) async {
+  TransactionType? _txTypeFilter;
+  TransactionType? get txTypeFilter => _txTypeFilter;
+
+  /// [typeFilter] is only read when [reset] is true (a fresh filter change
+  /// always resets the page); omit it on subsequent `loadMoreTransactions`
+  /// calls to keep paginating under the already-active filter. Filtering
+  /// happens server-side so pagination and the active filter always agree
+  /// — a client-side filter over a partially-loaded page would silently
+  /// show an incomplete/stale result set.
+  Future<void> loadTransactions({
+    bool reset = false,
+    TransactionType? typeFilter,
+  }) async {
     if (_wallet == null || _wallet!.id.isEmpty) return;
     if (reset) {
       _txPage = 0;
       _hasMoreTx = true;
       _transactions = [];
+      _txTypeFilter = typeFilter;
     }
     if (!_hasMoreTx) return;
 
@@ -416,6 +432,7 @@ class WalletProvider extends BaseProvider {
         _wallet!.id,
         limit: perPage,
         offset: _txPage * perPage,
+        typeFilter: _txTypeFilter,
       );
       _transactions = reset ? tx : [..._transactions, ...tx];
       _hasMoreTx = tx.length == perPage;
@@ -496,6 +513,22 @@ class WalletProvider extends BaseProvider {
   Future<void> loadMyWithdrawals() => runAsync(() async {
     _myWithdrawals = await _repo.getMyWithdrawals();
   }, setLoading: false);
+
+  // ── Earnings → Wallet transfer ────────────────────────────────────────────
+
+  /// Manual-only — no automatic transfers happen anywhere. Refreshes both
+  /// balances from the server on success rather than computing the new
+  /// values locally, since the transfer is a server-side atomic operation.
+  Future<({bool success, String? error})> transferEarningsToWallet(
+    int amountMru,
+  ) async {
+    await runAsync(() => _repo.transferEarningsToWallet(amountMru));
+    if (failure == null) {
+      if (currentUserId != null) await _loadWallet(currentUserId!);
+      return (success: true, error: null);
+    }
+    return (success: false, error: failure?.message);
+  }
 
   // ── Creator earnings ───────────────────────────────────────────────────────
 

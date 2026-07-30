@@ -165,6 +165,7 @@ import '../../../../core/extensions/context_ext.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/feedback/error_view.dart';
 import '../wallet_provider.dart';
+import '../widgets/transaction_detail_sheet.dart';
 import '../widgets/transaction_tile.dart';
 
 // ── Transaction history ───────────────────────────────────────────────────────
@@ -222,10 +223,11 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
             );
           }
 
-          // Filter
-          final filtered = _typeFilter != null
-              ? wallet.transactions.where((t) => t.type == _typeFilter).toList()
-              : wallet.transactions;
+          // Filtering happens server-side (WalletProvider forwards
+          // typeFilter to the repository query) so pagination always
+          // matches the active filter — wallet.transactions is already the
+          // correct, complete filtered set for the current page window.
+          final filtered = wallet.transactions;
 
           return Column(
             children: [
@@ -234,9 +236,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                 selected: _typeFilter,
                 onChanged: (t) {
                   setState(() => _typeFilter = t);
-                  if (t == null) {
-                    wallet.loadTransactions(reset: true);
-                  }
+                  wallet.loadTransactions(reset: true, typeFilter: t);
                 },
               ),
 
@@ -271,6 +271,10 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                             }
                             return TransactionTile(
                               transaction: filtered[i],
+                              onTap: () => showTransactionDetailSheet(
+                                context,
+                                filtered[i],
+                              ),
                             ).animate(delay: (i * 20).ms).fadeIn();
                           },
                         ),

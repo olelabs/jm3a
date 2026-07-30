@@ -1154,6 +1154,8 @@
 //   }
 // }
 
+import 'dart:math';
+
 import '../engine/base_game_engine.dart';
 
 // ── MemePrompt ────────────────────────────────────────────────────────────────
@@ -1317,6 +1319,7 @@ class MemeState extends GameEngineState {
     Map<String, String>? votes,
     Map<String, int>? scores,
     int? roundNumber,
+    int? maxRounds,
     bool? isOver,
     String? Function()? roundWinnerId,
     List<EmojiReaction>? reactions,
@@ -1330,7 +1333,7 @@ class MemeState extends GameEngineState {
     votes: votes ?? this.votes,
     scores: scores ?? this.scores,
     roundNumber: roundNumber ?? this.roundNumber,
-    maxRounds: maxRounds,
+    maxRounds: maxRounds ?? this.maxRounds,
     isOver: isOver ?? this.isOver,
     roundWinnerId: roundWinnerId != null ? roundWinnerId() : this.roundWinnerId,
     reactions: reactions ?? this.reactions,
@@ -1436,6 +1439,7 @@ class MemeGameEngine implements BaseGameEngine {
   final GameConfig _config;
   final List<MemePrompt> _prompts;
   final Set<String> _usedPromptIds = {};
+  final _rng = Random();
   late MemeState _state;
 
   @override
@@ -1520,12 +1524,37 @@ class MemeGameEngine implements BaseGameEngine {
     _state = MemeState.fromMap(s);
   }
 
+  /// Inject a prompt into the remaining deck so it can appear during the
+  /// current game. Used for premium session-local custom cards — the card
+  /// is inserted at a random position to avoid always appearing last. Also
+  /// bumps maxRounds if needed so the enlarged deck can't be cut off by the
+  /// round limit before every prompt (built-in + custom) is drawn.
+  void injectCard(MemePrompt prompt) {
+    final pos = _prompts.isNotEmpty ? _rng.nextInt(_prompts.length) : 0;
+    _prompts.insert(pos, prompt);
+    final playerCount = _state.playerOrder.length;
+    if (playerCount > 0) {
+      final requiredRounds = (_prompts.length / playerCount).ceil();
+      if (requiredRounds > _state.maxRounds) {
+        _state = _state.copyWith(maxRounds: requiredRounds);
+      }
+    }
+  }
+
   @override
   bool get isGameOver => _state.isOver;
+
+  /// Owner-initiated early termination (e.g. every other player has left)
+  /// — bypasses the normal round-completion path straight to game-over so
+  /// the existing `isGameOver` broadcast/persist logic picks it up as-is.
+  void forceEnd() {
+    _state = _state.copyWith(isOver: true);
+  }
 
   // ── Handlers ────────────────────────────────────────────────────────────────
 
   MemeState _handleSubmit(MemeSubmitEvent e) {
+    if (!_state.playerOrder.contains(e.userId)) return _state;
     if (_state.phase != MemePhase.submitting) return _state;
     if (_state.submissions.containsKey(e.userId)) return _state;
     if (e.caption.isEmpty && e.stickerChoice.isEmpty)
@@ -1540,7 +1569,7 @@ class MemeGameEngine implements BaseGameEngine {
         stickerChoice: e.stickerChoice,
       ),
     };
-    final allIn = newSubs.length >= _state.playerOrder.length;
+    final allIn = _state.playerOrder.every((id) => newSubs.containsKey(id));
     return _state.copyWith(
       snapshotAt: DateTime.now().millisecondsSinceEpoch,
       submissions: newSubs,
@@ -1549,11 +1578,18 @@ class MemeGameEngine implements BaseGameEngine {
   }
 
   MemeState _handleVote(MemeVoteEvent e) {
+    // Spectators are never part of playerOrder — this authoritative check
+    // (not just a UI-layer gate) is what actually prevents an injected vote
+    // from a non-player, which would otherwise close voting on a raw count
+    // before every real player has actually voted.
+    if (!_state.playerOrder.contains(e.userId)) return _state;
     if (_state.phase != MemePhase.voting) return _state;
     if (_state.votes.containsKey(e.userId)) return _state;
 
     final newVotes = {..._state.votes, e.userId: e.targetUserId};
-    final allVoted = newVotes.length >= _state.playerOrder.length;
+    final allVoted = _state.playerOrder.every(
+      (id) => newVotes.containsKey(id),
+    );
     if (!allVoted)
       return _state.copyWith(
         snapshotAt: DateTime.now().millisecondsSinceEpoch,
@@ -1580,6 +1616,7 @@ class MemeGameEngine implements BaseGameEngine {
   }
 
   MemeState _handleReact(MemeReactEvent e) {
+    if (!_state.playerOrder.contains(e.userId)) return _state;
     // One reaction per (reactor, target) pair
     if (_state.reactions.any(
       (r) => r.reactorId == e.userId && r.targetUserId == e.targetUserId,

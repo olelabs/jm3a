@@ -85,7 +85,12 @@ class GameConfig {
     this.language = 'en',
     this.turnOrderMode = TurnOrderMode.circular,
     this.enablePunishments = false,
-  });
+    this.punishmentSource = 'players',
+    List<String>? suggestedPunishments,
+    this.proofVisibilityPolicy = 'everyone',
+    this.proofViewSeconds = 5,
+    this.proofReplayMode = 'once',
+  }) : suggestedPunishments = suggestedPunishments ?? const [];
 
   bool get timerEnabled => turnTimerSeconds > 0;
 
@@ -98,6 +103,31 @@ class GameConfig {
   final String language;
   final bool enablePunishments;
 
+  /// 'players' (default — the existing live peer-vote flow, unchanged) or
+  /// 'pack' (a skip resolves directly from the selected pack's
+  /// suggested_punishments instead of the peer-proposal phase). Only
+  /// meaningful when [enablePunishments] is true and the room's pack
+  /// actually has punishments to draw from.
+  final String punishmentSource;
+
+  /// The selected pack's creator-authored punishment options (empty or
+  /// >=10, enforced at pack-creation time) — only consulted when
+  /// [punishmentSource] is 'pack'.
+  final List<String> suggestedPunishments;
+
+  // ── Truth or Dare proof settings ──────────────────────────────────────
+  // Kept as plain strings (not TodProofVisibility/TodProofViewMode) so
+  // this shared, cross-game config file doesn't import ToD-specific
+  // domain types — ToD's own code maps these onto its real enums at the
+  // point a turn's proof is actually submitted. Meaningless for NHIE/Meme,
+  // same as allowSpicy/enablePunishments already are for them.
+  /// 'everyone' | 'players_only' | 'spectators_only'
+  final String proofVisibilityPolicy;
+  /// Seconds a timed-mode proof stays visible before auto-hiding.
+  final int proofViewSeconds;
+  /// 'once' | 'replay_once'
+  final String proofReplayMode;
+
   Map<String, dynamic> toMap() => {
     'max_rounds': maxRounds,
     'turn_timer_secs': turnTimerSeconds,
@@ -107,6 +137,11 @@ class GameConfig {
     'language': language,
     'turn_order_mode': turnOrderMode.name,
     'enable_punishments': enablePunishments,
+    'punishment_source': punishmentSource,
+    'suggested_punishments': suggestedPunishments,
+    'proof_visibility_policy': proofVisibilityPolicy,
+    'proof_view_seconds': proofViewSeconds,
+    'proof_replay_mode': proofReplayMode,
   };
 
   static GameConfig fromMap(Map<String, dynamic> m) => GameConfig(
@@ -117,6 +152,14 @@ class GameConfig {
     packId: m['pack_id'] as String?,
     language: m['language'] as String? ?? 'en',
     enablePunishments: m['enable_punishments'] as bool? ?? false,
+    punishmentSource: m['punishment_source'] as String? ?? 'players',
+    suggestedPunishments: (m['suggested_punishments'] as List?)
+        ?.map((e) => e.toString())
+        .toList(),
+    proofVisibilityPolicy:
+        m['proof_visibility_policy'] as String? ?? 'everyone',
+    proofViewSeconds: m['proof_view_seconds'] as int? ?? 5,
+    proofReplayMode: m['proof_replay_mode'] as String? ?? 'once',
     turnOrderMode: TurnOrderMode.values.firstWhere(
       (t) => t.name == m['turn_order_mode'],
       orElse: () => TurnOrderMode.circular,

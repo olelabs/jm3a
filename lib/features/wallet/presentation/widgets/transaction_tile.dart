@@ -7,8 +7,9 @@ import '../wallet_provider.dart';
 // ── Transaction tile ──────────────────────────────────────────────────────────
 
 class TransactionTile extends StatelessWidget {
-  const TransactionTile({super.key, required this.transaction});
+  const TransactionTile({super.key, required this.transaction, this.onTap});
   final WalletTransaction transaction;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -19,7 +20,10 @@ class TransactionTile extends StatelessWidget {
     final isTerminal = tx.status.isTerminal;
     final isPending  = tx.status.isPending;
 
-    return Padding(
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(
         children: [
@@ -98,6 +102,7 @@ class TransactionTile extends StatelessWidget {
             ],
           ),
         ],
+      ),
       ),
     );
   }

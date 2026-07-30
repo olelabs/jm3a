@@ -11,7 +11,7 @@ import 'package:equatable/equatable.dart';
 
 enum TransactionType {
   deposit, withdrawal, purchase, refund,
-  commission, payout, adjustment, bonus;
+  commission, payout, adjustment, bonus, transfer;
 
   static TransactionType fromString(String s) => switch (s) {
     'withdrawal'  => withdrawal,
@@ -21,6 +21,7 @@ enum TransactionType {
     'payout'      => payout,
     'adjustment'  => adjustment,
     'bonus'       => bonus,
+    'transfer'    => transfer,
     _             => deposit,
   };
 
@@ -33,6 +34,7 @@ enum TransactionType {
     payout     => 'Payout',
     adjustment => 'Adjustment',
     bonus      => 'Bonus',
+    transfer   => 'Balance Transfer',
   };
 
   bool get isCredit => this == deposit || this == refund ||
@@ -48,6 +50,7 @@ enum TransactionType {
     payout     => '🏦',
     adjustment => '⚙️',
     bonus      => '🎁',
+    transfer   => '🔄',
   };
 }
 
@@ -132,31 +135,45 @@ class WalletEntity extends Equatable {
     required this.id,
     required this.userId,
     required this.balanceMru,
+    this.earningsBalanceMru = 0,
     this.isFrozen = false,
     this.updatedAt,
   });
 
   final String    id;
   final String    userId;
-  final int       balanceMru;  // integer MRU
+  /// Spendable balance — deposits + manually transferred earnings. The
+  /// ONLY balance used for buying packs, creating rooms, Premium, or any
+  /// in-app payment.
+  final int       balanceMru;
+  /// Creator earnings, commissions, rewards. Withdrawals draw ONLY from
+  /// here. Never auto-transferred to [balanceMru] — the user must
+  /// explicitly transfer via [WalletRepository.transferEarningsToWallet].
+  final int       earningsBalanceMru;
   final bool      isFrozen;
   final DateTime? updatedAt;
 
   String get formattedBalance => '${_formatMru(balanceMru)} MRU';
+  String get formattedEarningsBalance => '${_formatMru(earningsBalanceMru)} MRU';
 
   bool canDebit(int amountMru) =>
       !isFrozen && balanceMru >= amountMru;
 
-  WalletEntity copyWith({int? balanceMru, bool? isFrozen}) => WalletEntity(
-    id:         id,
-    userId:     userId,
-    balanceMru: balanceMru ?? this.balanceMru,
-    isFrozen:   isFrozen   ?? this.isFrozen,
-    updatedAt:  updatedAt,
+  WalletEntity copyWith({
+    int? balanceMru,
+    int? earningsBalanceMru,
+    bool? isFrozen,
+  }) => WalletEntity(
+    id:                 id,
+    userId:             userId,
+    balanceMru:         balanceMru ?? this.balanceMru,
+    earningsBalanceMru: earningsBalanceMru ?? this.earningsBalanceMru,
+    isFrozen:           isFrozen ?? this.isFrozen,
+    updatedAt:          updatedAt,
   );
 
   @override
-  List<Object?> get props => [id, userId, balanceMru, isFrozen];
+  List<Object?> get props => [id, userId, balanceMru, earningsBalanceMru, isFrozen];
 }
 
 // ── Transaction entity ────────────────────────────────────────────────────────
@@ -174,6 +191,7 @@ class WalletTransaction extends Equatable {
     this.referenceId,
     this.idempotencyKey,
     required this.createdAt,
+    this.balanceType = 'wallet',
   });
 
   final String            id;
@@ -187,6 +205,7 @@ class WalletTransaction extends Equatable {
   final String?           referenceId;
   final String?           idempotencyKey;
   final DateTime          createdAt;
+  final String            balanceType; // 'wallet' | 'earnings'
 
   bool get isCredit    => amountMru > 0;
   bool get isDebit     => amountMru < 0;

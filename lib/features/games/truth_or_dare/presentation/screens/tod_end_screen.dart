@@ -157,7 +157,7 @@ class TodEndScreen extends StatelessWidget {
               const SizedBox(height: 20),
 
               JButton(
-                label:     'Back to Lobby',
+                label:     'Go to Home',
                 onPressed: onLeave,
                 icon:      Icons.home_rounded,
               ).animate(delay: 700.ms).fadeIn(),

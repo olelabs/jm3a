@@ -107,6 +107,8 @@ class FriendTile extends StatelessWidget {
               children: [
                 UserAvatar(
                   avatarUrl: friend.avatarUrl,
+                  avatarConfig: friend.avatarConfig,
+                  isPremium: friend.isPremium,
                   displayName: friend.displayName,
                   size: 44,
                   showOnlineStatus: false,

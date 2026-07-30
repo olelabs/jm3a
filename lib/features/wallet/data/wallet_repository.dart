@@ -886,9 +886,15 @@ class WalletRepository extends BaseRepository {
   Future<List<DepositEntity>> getMyDeposits({int limit = 20}) => guardedCall(
     operationName: 'getMyDeposits',
     operation: () async {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) return [];
+      // Explicit filter in addition to RLS — defense in depth, not a
+      // substitute for it (RLS on `deposits` was previously disabled
+      // entirely, which is the real fix; this stays even now that it's on).
       final rows = await _supabase
           .from('deposits')
           .select()
+          .eq('user_id', userId)
           .order('created_at', ascending: false)
           .limit(limit);
       return rows.map(_rowToDeposit).toList();
@@ -934,14 +940,32 @@ class WalletRepository extends BaseRepository {
       guardedCall(
         operationName: 'getMyWithdrawals',
         operation: () async {
+          final userId = _supabase.auth.currentUser?.id;
+          if (userId == null) return [];
           final rows = await _supabase
               .from('withdrawals')
               .select()
+              .eq('user_id', userId)
               .order('created_at', ascending: false)
               .limit(limit);
           return rows.map(_rowToWithdrawal).toList();
         },
       );
+
+  /// Manual-only move from the earnings balance into the spendable wallet
+  /// balance — never automatic. Both legs happen atomically server-side.
+  Future<void> transferEarningsToWallet(int amountMru) => guardedCall(
+    operationName: 'transferEarningsToWallet',
+    operation: () async {
+      if (amountMru <= 0) {
+        throw const ValidationFailure(message: 'Enter a valid amount.');
+      }
+      await _api.post<Map<String, dynamic>>(
+        '/v1/wallet/transfer-to-wallet',
+        data: {'amount_mru': amountMru, 'idempotency_key': _uuid.v4()},
+      );
+    },
+  );
 
   // ── Creator earnings ───────────────────────────────────────────────────────
 
@@ -970,6 +994,7 @@ class WalletRepository extends BaseRepository {
     id: r['id'] as String,
     userId: r['user_id'] as String,
     balanceMru: r['balance_mru'] as int? ?? 0,
+    earningsBalanceMru: r['earnings_balance_mru'] as int? ?? 0,
     isFrozen: r['is_frozen'] as bool? ?? false,
     updatedAt: r['updated_at'] != null
         ? DateTime.tryParse(r['updated_at'] as String)
@@ -991,7 +1016,38 @@ class WalletRepository extends BaseRepository {
         referenceId: r['reference_id'] as String?,
         idempotencyKey: r['idempotency_key'] as String?,
         createdAt: DateTime.parse(r['created_at'] as String),
+        balanceType: r['balance_type'] as String? ?? 'wallet',
       );
+
+  /// Best-effort lookup only, used by the transaction detail sheet — the
+  /// link runs deposits.tx_id / withdrawals.tx_id -> wallet_transactions.id
+  /// (not the other way via reference_id), so this queries in that
+  /// direction. Returns null for every other transaction type.
+  Future<String?> getPaymentMethodForTransaction(
+    String txId,
+    TransactionType type,
+  ) => guardedCall(
+    operationName: 'getPaymentMethodForTransaction',
+    operation: () async {
+      if (type == TransactionType.deposit) {
+        final row = await _supabase
+            .from('deposits')
+            .select('payment_method')
+            .eq('tx_id', txId)
+            .maybeSingle();
+        return row?['payment_method'] as String?;
+      }
+      if (type == TransactionType.withdrawal) {
+        final row = await _supabase
+            .from('withdrawals')
+            .select('payout_method')
+            .eq('tx_id', txId)
+            .maybeSingle();
+        return row?['payout_method'] as String?;
+      }
+      return null;
+    },
+  );
 
   DepositEntity _rowToDeposit(Map<String, dynamic> r) => DepositEntity(
     id: r['id'] as String,

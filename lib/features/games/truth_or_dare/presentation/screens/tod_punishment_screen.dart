@@ -671,14 +671,9 @@
 //   }
 // }
 
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
-import '../../../../../core/extensions/context_ext.dart';
-import '../../../../../core/theme/app_colors.dart';
-import '../../../../../shared/widgets/buttons/j_button.dart';
 import '../../domain/tod_models.dart';
 import '../../tod_game_provider.dart';
 
@@ -689,27 +684,943 @@ const _kYellow = Color(0xFFFFD60A);
 const _kCoral = Color(0xFFFF6B6B);
 const _kGreen = Color(0xFF4ADE80);
 const _kOrange = Color(0xFFFB923C);
-const _kPurple = Color(0xFFA855F7);
+
+// /// Full-screen punishment flow shown to every player when a skip happens.
+// ///
+// /// Flow:
+// ///  Phase A — [no punishment proposed yet]
+// ///    • Admin/moderator: text field to type a punishment + send
+// ///    • Others: "Waiting for admin to propose a punishment…"
+// ///
+// ///  Phase B — [punishment proposed, voting in progress]
+// ///    • Current player: sees the punishment, can't vote on own punishment
+// ///    • Everyone else: 3 vote buttons → Do It / Pass / Change It
+// ///    • Live vote tally shown to all
+// ///
+// ///  Phase C — [outcome = doIt]
+// ///    • Big punishment card + countdown timer (default 60s)
+// ///    • Admin sees "Confirm done" button to advance
+// ///    • Others see "Waiting for [player] to complete…"
+// ///
+// ///  Phase D — [outcome = dontDoIt / changePunishment]
+// ///    • Goes back to Phase A (engine resets vote)
+// class TodPunishmentScreen extends StatefulWidget {
+//   const TodPunishmentScreen({
+//     super.key,
+//     required this.state,
+//     required this.game,
+//     required this.displayNames,
+//   });
+// 
+//   final TodState state;
+//   final TodGameProvider game;
+//   final Map<String, String> displayNames;
+// 
+//   @override
+//   State<TodPunishmentScreen> createState() => _TodPunishmentScreenState();
+// }
+// 
+// class _TodPunishmentScreenState extends State<TodPunishmentScreen> {
+//   final _ctrl = TextEditingController();
+// 
+//   @override
+//   void dispose() {
+//     _ctrl.dispose();
+//     super.dispose();
+//   }
+// 
+//   String _name(String id) =>
+//       widget.displayNames[id] ?? id.substring(0, id.length.clamp(0, 6));
+// 
+//   @override
+//   Widget build(BuildContext context) {
+//     final state = widget.state;
+//     final game = widget.game;
+//     final voteState = state.currentPunishmentVote;
+//     final myId = game.currentUserId;
+//     final isAdmin = game.isOwner || game.canModerate;
+//     final playerName = _name(state.currentPlayerId);
+//     final isCurrentPlayer = myId == state.currentPlayerId;
+// 
+//     // ── Phase C: outcome reached → execution ────────────────────────────────
+//     if (voteState != null && voteState.hasOutcome) {
+//       final decision = voteState.resolvedVote;
+//       if (decision == TodPunishmentVote.doIt) {
+//         return _ExecutionPhase(
+//           punishment: voteState.punishment,
+//           playerName: playerName,
+//           isAdmin: isAdmin,
+//           onConfirm: () => game.ownerAdvanceTurn(),
+//         );
+//       }
+//       // dontDoIt / changePunishment → engine will reset; show brief message
+//       return _OutcomeMessage(decision: decision, playerName: playerName);
+//     }
+// 
+//     // ── Phase B: punishment proposed, voting ────────────────────────────────
+//     if (voteState != null) {
+//       return _VotingPhase(
+//         voteState: voteState,
+//         state: state,
+//         game: game,
+//         myId: myId,
+//         isAdmin: isAdmin,
+//         isCurrentPlayer: isCurrentPlayer,
+//         playerName: playerName,
+//         displayNames: widget.displayNames,
+//       );
+//     }
+// 
+//     // ── Phase A: no punishment proposed yet ─────────────────────────────────
+//     return _ProposePhase(
+//       state: state,
+//       game: game,
+//       ctrl: _ctrl,
+//       isAdmin: isAdmin,
+//       isCurrentPlayer: isCurrentPlayer,
+//       playerName: playerName,
+//     );
+//   }
+// }
+// 
+// // ── Phase A: propose ──────────────────────────────────────────────────────────
+// class _ProposePhase extends StatelessWidget {
+//   const _ProposePhase({
+//     required this.state,
+//     required this.game,
+//     required this.ctrl,
+//     required this.isAdmin,
+//     required this.isCurrentPlayer,
+//     required this.playerName,
+//   });
+//   final TodState state;
+//   final TodGameProvider game;
+//   final TextEditingController ctrl;
+//   final bool isAdmin, isCurrentPlayer;
+//   final String playerName;
+// 
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       backgroundColor: _kNavy,
+//       body: SafeArea(
+//         child: Padding(
+//           padding: const EdgeInsets.all(24),
+//           child: Column(
+//             children: [
+//               // Header
+//               Container(
+//                 padding: const EdgeInsets.all(20),
+//                 decoration: BoxDecoration(
+//                   color: _kCoral.withOpacity(0.15),
+//                   borderRadius: BorderRadius.circular(20),
+//                   border: Border.all(color: _kCoral.withOpacity(0.3)),
+//                 ),
+//                 child: Column(
+//                   children: [
+//                     const Text(
+//                       '⚡',
+//                       style: TextStyle(fontSize: 52),
+//                     ).animate().scale(
+//                       begin: const Offset(0, 0),
+//                       end: const Offset(1, 1),
+//                       duration: 400.ms,
+//                       curve: Curves.elasticOut,
+//                     ),
+//                     const SizedBox(height: 8),
+//                     Text(
+//                       '$playerName skipped!',
+//                       style: const TextStyle(
+//                         color: Colors.white,
+//                         fontSize: 22,
+//                         fontWeight: FontWeight.w800,
+//                       ),
+//                       textAlign: TextAlign.center,
+//                     ),
+//                     const SizedBox(height: 4),
+//                     const Text(
+//                       'Time for a punishment…',
+//                       style: TextStyle(color: Colors.white60, fontSize: 14),
+//                       textAlign: TextAlign.center,
+//                     ),
+//                   ],
+//                 ),
+//               ).animate().fadeIn().slideY(begin: -0.1, end: 0),
+// 
+//               const Spacer(),
+// 
+//               if (isAdmin && !isCurrentPlayer) ...[
+//                 const Text(
+//                   'Propose a punishment:',
+//                   style: TextStyle(
+//                     color: Colors.white70,
+//                     fontSize: 16,
+//                     fontWeight: FontWeight.w700,
+//                   ),
+//                 ),
+//                 const SizedBox(height: 12),
+//                 TextField(
+//                   controller: ctrl,
+//                   maxLength: 200,
+//                   style: const TextStyle(color: Colors.white),
+//                   decoration: InputDecoration(
+//                     hintText: 'e.g. "Do 10 push-ups" or "Sing a verse"',
+//                     hintStyle: const TextStyle(color: Colors.white38),
+//                     filled: true,
+//                     fillColor: _kNavyLight,
+//                     border: OutlineInputBorder(
+//                       borderRadius: BorderRadius.circular(14),
+//                       borderSide: BorderSide(color: _kCoral.withOpacity(0.3)),
+//                     ),
+//                     enabledBorder: OutlineInputBorder(
+//                       borderRadius: BorderRadius.circular(14),
+//                       borderSide: BorderSide(color: _kCoral.withOpacity(0.3)),
+//                     ),
+//                     counterStyle: const TextStyle(color: Colors.white38),
+//                   ),
+//                   maxLines: 2,
+//                 ),
+//                 const SizedBox(height: 12),
+//                 FilledButton.icon(
+//                   onPressed: () {
+//                     final txt = ctrl.text.trim();
+//                     if (txt.isEmpty) return;
+//                     game.proposePunishment(txt);
+//                     ctrl.clear();
+//                   },
+//                   style: FilledButton.styleFrom(
+//                     backgroundColor: _kCoral,
+//                     foregroundColor: Colors.white,
+//                     minimumSize: const Size(double.infinity, 52),
+//                     shape: RoundedRectangleBorder(
+//                       borderRadius: BorderRadius.circular(14),
+//                     ),
+//                   ),
+//                   icon: const Icon(Icons.send_rounded),
+//                   label: const Text(
+//                     'Send Punishment',
+//                     style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+//                   ),
+//                 ),
+//               ] else if (isCurrentPlayer) ...[
+//                 Container(
+//                   padding: const EdgeInsets.all(20),
+//                   decoration: BoxDecoration(
+//                     color: _kNavyLight,
+//                     borderRadius: BorderRadius.circular(16),
+//                   ),
+//                   child: const Column(
+//                     children: [
+//                       Text('😬', style: TextStyle(fontSize: 44)),
+//                       SizedBox(height: 8),
+//                       Text(
+//                         'You skipped…',
+//                         style: TextStyle(
+//                           color: Colors.white,
+//                           fontSize: 18,
+//                           fontWeight: FontWeight.w700,
+//                         ),
+//                       ),
+//                       SizedBox(height: 4),
+//                       Text(
+//                         'The group is deciding your fate.',
+//                         style: TextStyle(color: Colors.white54, fontSize: 14),
+//                         textAlign: TextAlign.center,
+//                       ),
+//                     ],
+//                   ),
+//                 ),
+//               ] else ...[
+//                 Container(
+//                   padding: const EdgeInsets.all(20),
+//                   decoration: BoxDecoration(
+//                     color: _kNavyLight,
+//                     borderRadius: BorderRadius.circular(16),
+//                   ),
+//                   child: Column(
+//                     children: [
+//                       const SizedBox(
+//                         width: 32,
+//                         height: 32,
+//                         child: CircularProgressIndicator(
+//                           strokeWidth: 2.5,
+//                           color: _kYellow,
+//                         ),
+//                       ),
+//                       const SizedBox(height: 12),
+//                       Text(
+//                         'Waiting for the admin to propose a punishment for $playerName…',
+//                         style: const TextStyle(
+//                           color: Colors.white60,
+//                           fontSize: 14,
+//                         ),
+//                         textAlign: TextAlign.center,
+//                       ),
+//                     ],
+//                   ),
+//                 ),
+//               ],
+// 
+//               const Spacer(),
+//             ],
+//           ),
+//         ),
+//       ),
+//     );
+//   }
+// }
+// 
+// // ── Phase B: voting ───────────────────────────────────────────────────────────
+// class _VotingPhase extends StatelessWidget {
+//   const _VotingPhase({
+//     required this.voteState,
+//     required this.state,
+//     required this.game,
+//     required this.myId,
+//     required this.isAdmin,
+//     required this.isCurrentPlayer,
+//     required this.playerName,
+//     required this.displayNames,
+//   });
+// 
+//   final TodPunishmentVoteState voteState;
+//   final TodState state;
+//   final TodGameProvider game;
+//   final String myId;
+//   final bool isAdmin, isCurrentPlayer;
+//   final String playerName;
+//   final Map<String, String> displayNames;
+// 
+//   bool get _hasVoted => voteState.votes.containsKey(myId);
+// 
+//   @override
+//   Widget build(BuildContext context) {
+//     final doItCount = voteState.votes.values
+//         .where((v) => v == TodPunishmentVote.doIt)
+//         .length;
+//     final passCount = voteState.votes.values
+//         .where((v) => v == TodPunishmentVote.dontDoIt)
+//         .length;
+//     final changeCount = voteState.votes.values
+//         .where((v) => v == TodPunishmentVote.changePunishment)
+//         .length;
+//     final total = voteState.totalVoters;
+//     final majority = (total / 2).ceil();
+// 
+//     return Scaffold(
+//       backgroundColor: _kNavy,
+//       body: SafeArea(
+//         child: SingleChildScrollView(
+//           padding: const EdgeInsets.all(20),
+//           child: Column(
+//             crossAxisAlignment: CrossAxisAlignment.stretch,
+//             children: [
+//               // Punishment card
+//               Container(
+//                 padding: const EdgeInsets.all(24),
+//                 decoration: BoxDecoration(
+//                   gradient: LinearGradient(
+//                     colors: [
+//                       _kOrange.withOpacity(0.3),
+//                       _kCoral.withOpacity(0.2),
+//                     ],
+//                     begin: Alignment.topLeft,
+//                     end: Alignment.bottomRight,
+//                   ),
+//                   borderRadius: BorderRadius.circular(24),
+//                   border: Border.all(
+//                     color: _kOrange.withOpacity(0.4),
+//                     width: 1.5,
+//                   ),
+//                 ),
+//                 child: Column(
+//                   children: [
+//                     const Text(
+//                       '⚡ PUNISHMENT',
+//                       style: TextStyle(
+//                         color: Colors.white54,
+//                         fontSize: 11,
+//                         fontWeight: FontWeight.w800,
+//                         letterSpacing: 1.5,
+//                       ),
+//                     ),
+//                     const SizedBox(height: 12),
+//                     Text(
+//                       voteState.punishment.text,
+//                       style: const TextStyle(
+//                         color: Colors.white,
+//                         fontSize: 22,
+//                         fontWeight: FontWeight.w800,
+//                         height: 1.4,
+//                       ),
+//                       textAlign: TextAlign.center,
+//                     ),
+//                     const SizedBox(height: 12),
+//                     Text(
+//                       'For: $playerName',
+//                       style: TextStyle(
+//                         color: _kOrange.withOpacity(0.8),
+//                         fontSize: 13,
+//                       ),
+//                     ),
+//                   ],
+//                 ),
+//               ).animate().fadeIn().slideY(begin: -0.1, end: 0),
+// 
+//               const SizedBox(height: 20),
+// 
+//               // Vote tally
+//               Row(
+//                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+//                 children: [
+//                   _VotePill(
+//                     emoji: '🔥',
+//                     label: 'DO IT',
+//                     count: doItCount,
+//                     needed: majority,
+//                     color: _kCoral,
+//                   ),
+//                   _VotePill(
+//                     emoji: '🙅',
+//                     label: 'PASS',
+//                     count: passCount,
+//                     needed: majority,
+//                     color: Colors.white54,
+//                   ),
+//                   _VotePill(
+//                     emoji: '🔄',
+//                     label: 'CHANGE',
+//                     count: changeCount,
+//                     needed: majority,
+//                     color: _kPurple,
+//                   ),
+//                 ],
+//               ).animate().fadeIn(),
+// 
+//               const SizedBox(height: 8),
+//               LinearProgressIndicator(
+//                 value: voteState.votes.length / total.clamp(1, 999),
+//                 backgroundColor: Colors.white.withOpacity(0.08),
+//                 color: _kYellow,
+//               ),
+//               Padding(
+//                 padding: const EdgeInsets.symmetric(vertical: 4),
+//                 child: Text(
+//                   '${voteState.votes.length} / $total voted',
+//                   style: const TextStyle(color: Colors.white38, fontSize: 11),
+//                   textAlign: TextAlign.center,
+//                 ),
+//               ),
+// 
+//               const SizedBox(height: 20),
+// 
+//               // Vote buttons
+//               if (isCurrentPlayer) ...[
+//                 Container(
+//                   padding: const EdgeInsets.symmetric(
+//                     horizontal: 16,
+//                     vertical: 12,
+//                   ),
+//                   decoration: BoxDecoration(
+//                     color: _kNavyLight,
+//                     borderRadius: BorderRadius.circular(14),
+//                   ),
+//                   child: const Text(
+//                     'You can\'t vote on your own punishment 😅',
+//                     style: TextStyle(color: Colors.white54, fontSize: 13),
+//                     textAlign: TextAlign.center,
+//                   ),
+//                 ),
+//               ] else if (_hasVoted) ...[
+//                 Container(
+//                   padding: const EdgeInsets.symmetric(
+//                     horizontal: 16,
+//                     vertical: 12,
+//                   ),
+//                   decoration: BoxDecoration(
+//                     color: _kGreen.withOpacity(0.1),
+//                     borderRadius: BorderRadius.circular(14),
+//                     border: Border.all(color: _kGreen.withOpacity(0.3)),
+//                   ),
+//                   child: Text(
+//                     '✅ You voted: ${_voteLabel(voteState.votes[myId]!)}',
+//                     style: const TextStyle(
+//                       color: _kGreen,
+//                       fontWeight: FontWeight.w700,
+//                     ),
+//                     textAlign: TextAlign.center,
+//                   ),
+//                 ),
+//               ] else ...[
+//                 const Text(
+//                   'Cast your vote:',
+//                   style: TextStyle(
+//                     color: Colors.white70,
+//                     fontSize: 14,
+//                     fontWeight: FontWeight.w700,
+//                   ),
+//                 ),
+//                 const SizedBox(height: 10),
+//                 Row(
+//                   children: [
+//                     Expanded(
+//                       child: _VoteButton(
+//                         emoji: '🔥',
+//                         label: 'DO IT',
+//                         color: _kCoral,
+//                         onTap: () =>
+//                             game.voteOnPunishment(TodPunishmentVote.doIt),
+//                       ),
+//                     ),
+//                     const SizedBox(width: 8),
+//                     Expanded(
+//                       child: _VoteButton(
+//                         emoji: '🙅',
+//                         label: 'PASS',
+//                         color: Colors.white54,
+//                         onTap: () =>
+//                             game.voteOnPunishment(TodPunishmentVote.dontDoIt),
+//                       ),
+//                     ),
+//                     const SizedBox(width: 8),
+//                     Expanded(
+//                       child: _VoteButton(
+//                         emoji: '🔄',
+//                         label: 'CHANGE',
+//                         color: _kPurple,
+//                         onTap: () => game.voteOnPunishment(
+//                           TodPunishmentVote.changePunishment,
+//                         ),
+//                       ),
+//                     ),
+//                   ],
+//                 ).animate(delay: 100.ms).fadeIn().slideY(begin: 0.1, end: 0),
+//               ],
+// 
+//               // Admin override
+//               if (isAdmin) ...[
+//                 const SizedBox(height: 20),
+//                 const Divider(color: Colors.white12),
+//                 const SizedBox(height: 8),
+//                 const Text(
+//                   'Admin override:',
+//                   style: TextStyle(
+//                     color: Colors.white38,
+//                     fontSize: 12,
+//                     fontWeight: FontWeight.w700,
+//                     letterSpacing: 1,
+//                   ),
+//                 ),
+//                 const SizedBox(height: 8),
+//                 Row(
+//                   children: [
+//                     Expanded(
+//                       child: OutlinedButton(
+//                         onPressed: () =>
+//                             game.overridePunishment(TodPunishmentVote.doIt),
+//                         style: OutlinedButton.styleFrom(
+//                           foregroundColor: _kCoral,
+//                           side: const BorderSide(color: _kCoral),
+//                         ),
+//                         child: const Text('Force DO IT'),
+//                       ),
+//                     ),
+//                     const SizedBox(width: 8),
+//                     Expanded(
+//                       child: OutlinedButton(
+//                         onPressed: () =>
+//                             game.overridePunishment(TodPunishmentVote.dontDoIt),
+//                         style: OutlinedButton.styleFrom(
+//                           foregroundColor: Colors.white54,
+//                           side: const BorderSide(color: Colors.white24),
+//                         ),
+//                         child: const Text('Skip'),
+//                       ),
+//                     ),
+//                   ],
+//                 ),
+//               ],
+//             ],
+//           ),
+//         ),
+//       ),
+//     );
+//   }
+// 
+//   String _voteLabel(TodPunishmentVote v) => switch (v) {
+//     TodPunishmentVote.doIt => '🔥 Do It',
+//     TodPunishmentVote.dontDoIt => '🙅 Pass',
+//     TodPunishmentVote.changePunishment => '🔄 Change It',
+//   };
+// }
+// 
+// // ── Phase C: execution ────────────────────────────────────────────────────────
+// class _ExecutionPhase extends StatefulWidget {
+//   const _ExecutionPhase({
+//     required this.punishment,
+//     required this.playerName,
+//     required this.isAdmin,
+//     required this.onConfirm,
+//   });
+//   final TodPunishment punishment;
+//   final String playerName;
+//   final bool isAdmin;
+//   final VoidCallback onConfirm;
+//   @override
+//   State<_ExecutionPhase> createState() => _ExecutionPhaseState();
+// }
+// 
+// class _ExecutionPhaseState extends State<_ExecutionPhase> {
+//   static const _kDuration = 60;
+//   int _remaining = _kDuration;
+//   Timer? _t;
+//   bool _canConfirm = false;
+// 
+//   @override
+//   void initState() {
+//     super.initState();
+//     _t = Timer.periodic(const Duration(seconds: 1), (_) {
+//       if (!mounted) return;
+//       setState(() {
+//         if (_remaining > 0) _remaining--;
+//         if (_remaining == 0) {
+//           _canConfirm = true;
+//           _t?.cancel();
+//         }
+//       });
+//     });
+//   }
+// 
+//   @override
+//   void dispose() {
+//     _t?.cancel();
+//     super.dispose();
+//   }
+// 
+//   @override
+//   Widget build(BuildContext context) {
+//     final pct = _remaining / _kDuration;
+//     final timerColor = pct > 0.4
+//         ? _kGreen
+//         : pct > 0.2
+//         ? _kOrange
+//         : _kCoral;
+// 
+//     return Scaffold(
+//       backgroundColor: _kNavy,
+//       body: SafeArea(
+//         child: Padding(
+//           padding: const EdgeInsets.all(24),
+//           child: Column(
+//             children: [
+//               // Timer
+//               Container(
+//                     padding: const EdgeInsets.symmetric(vertical: 16),
+//                     child: Column(
+//                       children: [
+//                         Text(
+//                           '$_remaining',
+//                           style: TextStyle(
+//                             color: timerColor,
+//                             fontSize: 72,
+//                             fontWeight: FontWeight.w900,
+//                           ),
+//                         ),
+//                         Text(
+//                           'seconds remaining',
+//                           style: TextStyle(
+//                             color: timerColor.withOpacity(0.7),
+//                             fontSize: 12,
+//                           ),
+//                         ),
+//                         const SizedBox(height: 8),
+//                         ClipRRect(
+//                           borderRadius: BorderRadius.circular(6),
+//                           child: LinearProgressIndicator(
+//                             value: pct,
+//                             minHeight: 8,
+//                             color: timerColor,
+//                             backgroundColor: timerColor.withOpacity(0.15),
+//                           ),
+//                         ),
+//                       ],
+//                     ),
+//                   )
+//                   .animate(onPlay: (c) => c.repeat(reverse: true))
+//                   .shimmer(
+//                     duration: 2.seconds,
+//                     color: timerColor.withOpacity(0.3),
+//                   ),
+// 
+//               const SizedBox(height: 16),
+// 
+//               // Punishment card
+//               Container(
+//                 width: double.infinity,
+//                 padding: const EdgeInsets.all(24),
+//                 decoration: BoxDecoration(
+//                   gradient: LinearGradient(
+//                     colors: [
+//                       _kCoral.withOpacity(0.4),
+//                       _kOrange.withOpacity(0.25),
+//                     ],
+//                     begin: Alignment.topLeft,
+//                     end: Alignment.bottomRight,
+//                   ),
+//                   borderRadius: BorderRadius.circular(24),
+//                   border: Border.all(color: _kCoral.withOpacity(0.5), width: 2),
+//                   boxShadow: [
+//                     BoxShadow(color: _kCoral.withOpacity(0.3), blurRadius: 24),
+//                   ],
+//                 ),
+//                 child: Column(
+//                   children: [
+//                     const Text('⚡', style: TextStyle(fontSize: 48)),
+//                     const SizedBox(height: 10),
+//                     const Text(
+//                       'PUNISHMENT',
+//                       style: TextStyle(
+//                         color: Colors.white54,
+//                         fontSize: 11,
+//                         fontWeight: FontWeight.w800,
+//                         letterSpacing: 2,
+//                       ),
+//                     ),
+//                     const SizedBox(height: 10),
+//                     Text(
+//                       widget.punishment.text,
+//                       style: const TextStyle(
+//                         color: Colors.white,
+//                         fontSize: 24,
+//                         fontWeight: FontWeight.w800,
+//                         height: 1.4,
+//                       ),
+//                       textAlign: TextAlign.center,
+//                     ),
+//                     const SizedBox(height: 12),
+//                     Text(
+//                       '${widget.playerName} must complete this!',
+//                       style: TextStyle(
+//                         color: _kCoral.withOpacity(0.8),
+//                         fontSize: 13,
+//                       ),
+//                     ),
+//                   ],
+//                 ),
+//               ).animate().scale(
+//                 begin: const Offset(0.92, 0.92),
+//                 end: const Offset(1, 1),
+//                 duration: 350.ms,
+//                 curve: Curves.easeOutBack,
+//               ),
+// 
+//               const Spacer(),
+// 
+//               if (widget.isAdmin) ...[
+//                 FilledButton.icon(
+//                   onPressed: _canConfirm
+//                       ? widget.onConfirm
+//                       : () {
+//                           // Admin can force-confirm early
+//                           widget.onConfirm();
+//                         },
+//                   style: FilledButton.styleFrom(
+//                     backgroundColor: _canConfirm ? _kGreen : _kOrange,
+//                     foregroundColor: _kNavy,
+//                     minimumSize: const Size(double.infinity, 56),
+//                     shape: RoundedRectangleBorder(
+//                       borderRadius: BorderRadius.circular(16),
+//                     ),
+//                   ),
+//                   icon: const Icon(Icons.check_circle_rounded),
+//                   label: Text(
+//                     _canConfirm
+//                         ? '✅ Confirm Done — Next Turn'
+//                         : '⏩ Skip Timer & Confirm',
+//                     style: const TextStyle(
+//                       fontWeight: FontWeight.w800,
+//                       fontSize: 15,
+//                     ),
+//                   ),
+//                 ).animate().fadeIn().slideY(begin: 0.2, end: 0),
+//               ] else ...[
+//                 Container(
+//                   padding: const EdgeInsets.all(16),
+//                   decoration: BoxDecoration(
+//                     color: _kNavyLight,
+//                     borderRadius: BorderRadius.circular(14),
+//                   ),
+//                   child: Text(
+//                     '${widget.playerName} is completing the punishment…\nWaiting for admin to confirm.',
+//                     style: const TextStyle(color: Colors.white60, fontSize: 14),
+//                     textAlign: TextAlign.center,
+//                   ),
+//                 ),
+//               ],
+// 
+//               const SizedBox(height: 16),
+//             ],
+//           ),
+//         ),
+//       ),
+//     );
+//   }
+// }
+// 
+// // ── Outcome message (doNotDoIt / changePunishment) ────────────────────────────
+// class _OutcomeMessage extends StatelessWidget {
+//   const _OutcomeMessage({required this.decision, required this.playerName});
+//   final TodPunishmentVote? decision;
+//   final String playerName;
+//   @override
+//   Widget build(BuildContext context) {
+//     final isDontDo = decision == TodPunishmentVote.dontDoIt;
+//     return Scaffold(
+//       backgroundColor: _kNavy,
+//       body: Center(
+//         child: Padding(
+//           padding: const EdgeInsets.all(32),
+//           child: Column(
+//             mainAxisSize: MainAxisSize.min,
+//             children: [
+//               Text(
+//                 isDontDo ? '🙅' : '🔄',
+//                 style: const TextStyle(fontSize: 64),
+//               ),
+//               const SizedBox(height: 16),
+//               Text(
+//                 isDontDo
+//                     ? 'Group voted to let $playerName off!\nMoving to next turn…'
+//                     : 'Group wants a different punishment!\nAdmin will propose a new one…',
+//                 style: const TextStyle(
+//                   color: Colors.white,
+//                   fontSize: 18,
+//                   fontWeight: FontWeight.w700,
+//                 ),
+//                 textAlign: TextAlign.center,
+//               ),
+//             ],
+//           ),
+//         ),
+//       ),
+//     );
+//   }
+// }
+// 
+// // ── Helper widgets ─────────────────────────────────────────────────────────────
+// class _VotePill extends StatelessWidget {
+//   const _VotePill({
+//     required this.emoji,
+//     required this.label,
+//     required this.count,
+//     required this.needed,
+//     required this.color,
+//   });
+//   final String emoji, label;
+//   final int count, needed;
+//   final Color color;
+//   @override
+//   Widget build(BuildContext context) => Column(
+//     children: [
+//       Text(emoji, style: const TextStyle(fontSize: 24)),
+//       const SizedBox(height: 2),
+//       Text(
+//         '$count',
+//         style: TextStyle(
+//           color: color,
+//           fontWeight: FontWeight.w900,
+//           fontSize: 22,
+//         ),
+//       ),
+//       Text(
+//         label,
+//         style: TextStyle(
+//           color: color.withOpacity(0.7),
+//           fontSize: 9,
+//           fontWeight: FontWeight.w700,
+//           letterSpacing: 0.8,
+//         ),
+//       ),
+//       Text(
+//         'need $needed',
+//         style: const TextStyle(color: Colors.white24, fontSize: 9),
+//       ),
+//     ],
+//   );
+// }
+// 
+// class _VoteButton extends StatelessWidget {
+//   const _VoteButton({
+//     required this.emoji,
+//     required this.label,
+//     required this.color,
+//     required this.onTap,
+//   });
+//   final String emoji, label;
+//   final Color color;
+//   final VoidCallback onTap;
+//   @override
+//   Widget build(BuildContext context) => GestureDetector(
+//     onTap: onTap,
+//     child: Container(
+//       padding: const EdgeInsets.symmetric(vertical: 16),
+//       decoration: BoxDecoration(
+//         gradient: LinearGradient(
+//           colors: [color, color.withOpacity(0.75)],
+//           begin: Alignment.topLeft,
+//           end: Alignment.bottomRight,
+//         ),
+//         borderRadius: BorderRadius.circular(14),
+//         boxShadow: [
+//           BoxShadow(
+//             color: color.withOpacity(0.35),
+//             blurRadius: 14,
+//             offset: const Offset(0, 5),
+//           ),
+//         ],
+//       ),
+//       child: Column(
+//         children: [
+//           Text(emoji, style: const TextStyle(fontSize: 28)),
+//           const SizedBox(height: 4),
+//           Text(
+//             label,
+//             style: const TextStyle(
+//               color: Colors.white,
+//               fontWeight: FontWeight.w800,
+//               fontSize: 11,
+//               letterSpacing: 0.5,
+//             ),
+//           ),
+//         ],
+//       ),
+//     ),
+//   );
+// }
 
 /// Full-screen punishment flow shown to every player when a skip happens.
 ///
 /// Flow:
-///  Phase A — [no punishment proposed yet]
-///    • Admin/moderator: text field to type a punishment + send
-///    • Others: "Waiting for admin to propose a punishment…"
+///  Phase A — [no options proposed yet]
+///    • Admin/moderator: builds 3-5 punishment options, then starts the vote
+///    • Others: "Waiting for admin to set up punishment options…"
 ///
-///  Phase B — [punishment proposed, voting in progress]
-///    • Current player: sees the punishment, can't vote on own punishment
-///    • Everyone else: 3 vote buttons → Do It / Pass / Change It
+///  Phase B — [options proposed, voting in progress]
+///    • Current player: sees the options, can't vote on their own punishment
+///    • Everyone else: votes for exactly one option
 ///    • Live vote tally shown to all
 ///
-///  Phase C — [outcome = doIt]
-///    • Big punishment card + countdown timer (default 60s)
-///    • Admin sees "Confirm done" button to advance
-///    • Others see "Waiting for [player] to complete…"
-///
-///  Phase D — [outcome = dontDoIt / changePunishment]
-///    • Goes back to Phase A (engine resets vote)
+/// Once the vote resolves (every eligible player has voted, or the admin
+/// force-resolves it), the engine transitions the turn straight into the
+/// normal Dare execution flow (readingCard phase, TruthOrDareEngine.
+/// _resolvePunishment) — this screen never renders an execution/outcome
+/// step of its own. TodGameScreen's phase switch routes to TodCardScreen
+/// once phase is no longer punishmentVoting, so punishment execution
+/// (synced countdown timer, proof capture/viewing, completeTurn()/history)
+/// is the exact same code path as any other Dare, not a separate one.
+/// There is also no "don't do it"/"change it" outcome anymore — the vote
+/// only decides *which* proposed option is performed, never whether one is;
+/// punishment can never be skipped or bypassed.
 class TodPunishmentScreen extends StatefulWidget {
   const TodPunishmentScreen({
     super.key,
@@ -738,6 +1649,13 @@ class _TodPunishmentScreenState extends State<TodPunishmentScreen> {
   String _name(String id) =>
       widget.displayNames[id] ?? id.substring(0, id.length.clamp(0, 6));
 
+  void _submit() {
+    final txt = _ctrl.text.trim();
+    if (txt.isEmpty) return;
+    widget.game.submitPunishment(txt);
+    _ctrl.clear();
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = widget.state;
@@ -748,62 +1666,51 @@ class _TodPunishmentScreenState extends State<TodPunishmentScreen> {
     final playerName = _name(state.currentPlayerId);
     final isCurrentPlayer = myId == state.currentPlayerId;
 
-    // ── Phase C: outcome reached → execution ────────────────────────────────
-    if (voteState != null && voteState.hasOutcome) {
-      final decision = voteState.resolvedVote;
-      if (decision == TodPunishmentVote.doIt) {
-        return _ExecutionPhase(
-          punishment: voteState.punishment,
-          playerName: playerName,
-          isAdmin: isAdmin,
-          onConfirm: () => game.ownerAdvanceTurn(),
-        );
-      }
-      // dontDoIt / changePunishment → engine will reset; show brief message
-      return _OutcomeMessage(decision: decision, playerName: playerName);
-    }
-
-    // ── Phase B: punishment proposed, voting ────────────────────────────────
-    if (voteState != null) {
+    // ── Phase B: every non-skipped player has submitted — the skipped
+    // player (only) now picks one ─────────────────────────────────────────
+    if (voteState != null && voteState.submissionsComplete) {
       return _VotingPhase(
         voteState: voteState,
-        state: state,
         game: game,
         myId: myId,
         isAdmin: isAdmin,
         isCurrentPlayer: isCurrentPlayer,
         playerName: playerName,
-        displayNames: widget.displayNames,
       );
     }
 
-    // ── Phase A: no punishment proposed yet ─────────────────────────────────
+    // ── Phase A: still collecting one submission per non-skipped player ────
     return _ProposePhase(
-      state: state,
-      game: game,
       ctrl: _ctrl,
-      isAdmin: isAdmin,
+      submittedCount: voteState?.options.length ?? 0,
+      expectedCount:
+          voteState?.expectedSubmissions ?? (state.playerOrder.length - 1),
+      hasSubmitted: game.hasSubmittedPunishment,
       isCurrentPlayer: isCurrentPlayer,
       playerName: playerName,
+      onSubmit: _submit,
     );
   }
 }
 
-// ── Phase A: propose ──────────────────────────────────────────────────────────
+// ── Phase A: every non-skipped player submits exactly one option ───────────────
 class _ProposePhase extends StatelessWidget {
   const _ProposePhase({
-    required this.state,
-    required this.game,
     required this.ctrl,
-    required this.isAdmin,
+    required this.submittedCount,
+    required this.expectedCount,
+    required this.hasSubmitted,
     required this.isCurrentPlayer,
     required this.playerName,
+    required this.onSubmit,
   });
-  final TodState state;
-  final TodGameProvider game;
   final TextEditingController ctrl;
-  final bool isAdmin, isCurrentPlayer;
+  final int submittedCount;
+  final int expectedCount;
+  final bool hasSubmitted;
+  final bool isCurrentPlayer;
   final String playerName;
+  final VoidCallback onSubmit;
 
   @override
   Widget build(BuildContext context) {
@@ -853,62 +1760,20 @@ class _ProposePhase extends StatelessWidget {
                 ),
               ).animate().fadeIn().slideY(begin: -0.1, end: 0),
 
-              const Spacer(),
+              const SizedBox(height: 20),
 
-              if (isAdmin && !isCurrentPlayer) ...[
-                const Text(
-                  'Propose a punishment:',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                  ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Text(
+                  '$submittedCount / $expectedCount submitted',
+                  style: const TextStyle(color: Colors.white38, fontSize: 12),
+                  textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: ctrl,
-                  maxLength: 200,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    hintText: 'e.g. "Do 10 push-ups" or "Sing a verse"',
-                    hintStyle: const TextStyle(color: Colors.white38),
-                    filled: true,
-                    fillColor: _kNavyLight,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: BorderSide(color: _kCoral.withOpacity(0.3)),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: BorderSide(color: _kCoral.withOpacity(0.3)),
-                    ),
-                    counterStyle: const TextStyle(color: Colors.white38),
-                  ),
-                  maxLines: 2,
-                ),
-                const SizedBox(height: 12),
-                FilledButton.icon(
-                  onPressed: () {
-                    final txt = ctrl.text.trim();
-                    if (txt.isEmpty) return;
-                    game.proposePunishment(txt);
-                    ctrl.clear();
-                  },
-                  style: FilledButton.styleFrom(
-                    backgroundColor: _kCoral,
-                    foregroundColor: Colors.white,
-                    minimumSize: const Size(double.infinity, 52),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                  icon: const Icon(Icons.send_rounded),
-                  label: const Text(
-                    'Send Punishment',
-                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
-                  ),
-                ),
-              ] else if (isCurrentPlayer) ...[
+              ),
+              const SizedBox(height: 8),
+
+              if (isCurrentPlayer) ...[
+                const Spacer(),
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
@@ -929,45 +1794,93 @@ class _ProposePhase extends StatelessWidget {
                       ),
                       SizedBox(height: 4),
                       Text(
-                        'The group is deciding your fate.',
+                        'Everyone else is picking a punishment for you.',
                         style: TextStyle(color: Colors.white54, fontSize: 14),
                         textAlign: TextAlign.center,
                       ),
                     ],
                   ),
                 ),
-              ] else ...[
+                const Spacer(),
+              ] else if (hasSubmitted) ...[
+                const Spacer(),
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: _kNavyLight,
+                    color: _kGreen.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: _kGreen.withOpacity(0.3)),
                   ),
-                  child: Column(
+                  child: const Column(
                     children: [
-                      const SizedBox(
-                        width: 32,
-                        height: 32,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.5,
-                          color: _kYellow,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
+                      Text('✅', style: TextStyle(fontSize: 36)),
+                      SizedBox(height: 8),
                       Text(
-                        'Waiting for the admin to propose a punishment for $playerName…',
-                        style: const TextStyle(
-                          color: Colors.white60,
-                          fontSize: 14,
+                        'Submitted — waiting for everyone else…',
+                        style: TextStyle(
+                          color: _kGreen,
+                          fontWeight: FontWeight.w700,
                         ),
                         textAlign: TextAlign.center,
                       ),
                     ],
                   ),
                 ),
+                const Spacer(),
+              ] else ...[
+                Text(
+                  'Submit one punishment for $playerName:',
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: ctrl,
+                  maxLength: 200,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    hintText: 'e.g. "Do 10 push-ups"',
+                    hintStyle: const TextStyle(color: Colors.white38),
+                    filled: true,
+                    fillColor: _kNavyLight,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(color: _kCoral.withOpacity(0.3)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(color: _kCoral.withOpacity(0.3)),
+                    ),
+                    counterStyle: const TextStyle(color: Colors.white38),
+                  ),
+                  maxLines: 2,
+                  onSubmitted: (_) => onSubmit(),
+                ),
+                const SizedBox(height: 12),
+                FilledButton.icon(
+                  // Not gated on ctrl.text emptiness — this is a
+                  // StatelessWidget so it wouldn't reactively re-enable on
+                  // keystroke; onSubmit()'s own empty-text guard handles it.
+                  onPressed: onSubmit,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: _kCoral,
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: _kCoral.withOpacity(0.3),
+                    minimumSize: const Size(double.infinity, 52),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  icon: const Icon(Icons.send_rounded),
+                  label: const Text(
+                    'Submit',
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+                  ),
+                ),
               ],
-
-              const Spacer(),
             ],
           ),
         ),
@@ -980,39 +1893,21 @@ class _ProposePhase extends StatelessWidget {
 class _VotingPhase extends StatelessWidget {
   const _VotingPhase({
     required this.voteState,
-    required this.state,
     required this.game,
     required this.myId,
     required this.isAdmin,
     required this.isCurrentPlayer,
     required this.playerName,
-    required this.displayNames,
   });
 
   final TodPunishmentVoteState voteState;
-  final TodState state;
   final TodGameProvider game;
   final String myId;
   final bool isAdmin, isCurrentPlayer;
   final String playerName;
-  final Map<String, String> displayNames;
-
-  bool get _hasVoted => voteState.votes.containsKey(myId);
 
   @override
   Widget build(BuildContext context) {
-    final doItCount = voteState.votes.values
-        .where((v) => v == TodPunishmentVote.doIt)
-        .length;
-    final passCount = voteState.votes.values
-        .where((v) => v == TodPunishmentVote.dontDoIt)
-        .length;
-    final changeCount = voteState.votes.values
-        .where((v) => v == TodPunishmentVote.changePunishment)
-        .length;
-    final total = voteState.totalVoters;
-    final majority = (total / 2).ceil();
-
     return Scaffold(
       backgroundColor: _kNavy,
       body: SafeArea(
@@ -1021,107 +1916,56 @@ class _VotingPhase extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Punishment card
               Container(
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      _kOrange.withOpacity(0.3),
-                      _kCoral.withOpacity(0.2),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(
-                    color: _kOrange.withOpacity(0.4),
-                    width: 1.5,
-                  ),
+                  color: _kCoral.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: _kCoral.withOpacity(0.3)),
                 ),
                 child: Column(
                   children: [
-                    const Text(
-                      '⚡ PUNISHMENT',
-                      style: TextStyle(
+                    Text(
+                      isCurrentPlayer
+                          ? '⚡ PICK YOUR PUNISHMENT'
+                          : '⚡ ${_shortName(playerName)} IS CHOOSING…',
+                      style: const TextStyle(
                         color: Colors.white54,
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 1.5,
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      voteState.punishment.text,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                        height: 1.4,
-                      ),
                       textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
                     Text(
-                      'For: $playerName',
+                      isCurrentPlayer
+                          ? 'Everyone submitted one — pick which you\'ll do.'
+                          : 'Waiting for $playerName to pick one.',
                       style: TextStyle(
                         color: _kOrange.withOpacity(0.8),
                         fontSize: 13,
                       ),
+                      textAlign: TextAlign.center,
                     ),
                   ],
                 ),
               ).animate().fadeIn().slideY(begin: -0.1, end: 0),
 
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
 
-              // Vote tally
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _VotePill(
-                    emoji: '🔥',
-                    label: 'DO IT',
-                    count: doItCount,
-                    needed: majority,
-                    color: _kCoral,
-                  ),
-                  _VotePill(
-                    emoji: '🙅',
-                    label: 'PASS',
-                    count: passCount,
-                    needed: majority,
-                    color: Colors.white54,
-                  ),
-                  _VotePill(
-                    emoji: '🔄',
-                    label: 'CHANGE',
-                    count: changeCount,
-                    needed: majority,
-                    color: _kPurple,
-                  ),
-                ],
-              ).animate().fadeIn(),
-
-              const SizedBox(height: 8),
-              LinearProgressIndicator(
-                value: voteState.votes.length / total.clamp(1, 999),
-                backgroundColor: Colors.white.withOpacity(0.08),
-                color: _kYellow,
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Text(
-                  '${voteState.votes.length} / $total voted',
-                  style: const TextStyle(color: Colors.white38, fontSize: 11),
-                  textAlign: TextAlign.center,
+              for (final option in voteState.options)
+                _OptionCard(
+                  option: option,
+                  canPick: isCurrentPlayer,
+                  onTap: () => game.voteOnPunishment(option.id),
+                  onOverride: isAdmin && !isCurrentPlayer
+                      ? () => game.overridePunishment(option.id)
+                      : null,
                 ),
-              ),
 
-              const SizedBox(height: 20),
-
-              // Vote buttons
-              if (isCurrentPlayer) ...[
+              if (!isCurrentPlayer) ...[
+                const SizedBox(height: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,
@@ -1131,475 +1975,108 @@ class _VotingPhase extends StatelessWidget {
                     color: _kNavyLight,
                     borderRadius: BorderRadius.circular(14),
                   ),
-                  child: const Text(
-                    'You can\'t vote on your own punishment 😅',
-                    style: TextStyle(color: Colors.white54, fontSize: 13),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ] else if (_hasVoted) ...[
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _kGreen.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: _kGreen.withOpacity(0.3)),
-                  ),
-                  child: Text(
-                    '✅ You voted: ${_voteLabel(voteState.votes[myId]!)}',
-                    style: const TextStyle(
-                      color: _kGreen,
-                      fontWeight: FontWeight.w700,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ] else ...[
-                const Text(
-                  'Cast your vote:',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _VoteButton(
-                        emoji: '🔥',
-                        label: 'DO IT',
-                        color: _kCoral,
-                        onTap: () =>
-                            game.voteOnPunishment(TodPunishmentVote.doIt),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _VoteButton(
-                        emoji: '🙅',
-                        label: 'PASS',
-                        color: Colors.white54,
-                        onTap: () =>
-                            game.voteOnPunishment(TodPunishmentVote.dontDoIt),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _VoteButton(
-                        emoji: '🔄',
-                        label: 'CHANGE',
-                        color: _kPurple,
-                        onTap: () => game.voteOnPunishment(
-                          TodPunishmentVote.changePunishment,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: _kYellow,
                         ),
                       ),
-                    ),
-                  ],
-                ).animate(delay: 100.ms).fadeIn().slideY(begin: 0.1, end: 0),
-              ],
-
-              // Admin override
-              if (isAdmin) ...[
-                const SizedBox(height: 20),
-                const Divider(color: Colors.white12),
-                const SizedBox(height: 8),
-                const Text(
-                  'Admin override:',
-                  style: TextStyle(
-                    color: Colors.white38,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () =>
-                            game.overridePunishment(TodPunishmentVote.doIt),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: _kCoral,
-                          side: const BorderSide(color: _kCoral),
-                        ),
-                        child: const Text('Force DO IT'),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () =>
-                            game.overridePunishment(TodPunishmentVote.dontDoIt),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.white54,
-                          side: const BorderSide(color: Colors.white24),
-                        ),
-                        child: const Text('Skip'),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  String _voteLabel(TodPunishmentVote v) => switch (v) {
-    TodPunishmentVote.doIt => '🔥 Do It',
-    TodPunishmentVote.dontDoIt => '🙅 Pass',
-    TodPunishmentVote.changePunishment => '🔄 Change It',
-  };
-}
-
-// ── Phase C: execution ────────────────────────────────────────────────────────
-class _ExecutionPhase extends StatefulWidget {
-  const _ExecutionPhase({
-    required this.punishment,
-    required this.playerName,
-    required this.isAdmin,
-    required this.onConfirm,
-  });
-  final TodPunishment punishment;
-  final String playerName;
-  final bool isAdmin;
-  final VoidCallback onConfirm;
-  @override
-  State<_ExecutionPhase> createState() => _ExecutionPhaseState();
-}
-
-class _ExecutionPhaseState extends State<_ExecutionPhase> {
-  static const _kDuration = 60;
-  int _remaining = _kDuration;
-  Timer? _t;
-  bool _canConfirm = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _t = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (!mounted) return;
-      setState(() {
-        if (_remaining > 0) _remaining--;
-        if (_remaining == 0) {
-          _canConfirm = true;
-          _t?.cancel();
-        }
-      });
-    });
-  }
-
-  @override
-  void dispose() {
-    _t?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final pct = _remaining / _kDuration;
-    final timerColor = pct > 0.4
-        ? _kGreen
-        : pct > 0.2
-        ? _kOrange
-        : _kCoral;
-
-    return Scaffold(
-      backgroundColor: _kNavy,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            children: [
-              // Timer
-              Container(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    child: Column(
-                      children: [
-                        Text(
-                          '$_remaining',
-                          style: TextStyle(
-                            color: timerColor,
-                            fontSize: 72,
-                            fontWeight: FontWeight.w900,
+                      const SizedBox(width: 10),
+                      Flexible(
+                        child: Text(
+                          'Only $playerName can pick — a moderator can force '
+                          'one if they\'re unresponsive.',
+                          style: const TextStyle(
+                            color: Colors.white54,
+                            fontSize: 13,
                           ),
+                          textAlign: TextAlign.center,
                         ),
-                        Text(
-                          'seconds remaining',
-                          style: TextStyle(
-                            color: timerColor.withOpacity(0.7),
-                            fontSize: 12,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(6),
-                          child: LinearProgressIndicator(
-                            value: pct,
-                            minHeight: 8,
-                            color: timerColor,
-                            backgroundColor: timerColor.withOpacity(0.15),
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                  .animate(onPlay: (c) => c.repeat(reverse: true))
-                  .shimmer(
-                    duration: 2.seconds,
-                    color: timerColor.withOpacity(0.3),
-                  ),
-
-              const SizedBox(height: 16),
-
-              // Punishment card
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      _kCoral.withOpacity(0.4),
-                      _kOrange.withOpacity(0.25),
+                      ),
                     ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: _kCoral.withOpacity(0.5), width: 2),
-                  boxShadow: [
-                    BoxShadow(color: _kCoral.withOpacity(0.3), blurRadius: 24),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    const Text('⚡', style: TextStyle(fontSize: 48)),
-                    const SizedBox(height: 10),
-                    const Text(
-                      'PUNISHMENT',
-                      style: TextStyle(
-                        color: Colors.white54,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 2,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      widget.punishment.text,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.w800,
-                        height: 1.4,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      '${widget.playerName} must complete this!',
-                      style: TextStyle(
-                        color: _kCoral.withOpacity(0.8),
-                        fontSize: 13,
-                      ),
-                    ),
-                  ],
-                ),
-              ).animate().scale(
-                begin: const Offset(0.92, 0.92),
-                end: const Offset(1, 1),
-                duration: 350.ms,
-                curve: Curves.easeOutBack,
-              ),
-
-              const Spacer(),
-
-              if (widget.isAdmin) ...[
-                FilledButton.icon(
-                  onPressed: _canConfirm
-                      ? widget.onConfirm
-                      : () {
-                          // Admin can force-confirm early
-                          widget.onConfirm();
-                        },
-                  style: FilledButton.styleFrom(
-                    backgroundColor: _canConfirm ? _kGreen : _kOrange,
-                    foregroundColor: _kNavy,
-                    minimumSize: const Size(double.infinity, 56),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                  icon: const Icon(Icons.check_circle_rounded),
-                  label: Text(
-                    _canConfirm
-                        ? '✅ Confirm Done — Next Turn'
-                        : '⏩ Skip Timer & Confirm',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 15,
-                    ),
-                  ),
-                ).animate().fadeIn().slideY(begin: 0.2, end: 0),
-              ] else ...[
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: _kNavyLight,
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Text(
-                    '${widget.playerName} is completing the punishment…\nWaiting for admin to confirm.',
-                    style: const TextStyle(color: Colors.white60, fontSize: 14),
-                    textAlign: TextAlign.center,
                   ),
                 ),
               ],
-
-              const SizedBox(height: 16),
             ],
           ),
         ),
       ),
     );
   }
+
+  static String _shortName(String name) =>
+      name.length > 14 ? '${name.substring(0, 14)}…' : name;
 }
 
-// ── Outcome message (doNotDoIt / changePunishment) ────────────────────────────
-class _OutcomeMessage extends StatelessWidget {
-  const _OutcomeMessage({required this.decision, required this.playerName});
-  final TodPunishmentVote? decision;
-  final String playerName;
+class _OptionCard extends StatelessWidget {
+  const _OptionCard({
+    required this.option,
+    required this.canPick,
+    required this.onTap,
+    required this.onOverride,
+  });
+  final TodPunishment option;
+  final bool canPick;
+  final VoidCallback onTap;
+  final VoidCallback? onOverride;
+
   @override
   Widget build(BuildContext context) {
-    final isDontDo = decision == TodPunishmentVote.dontDoIt;
-    return Scaffold(
-      backgroundColor: _kNavy,
-      body: Center(
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: _kNavyLight,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: canPick ? _kCoral.withOpacity(0.4) : Colors.white12,
+        ),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: canPick ? onTap : null,
         child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+          padding: const EdgeInsets.all(14),
+          child: Row(
             children: [
-              Text(
-                isDontDo ? '🙅' : '🔄',
-                style: const TextStyle(fontSize: 64),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                isDontDo
-                    ? 'Group voted to let $playerName off!\nMoving to next turn…'
-                    : 'Group wants a different punishment!\nAdmin will propose a new one…',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
+              Expanded(
+                child: Text(
+                  option.text,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
                 ),
-                textAlign: TextAlign.center,
               ),
+              if (canPick) ...[
+                const SizedBox(width: 8),
+                const Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 14,
+                  color: Colors.white38,
+                ),
+              ],
+              if (onOverride != null) ...[
+                const SizedBox(width: 6),
+                IconButton(
+                  icon: const Icon(
+                    Icons.bolt_rounded,
+                    size: 18,
+                    color: _kOrange,
+                  ),
+                  tooltip: 'Force this punishment',
+                  onPressed: onOverride,
+                ),
+              ],
             ],
           ),
         ),
       ),
     );
   }
-}
-
-// ── Helper widgets ─────────────────────────────────────────────────────────────
-class _VotePill extends StatelessWidget {
-  const _VotePill({
-    required this.emoji,
-    required this.label,
-    required this.count,
-    required this.needed,
-    required this.color,
-  });
-  final String emoji, label;
-  final int count, needed;
-  final Color color;
-  @override
-  Widget build(BuildContext context) => Column(
-    children: [
-      Text(emoji, style: const TextStyle(fontSize: 24)),
-      const SizedBox(height: 2),
-      Text(
-        '$count',
-        style: TextStyle(
-          color: color,
-          fontWeight: FontWeight.w900,
-          fontSize: 22,
-        ),
-      ),
-      Text(
-        label,
-        style: TextStyle(
-          color: color.withOpacity(0.7),
-          fontSize: 9,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.8,
-        ),
-      ),
-      Text(
-        'need $needed',
-        style: const TextStyle(color: Colors.white24, fontSize: 9),
-      ),
-    ],
-  );
-}
-
-class _VoteButton extends StatelessWidget {
-  const _VoteButton({
-    required this.emoji,
-    required this.label,
-    required this.color,
-    required this.onTap,
-  });
-  final String emoji, label;
-  final Color color;
-  final VoidCallback onTap;
-  @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: Container(
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [color, color.withOpacity(0.75)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: color.withOpacity(0.35),
-            blurRadius: 14,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Text(emoji, style: const TextStyle(fontSize: 28)),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w800,
-              fontSize: 11,
-              letterSpacing: 0.5,
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
 }

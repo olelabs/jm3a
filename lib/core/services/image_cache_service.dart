@@ -48,12 +48,17 @@ class ImageCacheService {
     );
   }
 
-  /// Pack cover image widget with rounded corners.
+  /// Pack cover image widget with rounded corners. [color]/[colorBlendMode]
+  /// are for callers that need a tint/darken overlay (e.g. a promoted
+  /// banner with text on top) without falling back to a raw `Image.network`
+  /// that skips caching/placeholder/error handling entirely.
   Widget packCover({
     required String? url,
     required double width,
     required double height,
     double borderRadius = 12,
+    Color? color,
+    BlendMode? colorBlendMode,
   }) {
     if (url == null || url.isEmpty) {
       return _packPlaceholder(width, height, borderRadius);
@@ -66,6 +71,8 @@ class ImageCacheService {
         width: width,
         height: height,
         fit: BoxFit.cover,
+        color: color,
+        colorBlendMode: colorBlendMode,
         cacheKey: _cacheKey(url),
         placeholder: (_, __) => _packShimmer(width, height),
         errorWidget: (_, __, ___) => _packPlaceholder(width, height, borderRadius),

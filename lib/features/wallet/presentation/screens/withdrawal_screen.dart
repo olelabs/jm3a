@@ -194,7 +194,9 @@ class _AmountStep extends StatefulWidget {
 class _AmountStepState extends State<_AmountStep> {
   @override
   Widget build(BuildContext context) {
-    final balance = widget.wallet.balanceMru;
+    // Withdrawals draw only from the earnings balance — never the
+    // spendable wallet balance (deposits + transferred earnings).
+    final balance = widget.wallet.earningsBalanceMru;
     final theme   = context.theme;
 
     return SingleChildScrollView(
@@ -225,10 +227,10 @@ class _AmountStepState extends State<_AmountStep> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Available balance',
+                      Text('Available earnings',
                           style: theme.textTheme.labelSmall?.copyWith(
                               color: theme.colorScheme.onSurfaceVariant)),
-                      Text(widget.wallet.formattedBalance,
+                      Text(widget.wallet.formattedEarningsBalance,
                           style: theme.textTheme.titleMedium?.copyWith(
                               fontWeight: FontWeight.w700)),
                     ],
@@ -358,7 +360,7 @@ class _ConfirmStep extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme         = context.theme;
-    final balanceAfter  = wallet.balanceMru - amountMru;
+    final balanceAfter  = wallet.earningsBalanceMru - amountMru;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),

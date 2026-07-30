@@ -15,7 +15,8 @@ import '../../../profile/data/profile_repository.dart';
 /// Collects:
 /// - Username (unique, validated against Node.js /check-username)
 /// - Display name
-/// - Age (optional, must be 13+)
+/// - Gender (required — male/female)
+/// - Age (required, must be 13+)
 /// - Country (optional)
 /// - Preferred language
 class OnboardingScreen extends StatefulWidget {
@@ -36,6 +37,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   _UsernameStatus _usernameStatus = _UsernameStatus.empty;
 
   int? _selectedAge;
+  String? _selectedGender;
   String? _selectedCountry;
   String _selectedLanguage = 'en';
 
@@ -115,7 +117,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         userId: auth.currentUser!.id,
         username: _usernameCtrl.text.trim().toLowerCase(),
         displayName: _displayNameCtrl.text.trim(),
-        age: _selectedAge,
+        // Non-null by construction: the Form's age/gender validators (see
+        // build()) block _submit() from reaching this point otherwise.
+        age: _selectedAge!,
+        gender: _selectedGender!,
         countryCode: _selectedCountry,
         preferredLanguage: _selectedLanguage,
       );

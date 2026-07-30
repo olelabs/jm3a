@@ -190,7 +190,7 @@ class _CreatorPackRow extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 12),
       child: JCard(
         padding: const EdgeInsets.all(14),
-        onTap: (status == PackStatus.draft || status == PackStatus.rejected)
+        onTap: pack.status.isEditable
             ? () => context.push(
                 '/creator/create-pack',
                 extra: {'packId': pack.id, 'draft': pack},
@@ -244,11 +244,11 @@ class _CreatorPackRow extends StatelessWidget {
                     ],
                   ),
                   if (status == PackStatus.rejected &&
-                      pack.descriptionFor('en').isNotEmpty)
+                      (pack.rejectionReason?.isNotEmpty ?? false))
                     Padding(
                       padding: const EdgeInsets.only(top: 4),
                       child: Text(
-                        'Rejection reason: ${pack.descriptionFor("en")}',
+                        'Rejection reason: ${pack.rejectionReason}',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: AppColors.errorRed,
                         ),

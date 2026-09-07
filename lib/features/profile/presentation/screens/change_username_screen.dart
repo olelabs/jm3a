@@ -74,7 +74,7 @@ class _ChangeUsernameScreenState extends State<ChangeUsernameScreen> {
                 ? _UsernameCheckState.available
                 : _UsernameCheckState.taken;
             _usernameError =
-                available ? null : 'This username is already taken.';
+                available ? null : context.l10n.profileUsernameTaken;
           });
         }
       } catch (_) {
@@ -95,7 +95,7 @@ class _ChangeUsernameScreenState extends State<ChangeUsernameScreen> {
     if (!mounted) return;
 
     if (result.success) {
-      context.showSnackBar('Username updated!');
+      context.showSnackBar(context.l10n.profileUsernameUpdated);
       context.pop();
     } else {
       if (result.daysRemaining != null) {
@@ -111,16 +111,14 @@ class _ChangeUsernameScreenState extends State<ChangeUsernameScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Cooldown active'),
+        title: Text(ctx.l10n.profileCooldownActive),
         content: Text(
-          'You can change your username again in $daysRemaining '
-          'day${daysRemaining == 1 ? '' : 's'}.\n\n'
-          'Usernames can only be changed once every 30 days.',
+          ctx.l10n.profileCooldownBody(daysRemaining),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('OK'),
+            child: Text(ctx.l10n.ok),
           ),
         ],
       ),
@@ -136,7 +134,7 @@ class _ChangeUsernameScreenState extends State<ChangeUsernameScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Change username'),
+        title: Text(context.l10n.profileChangeUsername),
         leading: BackButton(onPressed: () => context.pop()),
       ),
       body: Consumer<ProfileProvider>(
@@ -162,7 +160,7 @@ class _ChangeUsernameScreenState extends State<ChangeUsernameScreen> {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Current username',
+                            Text(context.l10n.profileCurrentUsername,
                                 style: theme.textTheme.labelSmall?.copyWith(
                                     color: theme.colorScheme.onSurfaceVariant)),
                             Text(
@@ -196,8 +194,7 @@ class _ChangeUsernameScreenState extends State<ChangeUsernameScreen> {
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
-                              'Username change available in $cooldownDays day${cooldownDays == 1 ? '' : 's'}.\n'
-                              'Changes are limited to once every 30 days.',
+                              context.l10n.profileUsernameCooldownNotice(cooldownDays),
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: AppColors.warningAmber,
                               ),
@@ -211,7 +208,7 @@ class _ChangeUsernameScreenState extends State<ChangeUsernameScreen> {
 
                   // New username input
                   Text(
-                    'New username',
+                    context.l10n.profileNewUsername,
                     style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w600),
                   ),
@@ -224,17 +221,16 @@ class _ChangeUsernameScreenState extends State<ChangeUsernameScreen> {
                     autocorrect: false,
                     onChanged: canChange ? _onUsernameChanged : null,
                     decoration: InputDecoration(
-                      hintText: 'lowercase_letters_123',
+                      hintText: context.l10n.profileUsernameHint,
                       prefixText: '@  ',
                       errorText: _usernameError,
                       suffixIcon: _buildSuffix(),
-                      helperText:
-                          '3–30 characters · letters, numbers, underscores',
+                      helperText: context.l10n.profileUsernameRequirements,
                     ),
                     validator: (v) {
                       final val = v?.trim().toLowerCase() ?? '';
                       if (!_usernameRegex.hasMatch(val)) {
-                        return '3–30 chars, only a–z, 0–9, _';
+                        return context.l10n.profileUsernameValidation;
                       }
                       return _usernameError;
                     },
@@ -243,7 +239,7 @@ class _ChangeUsernameScreenState extends State<ChangeUsernameScreen> {
                   const SizedBox(height: 32),
 
                   JButton(
-                    label: 'Save username',
+                    label: context.l10n.profileSaveUsername,
                     onPressed: canChange &&
                             _checkState == _UsernameCheckState.available
                         ? _submit
@@ -255,7 +251,7 @@ class _ChangeUsernameScreenState extends State<ChangeUsernameScreen> {
 
                   Center(
                     child: Text(
-                      'Username changes are permanent for 30 days.',
+                      context.l10n.profileUsernamePermanentNotice,
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                       ),

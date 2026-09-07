@@ -277,6 +277,11 @@ class WalletProvider extends BaseProvider {
   List<WalletTransaction> _transactions = [];
   List<PaymentMethodEntity> _depositMethods = [];
   List<PaymentMethodEntity> _withdrawMethods = [];
+  // Distinguishes "still fetching" from "fetched, genuinely zero methods
+  // (no active finance shift)" — an empty list alone is ambiguous, and the
+  // method-selection step must never show its loading spinner forever
+  // when there's really just no active finance employee right now.
+  bool _paymentMethodsLoaded = false;
   List<DepositEntity> _myDeposits = [];
   List<WithdrawalEntity> _myWithdrawals = [];
   EarningsSummary? _earnings;
@@ -285,6 +290,7 @@ class WalletProvider extends BaseProvider {
   bool _isLoadingMore = false;
 
   RealtimeChannel? _balanceChannel;
+  RealtimeChannel? _requestStatusChannel;
 
   // ── Getters ────────────────────────────────────────────────────────────────
   WalletEntity? get wallet => _wallet;
@@ -297,6 +303,7 @@ class WalletProvider extends BaseProvider {
   List<WalletTransaction> get transactions => _transactions;
   List<PaymentMethodEntity> get depositMethods => _depositMethods;
   List<PaymentMethodEntity> get withdrawMethods => _withdrawMethods;
+  bool get paymentMethodsLoaded => _paymentMethodsLoaded;
   List<DepositEntity> get myDeposits => _myDeposits;
   List<WithdrawalEntity> get myWithdrawals => _myWithdrawals;
   EarningsSummary? get earnings => _earnings;
@@ -330,6 +337,7 @@ class WalletProvider extends BaseProvider {
   @override
   void dispose() {
     _balanceChannel?.unsubscribe();
+    _requestStatusChannel?.unsubscribe();
     super.dispose();
   }
 
@@ -341,6 +349,7 @@ class WalletProvider extends BaseProvider {
     });
     if (_wallet != null) {
       _subscribeToBalance(_wallet!.id, userId);
+      _subscribeToRequestStatus(userId);
     }
   }
 
@@ -389,15 +398,67 @@ class WalletProvider extends BaseProvider {
         .subscribe();
   }
 
+  // ── Realtime deposit/withdrawal status subscription ─────────────────────────
+  // CORRECTION PASS — the balance channel above already makes the wallet's
+  // NUMBER update live the instant an admin approves a deposit, but the
+  // deposit/withdrawal REQUEST rows in _myDeposits/_myWithdrawals were
+  // never refreshed while this screen stayed open — an admin's
+  // approve/reject was invisible until the user left and came back (or
+  // pulled to refresh). One channel per table, same
+  // one-per-user-id-filter shape as _subscribeToBalance, refetches via
+  // the existing loadMyDeposits()/loadMyWithdrawals() rather than trying
+  // to patch a single row from the CDC payload — DepositEntity/
+  // WithdrawalEntity have no copyWith, and postgres_changes' newRecord
+  // isn't guaranteed to carry every column this app's row-mapper needs,
+  // so a full refetch is the robust choice, not a shortcut.
+  void _subscribeToRequestStatus(String userId) {
+    _requestStatusChannel?.unsubscribe();
+
+    _requestStatusChannel = Supabase.instance.client
+        .channel('wallet-requests:$userId')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'deposits',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'user_id',
+            value: userId,
+          ),
+          callback: (_) => loadMyDeposits(),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'withdrawals',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'user_id',
+            value: userId,
+          ),
+          callback: (_) => loadMyWithdrawals(),
+        )
+        .subscribe();
+  }
+
   // ── Payment methods ────────────────────────────────────────────────────────
 
   Future<void> _loadPaymentMethods() => runAsync(() async {
-    final results = await Future.wait([
-      _repo.getPaymentMethods(forDeposit: true),
-      _repo.getPaymentMethods(forDeposit: false),
-    ]);
-    _depositMethods = results[0] as List<PaymentMethodEntity>;
-    _withdrawMethods = results[1] as List<PaymentMethodEntity>;
+    try {
+      final results = await Future.wait([
+        _repo.getPaymentMethods(forDeposit: true),
+        _repo.getPaymentMethods(forDeposit: false),
+      ]);
+      _depositMethods = results[0] as List<PaymentMethodEntity>;
+      _withdrawMethods = results[1] as List<PaymentMethodEntity>;
+    } finally {
+      // Set even on failure — an error still means "not loading anymore",
+      // and an empty list from a genuine error looks identical to an
+      // empty list from "no active finance shift" either way; both cases
+      // fall through to the same "temporarily unavailable" UI, which is
+      // the correct behavior for both.
+      _paymentMethodsLoaded = true;
+    }
   }, setLoading: false);
 
   Future<void> refreshPaymentMethods() => _loadPaymentMethods();
@@ -407,22 +468,35 @@ class WalletProvider extends BaseProvider {
   TransactionType? _txTypeFilter;
   TransactionType? get txTypeFilter => _txTypeFilter;
 
+  /// Sentinel default for [loadTransactions]'s `typeFilter` param — lets it
+  /// distinguish "caller didn't say" (keep the current filter) from
+  /// "caller explicitly passed null" (clear the filter).
+  static const Object _unsetTypeFilter = Object();
+
   /// [typeFilter] is only read when [reset] is true (a fresh filter change
   /// always resets the page); omit it on subsequent `loadMoreTransactions`
   /// calls to keep paginating under the already-active filter. Filtering
   /// happens server-side so pagination and the active filter always agree
   /// — a client-side filter over a partially-loaded page would silently
   /// show an incomplete/stale result set.
+  ///
+  /// [typeFilter] defaults to [_unsetTypeFilter] (not `null`) so a
+  /// `reset: true` call that omits it — e.g. pull-to-refresh, retry-after-
+  /// error — preserves whatever filter is already active instead of
+  /// silently clearing it back to "All". Pass `typeFilter: null` explicitly
+  /// to clear the filter.
   Future<void> loadTransactions({
     bool reset = false,
-    TransactionType? typeFilter,
+    Object? typeFilter = _unsetTypeFilter,
   }) async {
     if (_wallet == null || _wallet!.id.isEmpty) return;
     if (reset) {
       _txPage = 0;
       _hasMoreTx = true;
       _transactions = [];
-      _txTypeFilter = typeFilter;
+      if (!identical(typeFilter, _unsetTypeFilter)) {
+        _txTypeFilter = typeFilter as TransactionType?;
+      }
     }
     if (!_hasMoreTx) return;
 

@@ -1508,6 +1508,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 
+import '../../../../core/services/image_url_signer.dart';
 import '../../../../core/storage/database/app_database.dart';
 import '../../../../core/utils/app_logger.dart';
 import '../domain/pack_entity.dart';
@@ -1782,6 +1783,14 @@ class PackDownloadManager {
     final dir = await _imageDirectory(packId);
     int done = 0;
 
+    // pack_cards.image_url is a stored Wasabi object reference the bucket
+    // won't serve unsigned (kept private, not made public) — resolve
+    // signed URLs for the whole batch up front so the raw HTTP GETs below
+    // actually succeed instead of silently 403ing into the catch below.
+    final signedUrls = await ImageUrlSigner.instance.signAll(
+      toDownload.map((c) => c['image_url'] as String).toList(),
+    );
+
     // Max 4 concurrent image downloads
     const concurrency = 4;
     final chunks = _chunked(toDownload, concurrency);
@@ -1790,7 +1799,8 @@ class PackDownloadManager {
       await Future.wait(
         chunk.map((card) async {
           final cardId = card['id'] as String;
-          final imageUrl = card['image_url'] as String;
+          final rawImageUrl = card['image_url'] as String;
+          final imageUrl = signedUrls[rawImageUrl] ?? rawImageUrl;
           try {
             final localPath = await _downloadImage(imageUrl, dir, cardId);
             if (localPath != null) imageMap[cardId] = localPath;

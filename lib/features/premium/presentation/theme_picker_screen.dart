@@ -1,185 +1,3 @@
-// import 'package:flutter/material.dart';
-// import 'package:provider/provider.dart';
-
-// import '../../../../../core/extensions/context_ext.dart';
-// import '../../../../../core/providers/auth_provider.dart';
-// import '../../../../../core/services/app_theme_service.dart';
-// import '../../../../../core/router/route_names.dart';
-// import '../../../../../core/router/app_router.dart';
-
-// class ThemePickerScreen extends StatelessWidget {
-//   const ThemePickerScreen({super.key});
-
-//   @override
-//   Widget build(BuildContext context) {
-//     final themeService = context.watch<AppThemeService>();
-//     final user = context.watch<AuthProvider>().currentUser;
-//     final isPremium = user?.isPremiumActive ?? false;
-//     final isPremiumPlus = user?.premiumTier == 'premium_plus';
-//     final available = themeService.availableFor(
-//       isPremium: isPremium,
-//       isPremiumPlus: isPremiumPlus,
-//     );
-//     final locked = AppThemeService.allThemes
-//         .where((t) => !available.contains(t))
-//         .toList();
-//     final appTheme = context.theme;
-
-//     return Scaffold(
-//       appBar: AppBar(
-//         title: const Text('Themes'),
-//         actions: [
-//           IconButton(
-//             icon: Icon(
-//               themeService.isDark
-//                   ? Icons.light_mode_rounded
-//                   : Icons.dark_mode_rounded,
-//             ),
-//             onPressed: themeService.toggleDark,
-//             tooltip: 'Toggle dark mode',
-//           ),
-//         ],
-//       ),
-//       body: ListView(
-//         padding: const EdgeInsets.all(16),
-//         children: [
-//           Text(
-//             'Your Themes',
-//             style: appTheme.textTheme.titleSmall?.copyWith(
-//               fontWeight: FontWeight.w700,
-//             ),
-//           ),
-//           const SizedBox(height: 12),
-//           Wrap(
-//             spacing: 10,
-//             runSpacing: 10,
-//             children: available
-//                 .map(
-//                   (t) => _ThemeTile(
-//                     data: t,
-//                     isSelected: themeService.currentId == t.id,
-//                     onTap: () => themeService.setTheme(
-//                       t.id,
-//                       isPremiumActive: isPremium,
-//                       isPremiumPlus: isPremiumPlus,
-//                     ),
-//                   ),
-//                 )
-//                 .toList(),
-//           ),
-//           if (locked.isNotEmpty) ...[
-//             const SizedBox(height: 24),
-//             Text(
-//               'Premium Themes',
-//               style: appTheme.textTheme.titleSmall?.copyWith(
-//                 fontWeight: FontWeight.w700,
-//               ),
-//             ),
-//             const SizedBox(height: 4),
-//             Text(
-//               'Upgrade to unlock',
-//               style: appTheme.textTheme.bodySmall?.copyWith(
-//                 color: appTheme.colorScheme.onSurfaceVariant,
-//               ),
-//             ),
-//             const SizedBox(height: 12),
-//             Wrap(
-//               spacing: 10,
-//               runSpacing: 10,
-//               children: locked
-//                   .map(
-//                     (t) => _ThemeTile(
-//                       data: t,
-//                       isSelected: false,
-//                       locked: true,
-//                       onTap: () => AppRouter.router.push(RouteNames.premium),
-//                     ),
-//                   )
-//                   .toList(),
-//             ),
-//           ],
-//         ],
-//       ),
-//     );
-//   }
-// }
-
-// class _ThemeTile extends StatelessWidget {
-//   const _ThemeTile({
-//     required this.data,
-//     required this.isSelected,
-//     required this.onTap,
-//     this.locked = false,
-//   });
-//   final AppThemeData data;
-//   final bool isSelected;
-//   final VoidCallback onTap;
-//   final bool locked;
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return GestureDetector(
-//       onTap: onTap,
-//       child: Container(
-//         width: 90,
-//         height: 90,
-//         decoration: BoxDecoration(
-//           color: data.seed.withOpacity(0.15),
-//           borderRadius: BorderRadius.circular(16),
-//           border: Border.all(
-//             color: isSelected ? data.seed : Colors.grey.shade300,
-//             width: isSelected ? 3 : 1,
-//           ),
-//         ),
-//         child: Stack(
-//           children: [
-//             Center(
-//               child: Column(
-//                 mainAxisSize: MainAxisSize.min,
-//                 children: [
-//                   Text(data.emoji, style: const TextStyle(fontSize: 28)),
-//                   const SizedBox(height: 4),
-//                   Text(
-//                     data.name,
-//                     style: TextStyle(
-//                       fontSize: 11,
-//                       fontWeight: FontWeight.w700,
-//                       color: data.seed,
-//                     ),
-//                   ),
-//                 ],
-//               ),
-//             ),
-//             if (locked)
-//               Container(
-//                 decoration: BoxDecoration(
-//                   color: Colors.black.withOpacity(0.45),
-//                   borderRadius: BorderRadius.circular(16),
-//                 ),
-//                 child: const Center(
-//                   child: Icon(
-//                     Icons.lock_rounded,
-//                     color: Colors.white,
-//                     size: 22,
-//                   ),
-//                 ),
-//               ),
-//             if (isSelected)
-//               Positioned(
-//                 top: 6,
-//                 right: 6,
-//                 child: Icon(
-//                   Icons.check_circle_rounded,
-//                   color: data.seed,
-//                   size: 18,
-//                 ),
-//               ),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-// }
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -211,14 +29,14 @@ class ThemePickerScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('App Theme'),
+        title: Text(context.l10n.premiumAppThemeTitle),
         actions: [
           IconButton(
             icon: Icon(
               svc.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
             ),
             onPressed: svc.toggleDark,
-            tooltip: svc.isDark ? 'Light mode' : 'Dark mode',
+            tooltip: svc.isDark ? context.l10n.lightMode : context.l10n.darkMode,
           ),
         ],
       ),
@@ -226,7 +44,7 @@ class ThemePickerScreen extends StatelessWidget {
         padding: const EdgeInsets.all(20),
         children: [
           Text(
-            'Your Themes',
+            context.l10n.premiumYourThemes,
             style: theme.textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.w800,
               letterSpacing: 0.5,
@@ -248,7 +66,7 @@ class ThemePickerScreen extends StatelessWidget {
             Row(
               children: [
                 Text(
-                  'Premium Themes ✦',
+                  context.l10n.premiumPremiumThemes,
                   style: theme.textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w800,
                     color: const Color(0xFFF5A623),
@@ -258,7 +76,7 @@ class ThemePickerScreen extends StatelessWidget {
                 const Spacer(),
                 TextButton(
                   onPressed: () => AppRouter.router.push(RouteNames.premium),
-                  child: const Text('Upgrade →'),
+                  child: Text(context.l10n.roomsUpgradeArrow),
                 ),
               ],
             ),
@@ -272,7 +90,7 @@ class ThemePickerScreen extends StatelessWidget {
           ],
           const SizedBox(height: 28),
           Text(
-            'Background Color ✦',
+            context.l10n.premiumBackgroundColorEmoji,
             style: theme.textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.w800,
               letterSpacing: 0.5,
@@ -347,9 +165,9 @@ class _BackgroundColorTile extends StatelessWidget {
                 child: Text(
                   isPremium
                       ? (currentColor != null
-                            ? 'Custom background set'
-                            : 'Choose a background color')
-                      : 'Premium feature — tap to upgrade',
+                            ? context.l10n.premiumBackgroundCustomSet
+                            : context.l10n.premiumBackgroundChooseColor)
+                      : context.l10n.premiumBackgroundUpgradeHint,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),

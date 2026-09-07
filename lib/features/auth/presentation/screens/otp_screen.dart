@@ -6,7 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/extensions/context_ext.dart';
 import '../../../../core/providers/auth_provider.dart';
-import '../../../../core/theme/app_colors.dart';
+import '../../../../core/router/route_names.dart';
 import '../../../../shared/widgets/buttons/j_button.dart';
 
 /// Route arguments for [OtpScreen]. [identifier] is what's actually used to
@@ -15,7 +15,13 @@ import '../../../../shared/widgets/buttons/j_button.dart';
 /// meant to be shown to the user. [phoneNumber] is set only for the phone
 /// flow and is what gets displayed instead; email sign-in leaves it null so
 /// the identifier (a real email) is shown as before.
-typedef OtpScreenArgs = ({String identifier, String? phoneNumber});
+typedef OtpScreenArgs = ({
+  String identifier,
+  String? phoneNumber,
+  bool isPasswordRecovery,
+  String? pendingPassword,
+  bool returnToSettingsOnSuccess,
+});
 
 /// OTP verification screen.
 ///
@@ -27,7 +33,14 @@ typedef OtpScreenArgs = ({String identifier, String? phoneNumber});
 /// - Remaining attempts indicator
 /// - Error state per-box highlighting on failure
 class OtpScreen extends StatefulWidget {
-  const OtpScreen({super.key, required this.identifier, this.phoneNumber});
+  const OtpScreen({
+    super.key,
+    required this.identifier,
+    this.phoneNumber,
+    this.isPasswordRecovery = false,
+    this.pendingPassword,
+    this.returnToSettingsOnSuccess = false,
+  });
 
   /// Value passed to verifyOtp/sendOtp — a real email for the email flow,
   /// or the internal synthetic email for the phone flow. Never shown to
@@ -40,12 +53,63 @@ class OtpScreen extends StatefulWidget {
   /// sendOtp.
   final String? phoneNumber;
 
+  /// Set when this screen was reached via the "forgot password" flow —
+  /// see the navigation override in _submit() below.
+  final bool isPasswordRecovery;
+
+  /// Auth redesign: set only for signup (password collected BEFORE OTP)
+  /// and the Settings "Update Password" remembers-my-password flow (new
+  /// password collected right after current-password verification,
+  /// before OTP). When non-null, _submit() calls setPassword with this
+  /// value immediately after a successful OTP verification — the user
+  /// never sees a separate "set password" screen in either flow.
+  final String? pendingPassword;
+
+  /// Only meaningful together with [pendingPassword]: true for the
+  /// Settings flow (pop back to Settings with a success/error message on
+  /// completion), false for signup (let the router redirect continue
+  /// into onboarding, or sign out and bounce to signup on failure — see
+  /// the brief's "must not continue into onboarding" requirement).
+  final bool returnToSettingsOnSuccess;
+
   /// What to show the user and what resend should re-send to.
   String get displayIdentifier => phoneNumber ?? identifier;
   bool get isPhoneFlow => phoneNumber != null;
 
   @override
   State<OtpScreen> createState() => _OtpScreenState();
+}
+
+/// The explicit reason this screen was reached — [pendingPassword] and
+/// [isPasswordRecovery] already fully determine this; this enum just
+/// names the resulting cases so _submit()'s branching reads as "which
+/// flow is this" instead of a chain of boolean checks. Every current
+/// call site (SignupScreen, ForgotPasswordScreen,
+/// PasswordSettingsScreen's has_password=false "Set Password" prompt)
+/// maps to exactly one of the first two; [none] is a defensive fallback,
+/// not a case any real screen currently produces.
+enum _OtpContext {
+  /// Signup: password already collected and validated BEFORE this
+  /// screen; applied atomically with OTP verification (see
+  /// AuthProvider.verifyOtp's pendingPassword parameter). Always
+  /// continues into onboarding — a brand-new account can never be
+  /// otherwise ready at this exact moment.
+  signup,
+
+  /// No current password to prove identity with, so OTP verification
+  /// alone must lead to the mandatory new-password step
+  /// (SetPasswordScreen) — never straight into the app. Covers BOTH a
+  /// genuinely forgotten password (ForgotPasswordScreen) and a Settings
+  /// account establishing its first one (has_password=false): identical
+  /// in kind, so identical handling.
+  passwordRecovery,
+
+  /// Verified with neither of the above set. Not reachable by any
+  /// current call site — kept as an explicit, safe default (route by the
+  /// account's own current state) rather than silently doing nothing if
+  /// a future screen ever reaches this point without declaring which
+  /// flow it's in.
+  none,
 }
 
 class _OtpScreenState extends State<OtpScreen> {
@@ -93,6 +157,12 @@ class _OtpScreenState extends State<OtpScreen> {
   String get _otp => _controllers.map((c) => c.text).join();
   bool get _complete => _otp.length == _len;
 
+  _OtpContext get _otpContext {
+    if (widget.pendingPassword != null) return _OtpContext.signup;
+    if (widget.isPasswordRecovery) return _OtpContext.passwordRecovery;
+    return _OtpContext.none;
+  }
+
   void _clearAll() {
     for (final c in _controllers) c.clear();
     _focusNodes[0].requestFocus();
@@ -133,11 +203,49 @@ class _OtpScreenState extends State<OtpScreen> {
     _focusNodes.forEach((f) => f.unfocus());
 
     final auth = context.read<AuthProvider>();
-    final result = await auth.verifyOtp(widget.identifier, _otp);
+    // Auth redesign: signup and the Settings "remembers my password"
+    // update flow both collect the password BEFORE this OTP step.
+    // widget.pendingPassword, when set, is applied ATOMICALLY inside
+    // this single call — see AuthProvider.verifyOtp's own doc for why
+    // that atomicity (rather than a second, separate setPassword call
+    // made from here afterward) avoids ever notifying an intermediate
+    // "verified, no password yet" state.
+    final result = await auth.verifyOtp(
+      widget.identifier,
+      _otp,
+      pendingPassword: widget.pendingPassword,
+    );
 
     if (!mounted) return;
 
+    final otpContext = _otpContext;
+
     if (!result.success) {
+      // result.otpVerified distinguishes "the code itself was wrong/
+      // expired" from "the code was right, but applying pendingPassword
+      // afterward failed" — never inferred from attemptsRemaining, which
+      // is also null for otp_expired/otp_max_attempts and would
+      // otherwise misroute those as a password-application failure.
+      if (otpContext == _OtpContext.signup && result.otpVerified) {
+        context.showErrorSnackBar(
+          result.errorMessage ?? context.l10n.errorUnexpected,
+        );
+        if (widget.returnToSettingsOnSuccess) {
+          // Settings flow: verifyOtp already confirmed the account's
+          // existing password is untouched — back out rather than
+          // re-prompting for a fresh OTP for what wasn't a wrong code.
+          // go() rather than pop(): robust regardless of how deep this
+          // screen was pushed, rather than depending on the exact
+          // Navigator stack shape at this moment.
+          context.go(RouteNames.passwordSettings);
+        } else {
+          // Signup: verifyOtp already rolled the just-established
+          // session back — nothing to resume; start over.
+          context.go(RouteNames.signup);
+        }
+        return;
+      }
+
       setState(() {
         _hasError = true;
         _attemptsRemaining = result.attemptsRemaining;
@@ -145,8 +253,76 @@ class _OtpScreenState extends State<OtpScreen> {
       _shakeKey.currentState?.shake();
       _clearAll();
       context.showErrorSnackBar(result.errorMessage ?? context.l10n.authOtpInvalid);
+      return;
     }
-    // On success, GoRouter redirect handles navigation automatically
+
+    // Explicit per-context navigation — see _OtpContext's own doc for
+    // why each case exists. Nothing here falls through to a shared
+    // "generic success" path that every context implicitly relies on;
+    // each case picks its own destination and returns immediately, so a
+    // recovery/signup OTP can never accidentally take the plain
+    // existing-account path (or vice versa).
+    switch (otpContext) {
+      case _OtpContext.signup:
+        if (widget.returnToSettingsOnSuccess) {
+          context.showSnackBar(context.l10n.passwordSettingsChangeSuccess);
+          // go() rather than pop(): robust regardless of how deep this
+          // screen was pushed, rather than depending on the exact
+          // Navigator stack shape at this moment (see the failure branch
+          // above for the same reasoning).
+          context.go(RouteNames.passwordSettings);
+        } else {
+          // Signup: has_password is now true (set atomically inside
+          // verifyOtp above), and a brand-new account always still needs
+          // onboarding at this exact moment — navigate explicitly rather
+          // than relying on the router's reactive redirect to catch this
+          // screen, which both signup and recovery briefly sit on with
+          // needsOnboarding/isLoggedIn already flipped by verifyOtp's own
+          // notifyListeners() call (that reactive redirect is deliberately
+          // excluded from acting on this screen — see auth_redirect.dart —
+          // precisely so it never races ahead of this explicit navigation).
+          context.go(RouteNames.onboarding);
+        }
+        return;
+
+      case _OtpContext.passwordRecovery:
+        // Forgot Password, and a Settings account establishing its first
+        // password: verified identity, but there is still no password on
+        // this account — MUST land on the new-password step, never
+        // straight into the app. This account is typically already fully
+        // ready (isLoggedIn=true, needsOnboarding=false), so the router's
+        // normal post-login redirect would otherwise send this session
+        // straight to /home the instant verifyOtp's notifyListeners()
+        // fires — explicit navigation is required, and auth_redirect.dart
+        // deliberately excludes both /auth/otp and /auth/set-password
+        // from every global redirect rule so it can never race ahead of
+        // this exact line.
+        context.go(
+          RouteNames.setPassword,
+          extra: (
+            isRecovery: true,
+            // Threaded straight from this screen's own arg: Login's
+            // Forgot Password leaves this false (continue into
+            // onboarding/Home like any other successful auth); Settings'
+            // Forgot Password sets it true (return to Settings instead).
+            returnToSettingsOnSuccess: widget.returnToSettingsOnSuccess,
+          ),
+        );
+        return;
+
+      case _OtpContext.none:
+        // Not reachable by any current call site (see _OtpContext.none's
+        // own doc) — safe default if one is ever added without declaring
+        // its context: route by whatever the account's own state says,
+        // same as the router would for any other fully-authenticated
+        // screen. The router's generic "stale public route -> home"
+        // cleanup deliberately excludes /auth/otp (Settings' Update
+        // Password legitimately revisits it while already fully ready),
+        // so this screen must decide its own destination rather than
+        // relying on that cleanup.
+        context.go(auth.needsOnboarding ? RouteNames.onboarding : RouteNames.home);
+        return;
+    }
   }
 
   // ── Resend ────────────────────────────────────────────────────────────────
@@ -252,7 +428,7 @@ class _OtpScreenState extends State<OtpScreen> {
                 const SizedBox(height: 10),
                 Center(
                   child: Text(
-                    '$_attemptsRemaining attempt${_attemptsRemaining == 1 ? '' : 's'} remaining',
+                    l10n.authOtpAttemptsRemaining(_attemptsRemaining!),
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.error,
                       fontWeight: FontWeight.w500,
@@ -378,7 +554,7 @@ class _ResendCountdown extends StatelessWidget {
         ),
         const SizedBox(width: 8),
         Text(
-          'Resend in ${seconds}s',
+          context.l10n.authOtpResendIn(seconds),
           style: context.textTheme.bodyMedium?.copyWith(
             color: context.colorScheme.onSurfaceVariant,
           ),

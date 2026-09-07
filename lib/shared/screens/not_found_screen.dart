@@ -24,12 +24,12 @@ class NotFoundScreen extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               Text(
-                'Page Not Found',
+                context.l10n.sharedPageNotFound,
                 style: context.textTheme.headlineSmall,
               ),
               const SizedBox(height: 8),
               Text(
-                'The page you\'re looking for doesn\'t exist.',
+                context.l10n.sharedPageNotFoundHint,
                 style: context.textTheme.bodyMedium?.copyWith(
                   color: context.colorScheme.onSurfaceVariant,
                 ),
@@ -38,7 +38,7 @@ class NotFoundScreen extends StatelessWidget {
               const SizedBox(height: 24),
               FilledButton(
                 onPressed: () => context.go(RouteNames.home),
-                child: const Text('Go Home'),
+                child: Text(context.l10n.sharedGoHome),
               ),
             ],
           ),

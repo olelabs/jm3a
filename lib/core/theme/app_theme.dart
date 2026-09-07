@@ -1649,14 +1649,11 @@ abstract final class AppTheme {
       ),
 
       cardTheme: CardThemeData(
-        color: isLight ? AppColors.white : AppColors.darkSurface,
+        color: colorScheme.surfaceContainer,
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.card),
-          side: BorderSide(
-            color: isLight ? AppColors.borderSubtle : AppColors.borderDark,
-            width: 1,
-          ),
+          side: BorderSide(color: colorScheme.outlineVariant, width: 1),
         ),
         margin: EdgeInsets.zero,
         surfaceTintColor: Colors.transparent,
@@ -1722,11 +1719,9 @@ abstract final class AppTheme {
 
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: isLight ? AppColors.neutral100 : AppColors.darkHighest,
+        fillColor: colorScheme.surfaceContainerHighest,
         border: _inputBorder(colorScheme.outline),
-        enabledBorder: _inputBorder(
-          isLight ? AppColors.borderSubtle : AppColors.borderDark,
-        ),
+        enabledBorder: _inputBorder(colorScheme.outlineVariant),
         focusedBorder: _inputBorder(colorScheme.primary, width: 2),
         errorBorder: _inputBorder(colorScheme.error),
         focusedErrorBorder: _inputBorder(colorScheme.error, width: 2),
@@ -1759,7 +1754,7 @@ abstract final class AppTheme {
       ),
 
       dialogTheme: DialogThemeData(
-        backgroundColor: isLight ? AppColors.white : AppColors.darkSurface,
+        backgroundColor: colorScheme.surfaceContainer,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.dialog),
@@ -1770,7 +1765,7 @@ abstract final class AppTheme {
       ),
 
       bottomSheetTheme: BottomSheetThemeData(
-        backgroundColor: isLight ? AppColors.white : AppColors.darkSurface,
+        backgroundColor: colorScheme.surfaceContainer,
         surfaceTintColor: Colors.transparent,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(
@@ -1809,11 +1804,9 @@ abstract final class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.md),
         ),
-        backgroundColor: isLight
-            ? AppColors.neutral900
-            : AppColors.darkElevated,
+        backgroundColor: colorScheme.inverseSurface,
         contentTextStyle: textTheme.bodyMedium?.copyWith(
-          color: isLight ? AppColors.white : AppColors.neutral100,
+          color: colorScheme.onInverseSurface,
         ),
         elevation: 4,
         insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -1877,7 +1870,7 @@ abstract final class AppTheme {
       ),
 
       popupMenuTheme: PopupMenuThemeData(
-        color: isLight ? AppColors.white : AppColors.darkElevated,
+        color: colorScheme.surfaceContainerHigh,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.md),
@@ -1889,17 +1882,17 @@ abstract final class AppTheme {
 
       tooltipTheme: TooltipThemeData(
         decoration: BoxDecoration(
-          color: isLight ? AppColors.neutral900 : AppColors.darkElevated,
+          color: colorScheme.inverseSurface,
           borderRadius: BorderRadius.circular(AppRadius.sm),
         ),
         textStyle: textTheme.labelSmall?.copyWith(
-          color: isLight ? AppColors.white : AppColors.neutral100,
+          color: colorScheme.onInverseSurface,
         ),
       ),
 
       searchBarTheme: SearchBarThemeData(
         backgroundColor: WidgetStateProperty.all(
-          isLight ? AppColors.neutral100 : AppColors.darkHighest,
+          colorScheme.surfaceContainerHighest,
         ),
         surfaceTintColor: WidgetStateProperty.all(Colors.transparent),
         elevation: WidgetStateProperty.all(0),

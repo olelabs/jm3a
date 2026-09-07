@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/di/service_locator.dart';
+import '../../../../core/errors/failures.dart';
 import '../../../../core/extensions/context_ext.dart';
+import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/feedback/error_view.dart';
 
@@ -17,7 +19,14 @@ class ClosedRoomsScreen extends StatefulWidget {
 
 class _ClosedRoomsScreenState extends State<ClosedRoomsScreen> {
   List<Map<String, dynamic>> _rooms = [];
+  // Ids of rooms that are keep-game-closed but still ALIVE (closed_at set,
+  // deleted_at NULL) — the ONLY ones eligible for re-enter/reopen. Everything
+  // else in the list is a terminal, permanently-deleted room and stays
+  // strictly read-only. get_my_closed_rooms returns both (coalescing their
+  // timestamps), so this owner-scoped id set is what tells them apart.
+  Set<String> _reopenable = {};
   bool _loading = true;
+  bool _busy = false;
   String? _error;
 
   @override
@@ -33,9 +42,16 @@ class _ClosedRoomsScreenState extends State<ClosedRoomsScreen> {
     });
     try {
       final rooms = await sl.roomRepository.getMyClosedRooms();
+      // Non-fatal: if this probe fails, every row simply falls back to the
+      // read-only terminal path (never wrongly offering reopen on a dead room).
+      Set<String> reopenable = {};
+      try {
+        reopenable = await sl.roomRepository.getReopenableClosedRoomIds();
+      } catch (_) {}
       if (mounted)
         setState(() {
           _rooms = rooms;
+          _reopenable = reopenable;
           _loading = false;
         });
     } catch (e) {
@@ -47,10 +63,38 @@ class _ClosedRoomsScreenState extends State<ClosedRoomsScreen> {
     }
   }
 
+  /// Re-enter a keep-game-closed-but-alive room: opens the SAME existing room's
+  /// lobby (never creates a new room/session, never resets game state). The
+  /// live game and its game_sessions.player_ids continue untouched; the reopen
+  /// control lives in that lobby. Owner-only rooms reach here (owner-scoped id
+  /// set), and RoomProvider never blocks the owner from their own room.
+  void _reenter(String roomId) {
+    AppRouter.router.push('/home/room/$roomId');
+  }
+
+  /// Reopen (clear closed_at) then drop the owner straight into the room. Uses
+  /// the existing reopen_room_keep_game RPC via RoomRepository.reopenRoom —
+  /// touches ONLY closed_at, so no new session, no game/state/score/turn reset.
+  Future<void> _reopen(String roomId) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      await sl.roomRepository.reopenRoom(roomId);
+      if (!mounted) return;
+      AppRouter.router.push('/home/room/$roomId');
+    } catch (e) {
+      if (mounted) {
+        context.showErrorSnackBar(e is Failure ? e.message : e.toString());
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('My Closed Rooms')),
+      appBar: AppBar(title: Text(context.l10n.roomsMyClosedRooms)),
       body: RefreshIndicator(
         onRefresh: _load,
         child: _loading
@@ -59,11 +103,11 @@ class _ClosedRoomsScreenState extends State<ClosedRoomsScreen> {
             ? ErrorView(message: _error!, onRetry: _load)
             : _rooms.isEmpty
             ? ListView(
-                children: const [
-                  SizedBox(height: 120),
+                children: [
+                  const SizedBox(height: 120),
                   Center(
                     child: Text(
-                      'No rooms closed in the last 5 days.',
+                      context.l10n.roomsNoClosedRooms,
                       textAlign: TextAlign.center,
                     ),
                   ),
@@ -75,27 +119,61 @@ class _ClosedRoomsScreenState extends State<ClosedRoomsScreen> {
                 separatorBuilder: (_, __) => const SizedBox(height: 8),
                 itemBuilder: (_, i) {
                   final r = _rooms[i];
+                  final roomId = r['room_id'] as String;
                   final closedAt = DateTime.tryParse(
                     r['closed_at'] as String? ?? '',
                   );
+                  // Keep-game-closed BUT still alive -> re-enter/reopen.
+                  // Terminal/deleted -> strictly read-only history.
+                  final isAlive = _reopenable.contains(roomId);
+                  final agoText = closedAt != null
+                      ? context.l10n.roomsClosedAgo(_formatAgo(context, closedAt))
+                      : context.l10n.roomsClosed;
+
+                  if (isAlive) {
+                    return Card(
+                      child: ListTile(
+                        leading: Text(
+                          r['cover_emoji'] as String? ?? '🎮',
+                          style: const TextStyle(fontSize: 28),
+                        ),
+                        title: Text(
+                          r['name'] as String? ?? context.l10n.roomsFallbackRoom,
+                        ),
+                        // The game is still live for its active players — this
+                        // room can be re-entered and reopened, not just viewed.
+                        subtitle: Text(agoText),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            TextButton(
+                              onPressed: _busy ? null : () => _reopen(roomId),
+                              child: Text(context.l10n.lobbyReopenCta),
+                            ),
+                            const Icon(Icons.login_rounded),
+                          ],
+                        ),
+                        // Tapping the row re-enters the existing room (its
+                        // lobby also exposes the reopen control).
+                        onTap: _busy ? null : () => _reenter(roomId),
+                      ),
+                    );
+                  }
+
                   return Card(
                     child: ListTile(
                       leading: Text(
                         r['cover_emoji'] as String? ?? '🎮',
                         style: const TextStyle(fontSize: 28),
                       ),
-                      title: Text(r['name'] as String? ?? 'Room'),
-                      subtitle: Text(
-                        closedAt != null
-                            ? 'Closed ${_formatAgo(closedAt)}'
-                            : 'Closed',
-                      ),
+                      title: Text(r['name'] as String? ?? context.l10n.roomsFallbackRoom),
+                      subtitle: Text(agoText),
                       trailing: const Icon(Icons.chevron_right_rounded),
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (_) => ClosedRoomDetailScreen(
-                            roomId: r['room_id'] as String,
+                            roomId: roomId,
                           ),
                         ),
                       ),
@@ -107,11 +185,12 @@ class _ClosedRoomsScreenState extends State<ClosedRoomsScreen> {
     );
   }
 
-  String _formatAgo(DateTime dt) {
+  String _formatAgo(BuildContext context, DateTime dt) {
     final diff = DateTime.now().difference(dt);
-    if (diff.inHours < 1) return '${diff.inMinutes}m ago';
-    if (diff.inDays < 1) return '${diff.inHours}h ago';
-    return '${diff.inDays}d ago';
+    final l10n = context.l10n;
+    if (diff.inHours < 1) return l10n.roomsAgoMinutes(diff.inMinutes);
+    if (diff.inDays < 1) return l10n.roomsAgoHours(diff.inHours);
+    return l10n.roomsAgoDays(diff.inDays);
   }
 }
 
@@ -159,7 +238,7 @@ class _ClosedRoomDetailScreenState extends State<ClosedRoomDetailScreen> {
   Widget build(BuildContext context) {
     final room = _details?['room'] as Map<String, dynamic>?;
     return Scaffold(
-      appBar: AppBar(title: Text(room?['name'] as String? ?? 'Closed Room')),
+      appBar: AppBar(title: Text(room?['name'] as String? ?? context.l10n.roomsClosedRoomFallback)),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
@@ -168,14 +247,17 @@ class _ClosedRoomDetailScreenState extends State<ClosedRoomDetailScreen> {
     );
   }
 
-  static const _gameTypeLabels = {
-    'truth_or_dare': 'Truth or Dare',
-    'never_have_i_ever': 'Never Have I Ever',
-    'meme_game': 'Meme Game',
-  };
-
-  String _gameTypeLabel(dynamic raw) =>
-      _gameTypeLabels[raw as String?] ?? (raw as String? ?? 'Game');
+  String _gameTypeLabel(dynamic raw) {
+    final l10n = context.l10n;
+    return switch (raw as String?) {
+      'truth_or_dare' => l10n.gameNameTruthOrDare,
+      'never_have_i_ever' => l10n.gameNameNeverHaveIEverFull,
+      'meme_game' => l10n.gameNameMeme,
+      // Never expose a raw DB game_type string to the user (item 9) — an
+      // unrecognized value falls back to the same generic label as null.
+      final String? _ => l10n.defaultGameName,
+    };
+  }
 
   // Truth or Dare stores a structured per-player score object
   // (TodPlayerScore.toMap() — completed_truths/dares/skips/points) while
@@ -219,33 +301,34 @@ class _ClosedRoomDetailScreenState extends State<ClosedRoomDetailScreen> {
     // userId -> display name, so raw score-map keys never leak to the UI.
     final namesByUserId = {
       for (final p in participants)
-        p['user_id'] as String: p['display_name'] as String? ?? 'Player',
+        p['user_id'] as String: p['display_name'] as String? ?? context.l10n.defaultPlayerName,
     };
 
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
         _SectionCard(
-          title: 'Room Info',
+          title: context.l10n.roomsRoomInfo,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Game: ${_gameTypeLabel(room['game_type'])}'),
-              Text('Max players: ${room['max_players'] ?? '—'}'),
+              Text(context.l10n.roomsGameLabel(_gameTypeLabel(room['game_type']))),
+              Text(context.l10n.roomsMaxPlayersLabel('${room['max_players'] ?? '—'}')),
               Text(
-                'Duration: '
-                '${_formatDuration(room['game_started_at'] as String?, room['game_ended_at'] as String?)}',
+                context.l10n.roomsDurationLabel(
+                  _formatDuration(room['game_started_at'] as String?, room['game_ended_at'] as String?),
+                ),
               ),
-              Text('Played: ${_formatDateTime(room['created_at'] as String?)}'),
+              Text(context.l10n.roomsPlayedLabel(_formatDateTime(room['created_at'] as String?))),
             ],
           ),
         ),
         const SizedBox(height: 12),
         _SectionCard(
-          title: 'Participants (${participants.length})',
+          title: context.l10n.roomsParticipantsCount(participants.length),
           child: Column(
             children: participants.map((p) {
-              final name = p['display_name'] as String? ?? 'Player';
+              final name = p['display_name'] as String? ?? context.l10n.defaultPlayerName;
               final role = p['role'] as String? ?? 'player';
               return ListTile(
                 dense: true,
@@ -254,18 +337,18 @@ class _ClosedRoomDetailScreenState extends State<ClosedRoomDetailScreen> {
                   child: Text(name.isNotEmpty ? name[0].toUpperCase() : '?'),
                 ),
                 title: Text(name),
-                subtitle: Text(role == 'spectator' ? 'Spectator' : 'Player'),
+                subtitle: Text(role == 'spectator' ? context.l10n.roleLabelSpectator : context.l10n.roleLabelPlayer),
               );
             }).toList(),
           ),
         ),
         const SizedBox(height: 12),
         _SectionCard(
-          title: 'Results',
+          title: context.l10n.roomsResults,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: sessions.isEmpty
-                ? const [Text('No game data available.')]
+                ? [Text(context.l10n.roomsNoGameData)]
                 : sessions.map((s) {
                     final snapshot =
                         s['state_snapshot'] as Map<String, dynamic>?;
@@ -273,7 +356,7 @@ class _ClosedRoomDetailScreenState extends State<ClosedRoomDetailScreen> {
                         snapshot?['scores'] as Map<String, dynamic>?;
                     final scores = <String, int>{
                       for (final e in (rawScores ?? {}).entries)
-                        (namesByUserId[e.key] ?? 'Player'): _scoreValue(
+                        (namesByUserId[e.key] ?? context.l10n.defaultPlayerName): _scoreValue(
                           e.value,
                         ),
                     };
@@ -296,8 +379,9 @@ class _ClosedRoomDetailScreenState extends State<ClosedRoomDetailScreen> {
                             ),
                           ),
                           Text(
-                            'Duration: '
-                            '${_formatDuration(s['started_at'] as String?, s['ended_at'] as String?)}',
+                            context.l10n.roomsDurationLabel(
+                              _formatDuration(s['started_at'] as String?, s['ended_at'] as String?),
+                            ),
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: theme.colorScheme.onSurfaceVariant,
                             ),
@@ -306,7 +390,7 @@ class _ClosedRoomDetailScreenState extends State<ClosedRoomDetailScreen> {
                             Padding(
                               padding: const EdgeInsets.only(top: 4),
                               child: Text(
-                                '🏆 Winner: $winner',
+                                context.l10n.roomsWinnerLabel(winner),
                                 style: theme.textTheme.bodyMedium?.copyWith(
                                   fontWeight: FontWeight.w600,
                                   color: AppColors.amberOrangeLight,
@@ -330,9 +414,9 @@ class _ClosedRoomDetailScreenState extends State<ClosedRoomDetailScreen> {
         ),
         const SizedBox(height: 12),
         _SectionCard(
-          title: 'Played Packs (${playedPacks.length})',
+          title: context.l10n.roomsPlayedPacksCount(playedPacks.length),
           child: playedPacks.isEmpty
-              ? const Text('None')
+              ? Text(context.l10n.none)
               : Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: playedPacks.map((p) {
@@ -340,7 +424,7 @@ class _ClosedRoomDetailScreenState extends State<ClosedRoomDetailScreen> {
                     final name =
                         title?['en'] as String? ??
                         (title?.values.firstOrNull as String?) ??
-                        'Pack';
+                        context.l10n.defaultPackName;
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 4),
                       child: Text('• $name'),

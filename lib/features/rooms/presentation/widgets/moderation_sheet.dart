@@ -20,12 +20,12 @@ class _BanConfirmSheetState extends State<BanConfirmSheet> {
   final _reasonCtrl = TextEditingController();
   bool _isBanning = false;
 
-  static const _durations = [
-    (Duration(minutes: 30), '30 minutes'),
-    (Duration(hours: 1),    '1 hour'),
-    (Duration(hours: 24),   '24 hours'),
-    (Duration(days: 7),     '7 days'),
-    (null,                  'Permanent'),
+  List<(Duration?, String)> _durations(BuildContext context) => [
+    (const Duration(minutes: 30), context.l10n.moderationDuration30Min),
+    (const Duration(hours: 1),    context.l10n.moderationDuration1Hour),
+    (const Duration(hours: 24),   context.l10n.moderationDuration24Hours),
+    (const Duration(days: 7),     context.l10n.moderationDuration7Days),
+    (null,                        context.l10n.moderationDurationPermanent),
   ];
 
   @override
@@ -83,18 +83,18 @@ class _BanConfirmSheetState extends State<BanConfirmSheet> {
           const SizedBox(height: 8),
 
           Text(
-            'Ban ${widget.targetMember.displayName} from this room?',
+            context.l10n.roomsBanConfirm(widget.targetMember.displayName),
             style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant),
           ),
           const SizedBox(height: 20),
 
-          Text('Duration', style: theme.textTheme.labelLarge),
+          Text(context.l10n.roomsDuration, style: theme.textTheme.labelLarge),
           const SizedBox(height: 8),
 
           Wrap(
             spacing: 8, runSpacing: 8,
-            children: _durations.map((d) {
+            children: _durations(context).map((d) {
               final isSelected = d.$1 == _duration;
               return ChoiceChip(
                 label: Text(d.$2),
@@ -114,15 +114,15 @@ class _BanConfirmSheetState extends State<BanConfirmSheet> {
           TextField(
             controller: _reasonCtrl,
             maxLength: 200,
-            decoration: const InputDecoration(
-              labelText: 'Reason (optional)',
-              prefixIcon: Icon(Icons.edit_note_rounded),
+            decoration: InputDecoration(
+              labelText: l10n.moderationReasonOptional,
+              prefixIcon: const Icon(Icons.edit_note_rounded),
             ),
           ),
           const SizedBox(height: 20),
 
           JButton(
-            label: 'Ban player',
+            label: l10n.moderationBanPlayer,
             onPressed: _ban,
             isLoading: _isBanning,
             isDestructive: true,

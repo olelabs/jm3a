@@ -119,16 +119,20 @@ import '../extensions/context_ext.dart';
 import '../router/app_router.dart';
 import '../router/route_names.dart';
 import '../utils/app_logger.dart';
+import '../../features/friends/presentation/screens/friends_screen.dart';
 import '../../features/notifications/domain/notification_entity.dart';
 import '../../features/rooms/data/room_repository.dart';
+import '../../features/rooms/presentation/widgets/active_room_conflict_dialog.dart';
 import 'local_notification_service.dart';
 
 /// Bridges OneSignal ↔ the app.
 ///
-/// Foreground: suppress OS banner → show via LocalNotificationService
-/// (awesome_notifications) → also feed InAppToast via NotificationProvider.
-/// Background/killed: OneSignal handles display entirely natively;
-/// tap routes via _routeFromPayload.
+/// Foreground: suppress OS banner → NotificationProvider's own Postgres CDC
+/// subscription (on the `notifications` table insert that always precedes
+/// the push) feeds the modern in-app toast (InAppToastOverlay), which also
+/// triggers a real notification sound via LocalNotificationService.
+/// Background/killed: OneSignal handles display (incl. sound) entirely
+/// natively; tap routes via _routeFromPayload.
 class NotificationService {
   NotificationService._();
   static final NotificationService _instance = NotificationService._();
@@ -141,9 +145,11 @@ class NotificationService {
     OneSignal.Notifications.addForegroundWillDisplayListener(_handleForeground);
     OneSignal.Notifications.addClickListener(_handleTap);
 
-    // Foreground = LocalNotificationService (awesome_notifications).
-    // Background/terminated = OneSignal handles delivery natively, no app
-    // code involved at all in that case.
+    // LocalNotificationService (awesome_notifications) sets up Android/iOS
+    // permissions + a Default-importance channel. Its .show() is called
+    // from NotificationProvider._enqueueToast (not from _handleForeground
+    // below) — it exists purely to give the in-app toast a real,
+    // system-routed notification sound, not to show its own banner.
     await LocalNotificationService.instance.initialize();
     LocalNotificationService.instance.onTap = _routeFromPayload;
 
@@ -165,39 +171,30 @@ class NotificationService {
 
   // ── Foreground ─────────────────────────────────────────────────────────────
   void _handleForeground(OSNotificationWillDisplayEvent event) {
-    // Prevent OS from showing its own (OneSignal) banner — while the app is
-    // open, LocalNotificationService (awesome_notifications) owns display
-    // instead. OneSignal is only the delivery transport here; it still
-    // handles background/terminated delivery entirely on its own,
-    // untouched by anything below.
+    // Prevent OS from showing its own (OneSignal) banner while the app is
+    // open — the modern in-app toast (InAppToastOverlay, mounted once at
+    // the app root above the Navigator) owns foreground display instead.
+    // OneSignal remains the delivery transport only; it still handles
+    // background/terminated delivery entirely natively, untouched by
+    // anything here.
     event.preventDefault();
 
     final data = event.notification.additionalData ?? {};
-    final title = event.notification.title ?? '';
-    final body = event.notification.body ?? '';
     final type = NotificationType.fromString(
       data['type'] as String? ?? 'system',
     );
 
     AppLogger.debug('Foreground notification: ${type.name}');
 
-    // Show a real local notification (awesome_notifications) — this is
-    // what the user actually sees while the app is foregrounded now,
-    // instead of relying on OneSignal's suppressed banner.
-    //
-    // Not also calling _onForeground/pushToast here: every push that
-    // reaches this handler was preceded by a `notifications` row insert on
-    // the backend (sendNotification/sendBulkNotification always write the
-    // DB row before sending the push), and NotificationProvider's own CDC
-    // subscription already turns that insert into an in-app toast — with a
-    // showsInApp(type) preference check this path doesn't have. Calling
-    // both here produced two toasts (plus this Awesome notification) for
-    // one event.
-    LocalNotificationService.instance.show(
-      title: title,
-      body: body,
-      data: {'type': data['type'] ?? 'system', ...data},
-    );
+    // Not injecting a toast (or its accompanying notification sound) here:
+    // every push that reaches this handler was preceded by a
+    // `notifications` row insert on the backend (sendNotification/
+    // sendBulkNotification always write the DB row before sending the
+    // push), and NotificationProvider's own CDC subscription already turns
+    // that insert into an in-app toast (with a real notification sound via
+    // LocalNotificationService, see _enqueueToast) — with a showsInApp(type)
+    // preference check this path doesn't have. Doing it here too would
+    // show/sound it twice for the same event.
   }
 
   // ── Tap ────────────────────────────────────────────────────────────────────
@@ -214,6 +211,8 @@ class NotificationService {
   Future<void> _routeFromPayload(Map<String, dynamic> data) async {
     final type = data['type'] as String?;
     final roomId = data['room_id'] as String?;
+    final senderId = data['sender_id'] as String?;
+    final packId = data['pack_id'] as String?;
 
     // A notification click (especially a cold-start OneSignal replay,
     // which can fire before runApp()/AppRouter.createRouter() has ever
@@ -236,22 +235,116 @@ class NotificationService {
 
     switch (type) {
       case 'room_invite':
+      case 'room_join_request':
+      case 'room_join_request_accepted':
         await _handleRoomInviteTap(router, roomId);
+      case 'room_started':
+      case 'game_ended':
+        // Unlike room_invite, the recipient is already a member of this
+        // room (they were playing) — no need for the
+        // already-own-a-room conflict check _handleRoomInviteTap does
+        // for a genuinely new room.
+        if (roomId != null) {
+          _pushDetail(router, '${RouteNames.home}/room/$roomId');
+        } else {
+          _pushDetail(router, RouteNames.notifications);
+        }
       case 'friend_request':
-      case 'friend_accepted':
+        // Pending incoming requests are content at the TOP of the Friends
+        // tab itself now (no separate Requests tab) — see FriendsScreen's
+        // 3-tab layout. Friends is a primary bottom-nav destination (like
+        // Home), so .go() — not a drill-down needing a way back — is
+        // correct here, unlike the cases below.
+        FriendsScreen.selectTab(FriendsScreen.tabFriends);
         router.go(RouteNames.friends);
+      case 'friend_accepted':
+        // Friends tab — the person who accepted is now a friend, visible
+        // in the main list.
+        FriendsScreen.selectTab(FriendsScreen.tabFriends);
+        router.go(RouteNames.friends);
+      case 'follow':
+        // A follow isn't part of the friend request/accept flow — goes
+        // straight to the person who followed you.
+        if (senderId != null) {
+          _pushDetail(router, '/user/$senderId');
+        } else {
+          router.go(RouteNames.friends);
+        }
       case 'wallet_credit':
       case 'wallet_debit':
-        router.go(RouteNames.wallet);
+        _pushDetail(router, RouteNames.wallet);
       case 'pack_sale':
+      case 'pack_expired':
+      case 'physical_pack_status':
+        // Pack the recipient bought (or, for pack_sale, sold) — the
+        // specific pack's detail page, not the generic marketplace list.
+        if (packId != null) {
+          _pushDetail(router, '/marketplace/pack/$packId');
+        } else {
+          router.go(RouteNames.marketplace);
+        }
       case 'pack_approved':
       case 'pack_rejected':
-        router.go(RouteNames.marketplace);
+      case 'pack_review':
+        // About the recipient's OWN pack as its creator — the creator
+        // dashboard, where moderation/review outcomes actually live.
+        _pushDetail(router, '/creator');
+      case 'subscription_started':
+      case 'subscription_expiring_2d':
+      case 'subscription_expiring_1d':
+      case 'subscription_expired':
+        _pushDetail(router, RouteNames.premium);
+      case 'creator_packs_transferred':
+      case 'creator_privileges_removed':
+        // About the recipient's own creator status/packs — same
+        // destination as pack_approved/pack_rejected/pack_review above.
+        _pushDetail(router, '/creator');
+      case 'creator_recovery_approved':
+      case 'creator_recovery_rejected':
+        // The complaint's own outcome/detail lives on the recovery screen
+        // itself, not the creator dashboard — approved: shows the restored
+        // state; rejected: shows the admin's note and lets them resubmit.
+        _pushDetail(router, RouteNames.creatorRecoveryComplaint);
       case 'moderation':
+        // Home is a primary bottom-nav root, not a drill-down — same
+        // reasoning as the Friends-tab cases above.
         router.go(RouteNames.home);
+      case 'room_join_request_rejected':
+      case 'room_kicked':
+        _pushDetail(router, RouteNames.notifications);
       default:
-        router.go(RouteNames.notifications);
+        _pushDetail(router, RouteNames.notifications);
     }
+  }
+
+  /// Every one of these destinations (room, user profile, wallet, pack
+  /// detail, creator dashboard, premium, notifications) is a "drill-down"
+  /// screen — reached everywhere ELSE in this app via push (see
+  /// RouteNames.wallet/.premium/.notifications and pack-detail/room-entry
+  /// call sites throughout the UI), never via go(), specifically because
+  /// go() replaces the router's entire location/history instead of
+  /// stacking on top of it. Using go() here (the previous behavior) is
+  /// exactly what left a notification-opened screen with no AppBar back
+  /// button and no history for the system back gesture to pop — it
+  /// wasn't merely visually missing a back arrow, there was genuinely
+  /// nothing behind it to go back to. push() targets the same root
+  /// Navigator every one of these GoRoutes is already registered under
+  /// (parentNavigatorKey: AppRouter.rootKey), so it stacks correctly
+  /// above whatever the user was already looking at — Home, another tab,
+  /// or nothing yet (cold start), in which case go_router's own
+  /// `redirect` callback (already re-evaluated on every navigation,
+  /// push included) still applies the same logged-in/logged-out guard it
+  /// always has.
+  void _pushDetail(GoRouter router, String location) {
+    final currentLocation = router.routerDelegate.currentConfiguration.uri
+        .toString();
+    if (currentLocation == location) {
+      // Already there (e.g. a second tap on the same notification) —
+      // pushing an identical duplicate screen on top would just be a
+      // wasted extra back-press for no visible change.
+      return;
+    }
+    router.push(location);
   }
 
   /// Single source of truth for a room-invite notification tap — reached
@@ -270,6 +363,14 @@ class NotificationService {
   /// already use) to restore the correct state — or shows a friendly
   /// snackbar and returns Home. Without a room_id (payload missing it
   /// entirely) it goes straight Home.
+  ///
+  /// Before any of that: runs the exact same "do you already own/belong to
+  /// an open room" guard that room CREATION uses
+  /// (RoomRepository.getActiveMembership + resolveActiveRoomConflict —
+  /// see RoomBrowserScreen._doCreateRoom, the original source of this
+  /// check). Previously this method skipped straight to the join pipeline,
+  /// silently dropping a user into a second room while their first stayed
+  /// open server-side.
   Future<void> _handleRoomInviteTap(GoRouter router, String? roomId) async {
     if (roomId == null) {
       AppLogger.info(
@@ -281,6 +382,27 @@ class NotificationService {
     }
 
     final userId = Supabase.instance.client.auth.currentUser?.id;
+
+    if (userId != null) {
+      final active = await RoomRepository.instance.getActiveMembership(
+        userId,
+      );
+      if (active != null && active['room_id'] != roomId) {
+        final conflictContext = AppRouter.rootKey.currentContext;
+        if (conflictContext != null) {
+          final result = await resolveActiveRoomConflict(
+            conflictContext,
+            active,
+          );
+          if (result != ActiveRoomConflictResult.closedAndProceed) {
+            // Either sent back to their existing room, or cancelled —
+            // either way, don't also navigate into the invited room.
+            return;
+          }
+        }
+      }
+    }
+
     final info = userId == null
         ? null
         : await RoomRepository.instance.getInviteInfo(
@@ -304,6 +426,6 @@ class NotificationService {
       'NotificationService: room_invite tap for room $roomId — entering '
       'room directly',
     );
-    router.go('${RouteNames.home}/room/$roomId');
+    _pushDetail(router, '${RouteNames.home}/room/$roomId');
   }
 }

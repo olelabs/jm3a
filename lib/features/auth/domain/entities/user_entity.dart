@@ -400,6 +400,8 @@ class UserEntity extends Equatable {
     this.onlineStatus = 'offline',
     this.inGameStatus = false,
     this.isBanned = false,
+    this.banReason,
+    this.bannedUntil,
     this.usernameChangedAt,
     this.lastSeenAt,
     this.createdAt,
@@ -408,6 +410,9 @@ class UserEntity extends Equatable {
     this.premiumTier,
     this.premiumExpiresAt,
     this.themeBackgroundColor,
+    this.presenceMode = 'auto',
+    this.creatorPrivilegesRemovedAt,
+    this.hasPassword = false,
   });
 
   final String id;
@@ -429,6 +434,13 @@ class UserEntity extends Equatable {
   final String onlineStatus;
   final bool inGameStatus;
   final bool isBanned;
+
+  /// Set together with isBanned by apply_moderation_to_profile() (see
+  /// moderation_actions). Meaning depends on bannedUntil, not a separate
+  /// flag: null = permanent ban; a future timestamp = temporary
+  /// suspension that's auto-lifted by cleanup_expired_platform_bans().
+  final String? banReason;
+  final DateTime? bannedUntil;
   final DateTime? usernameChangedAt;
   final DateTime? lastSeenAt;
   final DateTime? createdAt;
@@ -444,15 +456,56 @@ class UserEntity extends Equatable {
   /// — see ProfileRepository.setThemeBackgroundColor.
   final String? themeBackgroundColor;
 
+  /// Online-status preference: 'auto' (default, everyone), or a
+  /// premium-only manual 'online'/'offline' override — see
+  /// PresenceService.setManualMode / ProfileRepository.setPresenceMode.
+  final String presenceMode;
+
+  /// Set when this user's verified-creator status/privileges were
+  /// automatically removed after their Premium Plus subscription lapsed
+  /// (item 7). Cleared again on restoration — either by resubscribing
+  /// during the 2-day grace period, or by an approved recovery complaint
+  /// (item 8). A removed creator (verificationStatus == 'unverified' with
+  /// this set) can submit exactly one such complaint.
+  final DateTime? creatorPrivilegesRemovedAt;
+
+  /// profiles.has_password, true once this user has established a real,
+  /// user-chosen password (POST /v1/auth/set-password). Drives which
+  /// error LoginScreen's password attempt surfaces (password_not_set
+  /// points at Forgot password instead of a generic wrong-password
+  /// error) and which step PasswordSettingsScreen opens with — but is
+  /// deliberately NOT a global router gate: false here never by itself
+  /// redirects an authenticated user anywhere. Set as part of signup, or
+  /// via Forgot password/Settings' Update Password.
+  final bool hasPassword;
+
   bool get isVerifiedCreator => verificationStatus == 'verified';
+
+  bool get canSubmitCreatorRecoveryComplaint =>
+      verificationStatus != 'verified' && creatorPrivilegesRemovedAt != null;
   bool get hasCompletedProfile => username != null && displayName != null;
   bool get isOnline => onlineStatus == 'online';
+
+  /// Permanent ban/suspension — isBanned with no expiry.
+  bool get isPermanentlyBanned => isBanned && bannedUntil == null;
+
+  /// Temporary suspension still in effect (isBanned with a future expiry
+  /// — cleanup_expired_platform_bans() clears isBanned once it's passed,
+  /// so a non-null past bannedUntil shouldn't normally be observed, but
+  /// checking isAfter(now) here is a harmless extra safety margin).
+  bool get isTemporarilySuspended =>
+      isBanned && bannedUntil != null && bannedUntil!.isAfter(DateTime.now());
 
   bool get isPremiumActive {
     if (!isPremium) return false;
     if (premiumExpiresAt == null) return true;
     return premiumExpiresAt!.isAfter(DateTime.now());
   }
+
+  /// An active Premium Plus subscription — the only tier allowed to unmask a
+  /// hidden (anonymous) spectator's identity in a room they moderate.
+  bool get isPremiumPlusActive =>
+      isPremiumActive && premiumTier == 'premium_plus';
 
   int get usernameChangeCooldownDaysLeft {
     if (usernameChangedAt == null) return 0;
@@ -482,6 +535,11 @@ class UserEntity extends Equatable {
     String? displayName,
     String? avatarUrl,
     Map<String, dynamic>? avatarConfig,
+    // copyWith's usual `field ?? this.field` can't ever set a nullable
+    // field back to null (there'd be no way to distinguish "didn't pass
+    // it" from "explicitly clearing it") — this is the one caller that
+    // needs exactly that, when a premium avatar is deleted.
+    bool clearAvatarConfig = false,
     String? bio,
     String? countryCode,
     int? age,
@@ -492,6 +550,8 @@ class UserEntity extends Equatable {
     String? onlineStatus,
     bool? inGameStatus,
     bool? isBanned,
+    String? banReason,
+    DateTime? bannedUntil,
     DateTime? usernameChangedAt,
     DateTime? lastSeenAt,
     DateTime? updatedAt,
@@ -499,6 +559,10 @@ class UserEntity extends Equatable {
     String? premiumTier,
     DateTime? premiumExpiresAt,
     String? themeBackgroundColor,
+    String? presenceMode,
+    DateTime? creatorPrivilegesRemovedAt,
+    bool clearCreatorPrivilegesRemovedAt = false,
+    bool? hasPassword,
   }) {
     return UserEntity(
       id: id,
@@ -506,7 +570,9 @@ class UserEntity extends Equatable {
       username: username ?? this.username,
       displayName: displayName ?? this.displayName,
       avatarUrl: avatarUrl ?? this.avatarUrl,
-      avatarConfig: avatarConfig ?? this.avatarConfig,
+      avatarConfig: clearAvatarConfig
+          ? null
+          : (avatarConfig ?? this.avatarConfig),
       bio: bio ?? this.bio,
       countryCode: countryCode ?? this.countryCode,
       age: age ?? this.age,
@@ -517,6 +583,8 @@ class UserEntity extends Equatable {
       onlineStatus: onlineStatus ?? this.onlineStatus,
       inGameStatus: inGameStatus ?? this.inGameStatus,
       isBanned: isBanned ?? this.isBanned,
+      banReason: banReason ?? this.banReason,
+      bannedUntil: bannedUntil ?? this.bannedUntil,
       usernameChangedAt: usernameChangedAt ?? this.usernameChangedAt,
       lastSeenAt: lastSeenAt ?? this.lastSeenAt,
       createdAt: createdAt,
@@ -525,6 +593,11 @@ class UserEntity extends Equatable {
       premiumTier: premiumTier ?? this.premiumTier,
       premiumExpiresAt: premiumExpiresAt ?? this.premiumExpiresAt,
       themeBackgroundColor: themeBackgroundColor ?? this.themeBackgroundColor,
+      presenceMode: presenceMode ?? this.presenceMode,
+      creatorPrivilegesRemovedAt: clearCreatorPrivilegesRemovedAt
+          ? null
+          : (creatorPrivilegesRemovedAt ?? this.creatorPrivilegesRemovedAt),
+      hasPassword: hasPassword ?? this.hasPassword,
     );
   }
 
@@ -546,10 +619,14 @@ class UserEntity extends Equatable {
     onlineStatus,
     inGameStatus,
     isBanned,
+    banReason,
+    bannedUntil,
     usernameChangedAt,
     isPremium,
     premiumTier,
     premiumExpiresAt,
     themeBackgroundColor,
+    creatorPrivilegesRemovedAt,
+    hasPassword,
   ];
 }

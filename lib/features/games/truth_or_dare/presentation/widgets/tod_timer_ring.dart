@@ -1,5 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import '../../../../../../core/extensions/context_ext.dart';
 
 /// Circular countdown ring displayed above the card.
 class TodTimerRing extends StatelessWidget {
@@ -16,6 +18,8 @@ class TodTimerRing extends StatelessWidget {
 
   double get _progress => total > 0 ? remaining / total : 0;
 
+  bool get _isUrgent => _progress <= 0.25;
+
   Color get _ringColor {
     if (_progress > 0.5) return color;
     if (_progress > 0.25) return Colors.orange;
@@ -24,11 +28,26 @@ class TodTimerRing extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
+    final ring = SizedBox(
       width: 80, height: 80,
       child: Stack(
         alignment: Alignment.center,
         children: [
+          if (_isUrgent)
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: _ringColor.withOpacity(0.45),
+                    blurRadius: 18,
+                    spreadRadius: 1,
+                  ),
+                ],
+              ),
+            ),
           CustomPaint(
             size: const Size(80, 80),
             painter: _RingPainter(progress: _progress, color: _ringColor),
@@ -40,12 +59,18 @@ class TodTimerRing extends StatelessWidget {
                   style: TextStyle(
                       fontSize: 22, fontWeight: FontWeight.w800,
                       color: _ringColor)),
-              Text('sec', style: TextStyle(fontSize: 10, color: _ringColor)),
+              Text(context.l10n.secAbbrev, style: TextStyle(fontSize: 10, color: _ringColor)),
             ],
           ),
         ],
       ),
     );
+
+    if (!_isUrgent) return ring;
+
+    return ring
+        .animate(onPlay: (c) => c.repeat(reverse: true))
+        .scaleXY(begin: 1.0, end: 1.06, duration: 550.ms, curve: Curves.easeInOut);
   }
 }
 

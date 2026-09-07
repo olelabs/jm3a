@@ -1670,12 +1670,62 @@ class TruthOrDareEngine implements BaseGameEngine {
   TodState _onChoice(TodChoiceEvent e) {
     if (e.userId != _state.currentPlayerId) return _state;
     if (_state.phase != TodTurnPhase.choosingType) return _state;
-    final card = _draw(e.cardType);
+
+    // Force Dare rules (GameConfig.forceDareMode) — enforced here, not just
+    // hidden client-side, since this owner-run engine IS the authoritative
+    // side of this broadcast-relay architecture (same as every other game
+    // rule — turn order, timers, scoring — none of which have a separate
+    // backend re-validation path either). A follower whose UI failed to
+    // hide the Truth option (stale client, tampered build) simply gets
+    // silently converted to a dare here instead of honored as a truth.
+    var type = e.cardType;
+    if (type == TodCardType.truth) {
+      final overLimit = switch (_config.forceDareMode) {
+        'per_player' => (_state.truthCountByPlayer[e.userId] ?? 0) >=
+            _config.maxTruths,
+        'per_turn' => _state.globalTruthStreak >= _config.maxTruths,
+        _ => false,
+      };
+      if (overLimit) type = TodCardType.dare;
+    }
+
+    final card = _draw(type);
+    if (card == null) {
+      // Unique-card-repetition mode: this type's pool is exhausted and
+      // _draw deliberately did not reset/reshuffle it (see _draw) — per
+      // spec, the game ends normally rather than silently falling back to
+      // repeats.
+      return _state.copyWith(snapshotAt: _now(), isOver: true, endReason: 'cards_exhausted');
+    }
+
+    var truthCounts = _state.truthCountByPlayer;
+    var globalStreak = _state.globalTruthStreak;
+    if (type == TodCardType.truth) {
+      truthCounts = {
+        ...truthCounts,
+        e.userId: (truthCounts[e.userId] ?? 0) + 1,
+      };
+      globalStreak += 1;
+    } else if (_config.forceDareMode == 'per_turn') {
+      // Any dare — forced or freely chosen — breaks the shared streak, so
+      // every player may choose truth again.
+      globalStreak = 0;
+    } else if (_config.forceDareMode == 'per_player' &&
+        (truthCounts[e.userId] ?? 0) != 0) {
+      // Completing a dare resets THIS player's own counter — the cycle
+      // (N truths, then a dare) repeats for them specifically, rather
+      // than permanently locking them into dares for the rest of the
+      // game once maxed once.
+      truthCounts = {...truthCounts, e.userId: 0};
+    }
+
     return _state.copyWith(
       snapshotAt: _now(),
       phase: TodTurnPhase.readingCard,
       currentCard: () => card,
       timerStartedAt: () => _config.timerEnabled ? _now() : null,
+      truthCountByPlayer: truthCounts,
+      globalTruthStreak: globalStreak,
     );
   }
 
@@ -1683,6 +1733,38 @@ class TruthOrDareEngine implements BaseGameEngine {
     if (e.userId != _state.currentPlayerId) return _state;
     if (_state.phase != TodTurnPhase.readingCard) return _state;
     final card = _state.currentCard;
+
+    // Response/proof validation — authoritative here (not just a disabled
+    // Done button client-side), since this owner-run engine is the only
+    // real gate a modified client's direct 'tod_complete' broadcast has to
+    // pass (same reasoning as the Force Dare / allowSkip checks above). A
+    // no-op return leaves the turn in readingCard, so the real player just
+    // sees nothing happen rather than the round silently completing empty.
+    final trimmedResponse = e.response.trim();
+    final hasAnyProof = e.proofImageB64.isNotEmpty || e.proofVoiceB64.isNotEmpty;
+    if (card?.type == TodCardType.truth) {
+      // Truths have no meaningful non-text way to answer — text has
+      // always been required here (mirrors the pre-existing client gate).
+      if (trimmedResponse.isEmpty) return _state;
+    } else {
+      // Dares (including punishments) may be demonstrated by proof alone
+      // (e.g. a photo with no caption) — previously neither was required
+      // at all, which is the gap being closed here. Some meaningful
+      // content, text or proof, must exist either way.
+      if (trimmedResponse.isEmpty && !hasAnyProof) return _state;
+    }
+    // If the group specifically voted a proof type mandatory for this
+    // turn, that exact proof must be present regardless of the above —
+    // wires up TodProofVoteState.winner, which previously decided nothing.
+    final requiredProof = _state.proofVoteState?.winner;
+    if (requiredProof == TodProofVoteOption.voiceProof &&
+        e.proofVoiceB64.isEmpty) {
+      return _state;
+    }
+    if (requiredProof == TodProofVoteOption.imageProof &&
+        e.proofImageB64.isEmpty) {
+      return _state;
+    }
     final old = _state.scores[e.userId] ?? TodPlayerScore(userId: e.userId);
     final pts = card != null ? _pts(card) : 0;
     final isPunishment = card?.id.startsWith(_punishmentIdPrefix) ?? false;
@@ -1704,6 +1786,7 @@ class TruthOrDareEngine implements BaseGameEngine {
       card: card,
       response: e.response,
       hadProof: e.proofImageB64.isNotEmpty || e.proofVoiceB64.isNotEmpty,
+      turnStartedAt: _state.turnStartedAt,
     );
     return _state.copyWith(
       snapshotAt: _now(),
@@ -1789,9 +1872,18 @@ class TruthOrDareEngine implements BaseGameEngine {
     );
   }
 
-  TodState _onSkip(TodSkipEvent e) {
+  TodState _onSkip(TodSkipEvent e, {bool isTimeout = false}) {
     if (e.userId != _state.currentPlayerId) return _state;
     if (_state.phase != TodTurnPhase.readingCard) return _state;
+    // A voluntary skip requires GameConfig.allowSkip — enforced here, not
+    // just by hiding the Skip button client-side, so a stale/tampered
+    // client can't send one anyway (same authoritative-engine reasoning
+    // as the Force Dare check in _onChoice). Timer-expiry auto-skip is a
+    // separate game-flow mechanism (the player simply ran out of time),
+    // not the player circumventing the rule, so it always proceeds
+    // regardless of this setting — otherwise a disabled-skip room would
+    // leave an unresponsive player's turn stuck forever.
+    if (!isTimeout && !_config.allowSkip) return _state;
     final old = _state.scores[e.userId] ?? TodPlayerScore(userId: e.userId);
     final upd = old.copyWith(skips: old.skips + 1);
     final nextPhase = _config.enablePunishments
@@ -1818,18 +1910,35 @@ class TruthOrDareEngine implements BaseGameEngine {
     if (_config.enablePunishments &&
         _config.punishmentSource == 'pack' &&
         _config.suggestedPunishments.isNotEmpty) {
+      // Reuse prevention: a pack punishment already picked earlier this
+      // game (tracked by list index — pack punishments have no DB id) is
+      // excluded from the offered options, so the same one can't be
+      // handed out twice while others remain unused. Once every option
+      // has been used at least once, the used-set resets so a small pack
+      // cycles instead of leaving zero eligible options for the rest of
+      // the game.
+      final total = _config.suggestedPunishments.length;
+      final priorUsed = _state.usedPunishmentIndices.toSet();
+      final activeUsed = priorUsed.length >= total
+          ? const <int>{}
+          : priorUsed;
       final options = [
-        for (var i = 0; i < _config.suggestedPunishments.length; i++)
-          TodPunishment(
-            id: 'pack_${i}_${e.ts}',
-            text: _config.suggestedPunishments[i],
-            proposedBy: 'pack',
-            proposedAt: e.ts,
-          ),
+        for (var i = 0; i < total; i++)
+          if (!activeUsed.contains(i))
+            TodPunishment(
+              id: 'pack_${i}_${e.ts}',
+              text: _config.suggestedPunishments[i],
+              proposedBy: 'pack',
+              proposedAt: e.ts,
+              sourceIndex: i,
+            ),
       ];
       next = next.copyWith(
         currentPunishmentVote: () =>
             TodPunishmentVoteState(options: options, expectedSubmissions: 0),
+        usedPunishmentIndices: activeUsed.length == priorUsed.length
+            ? null
+            : const [],
       );
     }
 
@@ -1837,7 +1946,7 @@ class TruthOrDareEngine implements BaseGameEngine {
   }
 
   TodState _onTimerExpired(TodTimerExpiredEvent e) =>
-      _onSkip(TodSkipEvent(userId: e.userId, ts: e.ts));
+      _onSkip(TodSkipEvent(userId: e.userId, ts: e.ts), isTimeout: true);
 
   /// One non-skipped player submits exactly one punishment option — called
   /// once per eligible player per skip, not once by a moderator proposing
@@ -1846,6 +1955,13 @@ class TruthOrDareEngine implements BaseGameEngine {
     if (!_state.playerOrder.contains(e.userId)) return _state;
     if (_state.phase != TodTurnPhase.punishmentVoting) return _state;
     if (e.userId == _state.currentPlayerId) return _state; // skipped player doesn't submit
+    // Pack-sourced punishments (see _onSkip) pre-populate the vote with
+    // the pack's own options and expectedSubmissions: 0 — the two
+    // punishment systems must never run simultaneously, so a stray/stale
+    // player-proposal event arriving while punishmentSource == 'pack'
+    // must not be allowed to mix a player-submitted option into what's
+    // supposed to be a pack-only list.
+    if (_config.punishmentSource != 'players') return _state;
     final text = e.text.trim();
     if (text.isEmpty) return _state;
 
@@ -1918,11 +2034,20 @@ class TruthOrDareEngine implements BaseGameEngine {
       type: TodCardType.dare,
       difficulty: TodDifficulty.mild,
     );
+    // Record the pack index as used (peer-proposed options have no
+    // sourceIndex and are left untouched — see the reuse-prevention note
+    // in _onSkip).
+    final usedIndices =
+        option.sourceIndex != null &&
+            !s.usedPunishmentIndices.contains(option.sourceIndex)
+        ? [...s.usedPunishmentIndices, option.sourceIndex!]
+        : s.usedPunishmentIndices;
     return s.copyWith(
       snapshotAt: _now(),
       phase: TodTurnPhase.readingCard,
       currentCard: () => card,
       timerStartedAt: () => _config.timerEnabled ? _now() : null,
+      usedPunishmentIndices: usedIndices,
     );
   }
 
@@ -1938,7 +2063,13 @@ class TruthOrDareEngine implements BaseGameEngine {
         .toList();
 
     if (pool.isEmpty) {
-      // Reset used IDs for this card type on exhaustion
+      // Unique mode: never reset/reshuffle a fully-used pool — every card
+      // appears at most once, and running out means the game is over
+      // (handled by the caller via _onChoice returning null here).
+      if (_config.cardRepetitionMode == 'unique') return null;
+
+      // Shuffle-continuously mode (default, original behavior): reset
+      // used IDs for this card type on exhaustion so cards can repeat.
       final all = _deck
           .where(
             (c) =>
@@ -1974,5 +2105,44 @@ class TruthOrDareEngine implements BaseGameEngine {
     TodDifficulty.medium => 2,
     TodDifficulty.spicy => 3,
   };
-  int _now() => DateTime.now().millisecondsSinceEpoch;
+
+  // ROOT CAUSE (punishment response/proof invisible to other players):
+  // every TodState.copyWith(snapshotAt: _now(), ...) call used plain
+  // DateTime.now().millisecondsSinceEpoch, and TodGameProvider.
+  // onStateBroadcast discards an incoming broadcast whose snapshot_at is
+  // <= what it already has (a deliberate out-of-order/stale-broadcast
+  // guard — see that method's own comments). Millisecond resolution is
+  // NOT fine enough: a punishment turn is the one ToD flow that fires
+  // several state mutations back-to-back with no user think-time between
+  // them (each of the N-1 other players' TodProposePunishmentEvent, then
+  // the pick/resolve, then — once the punished player types a response —
+  // completion), so two consecutive _now() calls landing in the exact
+  // same millisecond is common, not a rare edge case (reproduced
+  // deterministically in a plain unit test with zero artificial delay —
+  // see truth_or_dare_engine_snapshot_ordering_test.dart). Whichever
+  // broadcast loses that tie is silently DROPPED by every follower's
+  // onStateBroadcast — including, when the collision lands on the
+  // completion step, the punished player's own response/proof. The
+  // player who performed the punishment never notices, because the
+  // owner's client applies its own engine mutations directly and
+  // synchronously (onPlayerAction) and never goes through
+  // onStateBroadcast's staleness guard for its own actions at all — only
+  // followers depend on that guard, so only they can silently lose an
+  // update. A normal Truth/Dare turn has only two, human-paced mutations
+  // (choice, then completion) and rarely collides, which is why this
+  // symptom reads as "punishment-specific" even though the underlying
+  // flaw is general.
+  //
+  // Fix: make snapshotAt strictly monotonic per engine instance instead
+  // of a raw wall-clock read, so two calls can never tie regardless of
+  // how close together they happen — closes the bug at its source
+  // without weakening or duplicating onStateBroadcast's (otherwise
+  // correct) ordering guard.
+  int _lastSnapshotAt = 0;
+  int _now() {
+    final wallClock = DateTime.now().millisecondsSinceEpoch;
+    final next = wallClock > _lastSnapshotAt ? wallClock : _lastSnapshotAt + 1;
+    _lastSnapshotAt = next;
+    return next;
+  }
 }

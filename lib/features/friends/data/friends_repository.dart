@@ -8173,12 +8173,17 @@ class SocialProfile {
     required this.friendsCount,
     this.gamesPlayed = 0,
     this.packsCount = 0,
+    this.generalScore = 0,
+    this.currentStreak = 0,
+    this.honestyPoints = 0,
     this.friendshipStatus,
+    this.isFriendshipRequester = false,
     this.isFollowing = false,
     this.isFollowedBy = false,
     this.isBlocked = false,
     this.isBlockedBy = false,
     this.isVerified = false,
+    this.isOfficial = false,
   });
 
   final String userId;
@@ -8193,14 +8198,88 @@ class SocialProfile {
   final int friendsCount;
   final int gamesPlayed;
   final int packsCount;
+
+  /// Task item 4 — server-authoritative (score_events); task item 5 —
+  /// from user_streaks. Same public visibility as gamesPlayed/packsCount
+  /// above (profiles_public / user_streaks have no per-viewer
+  /// restriction beyond banned/deleted).
+  final int generalScore;
+  final int currentStreak;
+
+  /// Separate ledger from [generalScore] — see honesty_events/
+  /// apply_honesty_event(). Same public visibility as the rest of this
+  /// bucket. Can be negative.
+  final int honestyPoints;
   final FriendshipStatus? friendshipStatus;
+
+  /// True when the VIEWER sent this friendship's request — only
+  /// meaningful while [friendshipStatus] is pending. Distinguishes "I
+  /// sent this" (cancel makes sense) from "they sent me this" (accept/
+  /// reject makes sense), which the status alone can't tell apart.
+  final bool isFriendshipRequester;
   final bool isFollowing;
   final bool isFollowedBy;
   final bool isBlocked;
   final bool isBlockedBy;
   final bool isVerified;
 
+  /// The official Jma3a system creator profile
+  /// (profiles.is_official_account) — UserProfileScreen renders a
+  /// completely different, minimal layout for this (logo, name, verified
+  /// badge, packs only) instead of the normal profile UI. Not something a
+  /// real user's profile can ever have set.
+  final bool isOfficial;
+
   bool get canInteract => !isBlocked && !isBlockedBy;
+}
+
+/// One row from the explore_people() discovery feed — see
+/// 20260901090100_explore_people.sql for the full ranking/50%-pool/
+/// pagination contract this mirrors. Deliberately reuses the same
+/// honesty/score field shape as [SocialProfile] rather than a third DTO;
+/// kept as its own lightweight class (not SocialProfile itself) because
+/// every candidate here is, by construction, someone with NO existing
+/// friendship/block relationship to the viewer — none of SocialProfile's
+/// friendship/block/follow fields are meaningful for a row this endpoint
+/// can ever return.
+class ExplorePerson {
+  const ExplorePerson({
+    required this.userId,
+    required this.username,
+    required this.displayName,
+    this.avatarUrl,
+    required this.honestyPoints,
+    required this.generalScore,
+    required this.rankPosition,
+    required this.totalEligible,
+    required this.discoveryPoolSize,
+  });
+
+  final String userId;
+  final String? username;
+  final String displayName;
+  final String? avatarUrl;
+  final int honestyPoints;
+  final int generalScore;
+
+  /// This candidate's 1-based ordinal in the deterministic
+  /// reputation_rank DESC, id ASC ordering — the pagination cursor for
+  /// the NEXT page (see FriendsRepository.explorePeople).
+  final int rankPosition;
+  final int totalEligible;
+  final int discoveryPoolSize;
+
+  static ExplorePerson fromMap(Map<String, dynamic> m) => ExplorePerson(
+    userId: m['id'] as String,
+    username: m['username'] as String?,
+    displayName: (m['display_name'] as String?) ?? (m['username'] as String?) ?? '',
+    avatarUrl: m['avatar_url'] as String?,
+    honestyPoints: (m['honesty_points'] as num?)?.toInt() ?? 0,
+    generalScore: (m['general_score'] as num?)?.toInt() ?? 0,
+    rankPosition: (m['rank_position'] as num?)?.toInt() ?? 0,
+    totalEligible: (m['total_eligible'] as num?)?.toInt() ?? 0,
+    discoveryPoolSize: (m['discovery_pool_size'] as num?)?.toInt() ?? 0,
+  );
 }
 
 class FriendsRepository extends BaseRepository {
@@ -8292,7 +8371,22 @@ class FriendsRepository extends BaseRepository {
   }) => guardedCall(
     operationName: 'sendFriendRequest',
     operation: () async {
+      await _checkNotOfficial(requesterId, addresseeId);
       await _checkNotBlocked(requesterId, addresseeId);
+      // Defense in depth against the "both users request each other"
+      // race: the UI's own state can be stale (e.g. before a realtime
+      // update lands), so re-check the live relationship state right
+      // before inserting rather than trusting only the caller's cache.
+      // uq_friendship_unordered_pair backs this up server-side too.
+      final existing = await getFriendshipStatus(
+        userId: requesterId,
+        otherId: addresseeId,
+      );
+      if (existing != null) {
+        throw const ConflictFailure(
+          message: 'A friend request already exists between these users.',
+        );
+      }
       await _supabase.from('friendships').insert({
         'requester_id': requesterId,
         'addressee_id': addresseeId,
@@ -8404,7 +8498,28 @@ class FriendsRepository extends BaseRepository {
           .eq('follower_id', userId)
           .order('created_at', ascending: false)
           .limit(limit);
-      return rows.map((r) => _toFollowEntity(r, followingMode: true)).toList();
+      return rows.map(_toFollowEntity).toList();
+    },
+  );
+
+  /// Bulk "does [viewerId] already follow each of [otherIds]" — one round
+  /// trip, same idiom as [getFriendshipStatuses], so a followers-list
+  /// screen can show a correct Follow/Following state per row without an
+  /// N+1 query per follower.
+  Future<Map<String, bool>> getFollowStatuses({
+    required String viewerId,
+    required List<String> otherIds,
+  }) => guardedCall(
+    operationName: 'getFollowStatuses',
+    operation: () async {
+      if (otherIds.isEmpty) return <String, bool>{};
+      final rows = await _supabase
+          .from('follows')
+          .select('followee_id')
+          .eq('follower_id', viewerId)
+          .inFilter('followee_id', otherIds);
+      final followedIds = rows.map((r) => r['followee_id'] as String).toSet();
+      return {for (final id in otherIds) id: followedIds.contains(id)};
     },
   );
 
@@ -8489,7 +8604,7 @@ class FriendsRepository extends BaseRepository {
         final fallbackRows = await _supabase
             .from('profiles')
             .select(
-              'id, display_name, username, avatar_url, avatar_config, is_premium, bio',
+              'id, display_name, username, avatar_url, avatar_config, is_premium, bio, is_official_account',
             )
             .eq('id', targetUserId)
             .limit(1);
@@ -8529,6 +8644,9 @@ class FriendsRepository extends BaseRepository {
           friendsCount: 0,
           gamesPlayed: 0,
           packsCount: 0,
+          generalScore: (profile['general_score'] as num?)?.toInt() ?? 0,
+          honestyPoints: (profile['honesty_points'] as num?)?.toInt() ?? 0,
+          isOfficial: profile['is_official_account'] as bool? ?? false,
         );
       }
 
@@ -8538,6 +8656,7 @@ class FriendsRepository extends BaseRepository {
         friendshipRow,
         followingRow,
         followedByRow,
+        streakRow,
       ] = await Future.wait([
         _supabase
             .from('blocked_users')
@@ -8553,7 +8672,7 @@ class FriendsRepository extends BaseRepository {
             .maybeSingle(),
         _supabase
             .from('friendships')
-            .select('status')
+            .select('status, requester_id')
             .or(
               'and(requester_id.eq.$viewerUserId,addressee_id.eq.$targetUserId),'
               'and(requester_id.eq.$targetUserId,addressee_id.eq.$viewerUserId)',
@@ -8571,14 +8690,22 @@ class FriendsRepository extends BaseRepository {
             .eq('follower_id', targetUserId)
             .eq('followee_id', viewerUserId)
             .maybeSingle(),
+        _supabase
+            .from('user_streaks')
+            .select('current_streak')
+            .eq('user_id', targetUserId)
+            .maybeSingle(),
       ]);
 
       FriendshipStatus? friendStatus;
+      var isFriendshipRequester = false;
       if (friendshipRow != null) {
+        final row = friendshipRow as Map;
         friendStatus = FriendshipStatus.values.firstWhere(
-          (s) => s.name == (friendshipRow as Map)['status'],
+          (s) => s.name == row['status'],
           orElse: () => FriendshipStatus.pending,
         );
+        isFriendshipRequester = row['requester_id'] == viewerUserId;
       }
 
       return SocialProfile(
@@ -8596,12 +8723,18 @@ class FriendsRepository extends BaseRepository {
         friendsCount: (profile['friends_count'] as num?)?.toInt() ?? 0,
         gamesPlayed: (profile['games_played'] as num?)?.toInt() ?? 0,
         packsCount: (profile['packs_count'] as num?)?.toInt() ?? 0,
+        generalScore: (profile['general_score'] as num?)?.toInt() ?? 0,
+        honestyPoints: (profile['honesty_points'] as num?)?.toInt() ?? 0,
+        currentStreak:
+            ((streakRow as Map?)?['current_streak'] as num?)?.toInt() ?? 0,
         friendshipStatus: friendStatus,
+        isFriendshipRequester: isFriendshipRequester,
         isFollowing: followingRow != null,
         isFollowedBy: followedByRow != null,
         isBlocked: blockedByMe != null,
         isBlockedBy: blockedByThem != null,
         isVerified: profile['verification_status'] == 'verified',
+        isOfficial: profile['is_official_account'] as bool? ?? false,
       );
     },
   );
@@ -8639,6 +8772,47 @@ class FriendsRepository extends BaseRepository {
     },
   );
 
+  /// Bulk equivalent of [getFriendshipStatus] — one round trip covering
+  /// every id in [otherIds], keyed by the other user's id. Used by search
+  /// results so each row reflects the live relationship state instead of
+  /// FriendsProvider's cached friends/sentRequests/pendingRequests lists
+  /// (which only update on login/refresh/realtime and can show a stale
+  /// "Add Friend" for a relationship that already exists).
+  Future<Map<String, FriendEntity>> getFriendshipStatuses({
+    required String userId,
+    required List<String> otherIds,
+  }) => guardedCall(
+    operationName: 'getFriendshipStatuses',
+    operation: () async {
+      if (otherIds.isEmpty) return <String, FriendEntity>{};
+      final idList = otherIds.map((id) => '"$id"').join(',');
+      final rows = await _supabase
+          .from('friendships')
+          .select()
+          .or(
+            'and(requester_id.eq.$userId,addressee_id.in.($idList)),'
+            'and(addressee_id.eq.$userId,requester_id.in.($idList))',
+          );
+      final result = <String, FriendEntity>{};
+      for (final row in rows) {
+        final requesterId = row['requester_id'] as String;
+        final addresseeId = row['addressee_id'] as String;
+        final otherId = requesterId == userId ? addresseeId : requesterId;
+        result[otherId] = FriendEntity(
+          userId: otherId,
+          displayName: '',
+          status: FriendshipStatus.values.firstWhere(
+            (s) => s.name == (row['status'] as String? ?? 'pending'),
+            orElse: () => FriendshipStatus.pending,
+          ),
+          isRequester: requesterId == userId,
+          friendshipId: row['id'] as String?,
+        );
+      }
+      return result;
+    },
+  );
+
   Future<FriendEntity?> getFriendshipStatus({
     required String userId,
     required String otherId,
@@ -8666,6 +8840,52 @@ class FriendsRepository extends BaseRepository {
       );
     },
   );
+
+  /// Jma3a Official (profiles.is_official_account) can never send or
+  /// receive a friend request in either direction — this is a friendly,
+  /// fast client-side pre-check for a clear error message; the real
+  /// authority is the "friendships: requester insert" RLS policy (see
+  /// 20260901090700_block_official_account_friend_requests.sql), which
+  /// rejects the insert regardless of what this check does or whether a
+  /// client bypasses it entirely.
+  /// Public, reusable version of the same officialness check — for UI call
+  /// sites (e.g. a room member's action sheet) that need to decide whether
+  /// to show a friend-request affordance at all, not just validate a send
+  /// attempt. Same source of truth as [_checkNotOfficial]; never guesses
+  /// from a username. Fails open (false) on error so a transient lookup
+  /// failure can never itself block a normal user's friend-request UI —
+  /// the RLS policy remains the real backstop either way.
+  Future<bool> isOfficialAccount(String userId) async {
+    try {
+      final row = await _supabase
+          .from('profiles')
+          .select('id')
+          .eq('id', userId)
+          .eq('is_official_account', true)
+          .maybeSingle();
+      return row != null;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> _checkNotOfficial(String a, String b) async {
+    try {
+      final rows = await _supabase
+          .from('profiles')
+          .select('id')
+          .inFilter('id', [a, b])
+          .eq('is_official_account', true)
+          .limit(1);
+      if ((rows as List).isNotEmpty) {
+        throw const ForbiddenFailure(
+          message: 'Jma3a Official cannot send or receive friend requests.',
+        );
+      }
+    } on ForbiddenFailure {
+      rethrow;
+    } catch (_) {}
+  }
 
   Future<void> _checkNotBlocked(String a, String b) async {
     try {
@@ -8712,14 +8932,15 @@ class FriendsRepository extends BaseRepository {
     );
   }
 
-  FollowEntity _toFollowEntity(
-    Map<String, dynamic> row, {
-    bool followingMode = false,
-  }) {
-    final profile =
-        row[followingMode ? 'profiles!followee_id' : 'profiles!follower_id']
-            as Map<String, dynamic>? ??
-        {};
+  FollowEntity _toFollowEntity(Map<String, dynamic> row) {
+    // PostgREST's response key for an unaliased embed hint
+    // (`profiles!follower_id(...)`) is always the plain table name
+    // ('profiles') — the `!hint` suffix only disambiguates which FK to
+    // join on and is dropped from the response. Reading
+    // 'profiles!follower_id' here always missed, silently defaulting
+    // every follower's userId to '' (matches getBlockedUsers' correct
+    // `r['profiles']` read a few methods up).
+    final profile = row['profiles'] as Map<String, dynamic>? ?? {};
     return FollowEntity(
       userId: profile['id'] as String? ?? '',
       displayName: profile['display_name'] as String? ?? 'User',
@@ -8733,4 +8954,44 @@ class FriendsRepository extends BaseRepository {
       isVerified: profile['verification_status'] == 'verified',
     );
   }
+
+  /// Server-authoritative, ranked, privacy-limited discovery feed — see
+  /// public.explore_people() for the full contract (eligibility
+  /// exclusions, the 0.5/0.5 percent_rank reputation formula, the
+  /// >100-eligible-users 50% discovery-pool rule, and keyset pagination).
+  /// Every exclusion (self, friends, pending either direction, blocked
+  /// either direction, banned/deleted, the 50% cutoff) is enforced by the
+  /// RPC itself — this is a thin pass-through, never a second place that
+  /// could disagree with the server about who's discoverable.
+  ///
+  /// Pagination is keyset-based on [afterRankPosition] (the last row's
+  /// `rankPosition` from the previous page) rather than an offset, so
+  /// scrolling can never duplicate or skip a candidate even as the
+  /// underlying ranking is recomputed per call — see the migration's own
+  /// header for why this was chosen over OFFSET.
+  ///
+  /// [search] filters WITHIN the already-privacy-limited discovery pool
+  /// (by username/display name) — it can never surface someone outside
+  /// the 50% cutoff; this is enforced server-side, not merely a client
+  /// convention.
+  Future<List<ExplorePerson>> explorePeople({
+    int limit = 20,
+    int? afterRankPosition,
+    String? search,
+  }) => guardedCall(
+    operationName: 'explorePeople',
+    operation: () async {
+      final rows = await _supabase.rpc(
+        'explore_people',
+        params: {
+          'p_limit': limit,
+          'p_after_rank_position': afterRankPosition,
+          'p_search': (search == null || search.trim().isEmpty) ? null : search.trim(),
+        },
+      );
+      return (rows as List)
+          .map((r) => ExplorePerson.fromMap(Map<String, dynamic>.from(r as Map)))
+          .toList();
+    },
+  );
 }

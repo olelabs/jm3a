@@ -1959,8 +1959,11 @@ class AuthRepository extends BaseRepository {
         final refreshed = await _supabase.auth.refreshSession();
         if (refreshed.session == null) return (null, null);
         final user = await _fetchCurrentProfile(refreshed.session!.user.id);
+        if (user != null) await _rejectIfSuspended(user);
         AppLogger.info('AuthRepository: session restored via refresh');
         return (refreshed.session, user);
+      } on SuspendedFailure {
+        rethrow;
       } catch (e) {
         AppLogger.warning('AuthRepository: token refresh failed, $e');
         return (null, null);
@@ -1968,8 +1971,27 @@ class AuthRepository extends BaseRepository {
     }
 
     final user = await _fetchCurrentProfile(session.user.id);
+    if (user != null) await _rejectIfSuspended(user);
     AppLogger.info('AuthRepository: session restored');
     return (session, user);
+  }
+
+  /// Startup/session-restore and login share this same check — a banned
+  /// or still-suspended account never gets past either path. Kills the
+  /// Supabase session immediately (not just returning an error) so a
+  /// stale valid token can't be reused, then throws SuspendedFailure,
+  /// which is already a Failure so it passes through guardedCall's
+  /// ErrorHandler.handle unchanged (see error_handler.dart's `final
+  /// Failure f => f` case).
+  Future<void> _rejectIfSuspended(UserEntity user) async {
+    if (!user.isBanned) return;
+    await _supabase.auth.signOut();
+    await _secure.deleteAll();
+    throw SuspendedFailure(
+      isPermanent: user.bannedUntil == null,
+      bannedUntil: user.bannedUntil,
+      banReason: user.banReason,
+    );
   }
 
   Future<void> savePendingOtpEmail(String email) =>
@@ -2045,10 +2067,207 @@ class AuthRepository extends BaseRepository {
                 _minimalUserEntity(session.user, email);
           }
 
+          // The server's has_password verdict is fresher than whatever
+          // the profile row (or the minimal fallback entity) carried —
+          // it's computed at the exact moment of this OTP verification,
+          // so it always wins.
+          final hasPassword = data['has_password'] as bool? ?? user.hasPassword;
+          user = user.copyWith(hasPassword: hasPassword);
+
+          // A brand-new user can never already be banned, but an
+          // existing one logging in again must be checked every time —
+          // this is the "login protection" requirement, not just
+          // session-restore.
+          await _rejectIfSuspended(user);
+
           AppLogger.info('OTP verified, session created. isNewUser=$isNewUser');
           return (session, user);
         },
       );
+
+  /// First-time password setup, and password reset after recovery-OTP
+  /// verification, share this single endpoint — the backend treats both
+  /// as "the caller already holds a valid session, set/replace the
+  /// password on that account." Requires an authenticated session (the
+  /// access token from either verifyOtp or a prior loginWithPassword).
+  ///
+  /// Root cause of the signup "Invalid or expired token" bug: Supabase
+  /// revokes the caller's OWN current session as a side effect of any
+  /// password change (admin API included), so the access token this
+  /// very request authenticated with is already dead by the time it
+  /// returns. The backend mints a fresh session for the same account
+  /// (authService.setPassword, same mechanism verifyOtp uses) and hands
+  /// it back here — adopted via setSession exactly like verifyOtp/
+  /// loginWithPassword already do, so ApiClient's interceptor (which
+  /// always reads Supabase.instance.client.auth.currentSession live)
+  /// picks up the new token before the next request — e.g. onboarding's
+  /// very next call, POST /setup-profile — is ever made.
+  ///
+  /// Returns the resynchronized [Session] (rather than void) so the
+  /// caller (AuthProvider) can assign it to its own session field
+  /// directly and deterministically — not just rely on the
+  /// authStateStream eventually delivering the same update.
+  Future<Session> setPassword(String password, String confirmation) =>
+      guardedCall(
+        operationName: 'setPassword',
+        operation: () async {
+          final response = await _api.post<Map<String, dynamic>>(
+            '/v1/auth/set-password',
+            data: {'password': password, 'password_confirmation': confirmation},
+          );
+
+          final data = response.data!['data'] as Map<String, dynamic>;
+          final accessToken = data['access_token'] as String? ?? '';
+          final refreshToken = data['refresh_token'] as String? ?? '';
+
+          if (accessToken.isEmpty || refreshToken.isEmpty) {
+            throw const AuthFailure(
+              message: 'No session token received from server.',
+            );
+          }
+
+          final authResponse = await _supabase.auth.setSession(
+            refreshToken,
+            accessToken: accessToken,
+          );
+          final session = authResponse.session;
+          if (session == null) {
+            throw const AuthFailure(message: 'Failed to refresh session.');
+          }
+
+          AppLogger.info('Password set, session resynchronized');
+          return session;
+        },
+      );
+
+  /// Settings' Update Password flow, step 2 — requires the CURRENT
+  /// password (verified server-side, see authService.changePassword);
+  /// never accepted on session validity alone. Distinct from
+  /// [setPassword] above, which is for an account that has no real
+  /// password yet. Never sends an OTP — Update Password and Forgot
+  /// Password are deliberately separate flows.
+  ///
+  /// Same session-resync requirement as [setPassword]: changing the
+  /// password revokes the session this call itself authenticated with,
+  /// so the fresh session the backend now returns must be adopted here
+  /// via setSession — otherwise the very next authenticated request
+  /// (e.g. navigating anywhere else in Settings) would 401.
+  Future<void> changePassword(
+    String currentPassword,
+    String newPassword,
+    String confirmation,
+  ) => guardedCall(
+    operationName: 'changePassword',
+    operation: () async {
+      final response = await _api.post<Map<String, dynamic>>(
+        '/v1/auth/change-password',
+        data: {
+          'current_password': currentPassword,
+          'new_password': newPassword,
+          'new_password_confirmation': confirmation,
+        },
+      );
+
+      final data = response.data!['data'] as Map<String, dynamic>;
+      final accessToken = data['access_token'] as String? ?? '';
+      final refreshToken = data['refresh_token'] as String? ?? '';
+
+      if (accessToken.isEmpty || refreshToken.isEmpty) {
+        throw const AuthFailure(
+          message: 'No session token received from server.',
+        );
+      }
+
+      final authResponse = await _supabase.auth.setSession(
+        refreshToken,
+        accessToken: accessToken,
+      );
+      if (authResponse.session == null) {
+        throw const AuthFailure(message: 'Failed to refresh session.');
+      }
+
+      AppLogger.info('Password changed, session resynchronized');
+    },
+  );
+
+  /// Update Password flow, step 1 — proves the CURRENT password is
+  /// correct with no side effects (never writes anything). Only once
+  /// this succeeds does the caller reveal the new-password fields and
+  /// call [changePassword] — no OTP anywhere in this flow.
+  Future<void> verifyCurrentPassword(String currentPassword) => guardedCall(
+    operationName: 'verifyCurrentPassword',
+    operation: () async {
+      await _api.post(
+        '/v1/auth/verify-password',
+        data: {'password': currentPassword},
+      );
+    },
+  );
+
+  /// Signup existence check — deliberately reveals whether an account
+  /// already exists for this identifier (unlike login, which never
+  /// does), so the signup screen can redirect straight to login instead
+  /// of letting someone attempt to create a second account.
+  Future<bool> checkIdentifierExists(String identifier) => guardedCall(
+    operationName: 'checkIdentifierExists',
+    operation: () async {
+      final response = await _api.post<Map<String, dynamic>>(
+        '/v1/auth/check-identifier',
+        data: {'identifier': identifier},
+      );
+      final data = response.data!['data'] as Map<String, dynamic>;
+      return data['exists'] as bool? ?? false;
+    },
+  );
+
+  /// Email/phone + password login for accounts that have already
+  /// completed password setup. Mirrors verifyOtp's session-establishment
+  /// shape exactly (setSession + suspension check) since the backend
+  /// hands back the same access/refresh token pair either way.
+  Future<(Session, UserEntity)> loginWithPassword(
+    String identifier,
+    String password,
+  ) => guardedCall(
+    operationName: 'loginWithPassword',
+    operation: () async {
+      final response = await _api.post<Map<String, dynamic>>(
+        '/v1/auth/login',
+        data: {'identifier': identifier, 'password': password},
+      );
+
+      final data = response.data!['data'] as Map<String, dynamic>;
+      final accessToken = data['access_token'] as String? ?? '';
+      final refreshToken = data['refresh_token'] as String? ?? '';
+
+      if (accessToken.isEmpty || refreshToken.isEmpty) {
+        throw const AuthFailure(
+          message: 'No session token received from server.',
+        );
+      }
+
+      final authResponse = await _supabase.auth.setSession(
+        refreshToken,
+        accessToken: accessToken,
+      );
+
+      final session = authResponse.session;
+      if (session == null) {
+        throw const AuthFailure(message: 'Failed to establish session.');
+      }
+
+      var user =
+          await _fetchCurrentProfile(session.user.id) ??
+          _minimalUserEntity(session.user, identifier);
+
+      final hasPassword = data['has_password'] as bool? ?? true;
+      user = user.copyWith(hasPassword: hasPassword);
+
+      await _rejectIfSuspended(user);
+
+      AppLogger.info('Password login succeeded');
+      return (session, user);
+    },
+  );
 
   Future<void> signOut() async {
     try {
@@ -2099,6 +2318,10 @@ class AuthRepository extends BaseRepository {
       onlineStatus: row['online_status'] as String? ?? 'offline',
       inGameStatus: row['in_game_status'] as bool? ?? false,
       isBanned: row['is_banned'] as bool? ?? false,
+      banReason: row['ban_reason'] as String?,
+      bannedUntil: row['banned_until'] != null
+          ? DateTime.parse(row['banned_until'] as String)
+          : null,
       usernameChangedAt: row['username_changed_at'] != null
           ? DateTime.parse(row['username_changed_at'] as String)
           : null,
@@ -2117,6 +2340,11 @@ class AuthRepository extends BaseRepository {
           ? DateTime.parse(row['premium_expires_at'] as String)
           : null,
       themeBackgroundColor: row['theme_background_color'] as String?,
+      presenceMode: row['presence_mode'] as String? ?? 'auto',
+      creatorPrivilegesRemovedAt: row['creator_privileges_removed_at'] != null
+          ? DateTime.parse(row['creator_privileges_removed_at'] as String)
+          : null,
+      hasPassword: row['has_password'] as bool? ?? false,
     );
   }
 }

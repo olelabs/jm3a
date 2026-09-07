@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/extensions/context_ext.dart';
 import '../../features/games/engine/base_game_engine.dart';
 import '../../features/rooms/domain/room_entity.dart';
 
@@ -49,7 +50,7 @@ class RulesButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return IconButton(
       icon: const Icon(Icons.menu_book_outlined),
-      tooltip: 'Rules',
+      tooltip: context.l10n.sharedRules,
       onPressed: () => showGameRulesSheet(
         context,
         gameType: gameType,
@@ -98,24 +99,24 @@ class GameRulesSheet extends StatelessWidget {
             ),
           ),
           Text(
-            '${gameType.displayName} — Rules',
+            context.l10n.sharedGameRulesTitle(_gameTypeName(context, gameType)),
             style: theme.textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: 16),
-          ..._staticSections(gameType).map(
+          ..._staticSections(context, gameType).map(
             (s) => _RuleSection(title: s.$1, body: s.$2),
           ),
           const Divider(height: 32),
           Text(
-            'This room\'s settings',
+            context.l10n.sharedRoomSettingsTitle,
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: 8),
-          ..._dynamicRules(gameType, config, roomSettings).map(
+          ..._dynamicRules(context, gameType, config, roomSettings).map(
             (r) => Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
               child: Row(
@@ -139,73 +140,43 @@ class GameRulesSheet extends StatelessWidget {
     );
   }
 
-  static List<(String, String)> _staticSections(GameType type) =>
-      switch (type) {
-        GameType.truthOrDare => const [
-          (
-            'Objective',
-            'Take turns choosing Truth or Dare. Answer honestly or complete '
-                'the dare — there\'s no "safe" option once you\'ve picked.',
-          ),
-          (
-            'Turn flow',
-            'The current player picks Truth or Dare, gets a card, and '
-                'either answers/performs it or (if allowed) skips. Then play '
-                'passes to the next player in order.',
-          ),
-          (
-            'Scoring',
-            'Completed truths and dares add to your score. Skips are '
-                'tracked too — they may trigger a punishment (see below).',
-          ),
-        ],
-        GameType.neverHaveIEver => const [
-          (
-            'Objective',
-            'Each round shows a "Never have I ever…" statement. Everyone '
-                'answers honestly whether they have or haven\'t.',
-          ),
-          (
-            'Turn flow',
-            'A new statement appears each round; every player votes, then '
-                'the round advances once everyone has answered.',
-          ),
-          (
-            'Scoring',
-            'Your history of honest answers builds your profile across the '
-                'game — there\'s no winner/loser, just revealing.',
-          ),
-        ],
-        GameType.memeGame => const [
-          (
-            'Objective',
-            'Submit the funniest caption or sticker for the round\'s prompt, '
-                'then vote for your favorite from everyone else\'s.',
-          ),
-          (
-            'Turn flow',
-            'Submission phase → voting phase → results, every round, until '
-                'the pack\'s prompts run out or the round limit is hit.',
-          ),
-          (
-            'Scoring',
-            'Whoever gets the most votes on a round wins that round\'s '
-                'point. Most points at the end wins the game.',
-          ),
-        ],
-      };
+  static List<(String, String)> _staticSections(
+    BuildContext context,
+    GameType type,
+  ) {
+    final l10n = context.l10n;
+    return switch (type) {
+      GameType.truthOrDare => [
+        (l10n.sharedRuleObjective, l10n.sharedTodRuleObjective),
+        (l10n.sharedRuleTurnFlow, l10n.sharedTodRuleTurnFlow),
+        (l10n.sharedRuleScoring, l10n.sharedTodRuleScoring),
+      ],
+      GameType.neverHaveIEver => [
+        (l10n.sharedRuleObjective, l10n.sharedNhieRuleObjective),
+        (l10n.sharedRuleTurnFlow, l10n.sharedNhieRuleTurnFlow),
+        (l10n.sharedRuleScoring, l10n.sharedNhieRuleScoring),
+      ],
+      GameType.memeGame => [
+        (l10n.sharedRuleObjective, l10n.sharedMemeRuleObjective),
+        (l10n.sharedRuleTurnFlow, l10n.sharedMemeRuleTurnFlow),
+        (l10n.sharedRuleScoring, l10n.sharedMemeRuleScoring),
+      ],
+    };
+  }
 
   static List<(IconData, String)> _dynamicRules(
+    BuildContext context,
     GameType type,
     GameConfig? config,
     RoomSettingsEntity? settings,
   ) {
+    final l10n = context.l10n;
     final rules = <(IconData, String)>[];
     final timerSecs = config?.turnTimerSeconds ?? settings?.turnTimerSeconds;
     if (timerSecs != null && timerSecs > 0) {
-      rules.add((Icons.timer_outlined, 'Turn timer: ${timerSecs}s'));
+      rules.add((Icons.timer_outlined, l10n.sharedRuleTurnTimer(timerSecs)));
     } else {
-      rules.add((Icons.timer_off_outlined, 'No turn timer'));
+      rules.add((Icons.timer_off_outlined, l10n.sharedRuleNoTurnTimer));
     }
 
     if (type == GameType.truthOrDare) {
@@ -213,38 +184,15 @@ class GameRulesSheet extends StatelessWidget {
       final enablePunishments =
           config?.enablePunishments ?? settings?.enablePunishments ?? false;
       if (allowSkip && enablePunishments) {
-        rules.add((
-          Icons.gavel_rounded,
-          'Punishment mode is ON — skipping means every other player '
-              'submits one punishment and you pick which you\'ll do.',
-        ));
+        rules.add((Icons.gavel_rounded, l10n.sharedRulePunishmentOn));
       } else if (!enablePunishments) {
-        rules.add((
-          Icons.block_rounded,
-          'Punishment mode is OFF — skipping isn\'t offered as an option.',
-        ));
+        rules.add((Icons.block_rounded, l10n.sharedRulePunishmentOff));
       }
 
-      final policy =
-          config?.proofVisibilityPolicy ??
-          settings?.proofVisibilityPolicy ??
-          'everyone';
-      final policyLabel = switch (policy) {
-        'players_only' => 'players only',
-        'spectators_only' => 'spectators only',
-        _ => 'everyone in the game',
-      };
-      rules.add((
-        Icons.visibility_outlined,
-        'Proof is visible to: $policyLabel.',
-      ));
-      final replayMode = config?.proofReplayMode ?? settings?.proofReplayMode;
-      rules.add((
-        Icons.replay_rounded,
-        replayMode == 'replay_once'
-            ? 'Proof can be viewed twice (Premium: three times).'
-            : 'Proof can be viewed once (Premium: twice).',
-      ));
+      // Proof visibility/replay are no longer a fixed, game-wide rule —
+      // the submitting player now chooses them per-Dare immediately before
+      // pressing Done (see TodCardScreen._showCompleteSheet), so there is
+      // no single policy left to display here.
     }
 
     if (settings != null) {
@@ -252,19 +200,19 @@ class GameRulesSheet extends StatelessWidget {
         rules.add((
           Icons.remove_red_eye_outlined,
           settings.spectatorApprovalRequired
-              ? 'Spectators are allowed, subject to host approval.'
-              : 'Spectators are allowed to watch freely.',
+              ? l10n.sharedRuleSpectatorsApprovalRequired
+              : l10n.sharedRuleSpectatorsFreelyAllowed,
         ));
       } else {
         rules.add((
           Icons.visibility_off_outlined,
-          'Spectators are not allowed in this room.',
+          l10n.sharedRuleSpectatorsNotAllowed,
         ));
       }
       if (settings.allowSpicy) {
         rules.add((
           Icons.local_fire_department_outlined,
-          'Spicy content is enabled for this room.',
+          l10n.sharedRuleSpicyEnabled,
         ));
       }
     }
@@ -272,6 +220,12 @@ class GameRulesSheet extends StatelessWidget {
     return rules;
   }
 }
+
+String _gameTypeName(BuildContext context, GameType type) => switch (type) {
+  GameType.truthOrDare => context.l10n.gameNameTruthOrDare,
+  GameType.neverHaveIEver => context.l10n.gameNameNeverHaveIEver,
+  GameType.memeGame => context.l10n.gameNameMeme,
+};
 
 class _RuleSection extends StatelessWidget {
   const _RuleSection({required this.title, required this.body});

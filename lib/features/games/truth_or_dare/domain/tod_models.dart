@@ -1929,6 +1929,26 @@ enum TodProofViewMode {
   timed, // shown for a fixed number of seconds, then auto-hides
 }
 
+/// Max total views (initial + replays) a viewer gets for an image proof,
+/// given the proof's view mode and the VIEWER's own premium status.
+/// Mirrors record_proof_view's v_max_views formula exactly (see
+/// migration_2026_proof_view_premium_replay_fix.sql) — this is DISPLAY
+/// only ("Replay (N left)"); the server RPC is the actual enforcement,
+/// this never grants a view the server would reject.
+///
+/// Premium always gets exactly ONE extra view (one replay) on top of
+/// whatever the room's configured mode already grants everyone — never
+/// two. 'once'/'timed' base = 1 (free=1, premium=2: initial + one
+/// replay). 'replayOnce' base = 2 (that mode already grants every viewer
+/// one replay; premium adds one more on top = 3).
+int todProofMaxViews({
+  required TodProofViewMode viewMode,
+  required bool isPremium,
+}) {
+  final base = viewMode == TodProofViewMode.replayOnce ? 2 : 1;
+  return isPremium ? base + 1 : base;
+}
+
 /// Where the proof photo came from — drives the Snapchat-style colored
 /// badge: red for a live camera shot, blue for an uploaded gallery photo.
 enum TodProofSource { camera, gallery, voice }
@@ -2036,6 +2056,14 @@ class TodProofVisibilitySettings {
 // VALUE OBJECTS
 // ═══════════════════════════════════════════════════════════════════════════
 
+/// The prefix TruthOrDareEngine gives a synthesized punishment "card" id
+/// (the one place that distinguishes an actual completed Dare from a
+/// skipped-Dare punishment consequence, since both share
+/// TodCardType.dare). Shared here so any code that needs the *effective*
+/// response type — e.g. honesty-vote scoring — has one source of truth
+/// instead of duplicating the prefix string.
+const kTodPunishmentCardIdPrefix = 'punishment_';
+
 class TodCard {
   const TodCard({
     required this.id,
@@ -2050,6 +2078,18 @@ class TodCard {
   final TodDifficulty difficulty;
 
   bool get isSpicy => difficulty == TodDifficulty.spicy;
+
+  /// A punishment consequence still reports [type] == dare (it's drawn
+  /// from suggestedPunishments/peer proposals, not a Truth), so this is
+  /// the only way to tell a punishment apart from a real completed Dare.
+  bool get isPunishment => id.startsWith(kTodPunishmentCardIdPrefix);
+
+  /// 'truth' | 'dare' | 'punishment' — the three-way classification
+  /// cast_honesty_vote's p_card_type expects, since [type] alone can't
+  /// distinguish a real Dare from a punishment.
+  String get honestyVoteCardType => type == TodCardType.truth
+      ? 'truth'
+      : (isPunishment ? 'punishment' : 'dare');
 
   Map<String, dynamic> toMap() => {
     'id': id,
@@ -2079,18 +2119,25 @@ class TodPunishment {
     required this.text,
     required this.proposedBy,
     required this.proposedAt,
+    this.sourceIndex,
   });
 
   final String id;
   final String text;
   final String proposedBy; // userId
   final int proposedAt; // epoch ms
+  // Index into GameConfig.suggestedPunishments for pack-sourced options only
+  // (null for peer-proposed ones) — the stable identifier TodState.
+  // usedPunishmentIndices tracks, since pack punishments have no DB id and
+  // free-text peer proposals aren't meaningfully "the same punishment" twice.
+  final int? sourceIndex;
 
   Map<String, dynamic> toMap() => {
     'id': id,
     'text': text,
     'proposed_by': proposedBy,
     'proposed_at': proposedAt,
+    'source_index': sourceIndex,
   };
 
   static TodPunishment fromMap(Map<String, dynamic> m) => TodPunishment(
@@ -2098,6 +2145,7 @@ class TodPunishment {
     text: m['text'] as String,
     proposedBy: m['proposed_by'] as String,
     proposedAt: m['proposed_at'] as int,
+    sourceIndex: m['source_index'] as int?,
   );
 }
 
@@ -2238,11 +2286,18 @@ class TodRoundRecord {
     this.proofWatchedBy = const [],
     this.reactions = const [],
     this.votes = const [],
+    this.turnStartedAt,
   });
   final int roundNumber;
   final String playerId;
   final TodCard? card;
   final String response;
+  // Join key into tod_proof_views (session_id + turn_started_at) — lets the
+  // history UI fetch a server-authoritative replay count for this specific
+  // round. Null for rounds recorded before this field existed (or when the
+  // turn had no timer/proof context); the UI simply skips the replay
+  // lookup for those, it never fabricates a count.
+  final int? turnStartedAt;
   // ✅ History NEVER stores the actual proof photo — only whether one
   // existed and who watched it. The media itself lives only on
   // TodState.turnProofImageB64 during the live turn, and is discarded once
@@ -2264,6 +2319,7 @@ class TodRoundRecord {
     'proof_watched_by': proofWatchedBy,
     'reactions': reactions.map((r) => r.toMap()).toList(),
     'votes': votes.map((v) => v.toMap()).toList(),
+    'turn_started_at': turnStartedAt,
   };
 
   static TodRoundRecord fromMap(Map<String, dynamic> m) => TodRoundRecord(
@@ -2285,6 +2341,7 @@ class TodRoundRecord {
             ?.map((v) => TodResponseVote.fromMap(v as Map<String, dynamic>))
             .toList() ??
         [],
+    turnStartedAt: m['turn_started_at'] as int?,
   );
 
   TodRoundRecord copyWith({
@@ -2300,7 +2357,65 @@ class TodRoundRecord {
     proofWatchedBy: proofWatchedBy ?? this.proofWatchedBy,
     reactions: reactions ?? this.reactions,
     votes: votes ?? this.votes,
+    turnStartedAt: turnStartedAt,
   );
+}
+
+/// Pure lookup: the effective card type ('truth'/'dare'/'punishment') of
+/// the response for [roundNumber] within [state], for honesty-vote
+/// scoring. The engine appends a round's TodRoundRecord (with its real
+/// card, including a punishment "card") to state.history at the moment
+/// the response is submitted — before the round number itself advances —
+/// so during the awaiting-view/honesty-voting phase, history's last
+/// matching record already carries the authoritative type via ordinary
+/// state sync (the same broadcast every player already relies on for
+/// everything else in this round). Returns null when no matching record
+/// exists yet (defensive — cast_honesty_vote treats null as "use the
+/// existing normal rate", identical to today's behavior).
+String? honestyVoteCardTypeForRound(TodState state, int roundNumber) {
+  for (var i = state.history.length - 1; i >= 0; i--) {
+    final record = state.history[i];
+    if (record.roundNumber == roundNumber) return record.card?.honestyVoteCardType;
+  }
+  return null;
+}
+
+/// The realtime room-event payload broadcast right after a dishonest vote
+/// is SUCCESSFULLY cast (i.e. cast_honesty_vote already accepted it — this
+/// is never sent speculatively). Deliberately content-free: no reason
+/// text, no voter identity — just enough for the target's client to know
+/// "go re-check honesty_votes for this response", via the existing
+/// RLS-backed, anonymous HonestyVoteRepository.getDishonestReasons(). This
+/// is what keeps the anonymity guarantee intact over the realtime layer —
+/// there is nothing in this payload for a client to leak.
+Map<String, dynamic> buildDishonestReasonBroadcastPayload({
+  required String responseKey,
+  required String targetUserId,
+}) => {
+  'type': 'dishonest_reason_added',
+  'response_key': responseKey,
+  'target_user_id': targetUserId,
+  'ts': DateTime.now().millisecondsSinceEpoch,
+};
+
+/// Pure: applies an incoming 'dishonest_reason_added' broadcast to a
+/// per-response-key generation counter. DishonestReasonsPanel's ToD call
+/// site includes this generation in its widget Key, so a bump here forces
+/// Flutter to recreate the panel's State and re-run its one-shot fetch —
+/// reusing the panel's existing "fetch exactly once per key" contract
+/// instead of adding a second, stream-driven fetch path to a widget
+/// that's shared with NHIE/Meme (whose call sites never bump this, so
+/// they see no behavior change). Malformed/missing response_key is a
+/// no-op — never throws.
+Map<String, int> applyDishonestReasonSignal(
+  Map<String, int> generations,
+  Map<String, dynamic> payload,
+) {
+  final key = payload['response_key'] as String?;
+  if (key == null || key.isEmpty) return generations;
+  final next = Map<String, int>.from(generations);
+  next[key] = (next[key] ?? 0) + 1;
+  return next;
 }
 
 class TodState extends GameEngineState {
@@ -2322,6 +2437,7 @@ class TodState extends GameEngineState {
     this.turnOrderMode = TurnOrderMode.circular,
     this.randomTurnQueue = const [],
     this.usedCardIds = const [],
+    this.usedPunishmentIndices = const [],
     this.turnResponse = '',
     this.turnProofImageB64 = '',
     this.turnProofVoiceB64 = '',
@@ -2334,6 +2450,8 @@ class TodState extends GameEngineState {
     this.currentReactions = const [],
     this.currentVotes = const [],
     this.history = const [],
+    this.truthCountByPlayer = const {},
+    this.globalTruthStreak = 0,
   });
 
   final List<String> playerOrder;
@@ -2355,6 +2473,11 @@ class TodState extends GameEngineState {
   final TurnOrderMode turnOrderMode;
   final List<String> randomTurnQueue; // pre-shuffled for random mode
   final List<String> usedCardIds; // prevents re-dealing same card
+  // Indices (into GameConfig.suggestedPunishments) of pack punishments
+  // already picked this game — reset to [] once every option has been used
+  // at least once, so a small pack cycles instead of getting stuck with a
+  // permanently-empty option list.
+  final List<int> usedPunishmentIndices;
   final String turnResponse; // player's text response
   // Live proof photo for the CURRENT turn only — cleared by advanceTurn().
   // Never persisted into history; see TodRoundRecord.hadProof/proofWatchedBy.
@@ -2376,6 +2499,16 @@ class TodState extends GameEngineState {
   final List<TodReaction> currentReactions; // reactions to current turn
   final List<TodResponseVote> currentVotes; // votes for current response
   final List<TodRoundRecord> history; // completed rounds
+
+  // ── Force Dare rule bookkeeping (see GameConfig.forceDareMode) ─────────
+  /// userId → truths chosen so far this game. Consulted (and only ever
+  /// mutated) by TruthOrDareEngine._onChoice when forceDareMode ==
+  /// 'per_player'; harmless bookkeeping otherwise.
+  final Map<String, int> truthCountByPlayer;
+  /// Shared consecutive-truth counter across all players — consulted (and
+  /// only ever mutated) when forceDareMode == 'per_turn'. Resets to 0
+  /// whenever a dare (forced or freely chosen) happens.
+  final int globalTruthStreak;
 
   String get currentPlayerId => playerOrder.isEmpty
       ? ''
@@ -2413,6 +2546,7 @@ class TodState extends GameEngineState {
     String? endReason,
     List<String>? randomTurnQueue,
     List<String>? usedCardIds,
+    List<int>? usedPunishmentIndices,
     String? turnResponse,
     String? turnProofImageB64,
     String? turnProofVoiceB64,
@@ -2425,6 +2559,8 @@ class TodState extends GameEngineState {
     List<TodReaction>? currentReactions,
     List<TodResponseVote>? currentVotes,
     List<TodRoundRecord>? history,
+    Map<String, int>? truthCountByPlayer,
+    int? globalTruthStreak,
   }) => TodState(
     snapshotAt: snapshotAt ?? this.snapshotAt,
     playerOrder: playerOrder,
@@ -2449,6 +2585,7 @@ class TodState extends GameEngineState {
     turnOrderMode: turnOrderMode,
     randomTurnQueue: randomTurnQueue ?? this.randomTurnQueue,
     usedCardIds: usedCardIds ?? this.usedCardIds,
+    usedPunishmentIndices: usedPunishmentIndices ?? this.usedPunishmentIndices,
     turnResponse: turnResponse ?? this.turnResponse,
     turnProofImageB64: turnProofImageB64 ?? this.turnProofImageB64,
     turnProofVoiceB64: turnProofVoiceB64 ?? this.turnProofVoiceB64,
@@ -2463,6 +2600,8 @@ class TodState extends GameEngineState {
     currentReactions: currentReactions ?? this.currentReactions,
     currentVotes: currentVotes ?? this.currentVotes,
     history: history ?? this.history,
+    truthCountByPlayer: truthCountByPlayer ?? this.truthCountByPlayer,
+    globalTruthStreak: globalTruthStreak ?? this.globalTruthStreak,
   );
 
   Map<String, dynamic> toMap() => {
@@ -2483,6 +2622,7 @@ class TodState extends GameEngineState {
     'turn_order_mode': turnOrderMode.name,
     'random_turn_queue': randomTurnQueue,
     'used_card_ids': usedCardIds,
+    'used_punishment_indices': usedPunishmentIndices,
     'turn_response': turnResponse,
     'turn_proof_image': turnProofImageB64,
     'turn_proof_voice': turnProofVoiceB64,
@@ -2495,6 +2635,8 @@ class TodState extends GameEngineState {
     'current_reactions': currentReactions.map((r) => r.toMap()).toList(),
     'current_votes': currentVotes.map((v) => v.toMap()).toList(),
     'history': history.map((r) => r.toMap()).toList(),
+    'truth_count_by_player': truthCountByPlayer,
+    'global_truth_streak': globalTruthStreak,
   };
 
   static TodState fromMap(Map<String, dynamic> m) {
@@ -2532,6 +2674,8 @@ class TodState extends GameEngineState {
       ),
       randomTurnQueue: (m['random_turn_queue'] as List?)?.cast<String>() ?? [],
       usedCardIds: (m['used_card_ids'] as List?)?.cast<String>() ?? [],
+      usedPunishmentIndices:
+          (m['used_punishment_indices'] as List?)?.cast<int>() ?? [],
       turnResponse: m['turn_response'] as String? ?? '',
       turnProofImageB64: m['turn_proof_image'] as String? ?? '',
       turnProofVoiceB64: m['turn_proof_voice'] as String? ?? '',
@@ -2573,6 +2717,11 @@ class TodState extends GameEngineState {
               ?.map((r) => TodRoundRecord.fromMap(r as Map<String, dynamic>))
               .toList() ??
           [],
+      truthCountByPlayer:
+          (m['truth_count_by_player'] as Map<String, dynamic>? ?? {}).map(
+            (k, v) => MapEntry(k, (v as num).toInt()),
+          ),
+      globalTruthStreak: m['global_truth_streak'] as int? ?? 0,
     );
   }
 }

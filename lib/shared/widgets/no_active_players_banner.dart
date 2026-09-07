@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/extensions/context_ext.dart';
 import '../../features/rooms/presentation/room_provider.dart';
 
 /// Shown to the owner when every other active, non-spectator participant
@@ -26,7 +27,16 @@ class NoActivePlayersBanner extends StatelessWidget {
     return AnimatedBuilder(
       animation: rp,
       builder: (context, _) {
-        if (!rp.hasNoActivePlayers) return const SizedBox.shrink();
+        // The pause overlay (HostReconnectOverlay) is painted as an early
+        // return from each game screen's own Consumer builder — it does
+        // NOT cover sibling Stack children rendered alongside it (this
+        // banner, the join-requests panel), which otherwise stay visible
+        // and tappable on top of it. onEndGame is a genuine game-state
+        // mutation and must not be reachable while the room is paused for
+        // a disconnected host (see RoomProvider.isPausedForHostReconnect).
+        if (!rp.hasNoActivePlayers || rp.isPausedForHostReconnect) {
+          return const SizedBox.shrink();
+        }
         final theme = Theme.of(context);
         return SafeArea(
           child: Padding(
@@ -48,21 +58,32 @@ class NoActivePlayersBanner extends StatelessWidget {
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        'Every other player has left. The game cannot '
-                        'continue — end it when you\'re ready.',
+                        context.l10n.sharedEveryoneLeftNotice,
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onErrorContainer,
                         ),
                       ),
                     ),
                     const SizedBox(width: 8),
-                    FilledButton(
-                      style: FilledButton.styleFrom(
-                        backgroundColor: theme.colorScheme.error,
-                        foregroundColor: theme.colorScheme.onError,
+                    // Explicit minimumSize:Size.zero — the app-wide
+                    // FilledButton theme sets minimumSize:
+                    // Size(double.infinity, 52); a non-Expanded Row child
+                    // receives an unbounded max width, so this throws
+                    // "BoxConstraints forces an infinite width" without
+                    // the override (see lobby_screen.dart's identical
+                    // fix/comment for the full explanation).
+                    SizedBox(
+                      height: 34,
+                      child: FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: theme.colorScheme.error,
+                          foregroundColor: theme.colorScheme.onError,
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        onPressed: onEndGame,
+                        child: Text(context.l10n.sharedEndGame),
                       ),
-                      onPressed: onEndGame,
-                      child: const Text('End Game'),
                     ),
                   ],
                 ),

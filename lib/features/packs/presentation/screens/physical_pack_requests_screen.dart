@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/extensions/context_ext.dart';
 import '../../../../shared/widgets/feedback/error_view.dart';
 import '../../data/pack_repository.dart';
 
@@ -49,7 +50,7 @@ class _PhysicalPackRequestsScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('My Physical Pack Requests')),
+      appBar: AppBar(title: Text(context.l10n.packMyPhysicalRequests)),
       body: RefreshIndicator(
         onRefresh: _load,
         child: _loading
@@ -58,9 +59,9 @@ class _PhysicalPackRequestsScreenState
             ? ErrorView(message: _error!, onRetry: _load)
             : _requests.isEmpty
             ? ListView(
-                children: const [
-                  SizedBox(height: 120),
-                  Center(child: Text('No requests yet.')),
+                children: [
+                  const SizedBox(height: 120),
+                  Center(child: Text(context.l10n.packNoRequestsYet)),
                 ],
               )
             : ListView.separated(
@@ -70,10 +71,12 @@ class _PhysicalPackRequestsScreenState
                 itemBuilder: (_, i) {
                   final r = _requests[i];
                   final pack = r['packs'] as Map<String, dynamic>?;
+                  final titleJson = pack?['title'] as Map<String, dynamic>?;
+                  final lang = Localizations.localeOf(context).languageCode;
                   final title =
-                      (pack?['title'] as Map<String, dynamic>?)?['en']
-                          as String? ??
-                      'Pack';
+                      titleJson?[lang] as String? ??
+                      titleJson?['en'] as String? ??
+                      context.l10n.packFallbackTitle;
                   return Card(
                     child: Padding(
                       padding: const EdgeInsets.all(16),
@@ -111,16 +114,22 @@ class _PhysicalPackRequestsScreenState
 /// Vertical stepper: each entry is (status value, label, timestamp column).
 /// Adding a real shipping-provider integration later only ever means adding
 /// a new entry here — the widget below is generic over this list.
-const _kStages = [
-  ('pending', 'Request Submitted', 'created_at'),
-  ('payment_confirmed', 'Payment Confirmed', 'payment_confirmed_at'),
-  ('under_review', 'Under Review', 'under_review_at'),
-  ('printing', 'Printing', 'printing_at'),
-  ('packaging', 'Packaging', 'packaging_at'),
-  ('out_for_delivery', 'Out for Delivery', 'out_for_delivery_at'),
-  ('delivered', 'Delivered', 'delivered_at'),
-  ('completed', 'Completed', 'completed_at'),
+List<(String, String, String)> _stages(BuildContext context) => [
+  ('pending', context.l10n.packStageRequestSubmitted, 'created_at'),
+  ('payment_confirmed', context.l10n.packStagePaymentConfirmed, 'payment_confirmed_at'),
+  ('under_review', context.l10n.packStageUnderReview, 'under_review_at'),
+  ('printing', context.l10n.packStagePrinting, 'printing_at'),
+  ('packaging', context.l10n.packStagePackaging, 'packaging_at'),
+  ('out_for_delivery', context.l10n.packStageOutForDelivery, 'out_for_delivery_at'),
+  ('delivered', context.l10n.packStageDelivered, 'delivered_at'),
+  ('completed', context.l10n.packStageCompleted, 'completed_at'),
 ];
+
+String _formatTimestamp(DateTime dt) {
+  final h = dt.hour.toString().padLeft(2, '0');
+  final m = dt.minute.toString().padLeft(2, '0');
+  return '${dt.day}/${dt.month}/${dt.year} $h:$m';
+}
 
 class _RequestTimeline extends StatelessWidget {
   const _RequestTimeline({required this.request});
@@ -129,12 +138,6 @@ class _RequestTimeline extends StatelessWidget {
   DateTime? _ts(String column) {
     final raw = request[column] as String?;
     return raw != null ? DateTime.tryParse(raw) : null;
-  }
-
-  String _formatTs(DateTime dt) {
-    final h = dt.hour.toString().padLeft(2, '0');
-    final m = dt.minute.toString().padLeft(2, '0');
-    return '${dt.day}/${dt.month}/${dt.year} $h:$m';
   }
 
   @override
@@ -157,8 +160,8 @@ class _RequestTimeline extends StatelessWidget {
             Expanded(
               child: Text(
                 cancelledAt != null
-                    ? 'Cancelled on ${_formatTs(cancelledAt)}'
-                    : 'Cancelled',
+                    ? context.l10n.packCancelledOn(_formatTimestamp(cancelledAt))
+                    : context.l10n.packCancelled,
                 style: TextStyle(color: theme.colorScheme.error),
               ),
             ),
@@ -176,20 +179,21 @@ class _RequestTimeline extends StatelessWidget {
       'shipped' => 'out_for_delivery',
       _ => status,
     };
-    final currentIndex = _kStages.indexWhere(
+    final stages = _stages(context);
+    final currentIndex = stages.indexWhere(
       (s) => s.$1 == effectiveStatus,
-    ).clamp(0, _kStages.length - 1);
+    ).clamp(0, stages.length - 1);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        for (var i = 0; i < _kStages.length; i++)
+        for (var i = 0; i < stages.length; i++)
           _StageRow(
-            label: _kStages[i].$2,
-            timestamp: _ts(_kStages[i].$3),
+            label: stages[i].$2,
+            timestamp: _ts(stages[i].$3),
             isDone: i < currentIndex,
             isCurrent: i == currentIndex,
-            isLast: i == _kStages.length - 1,
+            isLast: i == stages.length - 1,
           ),
       ],
     );
@@ -209,12 +213,6 @@ class _StageRow extends StatelessWidget {
   final bool isDone;
   final bool isCurrent;
   final bool isLast;
-
-  String _formatTs(DateTime dt) {
-    final h = dt.hour.toString().padLeft(2, '0');
-    final m = dt.minute.toString().padLeft(2, '0');
-    return '${dt.day}/${dt.month}/${dt.year} $h:$m';
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -271,7 +269,7 @@ class _StageRow extends StatelessWidget {
                   ),
                   if (timestamp != null)
                     Text(
-                      _formatTs(timestamp!),
+                      _formatTimestamp(timestamp!),
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                       ),

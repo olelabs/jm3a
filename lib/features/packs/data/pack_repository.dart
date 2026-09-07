@@ -44,7 +44,7 @@
 // // // // // // // // //                 card_count, avg_rating, total_ratings, total_purchases,
 // // // // // // // // //                 total_plays, version, has_spicy, is_featured, is_promoted,
 // // // // // // // // //                 category_id, download_url, published_at, created_at,
-// // // // // // // // //                 profiles!creator_id(username, display_name, avatar_url, verification_status)
+// // // // // // // // //                 profiles!creator_id(username, display_name, avatar_url, verification_status, is_official_account)
 // // // // // // // // //               ''')
 // // // // // // // // //           .eq('status', 'approved')
 // // // // // // // // //           .isFilter('deleted_at', null);
@@ -75,7 +75,7 @@
 // // // // // // // // //                 avg_rating, total_ratings, total_purchases, total_plays,
 // // // // // // // // //                 version, has_spicy, is_featured, is_promoted,
 // // // // // // // // //                 category_id, download_url,
-// // // // // // // // //                 profiles!creator_id(username, display_name, avatar_url, verification_status)
+// // // // // // // // //                 profiles!creator_id(username, display_name, avatar_url, verification_status, is_official_account)
 // // // // // // // // //               ''')
 // // // // // // // // //           .eq('status', 'approved')
 // // // // // // // // //           .eq('is_featured', true)
@@ -123,7 +123,7 @@
 // // // // // // // // //           .from('packs')
 // // // // // // // // //           .select('''
 // // // // // // // // //                 *,
-// // // // // // // // //                 profiles!creator_id(username, display_name, avatar_url, verification_status),
+// // // // // // // // //                 profiles!creator_id(username, display_name, avatar_url, verification_status, is_official_account),
 // // // // // // // // //                 pack_tags(tag)
 // // // // // // // // //               ''')
 // // // // // // // // //           .eq('id', packId)
@@ -598,7 +598,7 @@
 // // // // // // // //                 card_count, avg_rating, total_ratings, total_purchases,
 // // // // // // // //                 total_plays, version, has_spicy, is_featured, is_promoted,
 // // // // // // // //                 category_id, download_url, published_at, created_at,
-// // // // // // // //                 profiles!creator_id(username, display_name, avatar_url, verification_status)
+// // // // // // // //                 profiles!creator_id(username, display_name, avatar_url, verification_status, is_official_account)
 // // // // // // // //               ''')
 // // // // // // // //           .eq('status', 'approved')
 // // // // // // // //           .isFilter('deleted_at', null);
@@ -629,7 +629,7 @@
 // // // // // // // //                 avg_rating, total_ratings, total_purchases, total_plays,
 // // // // // // // //                 version, has_spicy, is_featured, is_promoted,
 // // // // // // // //                 category_id, download_url,
-// // // // // // // //                 profiles!creator_id(username, display_name, avatar_url, verification_status)
+// // // // // // // //                 profiles!creator_id(username, display_name, avatar_url, verification_status, is_official_account)
 // // // // // // // //               ''')
 // // // // // // // //           .eq('status', 'approved')
 // // // // // // // //           .eq('is_featured', true)
@@ -677,7 +677,7 @@
 // // // // // // // //           .from('packs')
 // // // // // // // //           .select('''
 // // // // // // // //                 *,
-// // // // // // // //                 profiles!creator_id(username, display_name, avatar_url, verification_status),
+// // // // // // // //                 profiles!creator_id(username, display_name, avatar_url, verification_status, is_official_account),
 // // // // // // // //                 pack_tags(tag)
 // // // // // // // //               ''')
 // // // // // // // //           .eq('id', packId)
@@ -1154,7 +1154,7 @@
 // // // // // // //                 card_count, avg_rating, total_ratings, total_purchases,
 // // // // // // //                 total_plays, version, has_spicy, is_featured, is_promoted,
 // // // // // // //                 category_id, download_url, published_at, created_at,
-// // // // // // //                 profiles!creator_id(username, display_name, avatar_url, verification_status)
+// // // // // // //                 profiles!creator_id(username, display_name, avatar_url, verification_status, is_official_account)
 // // // // // // //               ''')
 // // // // // // //           .eq('status', 'approved')
 // // // // // // //           .isFilter('deleted_at', null);
@@ -1185,7 +1185,7 @@
 // // // // // // //                 avg_rating, total_ratings, total_purchases, total_plays,
 // // // // // // //                 version, has_spicy, is_featured, is_promoted,
 // // // // // // //                 category_id, download_url,
-// // // // // // //                 profiles!creator_id(username, display_name, avatar_url, verification_status)
+// // // // // // //                 profiles!creator_id(username, display_name, avatar_url, verification_status, is_official_account)
 // // // // // // //               ''')
 // // // // // // //           .eq('status', 'approved')
 // // // // // // //           .eq('is_featured', true)
@@ -1233,7 +1233,7 @@
 // // // // // // //           .from('packs')
 // // // // // // //           .select('''
 // // // // // // //                 *,
-// // // // // // //                 profiles!creator_id(username, display_name, avatar_url, verification_status),
+// // // // // // //                 profiles!creator_id(username, display_name, avatar_url, verification_status, is_official_account),
 // // // // // // //                 pack_tags(tag)
 // // // // // // //               ''')
 // // // // // // //           .eq('id', packId)
@@ -1725,7 +1725,7 @@
 // // // // // //                 card_count, avg_rating, total_ratings, total_purchases,
 // // // // // //                 total_plays, version, has_spicy, is_featured, is_promoted,
 // // // // // //                 category_id, download_url, published_at, created_at,
-// // // // // //                 profiles!creator_id(username, display_name, avatar_url, verification_status)
+// // // // // //                 profiles!creator_id(username, display_name, avatar_url, verification_status, is_official_account)
 // // // // // //               ''')
 // // // // // //           .eq('status', 'approved')
 // // // // // //           .isFilter('deleted_at', null);
@@ -1756,7 +1756,7 @@
 // // // // // //                 avg_rating, total_ratings, total_purchases, total_plays,
 // // // // // //                 version, has_spicy, is_featured, is_promoted,
 // // // // // //                 category_id, download_url,
-// // // // // //                 profiles!creator_id(username, display_name, avatar_url, verification_status)
+// // // // // //                 profiles!creator_id(username, display_name, avatar_url, verification_status, is_official_account)
 // // // // // //               ''')
 // // // // // //           .eq('status', 'approved')
 // // // // // //           .eq('is_featured', true)
@@ -1804,7 +1804,7 @@
 // // // // // //           .from('packs')
 // // // // // //           .select('''
 // // // // // //                 *,
-// // // // // //                 profiles!creator_id(username, display_name, avatar_url, verification_status),
+// // // // // //                 profiles!creator_id(username, display_name, avatar_url, verification_status, is_official_account),
 // // // // // //                 pack_tags(tag)
 // // // // // //               ''')
 // // // // // //           .eq('id', packId)
@@ -2340,7 +2340,7 @@
 // // // // //                 card_count, avg_rating, total_ratings, total_purchases,
 // // // // //                 total_plays, version, has_spicy, is_featured, is_promoted,
 // // // // //                 category_id, download_url, published_at, created_at,
-// // // // //                 profiles!creator_id(username, display_name, avatar_url, verification_status)
+// // // // //                 profiles!creator_id(username, display_name, avatar_url, verification_status, is_official_account)
 // // // // //               ''')
 // // // // //           .eq('status', 'approved')
 // // // // //           .isFilter('deleted_at', null);
@@ -2371,7 +2371,7 @@
 // // // // //                 avg_rating, total_ratings, total_purchases, total_plays,
 // // // // //                 version, has_spicy, is_featured, is_promoted,
 // // // // //                 category_id, download_url,
-// // // // //                 profiles!creator_id(username, display_name, avatar_url, verification_status)
+// // // // //                 profiles!creator_id(username, display_name, avatar_url, verification_status, is_official_account)
 // // // // //               ''')
 // // // // //           .eq('status', 'approved')
 // // // // //           .eq('is_featured', true)
@@ -2419,7 +2419,7 @@
 // // // // //           .from('packs')
 // // // // //           .select('''
 // // // // //                 *,
-// // // // //                 profiles!creator_id(username, display_name, avatar_url, verification_status),
+// // // // //                 profiles!creator_id(username, display_name, avatar_url, verification_status, is_official_account),
 // // // // //                 pack_tags(tag)
 // // // // //               ''')
 // // // // //           .eq('id', packId)
@@ -2990,7 +2990,7 @@
 // // // //                 card_count, avg_rating, total_ratings, total_purchases,
 // // // //                 total_plays, version, has_spicy, is_featured, is_promoted,
 // // // //                 category_id, download_url, published_at, created_at,
-// // // //                 profiles!creator_id(username, display_name, avatar_url, verification_status)
+// // // //                 profiles!creator_id(username, display_name, avatar_url, verification_status, is_official_account)
 // // // //               ''')
 // // // //           .eq('status', 'approved')
 // // // //           .isFilter('deleted_at', null);
@@ -3021,7 +3021,7 @@
 // // // //                 avg_rating, total_ratings, total_purchases, total_plays,
 // // // //                 version, has_spicy, is_featured, is_promoted,
 // // // //                 category_id, download_url,
-// // // //                 profiles!creator_id(username, display_name, avatar_url, verification_status)
+// // // //                 profiles!creator_id(username, display_name, avatar_url, verification_status, is_official_account)
 // // // //               ''')
 // // // //           .eq('status', 'approved')
 // // // //           .eq('is_featured', true)
@@ -3069,7 +3069,7 @@
 // // // //           .from('packs')
 // // // //           .select('''
 // // // //                 *,
-// // // //                 profiles!creator_id(username, display_name, avatar_url, verification_status),
+// // // //                 profiles!creator_id(username, display_name, avatar_url, verification_status, is_official_account),
 // // // //                 pack_tags(tag)
 // // // //               ''')
 // // // //           .eq('id', packId)
@@ -3645,7 +3645,7 @@
 // // //                 card_count, avg_rating, total_ratings, total_purchases,
 // // //                 total_plays, version, has_spicy, is_featured, is_promoted,
 // // //                 category_id, download_url, published_at, created_at,
-// // //                 profiles!creator_id(username, display_name, avatar_url, verification_status)
+// // //                 profiles!creator_id(username, display_name, avatar_url, verification_status, is_official_account)
 // // //               ''')
 // // //           .eq('status', 'approved')
 // // //           .isFilter('deleted_at', null);
@@ -3676,7 +3676,7 @@
 // // //                 avg_rating, total_ratings, total_purchases, total_plays,
 // // //                 version, has_spicy, is_featured, is_promoted,
 // // //                 category_id, download_url,
-// // //                 profiles!creator_id(username, display_name, avatar_url, verification_status)
+// // //                 profiles!creator_id(username, display_name, avatar_url, verification_status, is_official_account)
 // // //               ''')
 // // //           .eq('status', 'approved')
 // // //           .eq('is_featured', true)
@@ -3722,7 +3722,7 @@
 // // //           .from('packs')
 // // //           .select('''
 // // //                 *,
-// // //                 profiles!creator_id(username, display_name, avatar_url, verification_status),
+// // //                 profiles!creator_id(username, display_name, avatar_url, verification_status, is_official_account),
 // // //                 pack_tags(tag)
 // // //               ''')
 // // //           .eq('id', packId)
@@ -3984,7 +3984,7 @@
 // // //             status, game_type, language, price_mru, card_count,
 // // //             avg_rating, total_ratings, total_purchases, total_plays,
 // // //             version, has_spicy, is_featured,
-// // //             profiles!creator_id(username, display_name, avatar_url, verification_status)
+// // //             profiles!creator_id(username, display_name, avatar_url, verification_status, is_official_account)
 // // //           ''')
 // // //               .inFilter('id', topIds)
 // // //               .isFilter('deleted_at', null);
@@ -4272,7 +4272,7 @@
 // //                 card_count, avg_rating, total_ratings, total_purchases,
 // //                 total_plays, version, has_spicy, is_featured, is_promoted,
 // //                 category_id, download_url, published_at, created_at,
-// //                 profiles!creator_id(username, display_name, avatar_url, verification_status)
+// //                 profiles!creator_id(username, display_name, avatar_url, verification_status, is_official_account)
 // //               ''')
 // //           .eq('status', 'approved')
 // //           .isFilter('deleted_at', null);
@@ -4303,7 +4303,7 @@
 // //                 avg_rating, total_ratings, total_purchases, total_plays,
 // //                 version, has_spicy, is_featured, is_promoted,
 // //                 category_id, download_url,
-// //                 profiles!creator_id(username, display_name, avatar_url, verification_status)
+// //                 profiles!creator_id(username, display_name, avatar_url, verification_status, is_official_account)
 // //               ''')
 // //           .eq('status', 'approved')
 // //           .eq('is_featured', true)
@@ -4349,7 +4349,7 @@
 // //           .from('packs')
 // //           .select('''
 // //                 *,
-// //                 profiles!creator_id(username, display_name, avatar_url, verification_status),
+// //                 profiles!creator_id(username, display_name, avatar_url, verification_status, is_official_account),
 // //                 pack_tags(tag)
 // //               ''')
 // //           .eq('id', packId)
@@ -4611,7 +4611,7 @@
 // //             status, game_type, language, price_mru, card_count,
 // //             avg_rating, total_ratings, total_purchases, total_plays,
 // //             version, has_spicy, is_featured,
-// //             profiles!creator_id(username, display_name, avatar_url, verification_status)
+// //             profiles!creator_id(username, display_name, avatar_url, verification_status, is_official_account)
 // //           ''')
 // //               .inFilter('id', topIds)
 // //               .isFilter('deleted_at', null);
@@ -4913,7 +4913,7 @@
 //                 card_count, avg_rating, total_ratings, total_purchases,
 //                 total_plays, version, has_spicy, is_featured, is_promoted,
 //                 category_id, download_url, published_at, created_at,
-//                 profiles!creator_id(username, display_name, avatar_url, verification_status)
+//                 profiles!creator_id(username, display_name, avatar_url, verification_status, is_official_account)
 //               ''')
 //           .eq('status', 'approved')
 //           .isFilter('deleted_at', null);
@@ -4944,7 +4944,7 @@
 //                 avg_rating, total_ratings, total_purchases, total_plays,
 //                 version, has_spicy, is_featured, is_promoted,
 //                 category_id, download_url,
-//                 profiles!creator_id(username, display_name, avatar_url, verification_status)
+//                 profiles!creator_id(username, display_name, avatar_url, verification_status, is_official_account)
 //               ''')
 //           .eq('status', 'approved')
 //           .eq('is_featured', true)
@@ -4990,7 +4990,7 @@
 //           .from('packs')
 //           .select('''
 //                 *,
-//                 profiles!creator_id(username, display_name, avatar_url, verification_status),
+//                 profiles!creator_id(username, display_name, avatar_url, verification_status, is_official_account),
 //                 pack_tags(tag)
 //               ''')
 //           .eq('id', packId)
@@ -5254,7 +5254,7 @@
 //                 card_count, avg_rating, total_ratings, total_purchases,
 //                 total_plays, version, has_spicy, is_featured, is_promoted,
 //                 category_id, download_url, published_at, created_at,
-//                 profiles!creator_id(username, display_name, avatar_url, verification_status)
+//                 profiles!creator_id(username, display_name, avatar_url, verification_status, is_official_account)
 //               ''')
 //               .inFilter('id', ids)
 //               .isFilter('deleted_at', null);
@@ -5294,7 +5294,7 @@
 //             card_count, avg_rating, total_ratings, total_purchases,
 //             total_plays, version, has_spicy, is_featured, is_promoted,
 //             category_id, download_url, published_at, created_at,
-//             profiles!creator_id(username, display_name, avatar_url, verification_status)
+//             profiles!creator_id(username, display_name, avatar_url, verification_status, is_official_account)
 //           ''')
 //               .eq('creator_id', creatorId)
 //               .eq('status', 'approved')
@@ -5540,10 +5540,12 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../core/constants/app_constants.dart';
 import '../../../core/data/base_repository.dart';
 import '../../../core/errors/failures.dart';
 import '../../../core/network/api_client.dart';
 import '../domain/pack_entity.dart';
+import '../domain/pack_situation_tags.dart';
 
 export '../domain/pack_entity.dart';
 
@@ -5563,6 +5565,24 @@ class PackLanguage {
   final String name; // e.g. 'English'
   final String nativeName; // e.g. 'English' or 'العربية'
   final bool isRtl;
+}
+
+/// Server-authoritative promotion state for one pack — see
+/// PackRepository.getPackPromotionStatus.
+class PackPromotionStatus {
+  const PackPromotionStatus({required this.active, this.endsAt});
+
+  factory PackPromotionStatus.fromMap(Map<String, dynamic> map) {
+    return PackPromotionStatus(
+      active: map['active'] as bool? ?? false,
+      endsAt: map['ends_at'] != null
+          ? DateTime.parse(map['ends_at'] as String)
+          : null,
+    );
+  }
+
+  final bool active;
+  final DateTime? endsAt;
 }
 
 class PackRepository extends BaseRepository {
@@ -5597,6 +5617,33 @@ class PackRepository extends BaseRepository {
     },
   );
 
+  /// Item 7 — curated ToD pack-discovery "situation" filter vocabulary,
+  /// admin-configurable via the pack_situation_filters table (same
+  /// active/sort_order/public-read shape as pack_categories/pack_languages).
+  /// A slug added there shows up here automatically; a disabled/removed one
+  /// disappears automatically — no app update needed. Still just labels for
+  /// the SAME pack_tags.tag string vocabulary packs already carry; no
+  /// separate taxonomy.
+  Future<List<PackSituationTag>> getSituationFilters() => guardedCall(
+    operationName: 'getSituationFilters',
+    operation: () async {
+      final rows = await _supabase
+          .from('pack_situation_filters')
+          .select('slug, icon, name_json')
+          .eq('is_active', true)
+          .order('sort_order');
+      return rows
+          .map(
+            (r) => PackSituationTag(
+              r['slug'] as String,
+              r['icon'] as String? ?? '🏷️',
+              (r['name_json'] as Map?)?.cast<String, dynamic>() ?? const {},
+            ),
+          )
+          .toList();
+    },
+  );
+
   Future<List<PackEntity>> browsePacks({
     String? query,
     String? gameType,
@@ -5618,7 +5665,7 @@ class PackRepository extends BaseRepository {
                 total_plays, version, has_spicy, is_featured, is_promoted,
                 min_age, max_age, gender_restriction, suggested_punishments,
                 min_players, category_id, download_url, published_at, created_at,
-                profiles!creator_id(username, display_name, avatar_url, verification_status)
+                profiles!creator_id(username, display_name, avatar_url, verification_status, is_official_account)
               ''')
           .eq('status', 'approved')
           .isFilter('deleted_at', null);
@@ -5638,6 +5685,69 @@ class PackRepository extends BaseRepository {
     },
   );
 
+  /// Real pack search — by pack name (any of the 3 title languages),
+  /// creator username/display name, or category, via the search_packs()
+  /// RPC (matches against the GIN full-text indexes that already existed
+  /// on packs.title and profiles.username/display_name — idx_packs_search
+  /// / idx_profiles_search — but were never actually queried from
+  /// anywhere until now). The RPC only resolves matching IDs, in
+  /// relevance order; fetching the actual rows reuses the exact same
+  /// .select() (with the creator profile embed) and _rowToEntity as
+  /// browsePacks above, so a search result is shaped identically to
+  /// every other pack list in the app — no separate parsing path.
+  Future<List<PackEntity>> searchPacks({
+    required String query,
+    String? gameType,
+    String? categoryId,
+    bool freeOnly = false,
+    String? language,
+    int page = 0,
+    int perPage = 20,
+  }) => guardedCall(
+    operationName: 'searchPacks',
+    operation: () async {
+      final trimmed = query.trim();
+      if (trimmed.isEmpty) return <PackEntity>[];
+
+      final idRows = await _supabase.rpc(
+        'search_packs',
+        params: {
+          'p_query': trimmed,
+          if (gameType != null) 'p_game_type': gameType,
+          if (categoryId != null) 'p_category_id': categoryId,
+          'p_free_only': freeOnly,
+          if (language != null) 'p_language': language,
+          'p_page': page,
+          'p_per_page': perPage,
+        },
+      );
+      final orderedIds = (idRows as List)
+          .map((r) => (r as Map<String, dynamic>)['id'] as String)
+          .toList();
+      if (orderedIds.isEmpty) return <PackEntity>[];
+
+      final rows = await _supabase
+          .from('packs')
+          .select('''
+                id, creator_id, title, description, cover_image_url,
+                status, game_type, language, is_multilang, price_mru,
+                card_count, avg_rating, total_ratings, total_purchases,
+                total_plays, version, has_spicy, is_featured, is_promoted,
+                min_age, max_age, gender_restriction, suggested_punishments,
+                min_players, category_id, download_url, published_at, created_at,
+                profiles!creator_id(username, display_name, avatar_url, verification_status, is_official_account)
+              ''')
+          .inFilter('id', orderedIds);
+
+      // .inFilter doesn't preserve the RPC's relevance order, so
+      // re-sort the fetched rows back into it.
+      final byId = {
+        for (final row in rows) row['id'] as String: _rowToEntity(row),
+      };
+      return orderedIds.where(byId.containsKey).map((id) => byId[id]!).toList();
+    },
+  );
+
   Future<List<PackEntity>> getFeaturedPacks() => guardedCall(
     operationName: 'getFeaturedPacks',
     operation: () async {
@@ -5650,7 +5760,7 @@ class PackRepository extends BaseRepository {
                 version, has_spicy, is_featured, is_promoted,
                 min_age, max_age, gender_restriction, suggested_punishments,
                 min_players, category_id, download_url,
-                profiles!creator_id(username, display_name, avatar_url, verification_status)
+                profiles!creator_id(username, display_name, avatar_url, verification_status, is_official_account)
               ''')
           .eq('status', 'approved')
           .eq('is_featured', true)
@@ -5688,6 +5798,36 @@ class PackRepository extends BaseRepository {
       return rows.map(_rowToCategory).toList();
     },
   );
+
+  /// Browses the centralized sticker library (task item 3) for a pack
+  /// creator to pick from when building a meme card, instead of always
+  /// uploading a new image. Server/RLS already restricts this to active
+  /// rows (sticker_library: public read active) — the .eq here is
+  /// redundant with that policy but keeps the query shape self-documenting
+  /// and matches getCategories'/getSituationFilters' style.
+  Future<List<StickerEntity>> getStickerLibrary({String? category}) =>
+      guardedCall(
+        operationName: 'getStickerLibrary',
+        operation: () async {
+          var q = _supabase
+              .from('sticker_library')
+              .select()
+              .eq('is_active', true);
+          if (category != null) q = q.eq('category', category);
+          final rows = await q.order('sort_order');
+          return (rows as List)
+              .map(
+                (r) => StickerEntity(
+                  id: r['id'] as String,
+                  name: r['name'] as String? ?? '',
+                  publicUrl: r['public_url'] as String,
+                  category: r['category'] as String?,
+                  sortOrder: (r['sort_order'] as num?)?.toInt() ?? 0,
+                ),
+              )
+              .toList();
+        },
+      );
 
   /// Submits a new category name for admin review — independent of any
   /// specific pack (no pack_id column), so it can be created before the
@@ -5727,17 +5867,16 @@ class PackRepository extends BaseRepository {
     },
   );
 
-  Future<Map<String, dynamic>?> getCategorySuggestion(String id) =>
-      guardedCall(
-        operationName: 'getCategorySuggestion',
-        operation: () async {
-          return await _supabase
-              .from('pack_category_suggestions')
-              .select('suggested_name, status, rejection_reason')
-              .eq('id', id)
-              .maybeSingle();
-        },
-      );
+  Future<Map<String, dynamic>?> getCategorySuggestion(String id) => guardedCall(
+    operationName: 'getCategorySuggestion',
+    operation: () async {
+      return await _supabase
+          .from('pack_category_suggestions')
+          .select('suggested_name, status, rejection_reason')
+          .eq('id', id)
+          .maybeSingle();
+    },
+  );
 
   Future<PackEntity> getPackDetail(String packId) => guardedCall(
     operationName: 'getPackDetail',
@@ -5746,7 +5885,7 @@ class PackRepository extends BaseRepository {
           .from('packs')
           .select('''
                 *,
-                profiles!creator_id(username, display_name, avatar_url, verification_status),
+                profiles!creator_id(username, display_name, avatar_url, verification_status, is_official_account),
                 pack_tags(tag)
               ''')
           .eq('id', packId)
@@ -5903,7 +6042,8 @@ class PackRepository extends BaseRepository {
       } on PostgrestException catch (e) {
         if (e.message.contains('pack_not_owned')) {
           throw const ForbiddenFailure(
-            message: 'You need to own this pack before requesting a printed copy.',
+            message:
+                'You need to own this pack before requesting a printed copy.',
           );
         }
         if (e.message.contains('already_requested')) {
@@ -5912,7 +6052,9 @@ class PackRepository extends BaseRepository {
           );
         }
         if (e.message.contains('invalid_quantity')) {
-          throw const ValidationFailure(message: 'Quantity must be at least 1.');
+          throw const ValidationFailure(
+            message: 'Quantity must be at least 1.',
+          );
         }
         if (e.message.contains('insufficient') ||
             e.message.contains('Insufficient balance')) {
@@ -5920,61 +6062,114 @@ class PackRepository extends BaseRepository {
             message: 'Insufficient wallet balance for the physical copy fee.',
           );
         }
+        // Task section 3: physical_pack_requests_enabled is now actually
+        // reachable from Super Admin Settings (previously real server-side
+        // enforcement with no admin UI to trigger it) — without this, a
+        // disabled admin toggle surfaced as a raw PostgrestException
+        // string via the generic catch-all below instead of a clean
+        // message, exactly like every other business-rule error this
+        // function already maps.
+        if (e.message.contains('physical_pack_requests_disabled')) {
+          throw const ForbiddenFailure(
+            message: 'Physical pack requests are currently unavailable.',
+          );
+        }
         rethrow;
       }
     },
   );
 
-  /// The current price for a physical pack copy, admin-configurable via
-  /// app_settings — never hardcoded client-side.
-  Future<int> getPhysicalPackPrice() => guardedCall(
-    operationName: 'getPhysicalPackPrice',
+  /// Promotes a pack the caller owns for [duration] ('24h' or '7d').
+  /// Verified-creator status, pack-published status, and wallet balance
+  /// are all re-checked atomically server-side — the client only mirrors
+  /// those checks to fail fast/show a nicer message.
+  Future<void> promotePack({
+    required String packId,
+    required String duration,
+  }) => guardedCall(
+    operationName: 'promotePack',
     operation: () async {
-      final row = await _supabase
-          .from('app_settings')
-          .select('value')
-          .eq('key', 'physical_pack_price_mru')
-          .maybeSingle();
-      final raw = row?['value'];
-      if (raw is int) return raw;
-      if (raw is String) return int.tryParse(raw) ?? 0;
-      return 0;
+      try {
+        await _supabase.rpc(
+          'promote_pack',
+          params: {'p_pack_id': packId, 'p_duration': duration},
+        );
+      } on PostgrestException catch (e) {
+        if (e.message.contains('not_pack_owner')) {
+          throw const ForbiddenFailure(
+            message: 'You can only promote packs you created.',
+          );
+        }
+        if (e.message.contains('pack_not_published')) {
+          throw const ValidationFailure(
+            message: 'Only reviewed and published packs can be promoted.',
+          );
+        }
+        if (e.message.contains('creator_not_verified')) {
+          throw const ForbiddenFailure(
+            message: 'Only verified creators can promote packs.',
+          );
+        }
+        if (e.message.contains('promotion_slots_full')) {
+          throw const ConflictFailure(
+            message:
+                'All promotion slots are taken right now — try again later.',
+          );
+        }
+        if (e.message.contains('already_promoted')) {
+          throw const ConflictFailure(
+            message: 'This pack already has an active promotion.',
+            code: 'already_promoted',
+          );
+        }
+        if (e.message.contains('insufficient') ||
+            e.message.contains('Insufficient balance')) {
+          throw const PaymentFailure(
+            message: 'Insufficient wallet balance to promote this pack.',
+          );
+        }
+        rethrow;
+      }
     },
   );
 
-  /// The current extra-submission fee charged once a creator is past the
-  /// free 2/month or 15-day-gap limit, admin-configurable via app_settings
-  /// — never hardcoded client-side. submit_pack_for_review always
-  /// re-verifies and charges the live value server-side regardless of what
-  /// this returns; this is only used to show the fee amount before asking
-  /// for confirmation.
-  Future<int> getPackExtraCreationFee() => guardedCall(
-    operationName: 'getPackExtraCreationFee',
-    operation: () async {
-      final row = await _supabase
-          .from('app_settings')
-          .select('value')
-          .eq('key', 'pack_extra_creation_price_mru')
-          .maybeSingle();
-      final raw = row?['value'];
-      if (raw is int) return raw;
-      if (raw is String) return int.tryParse(raw) ?? 0;
-      return 0;
-    },
-  );
-
-  Future<List<Map<String, dynamic>>> getMyPhysicalPackRequests() =>
+  /// Server-authoritative "is this pack currently promoted" check (mirrors
+  /// promote_pack()'s own active-promotion guard — see
+  /// get_pack_promotion_status RPC) so the UI can hide the Promote action
+  /// and show an "active until ..." state instead of relying on a client
+  /// side guess. Returns null `endsAt` when there is no active promotion.
+  Future<PackPromotionStatus> getPackPromotionStatus(String packId) =>
       guardedCall(
-        operationName: 'getMyPhysicalPackRequests',
+        operationName: 'getPackPromotionStatus',
         operation: () async {
-          final rows = await _supabase
-              .from('physical_pack_requests')
-              .select('*, packs(title, cover_image_url)')
-              .order('created_at', ascending: false);
-          return List<Map<String, dynamic>>.from(rows);
+          final result = await _supabase.rpc(
+            'get_pack_promotion_status',
+            params: {'p_pack_id': packId},
+          );
+          final map = Map<String, dynamic>.from(result as Map);
+          return PackPromotionStatus.fromMap(map);
         },
       );
 
+  Future<List<Map<String, dynamic>>> getMyPhysicalPackRequests() => guardedCall(
+    operationName: 'getMyPhysicalPackRequests',
+    operation: () async {
+      final rows = await _supabase
+          .from('physical_pack_requests')
+          .select('*, packs(title, cover_image_url)')
+          .order('created_at', ascending: false);
+      return List<Map<String, dynamic>>.from(rows);
+    },
+  );
+
+  // Upsert against (pack_id, user_id) — one rating per user per pack.
+  // pack_ratings_pack_id_user_id_key (see supabase/migrations/20260810090000_
+  // fix_pack_rating_write_path.sql) is the arbiter this ON CONFLICT needs;
+  // without it this throws on every call (42P10 — no matching unique
+  // constraint), which is why no rating was ever actually being saved.
+  // trg_pack_rating_refresh then recomputes packs.avg_rating/total_ratings
+  // from every row in this table — no separate cache-update call needed
+  // here.
   Future<void> ratePack({
     required String packId,
     required String userId,
@@ -5990,6 +6185,22 @@ class PackRepository extends BaseRepository {
     },
   );
 
+  /// Removes the caller's own rating for a pack. trg_pack_rating_refresh
+  /// recomputes packs.avg_rating/total_ratings on DELETE too, so this is
+  /// enough on its own to correctly bring the count down (to 0 if it was
+  /// their last rating) — no separate cache update needed.
+  Future<void> unratePack({required String packId, required String userId}) =>
+      guardedCall(
+        operationName: 'unratePack',
+        operation: () async {
+          await _supabase
+              .from('pack_ratings')
+              .delete()
+              .eq('pack_id', packId)
+              .eq('user_id', userId);
+        },
+      );
+
   Future<void> submitReview({
     required String packId,
     required String userId,
@@ -5998,18 +6209,53 @@ class PackRepository extends BaseRepository {
   }) => guardedCall(
     operationName: 'submitReview',
     operation: () async {
+      // Rating first (if provided) so the review row can link to it via
+      // rating_id — getPackReviews()'s pack_ratings!rating_id(rating) embed
+      // depends on that link to show the star rating next to a written
+      // review; it was never set before, so that embed always came back
+      // null even when the reviewer also rated the pack.
+      String? ratingId;
+      if (rating != null) {
+        final ratingRow = await _supabase
+            .from('pack_ratings')
+            .upsert({
+              'user_id': userId,
+              'pack_id': packId,
+              'rating': rating,
+            }, onConflict: 'pack_id,user_id')
+            .select('id')
+            .single();
+        ratingId = ratingRow['id'] as String;
+      }
+      // 'id' is intentionally omitted here (unlike the old version, which
+      // sent a fresh random uuid on every call) — on an update via the
+      // pack_id,user_id upsert conflict, including 'id' in the payload
+      // would try to overwrite the existing row's primary key with that
+      // new random value on every resubmission. Omitting it lets Postgres'
+      // own gen_random_uuid() default apply on true inserts and leaves it
+      // untouched on updates, exactly like ratePack()'s payload above.
       await _supabase.from('pack_reviews').upsert({
-        'id': _uuid.v4(),
         'pack_id': packId,
         'user_id': userId,
         'content': content,
+        if (ratingId != null) 'rating_id': ratingId,
       }, onConflict: 'pack_id,user_id');
-      if (rating != null) {
-        await ratePack(packId: packId, userId: userId, rating: rating);
-      }
     },
   );
 
+  /// Writes to the generic `reports` table (target_type='pack'), NOT the
+  /// legacy `pack_reports` table — `pack_reports` is an orphaned, earlier
+  /// pack-specific report system that the admin report queue
+  /// (jma3a-api's reportsService.js / jma3a_admin's reports_repository.dart)
+  /// never reads from, so a pack report written there silently never
+  /// reached admin review. `reports` already supports target_type='pack'
+  /// (see its target_type CHECK constraint) and already has the
+  /// equivalent one-report-per-reporter-per-target restriction via its own
+  /// UNIQUE (reporter_id, target_type, target_id) constraint, so this is a
+  /// pure redirect — no new backend concept, per the existing "don't build
+  /// a duplicate system" convention. `pack_reports` itself is left in
+  /// place (data preserved, not dropped) in case anything else still
+  /// depends on it; nothing found to during this fix.
   Future<void> reportPack({
     required String packId,
     required String reporterId,
@@ -6018,12 +6264,27 @@ class PackRepository extends BaseRepository {
   }) => guardedCall(
     operationName: 'reportPack',
     operation: () async {
-      await _supabase.from('pack_reports').upsert({
-        'pack_id': packId,
-        'reporter_id': reporterId,
-        'reason': reason,
-        'details': details,
-      }, onConflict: 'pack_id,reporter_id');
+      try {
+        await _supabase.from('reports').insert({
+          'target_type': 'pack',
+          'target_id': packId,
+          'reporter_id': reporterId,
+          'reason': reason,
+          'details': details,
+        });
+      } on PostgrestException catch (e) {
+        // uq_report is DEFERRABLE (Postgres doesn't allow ON CONFLICT
+        // against a deferrable constraint as the arbiter — verified live,
+        // an upsert() here fails at the SQL level), so a second report
+        // from the same reporter for the same pack surfaces as a plain
+        // 23505 unique-violation instead of an upsert-style update. That's
+        // the correct outcome for "duplicate/report restrictions behave
+        // correctly": at most one open report per (reporter, pack) either
+        // way — treated as a silent success here rather than an error,
+        // since from the reporter's point of view they've already
+        // reported this pack.
+        if (e.code != '23505') rethrow;
+      }
     },
   );
 
@@ -6061,6 +6322,50 @@ class PackRepository extends BaseRepository {
           .eq('pack_id', packId)
           .order('sort_order');
       return (rows as List).map((r) => r['image_url'] as String).toList();
+    },
+  );
+
+  /// Correction pass — the pack-level sticker pool an admin selects when
+  /// authoring an official Meme pack (jma3a_admin's create_official_pack_
+  /// screen.dart _StickersStep -> the `pack_stickers` table added by that
+  /// same pass). Genuinely separate from [getPackReactions]'s
+  /// `pack_reactions` (a verified creator's own custom-uploaded images) —
+  /// MemeGameScreen prefers pack_reactions when present and falls back to
+  /// this pool, so an admin-authored pack (which never has pack_reactions)
+  /// still gets its own stickers instead of dropping all the way to the
+  /// hardcoded kAppStickers preset.
+  ///
+  /// Sticker architecture correction pass — pack_stickers rows now come
+  /// from TWO sources: a `sticker_library` embed (globally admin-curated,
+  /// selectable across any pack) or a `pack_owned_stickers` embed (an
+  /// asset uploaded specifically for this one pack — never inserted into
+  /// the global library). Gameplay only needs the resolved image URL, so
+  /// both are flattened into one combined pool here rather than exposed
+  /// as two separate lists — the distinction only matters to the admin
+  /// editor, not to a player picking a reaction sticker.
+  ///
+  /// Returns RAW (unsigned) URLs for both sources — same contract as pack
+  /// cover/card image fields elsewhere in this class; callers sign via
+  /// ImageUrlSigner (POST /v1/storage/sign-urls signs ANY URL under our
+  /// own Wasabi bucket via wasabi.isOwnedUrl, not a hardcoded per-table
+  /// field list, so packs/stickers/... pack-owned uploads sign correctly
+  /// through the exact same call as sticker_library.public_url) rather
+  /// than this repository re-implementing that signing itself.
+  /// pack_stickers' own RLS (approved pack, or the pack's own creator)
+  /// already gates this read — no dedicated API endpoint needed.
+  Future<List<String>> getPackStickers(String packId) => guardedCall(
+    operationName: 'getPackStickers',
+    operation: () async {
+      final rows = await _supabase
+          .from('pack_stickers')
+          .select('sticker_library(public_url), pack_owned_stickers(public_url)')
+          .eq('pack_id', packId);
+      return (rows as List)
+          .map((r) =>
+              (r['sticker_library'] as Map?)?['public_url'] as String? ??
+              (r['pack_owned_stickers'] as Map?)?['public_url'] as String?)
+          .whereType<String>()
+          .toList();
     },
   );
 
@@ -6117,7 +6422,7 @@ class PackRepository extends BaseRepository {
                 total_plays, version, has_spicy, is_featured, is_promoted,
                 min_age, max_age, gender_restriction, suggested_punishments,
                 min_players, category_id, download_url, published_at, created_at,
-                profiles!creator_id(username, display_name, avatar_url, verification_status)
+                profiles!creator_id(username, display_name, avatar_url, verification_status, is_official_account)
               ''')
               .inFilter('id', ids)
               .isFilter('deleted_at', null);
@@ -6157,7 +6462,7 @@ class PackRepository extends BaseRepository {
             card_count, avg_rating, total_ratings, total_purchases,
             total_plays, version, has_spicy, is_featured, is_promoted,
             category_id, download_url, published_at, created_at,
-            profiles!creator_id(username, display_name, avatar_url, verification_status)
+            profiles!creator_id(username, display_name, avatar_url, verification_status, is_official_account)
           ''')
               .eq('creator_id', creatorId)
               .eq('status', 'approved')
@@ -6204,6 +6509,11 @@ class PackRepository extends BaseRepository {
             data: {
               'title': draft.titleJson,
               'description': draft.descriptionJson,
+              // Persist language + game type so an edited draft keeps the
+              // creator's real choices (Part 9 editability); the language is
+              // additionally recoverable from the title keys on reload.
+              'language': draft.language,
+              'game_type': draft.gameType,
               'price_mru': draft.priceMru,
               'category_id': draft.categoryId,
               'has_spicy': draft.allowSpicy,
@@ -6222,12 +6532,18 @@ class PackRepository extends BaseRepository {
         },
       );
 
-  /// Enforces the 2-per-calendar-month / 15-day-gap submission limits and
-  /// the 300 MRU paid-exception fee entirely server-side (SECURITY DEFINER
-  /// RPC `submit_pack_for_review`) — the quota/fee logic lives in exactly
-  /// one place (Postgres), not split across this client and the Node API's
-  /// `/v1/packs/:id/submit` route. Pass [payFee] true only after the caller
-  /// has already shown the user the fee amount and gotten confirmation;
+  /// Enforces the 1-free-submission-every-15-days rule (a pure rolling
+  /// gap since the creator's last row in pack_submissions — NOT a
+  /// calendar-month counter; "2 per month" is the natural cadence of a
+  /// 15-day interval, not a second, independently-resettable limit) and
+  /// the database-configured paid-exception fee entirely server-side
+  /// (SECURITY DEFINER RPC `submit_pack_for_review`) — the quota/fee
+  /// logic lives in exactly one place (Postgres), not split across this
+  /// client and the Node API's `/v1/packs/:id/submit` route. Also
+  /// verifies the caller is a verified creator (reuses the exact same
+  /// creator_verifications check promote_pack() already enforces — not a
+  /// second definition). Pass [payFee] true only after the caller has
+  /// already shown the user the fee amount and gotten confirmation;
   /// calling with it false first is how the fee amount itself is
   /// discovered (a `fee_required` PaymentFailure is thrown).
   Future<Map<String, dynamic>> submitForReview(
@@ -6245,8 +6561,14 @@ class PackRepository extends BaseRepository {
       } on PostgrestException catch (e) {
         if (e.message.contains('fee_required')) {
           throw const PaymentFailure(
-            message: 'This pack is past your free monthly submission limit.',
+            message: 'Your next free submission is not available yet.',
             code: 'fee_required',
+          );
+        }
+        if (e.message.contains('creator_not_verified')) {
+          throw const ForbiddenFailure(
+            message: 'Only verified creators can submit packs for review.',
+            code: 'creator_not_verified',
           );
         }
         if (e.message.contains('pack_not_editable')) {
@@ -6257,42 +6579,81 @@ class PackRepository extends BaseRepository {
         if (e.message.contains('pack_not_found')) {
           throw const NotFoundFailure(message: 'Pack not found.');
         }
+        // Server-authoritative content gates (mirror PackDraft.validationIssues
+        // — a client that bypassed the wizard is rejected here too).
+        if (e.message.contains('price_below_minimum')) {
+          throw ValidationFailure(
+            message:
+                'Set a price of at least ${AppConstants.minPaidPackPriceMru} MRU.',
+          );
+        }
+        if (e.message.contains('not_enough_cards')) {
+          throw const ValidationFailure(message: 'Add at least 20 cards.');
+        }
+        if (e.message.contains('truth_dare_unbalanced')) {
+          throw const ValidationFailure(
+            message:
+                'Truth or Dare packs need an equal number of Truth and Dare cards.',
+          );
+        }
+        if (e.message.contains('title_required')) {
+          throw const ValidationFailure(
+            message: 'Add a name for the pack before submitting.',
+          );
+        }
+        if (e.message.contains('spicy_content_disabled')) {
+          throw const ForbiddenFailure(
+            message: 'Spicy content is not available right now.',
+            code: 'spicy_content_disabled',
+          );
+        }
         rethrow;
       }
     },
   );
 
-  /// Non-authoritative pre-check used only to decide whether to show a
-  /// "this will cost 300 MRU" confirmation before calling [submitForReview]
-  /// — the RPC always re-verifies the same rule server-side regardless of
-  /// what this returns, so this never needs to be exactly right.
-  Future<bool> wouldPackSubmissionNeedFee() => guardedCall(
-    operationName: 'wouldPackSubmissionNeedFee',
+  /// The ONE authoritative pack-creation preflight round trip
+  /// (get_pack_creation_status RPC) — replaces the old client-side
+  /// wouldPackSubmissionNeedFee pre-check, which queried pack_submissions
+  /// directly and duplicated the free/gap arithmetic here. This is still
+  /// UX-only (submitForReview above independently re-verifies every
+  /// condition server-side regardless of what this returns), but it's now
+  /// a single source of truth instead of Flutter performing its own
+  /// independent calculation.
+  Future<PackCreationStatus> getPackCreationStatus() => guardedCall(
+    operationName: 'getPackCreationStatus',
     operation: () async {
-      final userId = _supabase.auth.currentUser?.id;
-      if (userId == null) return false;
-      final monthStart = DateTime(
-        DateTime.now().year,
-        DateTime.now().month,
-        1,
-      );
-      final rows = await _supabase
-          .from('pack_submissions')
-          .select('submitted_at')
-          .eq('creator_id', userId)
-          .order('submitted_at', ascending: false);
-      final list = (rows as List).cast<Map<String, dynamic>>();
-      final monthCount = list
-          .where(
-            (r) => DateTime.parse(
-              r['submitted_at'] as String,
-            ).isAfter(monthStart),
-          )
-          .length;
-      if (monthCount >= 2) return true;
-      if (list.isEmpty) return false;
-      final last = DateTime.parse(list.first['submitted_at'] as String);
-      return DateTime.now().difference(last) < const Duration(days: 15);
+      final result = await _supabase.rpc('get_pack_creation_status');
+      return PackCreationStatus.fromMap(Map<String, dynamic>.from(result as Map));
+    },
+  );
+
+  /// Server-authoritative draft deletion (SECURITY DEFINER RPC
+  /// `delete_pack_draft`) — ownership and status ('draft' only) are
+  /// re-verified in Postgres, not just gated by hiding the button in the
+  /// UI for a non-owner/non-draft pack. Freeing the draft slot is a side
+  /// effect of the same row this soft-deletes (see
+  /// idx_packs_one_draft_per_creator's `deleted_at IS NULL` predicate) —
+  /// no separate "slot" bookkeeping to update here.
+  Future<void> deletePackDraft(String packId) => guardedCall(
+    operationName: 'deletePackDraft',
+    operation: () async {
+      try {
+        await _supabase.rpc(
+          'delete_pack_draft',
+          params: {'p_pack_id': packId},
+        );
+      } on PostgrestException catch (e) {
+        if (e.message.contains('pack_not_found')) {
+          throw const NotFoundFailure(message: 'Pack not found.');
+        }
+        if (e.message.contains('pack_not_draft')) {
+          throw const ValidationFailure(
+            message: 'Only a draft pack can be deleted this way.',
+          );
+        }
+        rethrow;
+      }
     },
   );
 
@@ -6314,6 +6675,8 @@ class PackRepository extends BaseRepository {
               'difficulty': e.value.difficulty.name,
               'sort_order': e.key,
               'is_active': true,
+              'image_url': e.value.imageUrl,
+              'sticker_id': e.value.stickerId,
             },
           )
           .toList();
@@ -6391,6 +6754,29 @@ class PackRepository extends BaseRepository {
     },
   );
 
+  /// Batch-resolves viewable URLs for stored pack/card/sticker image
+  /// references. The Wasabi bucket rejects unauthenticated GETs (kept
+  /// private, not made public) — packs.cover_image_url / pack_cards.
+  /// image_url / sticker_library.public_url are permanent object
+  /// references, not directly-viewable URLs, so anything read straight off
+  /// a `packs`/`pack_cards` row needs to go through this before it can be
+  /// handed to an image widget. An external URL (e.g. a stock-photo cover)
+  /// is returned unchanged by the server, not mis-signed. See
+  /// ImageUrlSigner, which wraps this with client-side caching.
+  Future<Map<String, String>> signImageUrls(List<String> urls) => guardedCall(
+    operationName: 'signImageUrls',
+    operation: () async {
+      if (urls.isEmpty) return <String, String>{};
+      final resp = await _api.post<Map<String, dynamic>>(
+        '/v1/storage/sign-urls',
+        data: {'urls': urls},
+      );
+      final data = resp.data!['data'] as Map<String, dynamic>;
+      final signed = data['urls'] as Map<String, dynamic>;
+      return signed.map((k, v) => MapEntry(k, v as String));
+    },
+  );
+
   PackEntity _rowToEntity(Map<String, dynamic> r) {
     final creator = r['profiles'] as Map<String, dynamic>?;
     final tagRows = r['pack_tags'] as List<dynamic>? ?? [];
@@ -6434,6 +6820,7 @@ class PackRepository extends BaseRepository {
           creator?['username'] as String?,
       creatorAvatarUrl: creator?['avatar_url'] as String?,
       isVerifiedCreator: creator?['verification_status'] == 'verified',
+      isOfficialCreator: creator?['is_official_account'] as bool? ?? false,
       rejectionReason: r['rejection_reason'] as String?,
       minAge: r['min_age'] as int?,
       maxAge: r['max_age'] as int?,
@@ -6444,6 +6831,7 @@ class PackRepository extends BaseRepository {
               ?.map((e) => e.toString())
               .toList() ??
           const [],
+      platformManaged: r['platform_managed'] as bool? ?? false,
     );
   }
 
@@ -6452,10 +6840,17 @@ class PackRepository extends BaseRepository {
     if (raw is List && raw.isNotEmpty) {
       return raw.map((e) => e.toString()).toList();
     }
+    // Authoritative source: the languages the creator actually filled title
+    // content in. Deriving from the title JSON keys means a French-only pack
+    // restores as ['fr'] and an ar+fr pack as ['ar','fr'] — never the old
+    // hardcoded ['en','ar','fr'], which wrongly re-injected English into the
+    // language selector when re-opening any multi-language draft (Part 5).
+    final title = r['title'];
+    if (title is Map && title.isNotEmpty) {
+      return title.keys.map((e) => e.toString()).toList();
+    }
     final lang = r['language'] as String? ?? 'en';
-    final multilang = r['is_multilang'] as bool? ?? false;
-    if (multilang || lang == 'multi') return ['en', 'ar', 'fr'];
-    return [lang];
+    return lang == 'multi' ? const <String>[] : [lang];
   }
 
   PackCategory _rowToCategory(Map<String, dynamic> r) => PackCategory(

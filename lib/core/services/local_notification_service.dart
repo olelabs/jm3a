@@ -124,7 +124,16 @@ class LocalNotificationService {
   static final LocalNotificationService instance = LocalNotificationService._();
 
   void Function(Map<String, dynamic>)? onTap;
-  static const _channelKey = 'jma3a_main';
+
+  // Android freezes a notification channel's sound/importance/vibration
+  // settings the FIRST time a given channelKey is created on-device —
+  // later code changes to those settings are silently ignored for
+  // existing installs. This key was bumped from the old `jma3a_main`
+  // (which visibly went through config iterations during development,
+  // per this file's git history) specifically to force a fresh channel
+  // with today's correct settings; don't reuse an old key when changing
+  // sound/importance here again — bump it once more instead.
+  static const _channelKey = 'jma3a_notifications_v2';
 
   Future<void> initialize() async {
     await AwesomeNotifications().initialize(null, [
@@ -134,7 +143,14 @@ class LocalNotificationService {
         channelDescription: 'Game invitations and activity',
         defaultColor: const Color(0xFF6C63FF),
         ledColor: const Color(0xFF6C63FF),
-        importance: NotificationImportance.High,
+        // Default (not High): plays sound and lands in the notification
+        // shade, but does NOT pop up as an intrusive heads-up banner while
+        // the app is in the foreground — that visual role belongs to the
+        // custom InAppToastOverlay banner. This channel now exists purely
+        // to give that banner a real, system-routed notification sound
+        // (so Do Not Disturb / silent switch / per-channel mute are all
+        // correctly respected, which a raw media-player sound would not).
+        importance: NotificationImportance.Default,
         channelShowBadge: true,
         playSound: true,
         enableVibration: true,

@@ -4282,6 +4282,7 @@ class RoomEntity extends Equatable {
     this.lastActiveAt,
     this.createdAt,
     this.ownerTransferredAt,
+    this.closedAt,
   });
 
   final String id;
@@ -4299,9 +4300,16 @@ class RoomEntity extends Equatable {
   final String coverEmoji;
   final DateTime? lastActiveAt;
   final DateTime? createdAt;
+
   /// When ownership was last transferred — null if it never has been.
   /// Owners may only transfer ownership once every 24h.
   final DateTime? ownerTransferredAt;
+
+  /// Batch D keep-game close marker (rooms.closed_at). When set, the room is
+  /// closed to NEW entrants and hidden from Browse, but the live game keeps
+  /// running (status stays in_game/paused). This is ENTIRELY DISTINCT from
+  /// the terminal [RoomStatus.closed] teardown — do not conflate the two.
+  final DateTime? closedAt;
 
   bool get isFull => currentPlayers >= maxPlayers;
   bool get isWaiting => status == RoomStatus.waiting;
@@ -4309,7 +4317,12 @@ class RoomEntity extends Equatable {
   bool get isPaused => status == RoomStatus.paused;
   bool get isActive =>
       status == RoomStatus.waiting || status == RoomStatus.inGame;
-  bool get canJoin => !isFull && isActive;
+
+  /// Keep-game closed (closed_at set) — NOT the same as
+  /// `status == RoomStatus.closed` (terminal teardown). A room can be
+  /// `isInGame && isClosed` at the same time.
+  bool get isClosed => closedAt != null;
+  bool get canJoin => !isFull && isActive && !isClosed;
   bool get isPrivate => visibility == RoomVisibility.private;
 
   RoomEntity copyWith({
@@ -4323,6 +4336,7 @@ class RoomEntity extends Equatable {
     bool? allowSpicy,
     DateTime? lastActiveAt,
     DateTime? ownerTransferredAt,
+    DateTime? closedAt,
   }) => RoomEntity(
     id: id,
     ownerId: ownerId ?? this.ownerId,
@@ -4340,6 +4354,7 @@ class RoomEntity extends Equatable {
     lastActiveAt: lastActiveAt ?? this.lastActiveAt,
     createdAt: createdAt,
     ownerTransferredAt: ownerTransferredAt ?? this.ownerTransferredAt,
+    closedAt: closedAt ?? this.closedAt,
   );
 
   @override
@@ -4356,6 +4371,7 @@ class RoomEntity extends Equatable {
     packId,
     language,
     allowSpicy,
+    closedAt,
   ];
 }
 
@@ -4396,21 +4412,6 @@ abstract final class ModeratorPermission {
     mutePlayers,
     manageSettings,
   ];
-
-  static String label(String key) => switch (key) {
-    acceptJoins => 'Accept join requests',
-    acceptSpectators => 'Accept spectator requests',
-    acceptRejoins => 'Accept rejoin requests',
-    advanceTurn => 'Start next turn',
-    skipTurn => 'Skip a turn',
-    kickPlayers => 'Remove players',
-    muteChat => 'Mute chat',
-    mutePlayers => 'Mute players in game',
-    manageSettings => 'Manage room settings',
-    endGame => 'End the game',
-    startGame => 'Start the game',
-    _ => key,
-  };
 }
 
 /// Single, named moderation-state concept for game-action gating and
@@ -4442,6 +4443,8 @@ class RoomMemberEntity extends Equatable {
     this.premiumTier,
     this.joinedAt,
     this.moderatorPermissions = const {},
+    this.honestyPoints = 0,
+    this.generalScore = 0,
   });
 
   final String userId;
@@ -4455,6 +4458,7 @@ class RoomMemberEntity extends Equatable {
   final bool isSpectator;
   final bool isHiddenSpectator;
   final bool isMuted;
+
   /// Moderator-imposed game mute — cannot act (answer/submit/take a turn)
   /// but can still watch. Distinct from [isMuted], which only silences
   /// text chat — do not conflate the two.
@@ -4465,13 +4469,23 @@ class RoomMemberEntity extends Equatable {
   final bool isPremium;
   final String? premiumTier;
   final DateTime? joinedAt;
+
   /// Granular permission keys this moderator was explicitly granted (empty
   /// for non-moderators/plain players). The owner implicitly has every
   /// permission regardless of this set — see [RoomProvider.hasPermission].
   final Set<String> moderatorPermissions;
 
+  /// Live server-authoritative reputation stats — see
+  /// core/services/player_stats and RoomProvider's profiles-CDC extension
+  /// for how this stays fresh without polling/rejoining the room.
+  /// Separate ledgers (see profiles.honesty_points/general_score); never
+  /// mixed. honestyPoints can be negative.
+  final int honestyPoints;
+  final int generalScore;
+
   bool get canModerate => isOwner || isModerator;
-  bool hasPermission(String key) => isOwner || moderatorPermissions.contains(key);
+  bool hasPermission(String key) =>
+      isOwner || moderatorPermissions.contains(key);
   bool get isActive => !isDisconnected;
   bool get shouldOfferRejoin => isAway && !leftDefinitively;
 
@@ -4480,13 +4494,6 @@ class RoomMemberEntity extends Equatable {
     if (isSpectator) return MemberModerationState.spectator;
     if (isGameMuted) return MemberModerationState.muted;
     return MemberModerationState.active;
-  }
-
-  String get displayRole {
-    if (isOwner) return 'Owner';
-    if (isModerator) return 'Mod';
-    if (isSpectator) return isHiddenSpectator ? 'Hidden' : 'Spectator';
-    return '';
   }
 
   RoomMemberEntity copyWith({
@@ -4503,6 +4510,8 @@ class RoomMemberEntity extends Equatable {
     bool? isPremium,
     String? premiumTier,
     Set<String>? moderatorPermissions,
+    int? honestyPoints,
+    int? generalScore,
   }) => RoomMemberEntity(
     userId: userId,
     displayName: displayName,
@@ -4523,6 +4532,8 @@ class RoomMemberEntity extends Equatable {
     premiumTier: premiumTier ?? this.premiumTier,
     joinedAt: joinedAt,
     moderatorPermissions: moderatorPermissions ?? this.moderatorPermissions,
+    honestyPoints: honestyPoints ?? this.honestyPoints,
+    generalScore: generalScore ?? this.generalScore,
   );
 
   @override
@@ -4542,6 +4553,8 @@ class RoomMemberEntity extends Equatable {
     leftDefinitively,
     isPremium,
     moderatorPermissions,
+    honestyPoints,
+    generalScore,
   ];
 }
 
@@ -4566,6 +4579,9 @@ class ChatMessageEntity extends Equatable {
     this.realSenderId,
     this.senderIsPremium = false,
     this.senderPremiumTier,
+    this.audienceType = 'everyone',
+    this.gameSessionId,
+    this.recipientNames = const [],
   });
 
   final String id;
@@ -4586,8 +4602,27 @@ class ChatMessageEntity extends Equatable {
   final bool senderIsPremium;
   final String? senderPremiumTier;
 
+  /// 'everyone' (default — every existing message) or 'selected' (item 2 —
+  /// Premium Plus targeted chat). Only the DB/RPC ever sets 'selected';
+  /// a plain client insert is server-rejected from setting it.
+  final String audienceType;
+
+  /// Null = a lobby-context message (every existing row). Non-null ties
+  /// this message to a specific game_sessions row — set only for targeted
+  /// in-game messages (see item 2's design: normal/"everyone" game chat
+  /// stays broadcast-only and unpersisted, exactly as before).
+  final String? gameSessionId;
+
+  /// Display names of the selected recipients, for the SENDER's own "Only:
+  /// Ahmed, Sara +1" indicator (item 2's UI requirement) — populated
+  /// locally at send time from the audience picker's own selection, never
+  /// fetched for a message this user didn't send (see product decision:
+  /// a recipient sees the message normally, not the full audience list).
+  final List<String> recipientNames;
+
   bool get isSystem => type == ChatMessageType.system;
   bool get isReply => replyToId != null;
+  bool get isTargeted => audienceType == 'selected';
 
   ChatMessageEntity copyWithConfirmed() => ChatMessageEntity(
     id: id,
@@ -4607,6 +4642,9 @@ class ChatMessageEntity extends Equatable {
     realSenderId: realSenderId,
     senderIsPremium: senderIsPremium,
     senderPremiumTier: senderPremiumTier,
+    audienceType: audienceType,
+    gameSessionId: gameSessionId,
+    recipientNames: recipientNames,
   );
 
   @override
@@ -4637,6 +4675,8 @@ class RoomSettingsEntity extends Equatable {
     this.proofViewSeconds = 5,
     this.proofReplayMode = 'once',
     this.proofVisibilitySelectedUserIds = const [],
+    this.forceDareMode = 'unlimited',
+    this.maxTruths = 2,
   });
 
   final int turnTimerSeconds;
@@ -4658,6 +4698,16 @@ class RoomSettingsEntity extends Equatable {
   final String proofReplayMode;
   final List<String> proofVisibilitySelectedUserIds;
 
+  /// Item 18.2 — ToD's "Force Dare after N Truths" choice from
+  /// tod_pre_game_config_sheet.dart, persisted here (durable for the
+  /// lifetime of the current game) so _syncGameRoute's GameConfig
+  /// reconstruction — the only path that ever navigates a client, owner
+  /// included, into the game screen — can read it back on every
+  /// navigation instead of only the one-shot broadcast that started the
+  /// game. 'unlimited' | 'per_player' | 'per_turn'.
+  final String forceDareMode;
+  final int maxTruths;
+
   RoomSettingsEntity copyWith({
     int? turnTimerSeconds,
     bool? allowSkip,
@@ -4674,6 +4724,8 @@ class RoomSettingsEntity extends Equatable {
     int? proofViewSeconds,
     String? proofReplayMode,
     List<String>? proofVisibilitySelectedUserIds,
+    String? forceDareMode,
+    int? maxTruths,
   }) => RoomSettingsEntity(
     turnTimerSeconds: turnTimerSeconds ?? this.turnTimerSeconds,
     allowSkip: allowSkip ?? this.allowSkip,
@@ -4693,6 +4745,8 @@ class RoomSettingsEntity extends Equatable {
     proofReplayMode: proofReplayMode ?? this.proofReplayMode,
     proofVisibilitySelectedUserIds:
         proofVisibilitySelectedUserIds ?? this.proofVisibilitySelectedUserIds,
+    forceDareMode: forceDareMode ?? this.forceDareMode,
+    maxTruths: maxTruths ?? this.maxTruths,
   );
 
   Map<String, dynamic> toMap() => {
@@ -4711,32 +4765,35 @@ class RoomSettingsEntity extends Equatable {
     'proof_view_seconds': proofViewSeconds,
     'proof_replay_mode': proofReplayMode,
     'proof_visibility_selected_user_ids': proofVisibilitySelectedUserIds,
+    'force_dare_mode': forceDareMode,
+    'max_truths': maxTruths,
   };
 
-  static RoomSettingsEntity fromMap(Map<String, dynamic> m) =>
-      RoomSettingsEntity(
-        turnTimerSeconds: m['turn_timer_secs'] as int? ?? 60,
-        allowSkip: m['allow_skip'] as bool? ?? true,
-        maxRounds: m['max_rounds'] as int? ?? 10,
-        chatEnabled: m['chat_enabled'] as bool? ?? true,
-        allowSpectators: m['allow_spectators'] as bool? ?? false,
-        spectatorApprovalRequired:
-            m['spectator_approval_required'] as bool? ?? false,
-        allowSpicy: m['allow_spicy'] as bool? ?? false,
-        requiresApproval: m['requires_approval'] as bool? ?? false,
-        enablePunishments: m['enable_punishments'] as bool? ?? false,
-        punishmentSource: m['punishment_source'] as String? ?? 'players',
-        proofVisibilityPolicy:
-            m['proof_visibility_policy'] as String? ?? 'everyone',
-        proofViewSeconds: m['proof_view_seconds'] as int? ?? 5,
-        proofReplayMode: m['proof_replay_mode'] as String? ?? 'once',
-        proofVisibilitySelectedUserIds:
-            (m['proof_visibility_selected_user_ids'] as List?)
-                ?.cast<String>() ??
-            const [],
-        allowAnonymousSpectators:
-            m['allow_anonymous_spectators'] as bool? ?? true,
-      );
+  static RoomSettingsEntity fromMap(
+    Map<String, dynamic> m,
+  ) => RoomSettingsEntity(
+    turnTimerSeconds: m['turn_timer_secs'] as int? ?? 60,
+    allowSkip: m['allow_skip'] as bool? ?? true,
+    maxRounds: m['max_rounds'] as int? ?? 10,
+    chatEnabled: m['chat_enabled'] as bool? ?? true,
+    allowSpectators: m['allow_spectators'] as bool? ?? false,
+    spectatorApprovalRequired:
+        m['spectator_approval_required'] as bool? ?? false,
+    allowSpicy: m['allow_spicy'] as bool? ?? false,
+    requiresApproval: m['requires_approval'] as bool? ?? false,
+    enablePunishments: m['enable_punishments'] as bool? ?? false,
+    punishmentSource: m['punishment_source'] as String? ?? 'players',
+    proofVisibilityPolicy:
+        m['proof_visibility_policy'] as String? ?? 'everyone',
+    proofViewSeconds: m['proof_view_seconds'] as int? ?? 5,
+    proofReplayMode: m['proof_replay_mode'] as String? ?? 'once',
+    proofVisibilitySelectedUserIds:
+        (m['proof_visibility_selected_user_ids'] as List?)?.cast<String>() ??
+        const [],
+    allowAnonymousSpectators: m['allow_anonymous_spectators'] as bool? ?? true,
+    forceDareMode: m['force_dare_mode'] as String? ?? 'unlimited',
+    maxTruths: (m['max_truths'] as num?)?.toInt() ?? 2,
+  );
 
   @override
   List<Object?> get props => [
@@ -4755,6 +4812,8 @@ class RoomSettingsEntity extends Equatable {
     proofViewSeconds,
     proofReplayMode,
     proofVisibilitySelectedUserIds,
+    forceDareMode,
+    maxTruths,
   ];
 }
 
@@ -4805,4 +4864,43 @@ class ModerationAction {
     reason: m['reason'] as String?,
     durationSeconds: m['duration_seconds'] as int?,
   );
+}
+
+/// One-round-trip snapshot from get_room_creation_status() — item 7's
+/// pre-flight room-creation eligibility check (daily limit + minimum-hours
+/// gate + the global enable/disable switch), all read server-side in one
+/// call instead of the UI parsing create_room()'s exception codes.
+class RoomCreationStatus {
+  const RoomCreationStatus({
+    required this.roomsToday,
+    required this.dailyLimit,
+    required this.restrictionsEnabled,
+    this.nextAllowedAt,
+  });
+
+  final int roomsToday;
+  final int dailyLimit;
+  final bool restrictionsEnabled;
+
+  /// Null when there's no active minimum-hours gate (either restrictions
+  /// are off, the tier's minimum-hours value is 0, or this is the user's
+  /// first-ever room).
+  final DateTime? nextAllowedAt;
+
+  bool get hasHitDailyLimit => restrictionsEnabled && roomsToday >= dailyLimit;
+
+  bool get isTooSoon =>
+      restrictionsEnabled &&
+      nextAllowedAt != null &&
+      nextAllowedAt!.isAfter(DateTime.now());
+
+  static RoomCreationStatus fromMap(Map<String, dynamic> m) =>
+      RoomCreationStatus(
+        roomsToday: (m['rooms_today'] as num?)?.toInt() ?? 0,
+        dailyLimit: (m['daily_limit'] as num?)?.toInt() ?? 0,
+        restrictionsEnabled: m['restrictions_enabled'] as bool? ?? true,
+        nextAllowedAt: m['next_allowed_at'] != null
+            ? DateTime.tryParse(m['next_allowed_at'] as String)
+            : null,
+      );
 }

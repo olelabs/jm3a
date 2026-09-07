@@ -147,7 +147,8 @@ CREATE TYPE "public"."notification_type_enum" AS ENUM (
     'room_join_request',
     'room_join_approved',
     'room_join_rejected',
-    'game_ended'
+    'game_ended',
+    'streak_increased'
 );
 
 
@@ -748,6 +749,24 @@ $$;
 ALTER FUNCTION "public"."claim_room_ownership"("p_room_id" "uuid") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."clamp_notification_expiry"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+BEGIN
+  IF NEW.created_at IS NOT NULL THEN
+    NEW.expires_at := LEAST(
+      COALESCE(NEW.expires_at, NEW.created_at + interval '24 hours'),
+      NEW.created_at + interval '24 hours'
+    );
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."clamp_notification_expiry"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."cleanup_expired_bans"() RETURNS integer
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
@@ -801,7 +820,7 @@ declare
 begin
   with deleted as (
     delete from public.notifications
-    where expires_at < now() - interval '7 days'
+    where expires_at IS NOT NULL AND expires_at <= now()
     returning id
   )
   select count(*) into v_count from deleted;
@@ -952,6 +971,25 @@ $$;
 ALTER FUNCTION "public"."cleanup_stale_rooms"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."clamp_game_session_spicy"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+DECLARE
+  v_enabled boolean;
+BEGIN
+  SELECT (value #>> '{}')::boolean INTO v_enabled
+  FROM public.app_settings WHERE key = 'feature_spicy_content_enabled';
+  IF COALESCE(v_enabled, true) = false THEN
+    NEW.allow_spicy := false;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."clamp_game_session_spicy"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."close_abandoned_room"("p_room_id" "uuid") RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
@@ -1093,6 +1131,13 @@ DECLARE
   v_cap smallint;
   v_requested smallint;
   v_room public.rooms;
+  v_restrictions_enabled boolean;
+  v_daily_limit_key text;
+  v_daily_limit integer;
+  v_rooms_today integer;
+  v_min_hours_key text;
+  v_min_hours integer;
+  v_last_created timestamptz;
 BEGIN
   PERFORM pg_advisory_xact_lock(hashtext(auth.uid()::text));
 
@@ -1123,6 +1168,44 @@ BEGIN
     v_requested := 2;
   END IF;
 
+  SELECT (value #>> '{}')::boolean INTO v_restrictions_enabled
+  FROM public.app_settings WHERE key = 'room_creation_restrictions_enabled';
+  v_restrictions_enabled := COALESCE(v_restrictions_enabled, true);
+
+  IF v_restrictions_enabled THEN
+    v_daily_limit_key := CASE WHEN v_tier IS NULL THEN 'room_creation_daily_limit_basic'
+                               ELSE 'room_creation_daily_limit_premium' END;
+    SELECT (value #>> '{}')::integer INTO v_daily_limit
+    FROM public.app_settings WHERE key = v_daily_limit_key;
+    IF v_daily_limit IS NULL THEN
+      RAISE EXCEPTION 'room_limit_not_configured';
+    END IF;
+
+    SELECT count(*) INTO v_rooms_today
+    FROM public.rooms
+    WHERE owner_id = auth.uid()
+      AND (created_at AT TIME ZONE 'UTC')::date = (now() AT TIME ZONE 'UTC')::date;
+
+    IF v_rooms_today >= v_daily_limit THEN
+      RAISE EXCEPTION 'daily_room_limit_exceeded';
+    END IF;
+
+    v_min_hours_key := CASE WHEN v_tier IS NULL THEN 'room_creation_min_hours_basic'
+                             ELSE 'room_creation_min_hours_premium' END;
+    SELECT (value #>> '{}')::integer INTO v_min_hours
+    FROM public.app_settings WHERE key = v_min_hours_key;
+    v_min_hours := COALESCE(v_min_hours, 0);
+
+    IF v_min_hours > 0 THEN
+      SELECT max(created_at) INTO v_last_created
+      FROM public.rooms WHERE owner_id = auth.uid();
+      IF v_last_created IS NOT NULL
+         AND now() - v_last_created < make_interval(hours => v_min_hours) THEN
+        RAISE EXCEPTION 'room_creation_too_soon';
+      END IF;
+    END IF;
+  END IF;
+
   INSERT INTO public.rooms (owner_id, created_by, name, visibility, max_players, language, cover_emoji, status)
   VALUES (
     auth.uid(), auth.uid(), p_name, p_visibility::public.room_visibility_enum,
@@ -1140,6 +1223,18 @@ $$;
 
 
 ALTER FUNCTION "public"."create_room"("p_name" "text", "p_visibility" "text", "p_max_players" smallint, "p_language" "text", "p_cover_emoji" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."get_rooms_created_today"() RETURNS integer
+    LANGUAGE "sql" SECURITY DEFINER
+    AS $$
+  SELECT count(*)::integer FROM public.rooms
+  WHERE owner_id = auth.uid()
+    AND (created_at AT TIME ZONE 'UTC')::date = (now() AT TIME ZONE 'UTC')::date;
+$$;
+
+
+ALTER FUNCTION "public"."get_rooms_created_today"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."create_user_wallet"() RETURNS "trigger"
@@ -1404,6 +1499,63 @@ $$;
 
 
 ALTER FUNCTION "public"."get_room_by_invite_code"("p_code" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."get_room_creation_status"() RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+  v_tier text;
+  v_restrictions_enabled boolean;
+  v_daily_limit integer;
+  v_rooms_today integer;
+  v_min_hours integer;
+  v_last_created timestamptz;
+  v_next_allowed_at timestamptz;
+BEGIN
+  SELECT premium_tier INTO v_tier
+  FROM public.profiles
+  WHERE id = auth.uid() AND is_premium = true AND deleted_at IS NULL;
+
+  SELECT (value #>> '{}')::boolean INTO v_restrictions_enabled
+  FROM public.app_settings WHERE key = 'room_creation_restrictions_enabled';
+  v_restrictions_enabled := COALESCE(v_restrictions_enabled, true);
+
+  SELECT (value #>> '{}')::integer INTO v_daily_limit
+  FROM public.app_settings
+  WHERE key = CASE WHEN v_tier IS NULL THEN 'room_creation_daily_limit_basic'
+                    ELSE 'room_creation_daily_limit_premium' END;
+
+  SELECT count(*) INTO v_rooms_today
+  FROM public.rooms
+  WHERE owner_id = auth.uid()
+    AND (created_at AT TIME ZONE 'UTC')::date = (now() AT TIME ZONE 'UTC')::date;
+
+  SELECT (value #>> '{}')::integer INTO v_min_hours
+  FROM public.app_settings
+  WHERE key = CASE WHEN v_tier IS NULL THEN 'room_creation_min_hours_basic'
+                    ELSE 'room_creation_min_hours_premium' END;
+  v_min_hours := COALESCE(v_min_hours, 0);
+
+  IF v_min_hours > 0 THEN
+    SELECT max(created_at) INTO v_last_created
+    FROM public.rooms WHERE owner_id = auth.uid();
+    IF v_last_created IS NOT NULL THEN
+      v_next_allowed_at := v_last_created + make_interval(hours => v_min_hours);
+    END IF;
+  END IF;
+
+  RETURN jsonb_build_object(
+    'rooms_today', COALESCE(v_rooms_today, 0),
+    'daily_limit', v_daily_limit,
+    'restrictions_enabled', v_restrictions_enabled,
+    'next_allowed_at', v_next_allowed_at
+  );
+END;
+$$;
+
+
+ALTER FUNCTION "public"."get_room_creation_status"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."handle_new_auth_user"() RETURNS "trigger"
@@ -2158,6 +2310,95 @@ $$;
 ALTER FUNCTION "public"."send_notification"("p_user_id" "uuid", "p_type" "public"."notification_type_enum", "p_title" "jsonb", "p_body" "jsonb", "p_data" "jsonb") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."send_targeted_chat_message"("p_room_id" "uuid", "p_content" "text", "p_recipient_ids" "uuid"[], "p_game_session_id" "uuid" DEFAULT NULL::"uuid", "p_reply_to_id" "uuid" DEFAULT NULL::"uuid", "p_reply_to_content" "text" DEFAULT NULL::"text", "p_reply_to_display_name" "text" DEFAULT NULL::"text") RETURNS "public"."room_chat_messages"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+  v_is_premium_plus boolean;
+  v_is_muted boolean;
+  v_content text;
+  v_msg public.room_chat_messages;
+BEGIN
+  IF p_recipient_ids IS NULL OR array_length(p_recipient_ids, 1) IS NULL THEN
+    RAISE EXCEPTION 'no_recipients';
+  END IF;
+
+  v_content := trim(coalesce(p_content, ''));
+  IF v_content = '' THEN
+    RAISE EXCEPTION 'empty_content';
+  END IF;
+
+  SELECT EXISTS(
+    SELECT 1 FROM public.subscriptions
+    WHERE user_id = auth.uid() AND status = 'active' AND tier = 'premium_plus'
+  ) INTO v_is_premium_plus;
+  IF NOT v_is_premium_plus THEN
+    RAISE EXCEPTION 'not_premium_plus';
+  END IF;
+
+  IF NOT public.is_room_member(p_room_id, auth.uid()) THEN
+    RAISE EXCEPTION 'not_room_member';
+  END IF;
+  SELECT EXISTS(
+    SELECT 1 FROM public.room_members
+    WHERE room_id = p_room_id AND user_id = auth.uid()
+      AND is_muted = true AND left_at IS NULL
+  ) INTO v_is_muted;
+  IF v_is_muted THEN
+    RAISE EXCEPTION 'muted';
+  END IF;
+
+  IF p_game_session_id IS NOT NULL THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM public.game_sessions
+      WHERE id = p_game_session_id
+        AND room_id = p_room_id
+        AND auth.uid() = ANY(player_ids)
+    ) THEN
+      RAISE EXCEPTION 'not_in_game_session';
+    END IF;
+  END IF;
+
+  IF p_game_session_id IS NOT NULL THEN
+    IF EXISTS (
+      SELECT 1 FROM unnest(p_recipient_ids) rid
+      WHERE NOT EXISTS (
+        SELECT 1 FROM public.game_sessions gs
+        WHERE gs.id = p_game_session_id AND rid = ANY(gs.player_ids)
+      )
+    ) THEN
+      RAISE EXCEPTION 'recipient_outside_context';
+    END IF;
+  ELSE
+    IF EXISTS (
+      SELECT 1 FROM unnest(p_recipient_ids) rid
+      WHERE NOT public.is_room_member(p_room_id, rid)
+    ) THEN
+      RAISE EXCEPTION 'recipient_outside_context';
+    END IF;
+  END IF;
+
+  INSERT INTO public.room_chat_messages
+    (room_id, user_id, content, audience_type, game_session_id,
+     reply_to_id, reply_to_content, reply_to_display_name)
+  VALUES
+    (p_room_id, auth.uid(), v_content, 'selected', p_game_session_id,
+     p_reply_to_id, p_reply_to_content, p_reply_to_display_name)
+  RETURNING * INTO v_msg;
+
+  INSERT INTO public.chat_message_recipients (message_id, user_id)
+  SELECT v_msg.id, rid FROM unnest(p_recipient_ids) rid
+  WHERE rid <> auth.uid()
+  ON CONFLICT DO NOTHING;
+
+  RETURN v_msg;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."send_targeted_chat_message"("p_room_id" "uuid", "p_content" "text", "p_recipient_ids" "uuid"[], "p_game_session_id" "uuid", "p_reply_to_id" "uuid", "p_reply_to_content" "text", "p_reply_to_display_name" "text") OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."profiles" (
     "id" "uuid" NOT NULL,
     "email" "text" NOT NULL,
@@ -2186,6 +2427,11 @@ CREATE TABLE IF NOT EXISTS "public"."profiles" (
     "avatar_config" "jsonb",
     "last_ownership_transfer_at" timestamp with time zone,
     "theme_background_color" "text",
+    "gender" "text",
+    "presence_mode" "text" DEFAULT 'auto'::"text" NOT NULL,
+    "is_official_account" boolean DEFAULT false,
+    "creator_privileges_removed_at" timestamp with time zone,
+    "general_score" integer DEFAULT 0 NOT NULL,
     CONSTRAINT "profiles_age_check" CHECK ((("age" IS NULL) OR (("age" >= 13) AND ("age" <= 100)))),
     CONSTRAINT "profiles_bio_check" CHECK (("char_length"("bio") <= 280)),
     CONSTRAINT "profiles_theme_background_color_check" CHECK ((("theme_background_color" IS NULL) OR ("theme_background_color" ~ '^#[0-9A-Fa-f]{6}$'::"text")))
@@ -2294,21 +2540,54 @@ $$;
 ALTER FUNCTION "public"."start_game_session_checks"("p_user_id" "uuid", "p_room_id" "uuid", "p_pack_id" "uuid", "p_is_premium" boolean) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."delete_pack_draft"("p_pack_id" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+  v_status public.pack_status_enum;
+BEGIN
+  SELECT status INTO v_status FROM public.packs
+  WHERE id = p_pack_id AND creator_id = auth.uid() AND deleted_at IS NULL
+  FOR UPDATE;
+
+  IF v_status IS NULL THEN
+    RAISE EXCEPTION 'pack_not_found';
+  END IF;
+  IF v_status <> 'draft'::public.pack_status_enum THEN
+    RAISE EXCEPTION 'pack_not_draft';
+  END IF;
+
+  UPDATE public.packs SET deleted_at = now() WHERE id = p_pack_id;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."delete_pack_draft"("p_pack_id" "uuid") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."submit_pack_for_review"("p_pack_id" "uuid", "p_pay_fee" boolean DEFAULT false) RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
 DECLARE
   v_status public.pack_status_enum;
-  v_month_count integer;
   v_last_submitted timestamptz;
   v_needs_fee boolean;
   v_fee_mru integer;
+  v_gap_days integer;
   v_wallet_id uuid;
   v_tx public.wallet_transactions;
   v_fee_tx_id uuid;
 BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM public.creator_verifications
+    WHERE user_id = auth.uid() AND status = 'verified'::public.verification_status_enum
+  ) THEN
+    RAISE EXCEPTION 'creator_not_verified';
+  END IF;
+
   SELECT status INTO v_status FROM public.packs
-  WHERE id = p_pack_id AND creator_id = auth.uid();
+  WHERE id = p_pack_id AND creator_id = auth.uid() AND deleted_at IS NULL
+  FOR UPDATE;
   IF v_status IS NULL THEN
     RAISE EXCEPTION 'pack_not_found';
   END IF;
@@ -2316,14 +2595,17 @@ BEGIN
     RAISE EXCEPTION 'pack_not_editable';
   END IF;
 
-  SELECT count(*) INTO v_month_count FROM public.pack_submissions
-  WHERE creator_id = auth.uid()
-    AND submitted_at >= date_trunc('month', now());
+  SELECT (value #>> '{}')::integer INTO v_gap_days
+  FROM public.app_settings WHERE key = 'pack_submission_min_gap_days';
+  IF v_gap_days IS NULL THEN
+    RAISE EXCEPTION 'pack_submission_limit_not_configured';
+  END IF;
+
   SELECT max(submitted_at) INTO v_last_submitted FROM public.pack_submissions
   WHERE creator_id = auth.uid();
 
-  v_needs_fee := v_month_count >= 2
-    OR (v_last_submitted IS NOT NULL AND now() - v_last_submitted < interval '15 days');
+  v_needs_fee := v_last_submitted IS NOT NULL
+    AND now() - v_last_submitted < make_interval(days => v_gap_days);
 
   IF v_needs_fee AND NOT p_pay_fee THEN
     RAISE EXCEPTION 'fee_required';
@@ -2342,7 +2624,9 @@ BEGIN
     END IF;
     v_tx := public.apply_wallet_transaction(
       v_wallet_id, 'purchase', -v_fee_mru, NULL,
-      'Additional pack submission fee: ' || p_pack_id, NULL, 'wallet'
+      'Additional pack submission fee: ' || p_pack_id,
+      'pack_submission_fee:' || p_pack_id::text || ':' || extract(epoch FROM now())::text,
+      'wallet'
     );
     v_fee_tx_id := v_tx.id;
   END IF;
@@ -2360,6 +2644,63 @@ $$;
 
 
 ALTER FUNCTION "public"."submit_pack_for_review"("p_pack_id" "uuid", "p_pay_fee" boolean) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."get_pack_creation_status"() RETURNS "jsonb"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    AS $$
+DECLARE
+  v_is_verified boolean;
+  v_has_draft boolean;
+  v_gap_days integer;
+  v_fee_mru integer;
+  v_last_submitted timestamptz;
+  v_next_free_at timestamptz;
+  v_can_submit_free boolean;
+BEGIN
+  SELECT EXISTS(
+    SELECT 1 FROM public.creator_verifications
+    WHERE user_id = auth.uid() AND status = 'verified'::public.verification_status_enum
+  ) INTO v_is_verified;
+
+  SELECT EXISTS(
+    SELECT 1 FROM public.packs
+    WHERE creator_id = auth.uid() AND status = 'draft' AND deleted_at IS NULL
+  ) INTO v_has_draft;
+
+  SELECT (value #>> '{}')::integer INTO v_gap_days
+  FROM public.app_settings WHERE key = 'pack_submission_min_gap_days';
+  SELECT (value #>> '{}')::integer INTO v_fee_mru
+  FROM public.app_settings WHERE key = 'pack_extra_creation_price_mru';
+
+  SELECT max(submitted_at) INTO v_last_submitted
+  FROM public.pack_submissions WHERE creator_id = auth.uid();
+
+  IF v_last_submitted IS NULL OR v_gap_days IS NULL THEN
+    v_can_submit_free := true;
+    v_next_free_at := NULL;
+  ELSE
+    v_next_free_at := v_last_submitted + make_interval(days => v_gap_days);
+    v_can_submit_free := now() >= v_next_free_at;
+    IF v_can_submit_free THEN
+      v_next_free_at := NULL;
+    END IF;
+  END IF;
+
+  RETURN jsonb_build_object(
+    'is_verified_creator', v_is_verified,
+    'has_active_draft', v_has_draft,
+    'can_submit_free', v_can_submit_free,
+    'next_free_at', v_next_free_at,
+    'min_gap_days', v_gap_days,
+    'extra_pack_price_mru', v_fee_mru,
+    'currency', 'MRU'
+  );
+END;
+$$;
+
+
+ALTER FUNCTION "public"."get_pack_creation_status"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."sync_premium_status"("p_user_id" "uuid") RETURNS "void"
@@ -2551,6 +2892,16 @@ CREATE TABLE IF NOT EXISTS "public"."blocked_users" (
 
 
 ALTER TABLE "public"."blocked_users" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."chat_message_recipients" (
+    "message_id" "uuid" NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."chat_message_recipients" OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "public"."commissions" (
@@ -2891,7 +3242,7 @@ CREATE TABLE IF NOT EXISTS "public"."notifications" (
     "read_at" timestamp with time zone,
     "push_sent" boolean DEFAULT false NOT NULL,
     "push_id" "text",
-    "expires_at" timestamp with time zone DEFAULT ("now"() + '30 days'::interval) NOT NULL,
+    "expires_at" timestamp with time zone DEFAULT ("now"() + '24:00:00'::interval) NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "deleted_at" timestamp with time zone,
     "idempotency_key" "text"
@@ -2962,11 +3313,53 @@ CREATE TABLE IF NOT EXISTS "public"."pack_cards" (
     "content" "jsonb" NOT NULL,
     "sort_order" integer DEFAULT 0 NOT NULL,
     "is_active" boolean DEFAULT true NOT NULL,
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "image_url" "text",
+    "sticker_id" "uuid"
 );
 
 
 ALTER TABLE "public"."pack_cards" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."sticker_library" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "name" "text" NOT NULL,
+    "storage_key" "text",
+    "public_url" "text" NOT NULL,
+    "category" "text",
+    "is_active" boolean DEFAULT true NOT NULL,
+    "sort_order" integer DEFAULT 0 NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."sticker_library" OWNER TO "postgres";
+
+ALTER TABLE ONLY "public"."sticker_library"
+    ADD CONSTRAINT "sticker_library_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE ONLY "public"."pack_cards"
+    ADD CONSTRAINT "pack_cards_sticker_id_fkey"
+      FOREIGN KEY ("sticker_id") REFERENCES "public"."sticker_library"("id") ON DELETE SET NULL;
+
+CREATE INDEX "idx_sticker_library_category_sort" ON "public"."sticker_library" USING "btree" ("category", "sort_order");
+CREATE INDEX "idx_sticker_library_active" ON "public"."sticker_library" USING "btree" ("is_active");
+CREATE INDEX "idx_pack_cards_sticker_id" ON "public"."pack_cards" USING "btree" ("sticker_id") WHERE ("sticker_id" IS NOT NULL);
+
+CREATE OR REPLACE TRIGGER "trg_sticker_library_updated_at" BEFORE UPDATE ON "public"."sticker_library" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
+
+ALTER TABLE "public"."sticker_library" ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "sticker_library: no client insert" ON "public"."sticker_library" FOR INSERT WITH CHECK (false);
+CREATE POLICY "sticker_library: no client update" ON "public"."sticker_library" FOR UPDATE USING (false);
+CREATE POLICY "sticker_library: no client delete" ON "public"."sticker_library" FOR DELETE USING (false);
+CREATE POLICY "sticker_library: public read active" ON "public"."sticker_library" FOR SELECT USING (("is_active" = true));
+
+GRANT SELECT ON TABLE "public"."sticker_library" TO "anon";
+GRANT SELECT ON TABLE "public"."sticker_library" TO "authenticated";
+GRANT ALL ON TABLE "public"."sticker_library" TO "service_role";
 
 
 CREATE TABLE IF NOT EXISTS "public"."pack_categories" (
@@ -3044,6 +3437,239 @@ CREATE TABLE IF NOT EXISTS "public"."pack_ratings" (
 
 
 ALTER TABLE "public"."pack_ratings" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."score_events" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "source_type" "text" NOT NULL,
+    "source_id" "uuid" NOT NULL,
+    "points" integer NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+ALTER TABLE "public"."score_events" OWNER TO "postgres";
+
+ALTER TABLE ONLY "public"."score_events"
+    ADD CONSTRAINT "score_events_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE ONLY "public"."score_events"
+    ADD CONSTRAINT "score_events_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
+
+ALTER TABLE ONLY "public"."score_events"
+    ADD CONSTRAINT "score_events_unique_source" UNIQUE ("source_type", "source_id", "user_id");
+
+CREATE INDEX "idx_score_events_user" ON "public"."score_events" USING "btree" ("user_id", "created_at" DESC);
+
+ALTER TABLE "public"."score_events" ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "score_events: own read" ON "public"."score_events" FOR SELECT USING (("auth"."uid"() = "user_id"));
+CREATE POLICY "score_events: no client write" ON "public"."score_events" FOR ALL USING (false) WITH CHECK (false);
+
+GRANT SELECT ON TABLE "public"."score_events" TO "authenticated";
+GRANT ALL ON TABLE "public"."score_events" TO "service_role";
+
+CREATE OR REPLACE FUNCTION "public"."apply_score_event"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+BEGIN
+  UPDATE public.profiles SET general_score = general_score + NEW.points
+  WHERE id = NEW.user_id;
+  RETURN NEW;
+END;
+$$;
+
+ALTER FUNCTION "public"."apply_score_event"() OWNER TO "postgres";
+
+CREATE OR REPLACE TRIGGER "trg_score_events_apply" AFTER INSERT ON "public"."score_events" FOR EACH ROW EXECUTE FUNCTION "public"."apply_score_event"();
+
+
+CREATE TABLE IF NOT EXISTS "public"."streak_daily_activity" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "activity_date" "date" NOT NULL,
+    "game_session_id" "uuid",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+ALTER TABLE "public"."streak_daily_activity" OWNER TO "postgres";
+
+ALTER TABLE ONLY "public"."streak_daily_activity"
+    ADD CONSTRAINT "streak_daily_activity_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE ONLY "public"."streak_daily_activity"
+    ADD CONSTRAINT "streak_daily_activity_unique" UNIQUE ("user_id", "activity_date");
+
+ALTER TABLE ONLY "public"."streak_daily_activity"
+    ADD CONSTRAINT "streak_daily_activity_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
+
+ALTER TABLE ONLY "public"."streak_daily_activity"
+    ADD CONSTRAINT "streak_daily_activity_game_session_id_fkey" FOREIGN KEY ("game_session_id") REFERENCES "public"."game_sessions"("id") ON DELETE SET NULL;
+
+CREATE INDEX "idx_streak_daily_activity_user_date" ON "public"."streak_daily_activity" USING "btree" ("user_id", "activity_date" DESC);
+
+ALTER TABLE "public"."streak_daily_activity" ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "streak_daily_activity: own read" ON "public"."streak_daily_activity" FOR SELECT USING (("auth"."uid"() = "user_id"));
+CREATE POLICY "streak_daily_activity: no client write" ON "public"."streak_daily_activity" FOR ALL USING (false) WITH CHECK (false);
+
+GRANT SELECT ON TABLE "public"."streak_daily_activity" TO "authenticated";
+GRANT ALL ON TABLE "public"."streak_daily_activity" TO "service_role";
+
+
+CREATE TABLE IF NOT EXISTS "public"."user_streaks" (
+    "user_id" "uuid" NOT NULL,
+    "current_streak" integer DEFAULT 0 NOT NULL,
+    "longest_streak" integer DEFAULT 0 NOT NULL,
+    "last_increment_date" "date",
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+ALTER TABLE "public"."user_streaks" OWNER TO "postgres";
+
+ALTER TABLE ONLY "public"."user_streaks"
+    ADD CONSTRAINT "user_streaks_pkey" PRIMARY KEY ("user_id");
+
+ALTER TABLE ONLY "public"."user_streaks"
+    ADD CONSTRAINT "user_streaks_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
+
+ALTER TABLE "public"."user_streaks" ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "user_streaks: public read" ON "public"."user_streaks" FOR SELECT USING (true);
+CREATE POLICY "user_streaks: no client write" ON "public"."user_streaks" FOR ALL USING (false) WITH CHECK (false);
+
+GRANT SELECT ON TABLE "public"."user_streaks" TO "anon";
+GRANT SELECT ON TABLE "public"."user_streaks" TO "authenticated";
+GRANT ALL ON TABLE "public"."user_streaks" TO "service_role";
+
+
+CREATE OR REPLACE FUNCTION "public"."on_game_session_completed"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+  v_points_game integer;
+  v_points_streak integer;
+  v_uid uuid;
+  v_today date;
+  v_activity public.streak_daily_activity;
+  v_last_increment date;
+  v_current_streak integer;
+BEGIN
+  IF NEW.status IS DISTINCT FROM 'completed'::public.game_session_status_enum
+     OR OLD.status IS NOT DISTINCT FROM 'completed'::public.game_session_status_enum THEN
+    RETURN NEW;
+  END IF;
+
+  SELECT (value #>> '{}')::integer INTO v_points_game
+  FROM public.app_settings WHERE key = 'score_points_per_completed_game';
+  SELECT (value #>> '{}')::integer INTO v_points_streak
+  FROM public.app_settings WHERE key = 'score_points_per_streak_day';
+  v_points_game := COALESCE(v_points_game, 0);
+  v_points_streak := COALESCE(v_points_streak, 0);
+  v_today := (now() AT TIME ZONE 'UTC')::date;
+
+  IF NEW.player_ids IS NULL THEN
+    RETURN NEW;
+  END IF;
+
+  FOREACH v_uid IN ARRAY NEW.player_ids LOOP
+    IF v_points_game > 0 THEN
+      INSERT INTO public.score_events (user_id, source_type, source_id, points)
+      VALUES (v_uid, 'game_completed', NEW.id, v_points_game)
+      ON CONFLICT (source_type, source_id, user_id) DO NOTHING;
+    END IF;
+
+    v_activity := NULL;
+    INSERT INTO public.streak_daily_activity (user_id, activity_date, game_session_id)
+    VALUES (v_uid, v_today, NEW.id)
+    ON CONFLICT (user_id, activity_date) DO NOTHING
+    RETURNING * INTO v_activity;
+
+    IF v_activity IS NOT NULL THEN
+      SELECT last_increment_date, current_streak INTO v_last_increment, v_current_streak
+      FROM public.user_streaks WHERE user_id = v_uid;
+
+      IF v_last_increment IS NULL THEN
+        v_current_streak := 1;
+      ELSIF v_last_increment = v_today - 1 THEN
+        v_current_streak := COALESCE(v_current_streak, 0) + 1;
+      ELSE
+        v_current_streak := 1;
+      END IF;
+
+      INSERT INTO public.user_streaks (user_id, current_streak, longest_streak, last_increment_date, updated_at)
+      VALUES (v_uid, v_current_streak, v_current_streak, v_today, now())
+      ON CONFLICT (user_id) DO UPDATE
+        SET current_streak = v_current_streak,
+            longest_streak = GREATEST(public.user_streaks.longest_streak, v_current_streak),
+            last_increment_date = v_today,
+            updated_at = now();
+
+      IF v_points_streak > 0 THEN
+        INSERT INTO public.score_events (user_id, source_type, source_id, points)
+        VALUES (v_uid, 'streak_day', v_activity.id, v_points_streak)
+        ON CONFLICT (source_type, source_id, user_id) DO NOTHING;
+      END IF;
+
+      INSERT INTO public.notifications (user_id, type, title, body, data, expires_at)
+      VALUES (
+        v_uid,
+        'streak_increased'::public.notification_type_enum,
+        jsonb_build_object(
+          'en', '🔥 Streak Day ' || v_current_streak || '!',
+          'ar', '🔥 سلسلة اليوم ' || v_current_streak || '!',
+          'fr', '🔥 Série jour ' || v_current_streak || ' !'
+        ),
+        jsonb_build_object(
+          'en', 'You kept your streak going — ' || v_current_streak || ' days in a row!',
+          'ar', 'حافظت على سلسلتك — ' || v_current_streak || ' يومًا متتاليًا!',
+          'fr', 'Vous avez maintenu votre série — ' || v_current_streak || ' jours d''affilée !'
+        ),
+        jsonb_build_object('streak', v_current_streak),
+        now() + interval '3 days'
+      );
+    END IF;
+  END LOOP;
+
+  RETURN NEW;
+END;
+$$;
+
+ALTER FUNCTION "public"."on_game_session_completed"() OWNER TO "postgres";
+
+CREATE OR REPLACE TRIGGER "trg_game_session_completed_award" AFTER UPDATE OF "status" ON "public"."game_sessions" FOR EACH ROW EXECUTE FUNCTION "public"."on_game_session_completed"();
+
+
+CREATE OR REPLACE FUNCTION "public"."on_pack_rating_award_creator"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+  v_creator_id uuid;
+  v_points integer;
+BEGIN
+  SELECT creator_id INTO v_creator_id FROM public.packs WHERE id = NEW.pack_id;
+  IF v_creator_id IS NULL THEN
+    RETURN NEW;
+  END IF;
+
+  SELECT (value #>> '{}')::integer INTO v_points
+  FROM public.app_settings WHERE key = 'score_points_per_pack_vote';
+  v_points := COALESCE(v_points, 0);
+  IF v_points <= 0 THEN
+    RETURN NEW;
+  END IF;
+
+  INSERT INTO public.score_events (user_id, source_type, source_id, points)
+  VALUES (v_creator_id, 'pack_vote', NEW.id, v_points)
+  ON CONFLICT (source_type, source_id, user_id) DO NOTHING;
+
+  RETURN NEW;
+END;
+$$;
+
+ALTER FUNCTION "public"."on_pack_rating_award_creator"() OWNER TO "postgres";
+
+CREATE OR REPLACE TRIGGER "trg_pack_rating_award_creator" AFTER INSERT ON "public"."pack_ratings" FOR EACH ROW EXECUTE FUNCTION "public"."on_pack_rating_award_creator"();
 
 
 CREATE TABLE IF NOT EXISTS "public"."pack_reactions" (
@@ -3315,7 +3941,9 @@ CREATE OR REPLACE VIEW "public"."profiles_public" AS
           WHERE ((("rm"."user_id" = "p"."id") AND ("r"."status" = ANY (ARRAY['in_game'::"public"."room_status_enum", 'ended'::"public"."room_status_enum"])) AND ("rm"."left_at" IS NULL)) OR ("rm"."left_at" IS NOT NULL))), (0)::bigint))::integer AS "games_played",
     (COALESCE(( SELECT "count"(*) AS "count"
            FROM "public"."packs" "pk"
-          WHERE (("pk"."creator_id" = "p"."id") AND ("pk"."status" = 'approved'::"public"."pack_status_enum") AND ("pk"."deleted_at" IS NULL))), (0)::bigint))::integer AS "packs_count"
+          WHERE (("pk"."creator_id" = "p"."id") AND ("pk"."status" = 'approved'::"public"."pack_status_enum") AND ("pk"."deleted_at" IS NULL))), (0)::bigint))::integer AS "packs_count",
+    "is_official_account",
+    "general_score"
    FROM "public"."profiles" "p"
   WHERE (("deleted_at" IS NULL) AND ("is_banned" = false));
 
@@ -3392,7 +4020,10 @@ CREATE TABLE IF NOT EXISTS "public"."room_chat_messages" (
     "reply_to_display_name" "text",
     "is_anonymous" boolean DEFAULT false NOT NULL,
     "real_sender_id" "uuid",
-    CONSTRAINT "room_chat_messages_content_check" CHECK ((("char_length"("content") >= 1) AND ("char_length"("content") <= 500)))
+    "audience_type" "text" DEFAULT 'everyone'::"text" NOT NULL,
+    "game_session_id" "uuid",
+    CONSTRAINT "room_chat_messages_content_check" CHECK ((("char_length"("content") >= 1) AND ("char_length"("content") <= 500))),
+    CONSTRAINT "room_chat_messages_audience_type_check" CHECK (("audience_type" = ANY (ARRAY['everyone'::"text", 'selected'::"text"])))
 );
 
 
@@ -3730,6 +4361,11 @@ ALTER TABLE ONLY "public"."app_settings"
 
 ALTER TABLE ONLY "public"."blocked_users"
     ADD CONSTRAINT "blocked_users_pkey" PRIMARY KEY ("blocker_id", "blocked_id");
+
+
+
+ALTER TABLE ONLY "public"."chat_message_recipients"
+    ADD CONSTRAINT "chat_message_recipients_pkey" PRIMARY KEY ("message_id", "user_id");
 
 
 
@@ -4197,6 +4833,10 @@ CREATE INDEX "idx_blocked_users_blocked" ON "public"."blocked_users" USING "btre
 
 
 
+CREATE INDEX "idx_chat_message_recipients_user" ON "public"."chat_message_recipients" USING "btree" ("user_id", "message_id");
+
+
+
 CREATE INDEX "idx_chat_room_created" ON "public"."room_chat_messages" USING "btree" ("room_id", "created_at" DESC) WHERE ("is_deleted" = false);
 
 
@@ -4381,6 +5021,10 @@ CREATE INDEX "idx_packs_languages" ON "public"."packs" USING "gin" ("available_l
 
 
 
+CREATE UNIQUE INDEX "idx_packs_one_draft_per_creator" ON "public"."packs" USING "btree" ("creator_id") WHERE (("status" = 'draft'::"public"."pack_status_enum") AND ("deleted_at" IS NULL));
+
+
+
 CREATE INDEX "idx_packs_search" ON "public"."packs" USING "gin" ("public"."immutable_to_tsvector"(((((COALESCE(("title" ->> 'en'::"text"), ''::"text") || ' '::"text") || COALESCE(("title" ->> 'ar'::"text"), ''::"text")) || ' '::"text") || COALESCE(("title" ->> 'fr'::"text"), ''::"text")))) WHERE (("deleted_at" IS NULL) AND ("status" = 'approved'::"public"."pack_status_enum"));
 
 
@@ -4438,6 +5082,10 @@ CREATE INDEX "idx_room_bans_room" ON "public"."room_bans" USING "btree" ("room_i
 
 
 CREATE INDEX "idx_room_bans_user" ON "public"."room_bans" USING "btree" ("user_id") WHERE ("lifted_at" IS NULL);
+
+
+
+CREATE INDEX "idx_room_chat_messages_game_session" ON "public"."room_chat_messages" USING "btree" ("game_session_id") WHERE ("game_session_id" IS NOT NULL);
 
 
 
@@ -4561,6 +5209,10 @@ CREATE OR REPLACE TRIGGER "trg_apply_verification" AFTER UPDATE OF "status" ON "
 
 
 
+CREATE OR REPLACE TRIGGER "trg_clamp_notification_expiry" BEFORE INSERT ON "public"."notifications" FOR EACH ROW EXECUTE FUNCTION "public"."clamp_notification_expiry"();
+
+
+
 CREATE OR REPLACE TRIGGER "trg_create_wallet" AFTER INSERT ON "public"."profiles" FOR EACH ROW EXECUTE FUNCTION "public"."create_user_wallet"();
 
 
@@ -4578,6 +5230,10 @@ CREATE OR REPLACE TRIGGER "trg_friendships_updated_at" BEFORE UPDATE ON "public"
 
 
 CREATE OR REPLACE TRIGGER "trg_game_sessions_updated_at" BEFORE UPDATE ON "public"."game_sessions" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
+
+
+
+CREATE OR REPLACE TRIGGER "trg_clamp_game_session_spicy" BEFORE INSERT OR UPDATE OF "allow_spicy" ON "public"."game_sessions" FOR EACH ROW EXECUTE FUNCTION "public"."clamp_game_session_spicy"();
 
 
 
@@ -4688,6 +5344,16 @@ ALTER TABLE ONLY "public"."blocked_users"
 
 ALTER TABLE ONLY "public"."blocked_users"
     ADD CONSTRAINT "blocked_users_blocker_id_fkey" FOREIGN KEY ("blocker_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."chat_message_recipients"
+    ADD CONSTRAINT "chat_message_recipients_message_id_fkey" FOREIGN KEY ("message_id") REFERENCES "public"."room_chat_messages"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."chat_message_recipients"
+    ADD CONSTRAINT "chat_message_recipients_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 
@@ -5112,6 +5778,11 @@ ALTER TABLE ONLY "public"."room_chat_messages"
 
 
 ALTER TABLE ONLY "public"."room_chat_messages"
+    ADD CONSTRAINT "room_chat_messages_game_session_id_fkey" FOREIGN KEY ("game_session_id") REFERENCES "public"."game_sessions"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."room_chat_messages"
     ADD CONSTRAINT "room_chat_messages_real_sender_id_fkey" FOREIGN KEY ("real_sender_id") REFERENCES "auth"."users"("id");
 
 
@@ -5348,6 +6019,19 @@ CREATE POLICY "blocked_users: own insert" ON "public"."blocked_users" FOR INSERT
 
 
 CREATE POLICY "blocked_users: own read" ON "public"."blocked_users" FOR SELECT USING ((("auth"."uid"() = "blocker_id") OR ("auth"."uid"() = "blocked_id")));
+
+
+
+ALTER TABLE "public"."chat_message_recipients" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "chat_message_recipients: no client write" ON "public"."chat_message_recipients" USING (false) WITH CHECK (false);
+
+
+
+CREATE POLICY "chat_message_recipients: recipient or sender read" ON "public"."chat_message_recipients" FOR SELECT USING ((("user_id" = "auth"."uid"()) OR (EXISTS ( SELECT 1
+   FROM "public"."room_chat_messages" m
+  WHERE (("m"."id" = "chat_message_recipients"."message_id") AND ("m"."user_id" = "auth"."uid"()))))));
 
 
 
@@ -5876,13 +6560,15 @@ CREATE POLICY "room_bans: owner can update" ON "public"."room_bans" FOR UPDATE U
 
 
 
-CREATE POLICY "room_chat: member insert" ON "public"."room_chat_messages" FOR INSERT WITH CHECK ((("auth"."uid"() = "user_id") AND "public"."is_room_member"("room_id", "auth"."uid"()) AND (NOT (EXISTS ( SELECT 1
+CREATE POLICY "room_chat: member insert" ON "public"."room_chat_messages" FOR INSERT WITH CHECK ((("auth"."uid"() = "user_id") AND "public"."is_room_member"("room_id", "auth"."uid"()) AND ("audience_type" = 'everyone'::"text") AND ("game_session_id" IS NULL) AND (NOT (EXISTS ( SELECT 1
    FROM "public"."room_members" "rm"
   WHERE (("rm"."room_id" = "room_chat_messages"."room_id") AND ("rm"."user_id" = "auth"."uid"()) AND ("rm"."is_muted" = true) AND ("rm"."left_at" IS NULL)))))));
 
 
 
-CREATE POLICY "room_chat: member read" ON "public"."room_chat_messages" FOR SELECT USING (("public"."is_room_member"("room_id", "auth"."uid"()) AND ("is_deleted" = false)));
+CREATE POLICY "room_chat: member read" ON "public"."room_chat_messages" FOR SELECT USING (("public"."is_room_member"("room_id", "auth"."uid"()) AND ("is_deleted" = false) AND (("audience_type" = 'everyone'::"text") OR ("user_id" = "auth"."uid"()) OR (EXISTS ( SELECT 1
+   FROM "public"."chat_message_recipients" "cmr"
+  WHERE (("cmr"."message_id" = "room_chat_messages"."id") AND ("cmr"."user_id" = "auth"."uid"())))))));
 
 
 
@@ -5957,12 +6643,6 @@ CREATE POLICY "room_members: self insert" ON "public"."room_members" FOR INSERT 
 
 
 CREATE POLICY "room_members: self or moderator update" ON "public"."room_members" FOR UPDATE USING ((("auth"."uid"() = "user_id") OR "public"."is_room_moderator"("room_id", "auth"."uid"())));
-
-
-
-CREATE POLICY "room_messages: read for members" ON "public"."room_chat_messages" FOR SELECT USING ((EXISTS ( SELECT 1
-   FROM "public"."room_members" "rm"
-  WHERE (("rm"."room_id" = "room_chat_messages"."room_id") AND ("rm"."user_id" = "auth"."uid"()) AND ("rm"."left_at" IS NULL)))));
 
 
 
@@ -6582,6 +7262,18 @@ GRANT ALL ON FUNCTION "public"."get_room_by_invite_code"("p_code" "text") TO "se
 
 
 
+GRANT ALL ON FUNCTION "public"."get_room_creation_status"() TO "anon";
+GRANT ALL ON FUNCTION "public"."get_room_creation_status"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_room_creation_status"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."get_rooms_created_today"() TO "anon";
+GRANT ALL ON FUNCTION "public"."get_rooms_created_today"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_rooms_created_today"() TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."handle_new_auth_user"() TO "anon";
 GRANT ALL ON FUNCTION "public"."handle_new_auth_user"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."handle_new_auth_user"() TO "service_role";
@@ -6733,6 +7425,11 @@ GRANT ALL ON FUNCTION "public"."send_notification"("p_user_id" "uuid", "p_type" 
 
 
 
+GRANT ALL ON FUNCTION "public"."send_targeted_chat_message"("p_room_id" "uuid", "p_content" "text", "p_recipient_ids" "uuid"[], "p_game_session_id" "uuid", "p_reply_to_id" "uuid", "p_reply_to_content" "text", "p_reply_to_display_name" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."send_targeted_chat_message"("p_room_id" "uuid", "p_content" "text", "p_recipient_ids" "uuid"[], "p_game_session_id" "uuid", "p_reply_to_id" "uuid", "p_reply_to_content" "text", "p_reply_to_display_name" "text") TO "service_role";
+
+
+
 GRANT ALL ON TABLE "public"."profiles" TO "anon";
 GRANT ALL ON TABLE "public"."profiles" TO "authenticated";
 GRANT ALL ON TABLE "public"."profiles" TO "service_role";
@@ -6800,6 +7497,18 @@ GRANT ALL ON FUNCTION "public"."soft_delete"("p_table" "text", "p_id" "uuid") TO
 GRANT ALL ON FUNCTION "public"."start_game_session_checks"("p_user_id" "uuid", "p_room_id" "uuid", "p_pack_id" "uuid", "p_is_premium" boolean) TO "anon";
 GRANT ALL ON FUNCTION "public"."start_game_session_checks"("p_user_id" "uuid", "p_room_id" "uuid", "p_pack_id" "uuid", "p_is_premium" boolean) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."start_game_session_checks"("p_user_id" "uuid", "p_room_id" "uuid", "p_pack_id" "uuid", "p_is_premium" boolean) TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."delete_pack_draft"("p_pack_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."delete_pack_draft"("p_pack_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."delete_pack_draft"("p_pack_id" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."get_pack_creation_status"() TO "anon";
+GRANT ALL ON FUNCTION "public"."get_pack_creation_status"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_pack_creation_status"() TO "service_role";
 
 
 
@@ -6897,6 +7606,11 @@ GRANT ALL ON TABLE "public"."app_settings" TO "service_role";
 GRANT ALL ON TABLE "public"."blocked_users" TO "anon";
 GRANT ALL ON TABLE "public"."blocked_users" TO "authenticated";
 GRANT ALL ON TABLE "public"."blocked_users" TO "service_role";
+
+
+
+GRANT SELECT ON TABLE "public"."chat_message_recipients" TO "authenticated";
+GRANT ALL ON TABLE "public"."chat_message_recipients" TO "service_role";
 
 
 

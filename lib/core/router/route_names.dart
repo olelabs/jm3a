@@ -99,10 +99,14 @@
 
 abstract final class RouteNames {
   static const splash = '/';
-  static const authEmail = '/auth/email';
-  static const authPhone = '/auth/phone';
+  static const intro = '/intro';
+  static const signup = '/auth/signup';
   static const authOtp = '/auth/otp';
   static const onboarding = '/auth/onboarding';
+  static const setPassword = '/auth/set-password';
+  static const authPasswordLogin = '/auth/login';
+  static const forgotPassword = '/auth/forgot-password';
+  static const passwordSettings = '/settings/password';
   static const home = '/home';
   static const friends = '/friends';
   static const marketplace = '/marketplace';
@@ -119,4 +123,12 @@ abstract final class RouteNames {
   static const backgroundColor = '/theme-picker/background-color';
   static const avatarPicker = '/avatar-picker';
   static const avatarCreator = '/avatar-creator';
+  static const creatorVerification = '/creator-verification';
+  static const creatorRecoveryComplaint = '/creator-recovery-complaint';
+  static const join = '/join';
+  static const followers = '/profile/followers';
+  static const aboutUs = '/settings/about';
+  static const privacyPolicy = '/settings/privacy';
+  static const termsConditions = '/settings/terms';
+  static const officialResponses = '/settings/official-responses';
 }

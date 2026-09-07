@@ -208,6 +208,7 @@
 import 'dart:math';
 
 import '../engine/base_game_engine.dart';
+import '../engine/round_capacity.dart';
 
 // ── Domain ────────────────────────────────────────────────────────────────────
 
@@ -331,6 +332,7 @@ class NhieState extends GameEngineState {
     required this.isOver,
     this.reactions = const [],
     this.history = const [],
+    this.timerStartedAt,
   });
 
   final List<String> playerOrder;
@@ -344,6 +346,15 @@ class NhieState extends GameEngineState {
   final bool isOver;
   final List<NhieReaction> reactions; // current turn reactions
   final List<NhieRoundRecord> history; // completed rounds
+
+  /// Item 1 — epoch ms the current round's timer started, or null when no
+  /// timer is running (timer disabled, or voting already closed). Mirrors
+  /// TodState.timerStartedAt exactly: the DEADLINE lives in state (so it
+  /// survives rebuilds/reconnects/broadcasts unchanged), never in a raw
+  /// countdown number — a client just re-derives remaining time from
+  /// `now - timerStartedAt` whenever it needs to, instead of "restarting"
+  /// anything.
+  final int? timerStartedAt;
 
   String get currentPlayerId => playerOrder.isEmpty
       ? ''
@@ -365,6 +376,7 @@ class NhieState extends GameEngineState {
     bool? isOver,
     List<NhieReaction>? reactions,
     List<NhieRoundRecord>? history,
+    int? Function()? timerStartedAt,
   }) => NhieState(
     snapshotAt: snapshotAt ?? this.snapshotAt,
     playerOrder: playerOrder,
@@ -378,6 +390,9 @@ class NhieState extends GameEngineState {
     isOver: isOver ?? this.isOver,
     reactions: reactions ?? this.reactions,
     history: history ?? this.history,
+    timerStartedAt: timerStartedAt != null
+        ? timerStartedAt()
+        : this.timerStartedAt,
   );
 
   Map<String, dynamic> toMap() => {
@@ -393,6 +408,7 @@ class NhieState extends GameEngineState {
     'is_over': isOver,
     'reactions': reactions.map((r) => r.toMap()).toList(),
     'history': history.map((r) => r.toMap()).toList(),
+    'timer_started_at': timerStartedAt,
   };
 
   static NhieState fromMap(Map<String, dynamic> m) => NhieState(
@@ -429,6 +445,7 @@ class NhieState extends GameEngineState {
             ?.map((r) => NhieRoundRecord.fromMap(r as Map<String, dynamic>))
             .toList() ??
         [],
+    timerStartedAt: m['timer_started_at'] as int?,
   );
 }
 
@@ -452,6 +469,16 @@ class NhieReactionEvent extends GameEngineEvent {
     required this.sticker,
   });
   final String sticker;
+}
+
+/// Item 1 — dispatched ONCE by the owner's client when its local countdown
+/// (derived from state.timerStartedAt) reaches zero. Handled the same way
+/// as every other action here: authoritatively, by this engine, not by
+/// the UI — a stale/tampered client that somehow still tries to vote after
+/// this fires is rejected by the same `isVotingOpen` guard _handleVote
+/// already has.
+class NhieTimerExpiredEvent extends GameEngineEvent {
+  const NhieTimerExpiredEvent({required super.userId, required super.ts});
 }
 
 // ── Engine ────────────────────────────────────────────────────────────────────
@@ -484,6 +511,9 @@ class NeverHaveIEverEngine implements BaseGameEngine {
       isOver: false,
       reactions: [],
       history: [],
+      timerStartedAt: _config.timerEnabled
+          ? DateTime.now().millisecondsSinceEpoch
+          : null,
     );
   }
 
@@ -506,9 +536,27 @@ class NeverHaveIEverEngine implements BaseGameEngine {
     _state = switch (event) {
       NhieVoteEvent e => _handleVote(e),
       NhieReactionEvent e => _handleReaction(e),
+      NhieTimerExpiredEvent e => _onTimerExpired(e),
       _ => _state,
     };
     return _state;
+  }
+
+  /// Item 1 — force-closes voting the same way `_handleVote` does once
+  /// everyone has voted, except stragglers simply get no vote entry (no
+  /// points, no recorded response) rather than being made to answer.
+  /// Reuses the exact same `isVotingOpen` guard `_handleVote` already has
+  /// to reject any late vote arriving after this — no separate
+  /// "already timed out" flag needed, and a second timeout event (e.g.
+  /// from a race between the owner's own tick and a stale timer) is
+  /// already a no-op once `isVotingOpen` is false.
+  NhieState _onTimerExpired(NhieTimerExpiredEvent e) {
+    if (!_state.isVotingOpen) return _state;
+    return _state.copyWith(
+      snapshotAt: DateTime.now().millisecondsSinceEpoch,
+      isVotingOpen: false,
+      timerStartedAt: () => null,
+    );
   }
 
   @override
@@ -524,11 +572,21 @@ class NeverHaveIEverEngine implements BaseGameEngine {
         : null;
     final newHistory = [..._state.history, if (record != null) record];
 
+    // Item 18.5 root-cause fix: NHIE shows every player the SAME card each
+    // round (see round_capacity.dart's documented/tested model — one card
+    // consumed per round, independent of player count), so one
+    // advanceTurn() call must always be exactly one round. This used to
+    // gate the round increment behind a full cycle of currentPlayerIndex
+    // (a leftover from a per-player-turn model, never actually true for
+    // NHIE's simultaneous voting), which meant an N-player game silently
+    // needed N times as many cards as maxRounds implied before isOver —
+    // exhausting the deck (currentCard becoming null) long before the
+    // configured round count was reached. currentPlayerIndex itself still
+    // advances below (used elsewhere only as a "did a new round start"
+    // signal), it just no longer gates roundNumber.
     final nextIndex =
         (_state.currentPlayerIndex + 1) % _state.playerOrder.length;
-    final newRound = nextIndex == 0
-        ? _state.roundNumber + 1
-        : _state.roundNumber;
+    final newRound = _state.roundNumber + 1;
     final isOver = newRound > _state.maxRounds;
 
     _state = _state.copyWith(
@@ -541,6 +599,12 @@ class NeverHaveIEverEngine implements BaseGameEngine {
       isOver: isOver,
       reactions: [],
       history: newHistory,
+      // Item 1 — a fresh card always gets a fresh timer, never inherits
+      // whatever remained (or had already expired) from the previous one.
+      timerStartedAt: () =>
+          !isOver && _config.timerEnabled
+              ? DateTime.now().millisecondsSinceEpoch
+              : null,
     );
     return _state;
   }
@@ -561,12 +625,18 @@ class NeverHaveIEverEngine implements BaseGameEngine {
   void injectCard(NhieCard card) {
     final pos = _cards.isNotEmpty ? _rng.nextInt(_cards.length) : 0;
     _cards.insert(pos, card);
-    final playerCount = _state.playerOrder.length;
-    if (playerCount > 0) {
-      final requiredRounds = (_cards.length / playerCount).ceil();
-      if (requiredRounds > _state.maxRounds) {
-        _state = _state.copyWith(maxRounds: requiredRounds);
-      }
+    // Item 18.5 — reuses the ONE shared capacity formula (round_capacity
+    // .dart) instead of a second, duplicated (and previously incorrect —
+    // NHIE draws one card per round regardless of player count, but this
+    // used to divide by playerCount) calculation.
+    final maxPossible = calculateMaxPossibleRounds(
+      gameType: GameType.neverHaveIEver,
+      availableCardCount: _cards.length,
+      activePlayers: _state.playerOrder.length,
+      uniqueCards: true,
+    );
+    if (maxPossible != null && maxPossible > _state.maxRounds) {
+      _state = _state.copyWith(maxRounds: maxPossible);
     }
   }
 
@@ -605,11 +675,19 @@ class NeverHaveIEverEngine implements BaseGameEngine {
       voteEntries: newEntries,
       scores: newScores,
       isVotingOpen: !allVoted,
+      // Item 1 — the timer only matters while voting is still open; once
+      // everyone has responded there's nothing left to time out.
+      timerStartedAt: allVoted ? () => null : null,
     );
   }
 
   NhieState _handleReaction(NhieReactionEvent e) {
     if (!_state.playerOrder.contains(e.userId)) return _state;
+    // Real-device bug: a player could react before actually casting their
+    // Never/I Have vote — reuses voteEntries (the SAME map _handleVote
+    // populates) as the authoritative "has this player responded yet"
+    // signal, rather than a second/parallel response-tracking field.
+    if (!_state.voteEntries.containsKey(e.userId)) return _state;
     // One reaction per player per turn
     if (_state.reactions.any((r) => r.userId == e.userId)) return _state;
     return _state.copyWith(

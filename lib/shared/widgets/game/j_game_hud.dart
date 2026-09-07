@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
+import '../../../core/extensions/context_ext.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/j_theme_extension.dart';
@@ -90,7 +91,7 @@ class _RoundCounter extends StatelessWidget {
       color: color.withOpacity(0.12),
       borderRadius: BorderRadius.circular(AppRadius.badge),
     ),
-    child: Text('Round $round / $max',
+    child: Text(context.l10n.todRoundBadge(round, max),
         style: AppTextStyles.hudLabel(color: color)),
   );
 }

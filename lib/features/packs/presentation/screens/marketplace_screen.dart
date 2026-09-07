@@ -7,15 +7,12 @@ import '../../../../core/extensions/context_ext.dart';
 import '../../../../core/providers/auth_provider.dart';
 import '../../../../core/router/route_names.dart';
 import '../../../../core/router/app_router.dart';
-import '../../../../core/services/image_cache_service.dart';
-import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/cards/j_card.dart';
 import '../../../../shared/widgets/feedback/error_view.dart';
 import '../../../games/engine/base_game_engine.dart';
-import '../../domain/pack_entity.dart';
 import '../pack_provider.dart';
 import '../widgets/pack_card_widget.dart';
-import '../widgets/pack_download_button.dart';
+import '../widgets/promoted_packs_carousel.dart';
 import 'my_packs_screen.dart';
 import 'physical_pack_requests_screen.dart';
 
@@ -37,6 +34,10 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
   bool _freeOnly = false;
   final _scrollCtrl = ScrollController();
 
+  bool _searchMode = false;
+  final _searchCtrl = TextEditingController();
+  final _searchFocus = FocusNode();
+
   @override
   void initState() {
     super.initState();
@@ -48,16 +49,51 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
   void dispose() {
     _tabs.dispose();
     _scrollCtrl.dispose();
+    _searchCtrl.dispose();
+    _searchFocus.dispose();
     super.dispose();
   }
 
   void _onScroll() {
-    if (_scrollCtrl.position.pixels >=
+    if (_scrollCtrl.position.pixels <
         _scrollCtrl.position.maxScrollExtent - 200) {
+      return;
+    }
+    if (_searchMode) {
+      context.read<PackProvider>().loadMoreSearchResults(
+        gameType: _gameTypeFilter?.toDbString(),
+        categoryId: _categoryFilter,
+        freeOnly: _freeOnly,
+      );
+    } else {
       context.read<PackProvider>().loadMoreBrowsePacks(
         gameType: _gameTypeFilter?.toDbString(),
       );
     }
+  }
+
+  void _runSearch(String query) {
+    context.read<PackProvider>().search(
+      query,
+      gameType: _gameTypeFilter?.toDbString(),
+      categoryId: _categoryFilter,
+      freeOnly: _freeOnly,
+    );
+  }
+
+  void _enterSearchMode() {
+    setState(() => _searchMode = true);
+    // Post-frame: the TextField this focuses doesn't exist in the tree
+    // until the setState above rebuilds it.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _searchFocus.requestFocus();
+    });
+  }
+
+  void _exitSearchMode() {
+    setState(() => _searchMode = false);
+    _searchCtrl.clear();
+    context.read<PackProvider>().clearSearch();
   }
 
   @override
@@ -71,7 +107,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
               heroTag: 'marketplace_create_pack_fab',
               onPressed: () => context.push('/creator'),
               icon: const Icon(Icons.add_rounded),
-              label: const Text('Create Pack'),
+              label: Text(context.l10n.packCreatePack),
             )
           : null,
       body: NestedScrollView(
@@ -79,61 +115,212 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
           SliverAppBar(
             floating: true,
             snap: true,
-            title: Text(context.l10n.navMarketplace),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.local_shipping_outlined),
-                tooltip: 'My Physical Pack Requests',
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const PhysicalPackRequestsScreen(),
+            automaticallyImplyLeading: false,
+            title: _searchMode
+                ? TextField(
+                    controller: _searchCtrl,
+                    focusNode: _searchFocus,
+                    autofocus: true,
+                    onChanged: _runSearch,
+                    decoration: InputDecoration(
+                      hintText: context.l10n.packSearchHint,
+                      border: InputBorder.none,
+                    ),
+                  )
+                : Text(context.l10n.navMarketplace),
+            leading: _searchMode
+                ? IconButton(
+                    icon: const Icon(Icons.arrow_back_rounded),
+                    onPressed: _exitSearchMode,
+                  )
+                : null,
+            actions: _searchMode
+                ? [
+                    // ValueListenableBuilder (not a bare text-length
+                    // check) because _MarketplaceScreenState doesn't
+                    // setState per keystroke — only PackProvider gets
+                    // notified — so this needs its own listener on the
+                    // controller to show/hide reactively as the user
+                    // types.
+                    ValueListenableBuilder<TextEditingValue>(
+                      valueListenable: _searchCtrl,
+                      builder: (_, value, _) => value.text.isEmpty
+                          ? const SizedBox.shrink()
+                          : IconButton(
+                              icon: const Icon(Icons.clear_rounded),
+                              onPressed: () {
+                                _searchCtrl.clear();
+                                _runSearch('');
+                              },
+                            ),
+                    ),
+                  ]
+                : [
+                    IconButton(
+                      icon: const Icon(Icons.local_shipping_outlined),
+                      tooltip: context.l10n.packMyPhysicalRequests,
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const PhysicalPackRequestsScreen(),
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.search_rounded),
+                      onPressed: _enterSearchMode,
+                      tooltip: context.l10n.searchLabel,
+                    ),
+                  ],
+            bottom: _searchMode
+                ? null
+                : TabBar(
+                    controller: _tabs,
+                    tabs: [
+                      Tab(text: context.l10n.packTabBrowse),
+                      Tab(text: context.l10n.packTabFeatured),
+                      Tab(text: context.l10n.packTabMyPacks),
+                    ],
                   ),
+          ),
+        ],
+        body: _searchMode
+            ? _SearchResultsView(scrollCtrl: _scrollCtrl)
+            : TabBarView(
+                controller: _tabs,
+                children: [
+                  _BrowseTab(
+                    scrollCtrl: _scrollCtrl,
+                    gameTypeFilter: _gameTypeFilter,
+                    categoryFilter: _categoryFilter,
+                    freeOnly: _freeOnly,
+                    onGameTypeChanged: (gt) {
+                      setState(() => _gameTypeFilter = gt);
+                      context.read<PackProvider>().loadBrowsePacks(
+                        reset: true,
+                        gameType: gt?.toDbString(),
+                      );
+                    },
+                    onFreeOnlyChanged: (v) {
+                      setState(() => _freeOnly = v);
+                      context.read<PackProvider>().loadBrowsePacks(
+                        reset: true,
+                        freeOnly: v,
+                      );
+                    },
+                  ),
+                  const _FeaturedTab(),
+                  const MyPacksScreen(),
+                ],
+              ),
+      ),
+    );
+  }
+}
+
+// ── Search results ───────────────────────────────────────────────────────────
+class _SearchResultsView extends StatelessWidget {
+  const _SearchResultsView({required this.scrollCtrl});
+  final ScrollController scrollCtrl;
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<PackProvider>(
+      builder: (ctx, packs, _) {
+        // Reads the query back from PackProvider (updated inside
+        // search() before it notifies) rather than the TextField's own
+        // controller — this widget only rebuilds on PackProvider
+        // notifications, and the parent MarketplaceScreen doesn't
+        // setState per keystroke, so a locally-threaded controller.text
+        // would lag a keystroke behind.
+        if (packs.searchQuery.trim().length < 2) {
+          return _EmptySearchState(
+            emoji: '🔍',
+            title: ctx.l10n.packSearchForPacks,
+            subtitle: ctx.l10n.packSearchMinChars,
+          );
+        }
+        if (packs.isSearching && packs.searchResults.isEmpty) {
+          return _PackGridShimmer();
+        }
+        if (packs.searchResults.isEmpty) {
+          return _EmptySearchState(
+            emoji: '🔍',
+            title: ctx.l10n.packNoPacksFound,
+            subtitle: ctx.l10n.packSearchNoResultsHint,
+          );
+        }
+        return CustomScrollView(
+          controller: scrollCtrl,
+          slivers: [
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              sliver: SliverGrid(
+                delegate: SliverChildBuilderDelegate(
+                  (_, i) => PackCard(
+                    pack: packs.searchResults[i],
+                    isOwned: packs.isOwned(packs.searchResults[i]),
+                    onTap: () => AppRouter.router.push(
+                      '${RouteNames.marketplace}/pack/${packs.searchResults[i].id}',
+                    ),
+                  ).animate(delay: (i * 25).ms).fadeIn(),
+                  childCount: packs.searchResults.length,
+                ),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  childAspectRatio: 0.68,
                 ),
               ),
-              IconButton(
-                icon: const Icon(Icons.search_rounded),
-                onPressed: () {}, // search screen TODO
-                tooltip: 'Search',
+            ),
+            if (packs.isLoadingMoreSearch)
+              const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
               ),
-            ],
-            bottom: TabBar(
-              controller: _tabs,
-              tabs: const [
-                Tab(text: 'Browse'),
-                Tab(text: 'Featured'),
-                Tab(text: 'My Packs'),
-              ],
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _EmptySearchState extends StatelessWidget {
+  const _EmptySearchState({
+    required this.emoji,
+    required this.title,
+    required this.subtitle,
+  });
+  final String emoji;
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(emoji, style: const TextStyle(fontSize: 56)),
+          const SizedBox(height: 16),
+          Text(
+            title,
+            style: context.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            subtitle,
+            textAlign: TextAlign.center,
+            style: context.textTheme.bodyMedium?.copyWith(
+              color: context.colorScheme.onSurfaceVariant,
             ),
           ),
         ],
-        body: TabBarView(
-          controller: _tabs,
-          children: [
-            _BrowseTab(
-              scrollCtrl: _scrollCtrl,
-              gameTypeFilter: _gameTypeFilter,
-              categoryFilter: _categoryFilter,
-              freeOnly: _freeOnly,
-              onGameTypeChanged: (gt) {
-                setState(() => _gameTypeFilter = gt);
-                context.read<PackProvider>().loadBrowsePacks(
-                  reset: true,
-                  gameType: gt?.toDbString(),
-                );
-              },
-              onFreeOnlyChanged: (v) {
-                setState(() => _freeOnly = v);
-                context.read<PackProvider>().loadBrowsePacks(
-                  reset: true,
-                  freeOnly: v,
-                );
-              },
-            ),
-            const _FeaturedTab(),
-            const MyPacksScreen(),
-          ],
-        ),
       ),
     );
   }
@@ -190,7 +377,7 @@ class _BrowseTab extends StatelessWidget {
                 SliverFillRemaining(
                   child: Center(
                     child: Text(
-                      'No packs found',
+                      ctx.l10n.packNoPacksFound,
                       style: ctx.textTheme.bodyMedium?.copyWith(
                         color: ctx.colorScheme.onSurfaceVariant,
                       ),
@@ -264,7 +451,7 @@ class _FilterRow extends StatelessWidget {
       child: Row(
         children: [
           _FilterChip(
-            label: 'All',
+            label: context.l10n.gameNameAll,
             isSelected: selected == null && !freeOnly,
             onTap: () {
               onTypeChanged(null);
@@ -273,7 +460,7 @@ class _FilterRow extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           _FilterChip(
-            label: 'Free',
+            label: context.l10n.packFreeLabel,
             isSelected: freeOnly,
             onTap: () => onFreeOnlyChanged(!freeOnly),
             icon: Icons.redeem_rounded,
@@ -367,7 +554,7 @@ class _FeaturedTab extends StatelessWidget {
             slivers: [
               // Promoted banner
               if (promoted.isNotEmpty)
-                SliverToBoxAdapter(child: _PromotedBanner(packs: promoted)),
+                SliverToBoxAdapter(child: PromotedPacksCarousel(packs: promoted)),
 
               // Featured grid
               SliverPadding(
@@ -376,7 +563,7 @@ class _FeaturedTab extends StatelessWidget {
                   child: Row(
                     children: [
                       Text(
-                        '⭐ Featured',
+                        ctx.l10n.packFeaturedHeading,
                         style: ctx.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w700,
                         ),
@@ -390,7 +577,7 @@ class _FeaturedTab extends StatelessWidget {
                 SliverFillRemaining(
                   child: Center(
                     child: Text(
-                      'No featured packs yet',
+                      ctx.l10n.packNoFeaturedPacksYet,
                       style: ctx.textTheme.bodyMedium?.copyWith(
                         color: ctx.colorScheme.onSurfaceVariant,
                       ),
@@ -424,94 +611,6 @@ class _FeaturedTab extends StatelessWidget {
           ),
         );
       },
-    );
-  }
-}
-
-class _PromotedBanner extends StatelessWidget {
-  const _PromotedBanner({required this.packs});
-  final List<PackEntity> packs;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 180,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-        itemCount: packs.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 12),
-        itemBuilder: (ctx, i) {
-          final pack = packs[i];
-          return GestureDetector(
-            onTap: () => AppRouter.router.push(
-              '${RouteNames.marketplace}/pack/${pack.id}',
-            ),
-            child: Container(
-              width: 280,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [AppColors.navyBlue, AppColors.navyBlueLight],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Stack(
-                children: [
-                  if (pack.coverImageUrl != null)
-                    ImageCacheService.instance.packCover(
-                      url: pack.coverImageUrl,
-                      width: double.infinity,
-                      height: double.infinity,
-                      borderRadius: 16,
-                      color: Colors.black.withOpacity(0.35),
-                      colorBlendMode: BlendMode.darken,
-                    ),
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.amberOrangeLight.withOpacity(0.9),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: const Text(
-                            'PROMOTED',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          pack.titleFor('en'),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ).animate(delay: (i * 40).ms).fadeIn().slideX(begin: 0.08, end: 0),
-          );
-        },
-      ),
     );
   }
 }

@@ -107,6 +107,14 @@ class _LoggingInterceptor extends Interceptor {
     AppLogger.warning(
       'API Error: ${err.response?.statusCode} ${err.requestOptions.uri}',
     );
+    // The server's own error envelope ({success:false, error:{code,
+    // message,...}}) is the only way to tell "request malformed" apart
+    // from "business rule rejected it" apart from "server misconfigured"
+    // — the status code alone was not enough to trace the deposit-request
+    // 400 (turned out to be a schema-drift 400, not a validation 400).
+    // Response bodies here are the API's own structured error text, never
+    // credentials, so safe to log even outside debug builds.
+    AppLogger.warning('API Error body: ${err.response?.data}');
     handler.next(err);
   }
 }

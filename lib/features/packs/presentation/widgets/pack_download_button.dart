@@ -1,58 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-// import 'package:jma3a/features/packs/data/pack_download_manager.dart';
-import '../../domain/pack_entity.dart';
 
+import '../../../../core/extensions/context_ext.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../domain/pack_entity.dart';
 
 /// Adaptive download button that reflects current download state.
 /// Compact mode: icon-only for list rows.
 /// Full mode: labeled button for detail screens.
-// class PackDownloadButton extends StatelessWidget {
-//   const PackDownloadButton({
-//     super.key,
-//     required this.packId,
-//     required this.state,
-//     required this.onDownload,
-//     required this.onDelete,
-//     this.compact = false,
-//   });
-
-//   final String            packId;
-//   final PackDownloadState state;
-//   final VoidCallback      onDownload;
-//   final VoidCallback      onDelete;
-//   final bool              compact;
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return switch (state.status) {
-//       DownloadStatus.notDownloaded => _DownloadCta(
-//         compact:    compact,
-//         onDownload: onDownload,
-//       ),
-//       DownloadStatus.downloading => _DownloadProgress(
-//         progress: state.progress,
-//         compact:  compact,
-//       ),
-//       DownloadStatus.downloaded => _DownloadedCta(
-//         compact:  compact,
-//         onDelete: onDelete,
-//       ),
-//       DownloadStatus.failed => _FailedCta(
-//         compact:    compact,
-//         onRetry:    onDownload,
-//         errorMessage: state.errorMessage,
-//       ),
-//       DownloadStatus.expired => _DownloadCta(
-//         compact:    compact,
-//         onDownload: onDownload,
-//         label: 'Re-download',
-//       ),
-//     };
-//   }
-// }
 class PackDownloadButton extends StatelessWidget {
   const PackDownloadButton({
     super.key,
@@ -70,32 +25,6 @@ class PackDownloadButton extends StatelessWidget {
   final bool compact;
 
   @override
-  // Widget build(BuildContext context) {
-  //   return switch (state.status) {
-  //     DownloadStatus.notDownloaded => _DownloadCta(
-  //       compact: compact,
-  //       onDownload: onDownload,
-  //     ),
-  //     DownloadStatus.downloading => _DownloadProgress(
-  //       progress: state.progress,
-  //       compact: compact,
-  //     ),
-  //     DownloadStatus.downloaded => _DownloadedCta(
-  //       compact: compact,
-  //       onDelete: onDelete,
-  //     ),
-  //     DownloadStatus.failed => _FailedCta(
-  //       compact: compact,
-  //       onRetry: onDownload,
-  //       errorMessage: state.errorMessage,
-  //     ),
-  //     DownloadStatus.expired => _DownloadCta(
-  //       compact: compact,
-  //       onDownload: onDownload,
-  //       label: 'Re-download',
-  //     ),
-  //   };
-  // }
   Widget build(BuildContext context) {
     return switch (state.status) {
       DownloadStatus.notDownloaded => _DownloadCta(
@@ -118,38 +47,37 @@ class PackDownloadButton extends StatelessWidget {
       DownloadStatus.expired => _DownloadCta(
         compact: compact,
         onDownload: onDownload,
-        label: 'Re-download',
+        label: context.l10n.packRedownload,
       ),
     };
   }
 }
 
-// }
-
 class _DownloadCta extends StatelessWidget {
   const _DownloadCta({
     required this.onDownload,
     this.compact = false,
-    this.label = 'Download',
+    this.label,
   });
   final VoidCallback onDownload;
   final bool compact;
-  final String label;
+  final String? label;
 
   @override
   Widget build(BuildContext context) {
+    final effectiveLabel = label ?? context.l10n.packDownload;
     if (compact) {
       return IconButton(
         icon: const Icon(Icons.download_rounded),
         onPressed: onDownload,
         color: context.colorScheme.primary,
-        tooltip: label,
+        tooltip: effectiveLabel,
       );
     }
     return OutlinedButton.icon(
       onPressed: onDownload,
       icon: const Icon(Icons.download_rounded),
-      label: Text(label),
+      label: Text(effectiveLabel),
       style: OutlinedButton.styleFrom(
         minimumSize: const Size(double.infinity, 48),
       ),
@@ -195,7 +123,7 @@ class _DownloadProgress extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             Text(
-              'Downloading… ${(progress * 100).round()}%',
+              context.l10n.packDownloadingPercent((progress * 100).round()),
               style: context.textTheme.bodySmall,
             ),
           ],
@@ -213,13 +141,6 @@ class _DownloadProgress extends StatelessWidget {
   }
 }
 
-extension on BuildContext {
-  // ignore: unused_element
-  get colorScheme => Theme.of(this).colorScheme;
-  // ignore: unused_element
-  get textTheme => Theme.of(this).textTheme;
-}
-
 class _DownloadedCta extends StatelessWidget {
   const _DownloadedCta({required this.onDelete, this.compact = false});
   final VoidCallback onDelete;
@@ -229,7 +150,7 @@ class _DownloadedCta extends StatelessWidget {
   Widget build(BuildContext context) {
     if (compact) {
       return Tooltip(
-        message: 'Available offline',
+        message: context.l10n.packAvailableOffline,
         child: Icon(
           Icons.offline_pin_rounded,
           color: AppColors.successGreen,
@@ -247,18 +168,18 @@ class _DownloadedCta extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: AppColors.successGreen.withOpacity(0.3)),
           ),
-          child: const Row(
+          child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
+              const Icon(
                 Icons.offline_pin_rounded,
                 color: AppColors.successGreen,
                 size: 18,
               ),
-              SizedBox(width: 8),
+              const SizedBox(width: 8),
               Text(
-                'Available offline',
-                style: TextStyle(
+                context.l10n.packAvailableOffline,
+                style: const TextStyle(
                   color: AppColors.successGreen,
                   fontWeight: FontWeight.w600,
                   fontSize: 14,
@@ -276,7 +197,7 @@ class _DownloadedCta extends StatelessWidget {
             color: Colors.red.shade400,
           ),
           label: Text(
-            'Remove download',
+            context.l10n.packRemoveDownload,
             style: TextStyle(color: Colors.red.shade400, fontSize: 13),
           ),
         ),
@@ -302,13 +223,13 @@ class _FailedCta extends StatelessWidget {
         icon: const Icon(Icons.error_outline_rounded),
         onPressed: onRetry,
         color: AppColors.errorRed,
-        tooltip: 'Retry download',
+        tooltip: context.l10n.packRetryDownload,
       );
     }
     return Column(
       children: [
         Text(
-          'Download failed',
+          context.l10n.packDownloadFailed,
           style: TextStyle(
             color: AppColors.errorRed,
             fontWeight: FontWeight.w600,
@@ -329,7 +250,7 @@ class _FailedCta extends StatelessWidget {
         OutlinedButton.icon(
           onPressed: onRetry,
           icon: const Icon(Icons.refresh_rounded),
-          label: const Text('Retry'),
+          label: Text(context.l10n.retry),
           style: OutlinedButton.styleFrom(
             side: const BorderSide(color: AppColors.errorRed),
             foregroundColor: AppColors.errorRed,

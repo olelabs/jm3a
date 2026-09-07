@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../../../../core/config/platform_config_provider.dart';
 import '../../../../core/errors/failures.dart';
 import '../../../../core/extensions/context_ext.dart';
 import '../../data/pack_repository.dart';
@@ -54,16 +56,23 @@ class _PhysicalPackRequestSheetState extends State<PhysicalPackRequestSheet> {
   @override
   void initState() {
     super.initState();
-    PackRepository.instance.getPhysicalPackPrice().then((price) {
-      if (mounted) {
-        setState(() {
-          _priceMru = price;
-          _loadingPrice = false;
-        });
-      }
-    }).catchError((_) {
-      if (mounted) setState(() => _loadingPrice = false);
-    });
+    _loadPrice();
+  }
+
+  // Reads through the app's single centralized app_settings cache
+  // (PlatformConfigProvider) instead of this sheet querying app_settings
+  // on its own — forces a refresh first if nothing has loaded yet.
+  Future<void> _loadPrice() async {
+    final config = context.read<PlatformConfigProvider>();
+    if (!config.hasLoadedOnce) {
+      await config.refresh();
+    }
+    if (mounted) {
+      setState(() {
+        _priceMru = config.physicalPackPriceMru;
+        _loadingPrice = false;
+      });
+    }
   }
 
   @override
@@ -96,7 +105,9 @@ class _PhysicalPackRequestSheetState extends State<PhysicalPackRequestSheet> {
       if (mounted) context.showErrorSnackBar(e.message);
     } catch (e) {
       setState(() => _submitting = false);
-      if (mounted) context.showErrorSnackBar('Failed to request: $e');
+      if (mounted) {
+        context.showErrorSnackBar(context.l10n.packFailedToRequest(e.toString()));
+      }
     }
   }
 
@@ -135,7 +146,7 @@ class _PhysicalPackRequestSheetState extends State<PhysicalPackRequestSheet> {
                   ),
                 ),
                 Text(
-                  'Request Physical Copy',
+                  context.l10n.packRequestPhysicalCopy,
                   style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
@@ -143,9 +154,12 @@ class _PhysicalPackRequestSheetState extends State<PhysicalPackRequestSheet> {
                 const SizedBox(height: 4),
                 Text(
                   _loadingPrice
-                      ? 'Loading price…'
-                      : 'Fee: $totalPrice MRU (${_priceMru ?? 0} × $_quantity), '
-                            'charged to your wallet balance.',
+                      ? context.l10n.packLoadingPrice
+                      : context.l10n.packPhysicalFeeNotice(
+                          totalPrice,
+                          _priceMru ?? 0,
+                          _quantity,
+                        ),
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
@@ -153,19 +167,19 @@ class _PhysicalPackRequestSheetState extends State<PhysicalPackRequestSheet> {
                 const SizedBox(height: 20),
                 TextFormField(
                   controller: _nameCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Full name',
+                  decoration: InputDecoration(
+                    labelText: context.l10n.packFullName,
                   ),
                   validator: (v) =>
-                      (v?.trim().isEmpty ?? true) ? 'Required' : null,
+                      (v?.trim().isEmpty ?? true) ? context.l10n.required : null,
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _phoneCtrl,
                   keyboardType: TextInputType.phone,
-                  decoration: const InputDecoration(labelText: 'Phone number'),
+                  decoration: InputDecoration(labelText: context.l10n.packPhoneNumber),
                   validator: (v) =>
-                      (v?.trim().isEmpty ?? true) ? 'Required' : null,
+                      (v?.trim().isEmpty ?? true) ? context.l10n.required : null,
                 ),
                 const SizedBox(height: 12),
                 Row(
@@ -195,12 +209,12 @@ class _PhysicalPackRequestSheetState extends State<PhysicalPackRequestSheet> {
                               return TextFormField(
                                 controller: controller,
                                 focusNode: focusNode,
-                                decoration: const InputDecoration(
-                                  labelText: 'City',
+                                decoration: InputDecoration(
+                                  labelText: context.l10n.packCity,
                                 ),
                                 validator: (v) =>
                                     (v?.trim().isEmpty ?? true)
-                                    ? 'Required'
+                                    ? context.l10n.required
                                     : null,
                               );
                             },
@@ -210,12 +224,12 @@ class _PhysicalPackRequestSheetState extends State<PhysicalPackRequestSheet> {
                     Expanded(
                       child: TextFormField(
                         controller: _zoneCtrl,
-                        decoration: const InputDecoration(
-                          labelText: 'Zone / District',
-                          hintText: 'e.g. Tevragh Zeina',
+                        decoration: InputDecoration(
+                          labelText: context.l10n.packZoneDistrict,
+                          hintText: context.l10n.packZoneHint,
                         ),
                         validator: (v) =>
-                            (v?.trim().isEmpty ?? true) ? 'Required' : null,
+                            (v?.trim().isEmpty ?? true) ? context.l10n.required : null,
                       ),
                     ),
                   ],
@@ -223,7 +237,7 @@ class _PhysicalPackRequestSheetState extends State<PhysicalPackRequestSheet> {
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    Text('Quantity', style: theme.textTheme.bodyMedium),
+                    Text(context.l10n.packQuantity, style: theme.textTheme.bodyMedium),
                     const Spacer(),
                     IconButton(
                       icon: const Icon(Icons.remove_circle_outline_rounded),
@@ -247,8 +261,8 @@ class _PhysicalPackRequestSheetState extends State<PhysicalPackRequestSheet> {
                 TextFormField(
                   controller: _notesCtrl,
                   maxLines: 2,
-                  decoration: const InputDecoration(
-                    labelText: 'Notes (optional)',
+                  decoration: InputDecoration(
+                    labelText: context.l10n.packNotesOptional,
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -260,7 +274,7 @@ class _PhysicalPackRequestSheetState extends State<PhysicalPackRequestSheet> {
                           height: 20,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Text('Submit Request'),
+                      : Text(context.l10n.packSubmitRequest),
                 ),
               ],
             ),

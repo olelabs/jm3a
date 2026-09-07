@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/extensions/context_ext.dart';
+import '../../../../core/providers/auth_provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/cards/j_card.dart';
 import '../../../../shared/widgets/feedback/error_view.dart';
@@ -44,7 +45,7 @@ class _WalletHomeScreenState extends State<WalletHomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Wallet'),
+        title: Text(context.l10n.walletTitle),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
@@ -53,7 +54,7 @@ class _WalletHomeScreenState extends State<WalletHomeScreen> {
                 ..refreshWallet()
                 ..loadTransactions(reset: true);
             },
-            tooltip: 'Refresh',
+            tooltip: context.l10n.refresh,
           ),
         ],
       ),
@@ -98,7 +99,7 @@ class _WalletHomeScreenState extends State<WalletHomeScreen> {
                 Row(
                   children: [
                     Text(
-                      'Recent Transactions',
+                      ctx.l10n.walletRecentTransactions,
                       style: ctx.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
@@ -114,7 +115,7 @@ class _WalletHomeScreenState extends State<WalletHomeScreen> {
                           ),
                         ),
                       ),
-                      child: const Text('See all'),
+                      child: Text(ctx.l10n.seeAll),
                     ),
                   ],
                 ),
@@ -125,7 +126,7 @@ class _WalletHomeScreenState extends State<WalletHomeScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 24),
                     child: Center(
                       child: Text(
-                        'No transactions yet',
+                        ctx.l10n.walletNoTransactionsYet,
                         style: ctx.textTheme.bodyMedium?.copyWith(
                           color: ctx.colorScheme.onSurfaceVariant,
                         ),
@@ -222,7 +223,7 @@ class _BalanceCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Mauritanian Ouguiya',
+            context.l10n.walletCurrencyName,
             style: TextStyle(
               color: Colors.white.withOpacity(0.6),
               fontSize: 12,
@@ -237,7 +238,7 @@ class _BalanceCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Earnings Balance',
+                        context.l10n.walletEarningsBalance,
                         style: TextStyle(
                           color: Colors.white.withOpacity(0.7),
                           fontSize: 12,
@@ -263,7 +264,7 @@ class _BalanceCard extends StatelessWidget {
                       side: const BorderSide(color: Colors.white54),
                     ),
                     onPressed: () => _showTransferDialog(context, wallet),
-                    child: const Text('Transfer to Wallet'),
+                    child: Text(context.l10n.walletTransferToWallet),
                   ),
                 ),
               ],
@@ -282,26 +283,26 @@ class _BalanceCard extends StatelessWidget {
     final amount = await showDialog<int>(
       context: context,
       builder: (dialogCtx) => AlertDialog(
-        title: const Text('Transfer to Wallet Balance'),
+        title: Text(dialogCtx.l10n.walletTransferToWalletBalance),
         content: TextField(
           controller: ctrl,
           keyboardType: TextInputType.number,
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
           autofocus: true,
           decoration: InputDecoration(
-            hintText: 'Amount',
+            hintText: dialogCtx.l10n.amountLabel,
             suffixText: 'MRU',
-            helperText: 'Available: ${wallet.formattedEarningsBalance}',
+            helperText: dialogCtx.l10n.walletAvailableAmount(wallet.formattedEarningsBalance),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogCtx),
-            child: const Text('Cancel'),
+            child: Text(dialogCtx.l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialogCtx, int.tryParse(ctrl.text)),
-            child: const Text('Transfer'),
+            child: Text(dialogCtx.l10n.walletTransferButton),
           ),
         ],
       ),
@@ -312,11 +313,11 @@ class _BalanceCard extends StatelessWidget {
     if (!context.mounted) return;
     if (result.success) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Transferred to wallet balance.')),
+        SnackBar(content: Text(context.l10n.walletTransferSuccess)),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(result.error ?? 'Transfer failed.')),
+        SnackBar(content: Text(result.error ?? context.l10n.walletTransferFailed)),
       );
     }
   }
@@ -329,14 +330,23 @@ class _QuickActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Earnings/Withdraw are creator-only — this mirrors the same check
+    // requestWithdrawal() already enforces server-side
+    // (jma3a-api/src/wallet/walletService.js), so hiding these here is a
+    // UX convenience, not the actual security boundary.
+    final isVerifiedCreator =
+        context.watch<AuthProvider>().currentUser?.isVerifiedCreator ?? false;
+    final hasPendingDeposit = wallet.myDeposits.any((d) => d.isPending);
+    final hasPendingWithdrawal = wallet.myWithdrawals.any((w) => w.isPending);
+
     return Row(
       children: [
         Expanded(
           child: _ActionButton(
             icon: Icons.add_rounded,
-            label: 'Deposit',
+            label: context.l10n.walletActionDeposit,
             color: AppColors.successGreen,
-            onTap: wallet.isWalletFrozen
+            onTap: (wallet.isWalletFrozen || hasPendingDeposit)
                 ? null
                 : () => Navigator.push(
                     context,
@@ -349,42 +359,47 @@ class _QuickActions extends StatelessWidget {
                   ),
           ),
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _ActionButton(
-            icon: Icons.arrow_upward_rounded,
-            label: 'Withdraw',
-            color: AppColors.navyBlue,
-            onTap: (wallet.isWalletFrozen || wallet.balanceMru < 500)
-                ? null
-                : () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => ChangeNotifierProvider.value(
-                        value: wallet,
-                        child: const WithdrawalScreen(),
+        if (isVerifiedCreator) ...[
+          const SizedBox(width: 12),
+          Expanded(
+            child: _ActionButton(
+              icon: Icons.arrow_upward_rounded,
+              label: context.l10n.walletActionWithdraw,
+              color: AppColors.navyBlue,
+              onTap:
+                  (wallet.isWalletFrozen ||
+                      wallet.earningsBalanceMru < 500 ||
+                      hasPendingWithdrawal)
+                  ? null
+                  : () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ChangeNotifierProvider.value(
+                          value: wallet,
+                          child: const WithdrawalScreen(),
+                        ),
                       ),
                     ),
-                  ),
+            ),
           ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _ActionButton(
-            icon: Icons.bar_chart_rounded,
-            label: 'Earnings',
-            color: AppColors.amberOrangeLight,
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => ChangeNotifierProvider.value(
-                  value: wallet,
-                  child: const EarningsScreen(),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _ActionButton(
+              icon: Icons.bar_chart_rounded,
+              label: context.l10n.walletActionEarnings,
+              color: AppColors.amberOrangeLight,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ChangeNotifierProvider.value(
+                    value: wallet,
+                    child: const EarningsScreen(),
+                  ),
                 ),
               ),
             ),
           ),
-        ),
+        ],
       ],
     );
   }
@@ -459,7 +474,7 @@ class _PendingSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Pending',
+          context.l10n.pendingLabel,
           style: context.textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.w700,
           ),
@@ -500,14 +515,14 @@ class _PendingDepositTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Deposit ${deposit.formattedAmount}',
+                  context.l10n.walletDepositAmount(deposit.formattedAmount),
                   style: const TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 13,
                   ),
                 ),
                 Text(
-                  '${deposit.status.displayLabel} • ${deposit.paymentMethod}',
+                  context.l10n.walletStatusPaymentMethod(deposit.status.displayLabel(context.l10n), deposit.paymentMethod),
                   style: context.textTheme.bodySmall?.copyWith(
                     color: context.colorScheme.onSurfaceVariant,
                   ),
@@ -522,7 +537,7 @@ class _PendingDepositTile extends StatelessWidget {
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
-              deposit.status.displayLabel,
+              deposit.status.displayLabel(context.l10n),
               style: const TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
@@ -563,14 +578,14 @@ class _PendingWithdrawalTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Withdrawal ${withdrawal.formattedAmount}',
+                  context.l10n.walletWithdrawalAmount(withdrawal.formattedAmount),
                   style: const TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 13,
                   ),
                 ),
                 Text(
-                  withdrawal.status.displayLabel,
+                  withdrawal.status.displayLabel(context.l10n),
                   style: context.textTheme.bodySmall?.copyWith(
                     color: context.colorScheme.onSurfaceVariant,
                   ),

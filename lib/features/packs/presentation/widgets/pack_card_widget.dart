@@ -1,12 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import 'package:jma3a/features/packs/data/pack_download_manager.dart';
 
 import '../../../../core/extensions/context_ext.dart';
 import '../../../../core/services/image_cache_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/cards/j_card.dart';
+import '../../../../shared/widgets/cards/pack_cover_fallback.dart';
 import '../../domain/pack_entity.dart';
+
+/// The pack's own title in the viewer's language if available, else in the
+/// pack's declared language, else in whatever language it actually has —
+/// [PackEntity.titleFor] never returns a raw id. Only truly empty title
+/// data (a corrupt/incomplete pack row) falls through to the generic
+/// localized "Pack" placeholder — never the pack's UUID.
+String _displayTitle(BuildContext context, PackEntity pack) {
+  final title = pack.titleFor(Localizations.localeOf(context).languageCode);
+  return title.isNotEmpty ? title : context.l10n.defaultPackName;
+}
 
 /// Pack card for marketplace grid views.
 /// Shows: cover image, title, rating, price/owned badge, spicy flag.
@@ -50,7 +59,7 @@ class PackCard extends StatelessWidget {
                           height: double.infinity,
                           borderRadius: 0,
                         )
-                      : _PlaceholderCover(pack: pack),
+                      : const PackCoverFallback(),
                 ),
 
                 // Promoted badge
@@ -67,9 +76,9 @@ class PackCard extends StatelessWidget {
                         color: AppColors.amberOrangeLight,
                         borderRadius: BorderRadius.circular(4),
                       ),
-                      child: const Text(
-                        '★ PRO',
-                        style: TextStyle(
+                      child: Text(
+                        context.l10n.packProBadge,
+                        style: const TextStyle(
                           fontSize: 9,
                           fontWeight: FontWeight.w800,
                           color: Colors.white,
@@ -93,6 +102,44 @@ class PackCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: const Text('🌶', style: TextStyle(fontSize: 10)),
+                    ),
+                  ),
+
+                // Official Jma3a-managed pack badge — same corner-badge
+                // pattern as Promoted/Spicy above, bottom-left so it never
+                // collides with the offline-download badge (bottom-right).
+                if (pack.isOfficialCreator)
+                  Positioned(
+                    bottom: 8,
+                    left: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.brandPurpleMid,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.verified_rounded,
+                            size: 10,
+                            color: Colors.white,
+                          ),
+                          const SizedBox(width: 2),
+                          Text(
+                            context.l10n.packOfficialBadge,
+                            style: const TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
 
@@ -127,7 +174,7 @@ class PackCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  pack.titleFor('en'),
+                  _displayTitle(context, pack),
                   style: theme.textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
@@ -172,10 +219,15 @@ class PackCard extends StatelessWidget {
 
                     // Price / owned badge
                     if (isOwned)
-                      _Badge(label: 'Owned', color: AppColors.successGreen)
+                      _Badge(
+                        label: context.l10n.packOwnedBadge,
+                        color: AppColors.successGreen,
+                      )
                     else
                       Text(
-                        pack.isFree ? 'Free' : '${pack.priceMru} MRU',
+                        pack.isFree
+                            ? context.l10n.packFreeLabel
+                            : context.l10n.packPriceMru(pack.priceMru),
                         style: theme.textTheme.labelMedium?.copyWith(
                           color: pack.isFree
                               ? AppColors.successGreen
@@ -194,27 +246,6 @@ class PackCard extends StatelessWidget {
   }
 }
 
-class _PlaceholderCover extends StatelessWidget {
-  const _PlaceholderCover({required this.pack});
-  final PackEntity pack;
-
-  @override
-  Widget build(BuildContext context) {
-    final emoji = switch (pack.gameType) {
-      'truth_or_dare' => '🎯',
-      'never_have_i_ever' => '🍹',
-      'meme_game' => '😂',
-      _ => '🎮',
-    };
-    return ClipRRect(
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-      child: Container(
-        color: context.colorScheme.surfaceContainerHighest,
-        child: Center(child: Text(emoji, style: const TextStyle(fontSize: 48))),
-      ),
-    );
-  }
-}
 
 class _Badge extends StatelessWidget {
   const _Badge({required this.label, required this.color});

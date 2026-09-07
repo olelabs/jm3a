@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/extensions/context_ext.dart';
+
 class PremiumBadge extends StatelessWidget {
   const PremiumBadge({super.key, this.size = 14, this.tier});
 
@@ -16,7 +18,7 @@ class PremiumBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Tooltip(
-      message: tier == 'premium_plus' ? 'Premium Plus' : 'Premium',
+      message: tier == 'premium_plus' ? context.l10n.premiumPlusLabel : context.l10n.premiumTitle,
       child: Container(
         width: size + 6,
         height: size + 6,

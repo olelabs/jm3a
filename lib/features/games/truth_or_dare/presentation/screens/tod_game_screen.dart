@@ -1,7283 +1,54 @@
-// // // // // // import 'dart:async';
-
-// // // // // // import 'package:flutter/material.dart';
-// // // // // // import 'package:flutter_animate/flutter_animate.dart';
-// // // // // // import 'package:go_router/go_router.dart';
-// // // // // // import 'package:jma3a/core/router/app_router.dart';
-// // // // // // import 'package:jma3a/features/games/engine/base_game_engine.dart';
-// // // // // // import 'package:jma3a/features/rooms/domain/room_entity.dart';
-// // // // // // import 'package:jma3a/features/settings/presentation/screen_security_service.dart';
-// // // // // // import 'package:provider/provider.dart';
-// // // // // // import 'package:supabase_flutter/supabase_flutter.dart';
-
-// // // // // // import '../../../../../core/di/service_locator.dart';
-// // // // // // import '../../../../../core/extensions/context_ext.dart';
-// // // // // // import '../../../../../core/providers/auth_provider.dart';
-// // // // // // import '../../../../../core/router/route_names.dart';
-// // // // // // import '../../../../../core/services/realtime_service.dart';
-// // // // // // // import '../../../../../core/services/screen_security_service.dart';
-// // // // // // import '../../../../../core/theme/app_colors.dart';
-// // // // // // import '../../../../../shared/widgets/feedback/error_view.dart';
-// // // // // // import '../../../../../shared/widgets/overlays/confirm_dialog.dart';
-// // // // // // // import '../../engine/base_game_engine.dart';
-// // // // // // import '../../domain/tod_models.dart';
-// // // // // // import '../../tod_game_provider.dart';
-
-// // // // // // import '../../data/tod_repository.dart';
-// // // // // // import 'tod_card_screen.dart';
-// // // // // // import 'tod_end_screen.dart';
-// // // // // // import 'tod_loading_screen.dart';
-// // // // // // import 'tod_punishment_screen.dart';
-// // // // // // import '../widgets/tod_hud.dart';
-
-// // // // // // /// Entry point for an active Truth or Dare session.
-// // // // // // ///
-// // // // // // /// Responsibilities:
-// // // // // // ///  - Owns and scopes TodGameProvider for this session
-// // // // // // ///  - Wires RealtimeService callbacks → TodGameProvider
-// // // // // // ///  - Routes between loading / error / active / game-over screens
-// // // // // // ///  - Forwards game_state and player_action from the room Broadcast channel
-// // // // // // class TodGameScreen extends StatefulWidget {
-// // // // // //   const TodGameScreen({
-// // // // // //     super.key,
-// // // // // //     required this.roomId,
-// // // // // //     required this.config,
-// // // // // //     required this.playerIds,
-// // // // // //     required this.playerDisplayNames,
-// // // // // //     required this.packId,
-// // // // // //     required this.isOwner,
-// // // // // //     this.sessionId,
-// // // // // //     this.isModerator = false,
-// // // // // //     this.packCoverUrl,
-// // // // // //   });
-
-// // // // // //   final String roomId;
-// // // // // //   final GameConfig config;
-// // // // // //   final List<String> playerIds;
-// // // // // //   final Map<String, String> playerDisplayNames; // userId → displayName
-// // // // // //   final String packId;
-// // // // // //   final bool isOwner;
-// // // // // //   final String? sessionId;
-// // // // // //   final bool isModerator;
-// // // // // //   final String? packCoverUrl;
-
-// // // // // //   @override
-// // // // // //   State<TodGameScreen> createState() => _TodGameScreenState();
-// // // // // // }
-
-// // // // // // class _TodGameScreenState extends State<TodGameScreen> {
-// // // // // //   late final TodGameProvider _provider;
-
-// // // // // //   // Subscriptions to the room Broadcast channel
-// // // // // //   // (channel already open by RoomProvider — we just register callbacks)
-// // // // // //   StreamSubscription<RealtimeSubscribeStatus>? _statusSub;
-
-// // // // // //   @override
-// // // // // //   void initState() {
-// // // // // //     super.initState();
-
-// // // // // //     // Block screenshots/screen recording for the duration of gameplay —
-// // // // // //     // proof photos/videos and responses shouldn't be capturable.
-// // // // // //     ScreenSecurityService.instance.enable();
-// // // // // //     ScreenSecurityService.instance.enableScreenshotDetection(() {
-// // // // // //       // iOS can't block screenshots outright, only detect them — let the
-// // // // // //       // room know, Snapchat-style, since it can't be silently captured.
-// // // // // //       sl.realtimeService.broadcastRoomEvent(widget.roomId, {
-// // // // // //         'type': 'screenshot_taken',
-// // // // // //         'user_id': context.read<AuthProvider>().currentUser?.id,
-// // // // // //       }).ignore();
-// // // // // //     });
-
-// // // // // //     final auth = context.read<AuthProvider>();
-// // // // // //     final user = auth.currentUser!;
-
-// // // // // //     _provider = TodGameProvider(
-// // // // // //       realtimeService: sl.realtimeService,
-// // // // // //       repository: TodRepository.instance,
-// // // // // //       currentUserId: user.id,
-// // // // // //       currentDisplayName: user.displayName ?? user.username ?? 'Player',
-// // // // // //       isModerator: widget.isModerator,
-// // // // // //     );
-
-// // // // // //     // ── Wire Broadcast callbacks ────────────────────────────────────────────
-// // // // // //     // The room channel is already subscribed by RoomProvider/LobbyScreen.
-// // // // // //     // TodGameScreen registers its own game-specific handlers for game_state
-// // // // // //     // and player_action by re-subscribing with extended handlers.
-// // // // // //     //
-// // // // // //     // We do this by using the RealtimeService._bcast pattern:
-// // // // // //     // The channel already has onGameState/onPlayerAction wired to no-ops
-// // // // // //     // in RoomProvider. We replace them here by storing callbacks and
-// // // // // //     // intercepting from the top-level channel via a dedicated subscription.
-// // // // // //     _wireRealtimeCallbacks();
-
-// // // // // //     if (widget.isOwner) {
-// // // // // //       final isPremium =
-// // // // // //           context.read<AuthProvider>().currentUser?.isPremium ?? false;
-// // // // // //       _provider.initAsOwner(
-// // // // // //         roomId: widget.roomId,
-// // // // // //         config: widget.config,
-// // // // // //         playerIds: widget.playerIds,
-// // // // // //         playerDisplayNames: widget.playerDisplayNames,
-// // // // // //         packId: widget.packId,
-// // // // // //         isPremium: isPremium,
-// // // // // //         packCoverUrl: widget.packCoverUrl,
-// // // // // //       );
-// // // // // //     } else {
-// // // // // //       _provider.initAsFollower(
-// // // // // //         roomId: widget.roomId,
-// // // // // //         config: widget.config,
-// // // // // //         sessionId: widget.sessionId,
-// // // // // //         packCoverUrl: widget.packCoverUrl,
-// // // // // //       );
-// // // // // //     }
-// // // // // //   }
-
-// // // // // //   @override
-// // // // // //   void dispose() {
-// // // // // //     ScreenSecurityService.instance.disable();
-// // // // // //     _statusSub?.cancel();
-// // // // // //     // Re-subscribe the room channel with lobby-mode handlers so the lobby
-// // // // // //     // (which is still on the stack) continues to receive events after we pop.
-// // // // // //     // DO NOT fully unsubscribe — that would cut off followers still in-game.
-// // // // // //     sl.realtimeService
-// // // // // //         .subscribe(
-// // // // // //           roomId: widget.roomId,
-// // // // // //           onGameState: (_) {},
-// // // // // //           onPlayerAction: (_) {},
-// // // // // //           onSyncRequest: (_) {},
-// // // // // //           onGameStarted: (_) {},
-// // // // // //           onGameEnded: (_) {},
-// // // // // //           onRoomEvent: (_) {},
-// // // // // //           onChatMessage: (_) {},
-// // // // // //           onModeration: (_) {},
-// // // // // //           onSettingsChange: (_) {},
-// // // // // //           onPresenceSync: (_) {},
-// // // // // //           onPresenceJoin: (_) {},
-// // // // // //           onPresenceLeave: (_) {},
-// // // // // //           onStatusChange: (_) {},
-// // // // // //         )
-// // // // // //         .ignore();
-// // // // // //     _provider.dispose();
-// // // // // //     super.dispose();
-// // // // // //   }
-
-// // // // // //   /// Wire game-specific callbacks into the existing room channel.
-// // // // // //   ///
-// // // // // //   /// Strategy: re-subscribe to the room channel with updated handlers that
-// // // // // //   /// forward game_state and player_action to this provider.
-// // // // // //   /// The channel is already open; we track callbacks via a thin interceptor.
-// // // // // //   void _wireRealtimeCallbacks() {
-// // // // // //     // Listen to channel status changes for reconnection awareness
-// // // // // //     _statusSub = sl.realtimeService.statusStream(widget.roomId)?.listen((
-// // // // // //       status,
-// // // // // //     ) {
-// // // // // //       if (status == RealtimeSubscribeStatus.subscribed &&
-// // // // // //           !_provider.hasSyncedState) {
-// // // // // //         // Channel reconnected — request state sync
-// // // // // //         sl.realtimeService.broadcastSyncRequest(
-// // // // // //           widget.roomId,
-// // // // // //           context.read<AuthProvider>().currentUser!.id,
-// // // // // //           0,
-// // // // // //         );
-// // // // // //       }
-// // // // // //     });
-
-// // // // // //     // Re-subscribe with game handlers added.
-// // // // // //     // This safely replaces the channel subscription with game callbacks.
-// // // // // //     // (No-op handlers in RoomProvider are replaced with active ones here.)
-// // // // // //     _resubscribeWithGameHandlers();
-// // // // // //   }
-
-// // // // // //   void _resubscribeWithGameHandlers() {
-// // // // // //     final userId = context.read<AuthProvider>().currentUser!.id;
-
-// // // // // //     // Unsubscribe existing channel and re-subscribe with game callbacks merged
-// // // // // //     sl.realtimeService.unsubscribe(widget.roomId).then((_) {
-// // // // // //       sl.realtimeService.subscribe(
-// // // // // //         roomId: widget.roomId,
-// // // // // //         // ── Game-specific handlers ─────────────────────────────────────────
-// // // // // //         onGameState: (p) => _provider.onStateBroadcast(p),
-// // // // // //         onPlayerAction: (p) => _provider.onPlayerAction(p),
-// // // // // //         onSyncRequest: (p) => _provider.onSyncRequest(p),
-// // // // // //         onGameStarted: (_) {},
-// // // // // //         onGameEnded: (p) {
-// // // // // //           // Admin ended the game — take everyone back to the lobby
-// // // // // //           if (mounted) {
-// // // // // //             ScaffoldMessenger.of(context).showSnackBar(
-// // // // // //               const SnackBar(content: Text('The host ended the game')),
-// // // // // //             );
-// // // // // //             // Pop back to lobby (the LobbyScreen is still on the stack)
-// // // // // //             if (context.canPop())
-// // // // // //               context.pop();
-// // // // // //             else
-// // // // // //               context.go(RouteNames.home);
-// // // // // //           }
-// // // // // //         },
-// // // // // //         // ── Room lifecycle (passthrough — RoomProvider is disposed) ─────────
-// // // // // //         onRoomEvent: (p) {
-// // // // // //           final type = p['type'] as String?;
-// // // // // //           if (type == 'screenshot_taken') {
-// // // // // //             final shooterId = p['user_id'] as String?;
-// // // // // //             final myId = context.read<AuthProvider>().currentUser?.id;
-// // // // // //             if (shooterId != null && shooterId != myId && mounted) {
-// // // // // //               ScaffoldMessenger.of(context).showSnackBar(
-// // // // // //                 SnackBar(
-// // // // // //                   content: Text(
-// // // // // //                     '📸 ${widget.playerDisplayNames[shooterId] ?? 'Someone'} took a screenshot',
-// // // // // //                   ),
-// // // // // //                   backgroundColor: Colors.black87,
-// // // // // //                 ),
-// // // // // //               );
-// // // // // //             }
-// // // // // //             return;
-// // // // // //           }
-// // // // // //           if (type == 'player_left' && mounted) {
-// // // // // //             final name = p['display_name'] as String? ?? 'A player';
-// // // // // //             final forGood = p['for_good'] as bool? ?? true;
-// // // // // //             final leavingId = p['user_id'] as String?;
-// // // // // //             final returnMins = p['return_mins'] as int?;
-// // // // // //             if (leavingId != null && widget.isOwner) {
-// // // // // //               _provider.markPlayerAway(leavingId, forGood: forGood);
-// // // // // //               // Auto-quit if owner is now the only active player
-// // // // // //               final activePlayers =
-// // // // // //                   _provider.state?.playerOrder
-// // // // // //                       .where((id) => !_provider.awayPlayerIds.contains(id))
-// // // // // //                       .toList() ??
-// // // // // //                   [];
-// // // // // //               if (activePlayers.length <= 1 && activePlayers.isNotEmpty) {
-// // // // // //                 WidgetsBinding.instance.addPostFrameCallback((_) async {
-// // // // // //                   if (!mounted) return;
-// // // // // //                   await sl.realtimeService.broadcastRoomEvent(widget.roomId, {
-// // // // // //                     'type': 'game_ended',
-// // // // // //                     'reason': 'all_players_left',
-// // // // // //                   });
-// // // // // //                   await sl.roomRepository.updateStatus(
-// // // // // //                     widget.roomId,
-// // // // // //                     RoomStatus.waiting,
-// // // // // //                   );
-// // // // // //                   if (mounted) {
-// // // // // //                     ScaffoldMessenger.of(context).showSnackBar(
-// // // // // //                       const SnackBar(
-// // // // // //                         content: Text('All players left — game ended'),
-// // // // // //                         backgroundColor: Colors.orange,
-// // // // // //                       ),
-// // // // // //                     );
-// // // // // //                     await Future.delayed(const Duration(milliseconds: 800));
-// // // // // //                     if (mounted) {
-// // // // // //                       if (context.canPop())
-// // // // // //                         context.pop();
-// // // // // //                       else
-// // // // // //                         context.go('/home/room/${widget.roomId}');
-// // // // // //                     }
-// // // // // //                   }
-// // // // // //                 });
-// // // // // //               }
-// // // // // //             }
-// // // // // //             final msg = forGood
-// // // // // //                 ? '👋 $name left the game'
-// // // // // //                 : '🕐 $name stepped away (${returnMins != null ? 'back in ${returnMins}m' : 'coming back'})';
-// // // // // //             ScaffoldMessenger.of(context).showSnackBar(
-// // // // // //               SnackBar(
-// // // // // //                 content: Text(msg),
-// // // // // //                 backgroundColor: forGood
-// // // // // //                     ? Colors.red.shade700
-// // // // // //                     : Colors.orange.shade700,
-// // // // // //                 duration: const Duration(seconds: 4),
-// // // // // //               ),
-// // // // // //             );
-// // // // // //             return;
-// // // // // //           }
-// // // // // //           if (type == 'ownership_transferred' && mounted) {
-// // // // // //             final myId = context.read<AuthProvider>().currentUser?.id;
-// // // // // //             final newOwnerId = p['new_owner_id'] as String?;
-// // // // // //             if (newOwnerId == myId) {
-// // // // // //               ScaffoldMessenger.of(context).showSnackBar(
-// // // // // //                 const SnackBar(
-// // // // // //                   content: Text('👑 You are now the game host!'),
-// // // // // //                   backgroundColor: Colors.purple,
-// // // // // //                 ),
-// // // // // //               );
-// // // // // //             }
-// // // // // //             return;
-// // // // // //           }
-// // // // // //           if (type == 'game_ended' && mounted) {
-// // // // // //             final reason = p['reason'] as String?;
-// // // // // //             if (reason == 'host_quit_to_lobby') {
-// // // // // //               WidgetsBinding.instance.addPostFrameCallback((_) {
-// // // // // //                 if (!mounted) return;
-// // // // // //                 ScaffoldMessenger.of(context).showSnackBar(
-// // // // // //                   const SnackBar(
-// // // // // //                     content: Text('🔄 Host ended the game — back to lobby'),
-// // // // // //                     duration: Duration(seconds: 3),
-// // // // // //                   ),
-// // // // // //                 );
-// // // // // //                 if (context.canPop()) {
-// // // // // //                   context.pop();
-// // // // // //                 } else {
-// // // // // //                   context.go('/home/room/${widget.roomId}');
-// // // // // //                 }
-// // // // // //               });
-// // // // // //             }
-// // // // // //             return;
-// // // // // //           }
-// // // // // //           if (type == 'tod_ready_count') {
-// // // // // //             final ids = (p['ready_user_ids'] as List?)?.cast<String>() ?? [];
-// // // // // //             _provider.onReadyCountUpdate(ids);
-// // // // // //             return;
-// // // // // //           }
-// // // // // //           if ((type == 'room_closed' || type == 'owner_left') && mounted) {
-// // // // // //             WidgetsBinding.instance.addPostFrameCallback((_) {
-// // // // // //               if (mounted) {
-// // // // // //                 showDialog(
-// // // // // //                   context: context,
-// // // // // //                   barrierDismissible: false,
-// // // // // //                   builder: (ctx2) => AlertDialog(
-// // // // // //                     title: const Text('Room Closed'),
-// // // // // //                     content: const Text('The host closed the room.'),
-// // // // // //                     actions: [
-// // // // // //                       FilledButton(
-// // // // // //                         onPressed: () {
-// // // // // //                           Navigator.of(ctx2).pop();
-// // // // // //                           AppRouter.router.go(RouteNames.home);
-// // // // // //                         },
-// // // // // //                         child: const Text('OK'),
-// // // // // //                       ),
-// // // // // //                     ],
-// // // // // //                   ),
-// // // // // //                 );
-// // // // // //               } else {
-// // // // // //                 AppRouter.router.go(RouteNames.home);
-// // // // // //               }
-// // // // // //             });
-// // // // // //           }
-// // // // // //         },
-// // // // // //         onChatMessage: (p) {
-// // // // // //           final msg = TodChatMsg(
-// // // // // //             senderId: p['user_id'] as String? ?? '',
-// // // // // //             senderName: p['display_name'] as String? ?? 'Player',
-// // // // // //             text: p['content'] as String? ?? '',
-// // // // // //             ts: DateTime.fromMillisecondsSinceEpoch(
-// // // // // //               (p['ts'] as num?)?.toInt() ??
-// // // // // //                   DateTime.now().millisecondsSinceEpoch,
-// // // // // //             ),
-// // // // // //           );
-// // // // // //           _provider.addChatMessage(msg);
-// // // // // //         },
-// // // // // //         onModeration: (p) => _handleModerationEvent(p),
-// // // // // //         onSettingsChange: (_) {},
-// // // // // //         // ── Presence ──────────────────────────────────────────────────────
-// // // // // //         onPresenceSync: (_) {},
-// // // // // //         onPresenceJoin: (_) {},
-// // // // // //         onPresenceLeave: (_) {},
-// // // // // //         onStatusChange: (status) {
-// // // // // //           if (!mounted) return;
-// // // // // //           if (status == RealtimeSubscribeStatus.subscribed &&
-// // // // // //               !_provider.hasSyncedState) {
-// // // // // //             sl.realtimeService.broadcastSyncRequest(widget.roomId, userId, 0);
-// // // // // //           }
-// // // // // //         },
-// // // // // //       );
-// // // // // //     });
-// // // // // //   }
-
-// // // // // //   void _handleModerationEvent(Map<String, dynamic> p) {
-// // // // // //     final type = p['type'] as String?;
-// // // // // //     final targetId = p['target_user_id'] as String?;
-// // // // // //     final currentId = context.read<AuthProvider>().currentUser?.id;
-
-// // // // // //     // If kicked or banned, navigate back to lobby
-// // // // // //     if ((type == 'kick' || type == 'ban') && targetId == currentId) {
-// // // // // //       if (mounted) {
-// // // // // //         ScaffoldMessenger.of(context).showSnackBar(
-// // // // // //           const SnackBar(content: Text('You were removed from the room')),
-// // // // // //         );
-// // // // // //         context.go(RouteNames.home);
-// // // // // //       }
-// // // // // //     }
-// // // // // //   }
-
-// // // // // //   @override
-// // // // // //   Widget build(BuildContext context) {
-// // // // // //     return ChangeNotifierProvider.value(
-// // // // // //       value: _provider,
-// // // // // //       child: Consumer<TodGameProvider>(
-// // // // // //         builder: (ctx, game, _) => _build(ctx, game),
-// // // // // //       ),
-// // // // // //     );
-// // // // // //   }
-
-// // // // // //   Widget _build(BuildContext ctx, TodGameProvider game) {
-// // // // // //     if (game.loadState == TodLoadState.loading) {
-// // // // // //       return const TodLoadingScreen();
-// // // // // //     }
-
-// // // // // //     if (game.loadState == TodLoadState.error) {
-// // // // // //       return Scaffold(
-// // // // // //         appBar: AppBar(
-// // // // // //           leading: BackButton(
-// // // // // //             onPressed: () async {
-// // // // // //               if (widget.isOwner) {
-// // // // // //                 // Owner leaving game → end game for everyone, go back to lobby
-// // // // // //                 try {
-// // // // // //                   await sl.realtimeService.broadcastGameEnded(widget.roomId, {
-// // // // // //                     'reason': 'host_left',
-// // // // // //                   });
-// // // // // //                   await sl.roomRepository.updateStatus(
-// // // // // //                     widget.roomId,
-// // // // // //                     RoomStatus.waiting,
-// // // // // //                   );
-// // // // // //                 } catch (_) {}
-// // // // // //               }
-// // // // // //               if (ctx.mounted) ctx.go(RouteNames.home);
-// // // // // //             },
-// // // // // //           ),
-// // // // // //         ),
-// // // // // //         body: ErrorView(
-// // // // // //           message: game.error ?? 'Failed to load game',
-// // // // // //           onRetry: () => ctx.go(RouteNames.home),
-// // // // // //         ),
-// // // // // //       );
-// // // // // //     }
-
-// // // // // //     if (game.loadState == TodLoadState.gameOver ||
-// // // // // //         (game.state?.isOver ?? false)) {
-// // // // // //       return TodEndScreen(
-// // // // // //         state: game.state!,
-// // // // // //         displayNames: widget.playerDisplayNames,
-// // // // // //         onLeave: () => ctx.go(RouteNames.home),
-// // // // // //       );
-// // // // // //     }
-
-// // // // // //     final state = game.state;
-// // // // // //     if (state == null) return const TodLoadingScreen();
-
-// // // // // //     return _TodGameScaffold(
-// // // // // //       state: state,
-// // // // // //       game: game,
-// // // // // //       displayNames: widget.playerDisplayNames,
-// // // // // //       roomId: widget.roomId,
-// // // // // //       isOwner: widget.isOwner,
-// // // // // //     );
-// // // // // //   }
-// // // // // // }
-
-// // // // // // // ── Scaffold with history support ─────────────────────────────────────────────
-
-// // // // // // class _TodGameScaffold extends StatefulWidget {
-// // // // // //   const _TodGameScaffold({
-// // // // // //     required this.state,
-// // // // // //     required this.game,
-// // // // // //     required this.displayNames,
-// // // // // //     required this.roomId,
-// // // // // //     required this.isOwner,
-// // // // // //   });
-// // // // // //   final TodState state;
-// // // // // //   final TodGameProvider game;
-// // // // // //   final Map<String, String> displayNames;
-// // // // // //   final String roomId;
-// // // // // //   final bool isOwner;
-// // // // // //   @override
-// // // // // //   State<_TodGameScaffold> createState() => _TodGameScaffoldState();
-// // // // // // }
-
-// // // // // // class _TodGameScaffoldState extends State<_TodGameScaffold> {
-// // // // // //   bool _showHistory = false;
-// // // // // //   bool _showChat = false;
-// // // // // //   int _unreadChat = 0;
-
-// // // // // //   @override
-// // // // // //   Widget build(BuildContext context) {
-// // // // // //     final state = widget.state;
-// // // // // //     final game = widget.game;
-
-// // // // // //     if (_showHistory) {
-// // // // // //       return Scaffold(
-// // // // // //         appBar: AppBar(
-// // // // // //           leading: BackButton(
-// // // // // //             onPressed: () => setState(() => _showHistory = false),
-// // // // // //           ),
-// // // // // //           title: Text('History (${state.history.length} rounds)'),
-// // // // // //         ),
-// // // // // //         body: _HistoryPanel(
-// // // // // //           history: state.history,
-// // // // // //           displayNames: widget.displayNames,
-// // // // // //         ),
-// // // // // //       );
-// // // // // //     }
-
-// // // // // //     return PopScope(
-// // // // // //       canPop: false,
-// // // // // //       onPopInvoked: (_) => WidgetsBinding.instance.addPostFrameCallback(
-// // // // // //         (_) => _showLeaveDialog(context, game, state),
-// // // // // //       ),
-// // // // // //       child: Scaffold(
-// // // // // //         appBar: AppBar(
-// // // // // //           automaticallyImplyLeading: false,
-// // // // // //           title: const Text(''),
-// // // // // //           leading: IconButton(
-// // // // // //             icon: const Icon(Icons.arrow_back),
-// // // // // //             onPressed: () => _showLeaveDialog(context, game, state),
-// // // // // //           ),
-// // // // // //           actions: [
-// // // // // //             // Chat button with unread badge
-// // // // // //             Consumer<TodGameProvider>(
-// // // // // //               builder: (_, g, __) => Stack(
-// // // // // //                 alignment: Alignment.topRight,
-// // // // // //                 children: [
-// // // // // //                   IconButton(
-// // // // // //                     icon: const Icon(Icons.chat_bubble_outline_rounded),
-// // // // // //                     onPressed: () {
-// // // // // //                       g.clearUnreadChat();
-// // // // // //                       showModalBottomSheet(
-// // // // // //                         context: context,
-// // // // // //                         isScrollControlled: true,
-// // // // // //                         backgroundColor: Colors.transparent,
-// // // // // //                         builder: (_) =>
-// // // // // //                             _InGameChatSheet(game: g, myId: g.currentUserId),
-// // // // // //                       );
-// // // // // //                     },
-// // // // // //                   ),
-// // // // // //                   if (g.unreadChat > 0)
-// // // // // //                     Positioned(
-// // // // // //                       top: 8,
-// // // // // //                       right: 8,
-// // // // // //                       child: Container(
-// // // // // //                         width: 8,
-// // // // // //                         height: 8,
-// // // // // //                         decoration: const BoxDecoration(
-// // // // // //                           color: Colors.red,
-// // // // // //                           shape: BoxShape.circle,
-// // // // // //                         ),
-// // // // // //                       ),
-// // // // // //                     ),
-// // // // // //                 ],
-// // // // // //               ),
-// // // // // //             ),
-// // // // // //             if (state.history.isNotEmpty)
-// // // // // //               IconButton(
-// // // // // //                 icon: const Icon(Icons.history_rounded),
-// // // // // //                 tooltip: 'History',
-// // // // // //                 onPressed: () => setState(() => _showHistory = true),
-// // // // // //               ),
-// // // // // //           ],
-// // // // // //         ),
-// // // // // //         body: SafeArea(
-// // // // // //           child: Column(
-// // // // // //             children: [
-// // // // // //               TodHud(
-// // // // // //                 state: state,
-// // // // // //                 game: game,
-// // // // // //                 displayNames: widget.displayNames,
-// // // // // //               ),
-// // // // // //               Expanded(
-// // // // // //                 child: AnimatedSwitcher(
-// // // // // //                   duration: const Duration(milliseconds: 300),
-// // // // // //                   transitionBuilder: (child, anim) => FadeTransition(
-// // // // // //                     opacity: anim,
-// // // // // //                     child: SlideTransition(
-// // // // // //                       position:
-// // // // // //                           Tween<Offset>(
-// // // // // //                             begin: const Offset(0, 0.05),
-// // // // // //                             end: Offset.zero,
-// // // // // //                           ).animate(
-// // // // // //                             CurvedAnimation(
-// // // // // //                               parent: anim,
-// // // // // //                               curve: Curves.easeOutCubic,
-// // // // // //                             ),
-// // // // // //                           ),
-// // // // // //                       child: child,
-// // // // // //                     ),
-// // // // // //                   ),
-// // // // // //                   child: KeyedSubtree(
-// // // // // //                     key: ValueKey('${state.phase}-${state.currentPlayerId}'),
-// // // // // //                     child: _phaseWidget(
-// // // // // //                       context,
-// // // // // //                       game,
-// // // // // //                       widget.displayNames,
-// // // // // //                       state,
-// // // // // //                     ),
-// // // // // //                   ),
-// // // // // //                 ),
-// // // // // //               ),
-// // // // // //             ],
-// // // // // //           ),
-// // // // // //         ),
-// // // // // //       ), // end Scaffold (PopScope child)
-// // // // // //     ); // end PopScope
-// // // // // //   }
-
-// // // // // //   Future<void> _showLeaveDialog(
-// // // // // //     BuildContext ctx,
-// // // // // //     TodGameProvider game,
-// // // // // //     TodState state,
-// // // // // //   ) async {
-// // // // // //     if (!ctx.mounted) return;
-// // // // // //     final isOwner = widget.isOwner;
-// // // // // //     final myUserId = game.currentUserId;
-// // // // // //     final isPremium = ctx.read<AuthProvider>().currentUser?.isPremium ?? false;
-
-// // // // // //     if (isOwner) {
-// // // // // //       final confirmed = await showDialog<bool>(
-// // // // // //         context: ctx,
-// // // // // //         builder: (dCtx) => AlertDialog(
-// // // // // //           title: const Text('Quit Game?'),
-// // // // // //           content: const Text(
-// // // // // //             'The game will end for everyone and all players will return to the lobby.',
-// // // // // //           ),
-// // // // // //           actions: [
-// // // // // //             TextButton(
-// // // // // //               onPressed: () => Navigator.of(dCtx).pop(false),
-// // // // // //               child: const Text('Cancel'),
-// // // // // //             ),
-// // // // // //             FilledButton(
-// // // // // //               style: FilledButton.styleFrom(backgroundColor: Colors.red),
-// // // // // //               onPressed: () => Navigator.of(dCtx).pop(true),
-// // // // // //               child: const Text('End Game for Everyone'),
-// // // // // //             ),
-// // // // // //           ],
-// // // // // //         ),
-// // // // // //       );
-// // // // // //       if (confirmed != true || !ctx.mounted) return;
-
-// // // // // //       try {
-// // // // // //         await sl.realtimeService.broadcastRoomEvent(widget.roomId, {
-// // // // // //           'type': 'game_ended',
-// // // // // //           'reason': 'host_quit_to_lobby',
-// // // // // //         });
-// // // // // //         await Future.delayed(const Duration(milliseconds: 400));
-// // // // // //         await sl.roomRepository.updateStatus(widget.roomId, RoomStatus.waiting);
-// // // // // //       } catch (_) {}
-// // // // // //       if (ctx.mounted) {
-// // // // // //         if (ctx.canPop()) {
-// // // // // //           ctx.pop();
-// // // // // //         } else {
-// // // // // //           ctx.go('/home/room/${widget.roomId}');
-// // // // // //         }
-// // // // // //       }
-// // // // // //     } else {
-// // // // // //       // ── Player options ───────────────────────────────────────────────────
-// // // // // //       final returnMins = isPremium ? 10 : 5;
-// // // // // //       final choice = await showDialog<String>(
-// // // // // //         context: ctx,
-// // // // // //         builder: (_) => AlertDialog(
-// // // // // //           title: const Text('Leave Game?'),
-// // // // // //           content: Text(
-// // // // // //             "If you'll return, your turns will be skipped until you're "
-// // // // // //             'back. You have $returnMins minutes — after that your seat '
-// // // // // //             'is lost.',
-// // // // // //           ),
-// // // // // //           actions: [
-// // // // // //             TextButton(
-// // // // // //               onPressed: () => Navigator.pop(ctx, 'cancel'),
-// // // // // //               child: const Text('Stay'),
-// // // // // //             ),
-// // // // // //             FilledButton.tonal(
-// // // // // //               onPressed: () => Navigator.pop(ctx, 'return'),
-// // // // // //               child: Text("I'll Return ($returnMins min)"),
-// // // // // //             ),
-// // // // // //             FilledButton(
-// // // // // //               style: FilledButton.styleFrom(backgroundColor: Colors.red),
-// // // // // //               onPressed: () => Navigator.pop(ctx, 'definitive'),
-// // // // // //               child: const Text('Leave for Good'),
-// // // // // //             ),
-// // // // // //           ],
-// // // // // //         ),
-// // // // // //       );
-// // // // // //       if (choice == null || choice == 'cancel' || !ctx.mounted) return;
-
-// // // // // //       final displayName = widget.displayNames[myUserId] ?? 'A player';
-
-// // // // // //       if (choice == 'return') {
-// // // // // //         try {
-// // // // // //           await sl.roomRepository.setMemberAway(
-// // // // // //             widget.roomId,
-// // // // // //             myUserId,
-// // // // // //             away: true,
-// // // // // //           );
-// // // // // //           await sl.realtimeService.broadcastRoomEvent(widget.roomId, {
-// // // // // //             'type': 'player_left',
-// // // // // //             'user_id': myUserId,
-// // // // // //             'display_name': displayName,
-// // // // // //             'for_good': false,
-// // // // // //             'return_mins': returnMins,
-// // // // // //           });
-// // // // // //         } catch (_) {}
-// // // // // //         if (ctx.mounted) {
-// // // // // //           ScaffoldMessenger.of(ctx).showSnackBar(
-// // // // // //             SnackBar(
-// // // // // //               content: Text(
-// // // // // //                 "You'll be back in $returnMins min — seat reserved",
-// // // // // //               ),
-// // // // // //               backgroundColor: Colors.orange.shade700,
-// // // // // //               duration: const Duration(seconds: 3),
-// // // // // //             ),
-// // // // // //           );
-// // // // // //           await Future.delayed(const Duration(milliseconds: 800));
-// // // // // //           if (ctx.mounted) ctx.go('/home/room/${widget.roomId}');
-// // // // // //         }
-// // // // // //       } else {
-// // // // // //         // Leave for good
-// // // // // //         try {
-// // // // // //           await sl.roomRepository.setMemberDefinitiveLeave(
-// // // // // //             widget.roomId,
-// // // // // //             myUserId,
-// // // // // //           );
-// // // // // //           await sl.realtimeService.broadcastRoomEvent(widget.roomId, {
-// // // // // //             'type': 'player_left',
-// // // // // //             'user_id': myUserId,
-// // // // // //             'display_name': displayName,
-// // // // // //             'for_good': true,
-// // // // // //           });
-// // // // // //         } catch (_) {}
-// // // // // //         if (ctx.mounted) {
-// // // // // //           // Check if admin is now alone — if so, admin auto-quits game
-// // // // // //           await sl.realtimeService.broadcastRoomEvent(widget.roomId, {
-// // // // // //             'type': 'check_auto_quit',
-// // // // // //             'user_id': myUserId,
-// // // // // //           });
-// // // // // //           ctx.go('/home/room/${widget.roomId}');
-// // // // // //         }
-// // // // // //       }
-// // // // // //     }
-// // // // // //   }
-
-// // // // // //   Widget _phaseWidget(
-// // // // // //     BuildContext ctx,
-// // // // // //     TodGameProvider game,
-// // // // // //     Map<String, String> displayNames,
-// // // // // //     TodState state,
-// // // // // //   ) {
-// // // // // //     return switch (state.phase) {
-// // // // // //       TodTurnPhase.punishmentVoting => TodPunishmentScreen(
-// // // // // //         state: state,
-// // // // // //         game: game,
-// // // // // //         displayNames: widget.displayNames,
-// // // // // //       ),
-// // // // // //       _ => TodCardScreen(
-// // // // // //         state: state,
-// // // // // //         game: game,
-// // // // // //         displayNames: widget.displayNames,
-// // // // // //       ),
-// // // // // //     };
-// // // // // //   }
-// // // // // // }
-
-// // // // // // // ── History panel ─────────────────────────────────────────────────────────────
-
-// // // // // // class _HistoryPanel extends StatelessWidget {
-// // // // // //   const _HistoryPanel({required this.history, required this.displayNames});
-// // // // // //   final List<TodRoundRecord> history;
-// // // // // //   final Map<String, String> displayNames;
-
-// // // // // //   String _name(String id) =>
-// // // // // //       displayNames[id] ?? id.substring(0, id.length.clamp(0, 6));
-
-// // // // // //   @override
-// // // // // //   Widget build(BuildContext context) {
-// // // // // //     final theme = context.theme;
-// // // // // //     if (history.isEmpty) {
-// // // // // //       return const Center(child: Text('No rounds completed yet.'));
-// // // // // //     }
-// // // // // //     return ListView.builder(
-// // // // // //       padding: const EdgeInsets.all(12),
-// // // // // //       itemCount: history.length,
-// // // // // //       itemBuilder: (_, i) {
-// // // // // //         final round = history[history.length - 1 - i]; // newest first
-// // // // // //         final reactTally = <String, int>{};
-// // // // // //         for (final r in round.reactions) {
-// // // // // //           reactTally[r.emoji] = (reactTally[r.emoji] ?? 0) + 1;
-// // // // // //         }
-// // // // // //         return Card(
-// // // // // //           margin: const EdgeInsets.only(bottom: 10),
-// // // // // //           child: ExpansionTile(
-// // // // // //             leading: CircleAvatar(
-// // // // // //               backgroundColor: theme.colorScheme.primaryContainer,
-// // // // // //               child: Text(
-// // // // // //                 '${round.roundNumber}',
-// // // // // //                 style: theme.textTheme.labelLarge,
-// // // // // //               ),
-// // // // // //             ),
-// // // // // //             title: Text(
-// // // // // //               _name(round.playerId),
-// // // // // //               style: theme.textTheme.bodyMedium?.copyWith(
-// // // // // //                 fontWeight: FontWeight.w700,
-// // // // // //               ),
-// // // // // //             ),
-// // // // // //             subtitle: Text(
-// // // // // //               round.card != null
-// // // // // //                   ? '${round.card!.type == TodCardType.truth ? "Truth" : "Dare"}: ${round.card!.content}'
-// // // // // //                   : 'Skipped',
-// // // // // //               maxLines: 1,
-// // // // // //               overflow: TextOverflow.ellipsis,
-// // // // // //               style: theme.textTheme.bodySmall,
-// // // // // //             ),
-// // // // // //             children: [
-// // // // // //               Padding(
-// // // // // //                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-// // // // // //                 child: Column(
-// // // // // //                   crossAxisAlignment: CrossAxisAlignment.start,
-// // // // // //                   children: [
-// // // // // //                     // Card content
-// // // // // //                     if (round.card != null)
-// // // // // //                       Container(
-// // // // // //                         width: double.infinity,
-// // // // // //                         padding: const EdgeInsets.all(10),
-// // // // // //                         decoration: BoxDecoration(
-// // // // // //                           color: round.card!.type == TodCardType.truth
-// // // // // //                               ? Colors.blue.withOpacity(0.08)
-// // // // // //                               : Colors.orange.withOpacity(0.08),
-// // // // // //                           borderRadius: BorderRadius.circular(8),
-// // // // // //                         ),
-// // // // // //                         child: Text(
-// // // // // //                           round.card!.content,
-// // // // // //                           style: theme.textTheme.bodyMedium,
-// // // // // //                         ),
-// // // // // //                       ),
-// // // // // //                     // Response
-// // // // // //                     if (round.response.isNotEmpty) ...[
-// // // // // //                       const SizedBox(height: 8),
-// // // // // //                       Row(
-// // // // // //                         crossAxisAlignment: CrossAxisAlignment.start,
-// // // // // //                         children: [
-// // // // // //                           const Text('💬 ', style: TextStyle(fontSize: 14)),
-// // // // // //                           Expanded(
-// // // // // //                             child: Text(
-// // // // // //                               '"${round.response}"',
-// // // // // //                               style: theme.textTheme.bodySmall?.copyWith(
-// // // // // //                                 fontStyle: FontStyle.italic,
-// // // // // //                               ),
-// // // // // //                             ),
-// // // // // //                           ),
-// // // // // //                         ],
-// // // // // //                       ),
-// // // // // //                     ],
-// // // // // //                     // Votes
-// // // // // //                     if (round.voteCount > 0) ...[
-// // // // // //                       const SizedBox(height: 6),
-// // // // // //                       Text(
-// // // // // //                         '👍 ${round.voteCount} vote${round.voteCount != 1 ? "s" : ""}',
-// // // // // //                         style: theme.textTheme.bodySmall?.copyWith(
-// // // // // //                           color: theme.colorScheme.primary,
-// // // // // //                           fontWeight: FontWeight.w600,
-// // // // // //                         ),
-// // // // // //                       ),
-// // // // // //                     ],
-// // // // // //                     // Proof — history NEVER shows the actual photo/video,
-// // // // // //                     // only whether one existed and who watched it.
-// // // // // //                     if (round.hadProof) ...[
-// // // // // //                       const SizedBox(height: 8),
-// // // // // //                       _ProofWatchedBadge(watchedBy: round.proofWatchedBy),
-// // // // // //                     ],
-// // // // // //                     // Reactions
-// // // // // //                     if (reactTally.isNotEmpty) ...[
-// // // // // //                       const SizedBox(height: 8),
-// // // // // //                       Wrap(
-// // // // // //                         spacing: 6,
-// // // // // //                         runSpacing: 4,
-// // // // // //                         children: reactTally.entries
-// // // // // //                             .map(
-// // // // // //                               (e) => Container(
-// // // // // //                                 padding: const EdgeInsets.symmetric(
-// // // // // //                                   horizontal: 8,
-// // // // // //                                   vertical: 3,
-// // // // // //                                 ),
-// // // // // //                                 decoration: BoxDecoration(
-// // // // // //                                   color:
-// // // // // //                                       theme.colorScheme.surfaceContainerHighest,
-// // // // // //                                   borderRadius: BorderRadius.circular(16),
-// // // // // //                                 ),
-// // // // // //                                 child: Text(
-// // // // // //                                   '${e.key} ${e.value}',
-// // // // // //                                   style: const TextStyle(fontSize: 13),
-// // // // // //                                 ),
-// // // // // //                               ),
-// // // // // //                             )
-// // // // // //                             .toList(),
-// // // // // //                       ),
-// // // // // //                     ],
-// // // // // //                   ],
-// // // // // //                 ),
-// // // // // //               ),
-// // // // // //             ],
-// // // // // //           ),
-// // // // // //         );
-// // // // // //       },
-// // // // // //     );
-// // // // // //   }
-// // // // // // }
-
-// // // // // // // Proof existed for this round — history shows only whether/who watched
-// // // // // // // it, never the actual photo or video (that's only ever live during the
-// // // // // // // turn itself, see TodState.turnProofUrl).
-// // // // // // class _ProofWatchedBadge extends StatelessWidget {
-// // // // // //   const _ProofWatchedBadge({required this.watchedBy});
-// // // // // //   final List<String> watchedBy;
-
-// // // // // //   @override
-// // // // // //   Widget build(BuildContext context) {
-// // // // // //     final watched = watchedBy.isNotEmpty;
-// // // // // //     return Container(
-// // // // // //       height: 36,
-// // // // // //       padding: const EdgeInsets.symmetric(horizontal: 10),
-// // // // // //       decoration: BoxDecoration(
-// // // // // //         color: Colors.grey.shade200,
-// // // // // //         borderRadius: BorderRadius.circular(8),
-// // // // // //       ),
-// // // // // //       alignment: Alignment.centerLeft,
-// // // // // //       child: Row(
-// // // // // //         mainAxisSize: MainAxisSize.min,
-// // // // // //         children: [
-// // // // // //           Icon(
-// // // // // //             watched ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-// // // // // //             size: 16,
-// // // // // //             color: Colors.grey.shade600,
-// // // // // //           ),
-// // // // // //           const SizedBox(width: 6),
-// // // // // //           Text(
-// // // // // //             watched
-// // // // // //                 ? 'Proof watched by ${watchedBy.length}'
-// // // // // //                 : 'Proof sent — not watched',
-// // // // // //             style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-// // // // // //           ),
-// // // // // //         ],
-// // // // // //       ),
-// // // // // //     );
-// // // // // //   }
-// // // // // // }
-
-// // // // // // // ── In-game chat sheet ─────────────────────────────────────────────────────────
-// // // // // // class _InGameChatSheet extends StatefulWidget {
-// // // // // //   const _InGameChatSheet({required this.game, required this.myId});
-// // // // // //   final TodGameProvider game;
-// // // // // //   final String myId;
-// // // // // //   @override
-// // // // // //   State<_InGameChatSheet> createState() => _InGameChatSheetState();
-// // // // // // }
-
-// // // // // // class _InGameChatSheetState extends State<_InGameChatSheet> {
-// // // // // //   final _ctrl = TextEditingController();
-// // // // // //   final _scroll = ScrollController();
-// // // // // //   @override
-// // // // // //   void dispose() {
-// // // // // //     _ctrl.dispose();
-// // // // // //     _scroll.dispose();
-// // // // // //     super.dispose();
-// // // // // //   }
-
-// // // // // //   void _send() {
-// // // // // //     final t = _ctrl.text.trim();
-// // // // // //     if (t.isEmpty) return;
-// // // // // //     widget.game.sendChat(t);
-// // // // // //     _ctrl.clear();
-// // // // // //     WidgetsBinding.instance.addPostFrameCallback((_) {
-// // // // // //       if (_scroll.hasClients)
-// // // // // //         _scroll.animateTo(
-// // // // // //           _scroll.position.maxScrollExtent,
-// // // // // //           duration: 200.ms,
-// // // // // //           curve: Curves.easeOut,
-// // // // // //         );
-// // // // // //     });
-// // // // // //   }
-
-// // // // // //   @override
-// // // // // //   Widget build(BuildContext context) {
-// // // // // //     return Container(
-// // // // // //       height: MediaQuery.sizeOf(context).height * 0.65,
-// // // // // //       decoration: const BoxDecoration(
-// // // // // //         color: Color(0xFF1A2E45),
-// // // // // //         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-// // // // // //       ),
-// // // // // //       child: Column(
-// // // // // //         children: [
-// // // // // //           Container(
-// // // // // //             width: 36,
-// // // // // //             height: 4,
-// // // // // //             margin: const EdgeInsets.symmetric(vertical: 10),
-// // // // // //             decoration: BoxDecoration(
-// // // // // //               color: Colors.white24,
-// // // // // //               borderRadius: BorderRadius.circular(2),
-// // // // // //             ),
-// // // // // //           ),
-// // // // // //           const Text(
-// // // // // //             '💬 Chat',
-// // // // // //             style: TextStyle(
-// // // // // //               color: Colors.white,
-// // // // // //               fontWeight: FontWeight.w800,
-// // // // // //               fontSize: 16,
-// // // // // //             ),
-// // // // // //           ),
-// // // // // //           const Divider(color: Colors.white12),
-// // // // // //           Expanded(
-// // // // // //             child: ListenableBuilder(
-// // // // // //               listenable: widget.game,
-// // // // // //               builder: (_, __) {
-// // // // // //                 final msgs = widget.game.chatMessages;
-// // // // // //                 return msgs.isEmpty
-// // // // // //                     ? const Center(
-// // // // // //                         child: Text(
-// // // // // //                           'No messages yet',
-// // // // // //                           style: TextStyle(color: Colors.white38),
-// // // // // //                         ),
-// // // // // //                       )
-// // // // // //                     : ListView.builder(
-// // // // // //                         controller: _scroll,
-// // // // // //                         padding: const EdgeInsets.all(12),
-// // // // // //                         itemCount: msgs.length,
-// // // // // //                         itemBuilder: (_, i) {
-// // // // // //                           final m = msgs[i];
-// // // // // //                           final isMe = m.senderId == widget.myId;
-// // // // // //                           final color =
-// // // // // //                               _kChatColors[m.senderId.hashCode.abs() %
-// // // // // //                                   _kChatColors.length];
-// // // // // //                           return Padding(
-// // // // // //                             padding: EdgeInsets.only(
-// // // // // //                               bottom: 8,
-// // // // // //                               left: isMe ? 48 : 0,
-// // // // // //                               right: isMe ? 0 : 48,
-// // // // // //                             ),
-// // // // // //                             child: Column(
-// // // // // //                               crossAxisAlignment: isMe
-// // // // // //                                   ? CrossAxisAlignment.end
-// // // // // //                                   : CrossAxisAlignment.start,
-// // // // // //                               children: [
-// // // // // //                                 if (!isMe)
-// // // // // //                                   Padding(
-// // // // // //                                     padding: const EdgeInsets.only(
-// // // // // //                                       left: 4,
-// // // // // //                                       bottom: 2,
-// // // // // //                                     ),
-// // // // // //                                     child: Text(
-// // // // // //                                       m.senderName,
-// // // // // //                                       style: TextStyle(
-// // // // // //                                         color: color,
-// // // // // //                                         fontSize: 11,
-// // // // // //                                         fontWeight: FontWeight.w700,
-// // // // // //                                       ),
-// // // // // //                                     ),
-// // // // // //                                   ),
-// // // // // //                                 Container(
-// // // // // //                                   padding: const EdgeInsets.symmetric(
-// // // // // //                                     horizontal: 12,
-// // // // // //                                     vertical: 8,
-// // // // // //                                   ),
-// // // // // //                                   decoration: BoxDecoration(
-// // // // // //                                     color: isMe
-// // // // // //                                         ? const Color(0xFFFFD60A)
-// // // // // //                                         : color.withOpacity(0.18),
-// // // // // //                                     borderRadius: BorderRadius.circular(16)
-// // // // // //                                         .copyWith(
-// // // // // //                                           bottomRight: isMe
-// // // // // //                                               ? const Radius.circular(4)
-// // // // // //                                               : null,
-// // // // // //                                           bottomLeft: isMe
-// // // // // //                                               ? null
-// // // // // //                                               : const Radius.circular(4),
-// // // // // //                                         ),
-// // // // // //                                   ),
-// // // // // //                                   child: Text(
-// // // // // //                                     m.text,
-// // // // // //                                     style: TextStyle(
-// // // // // //                                       color: isMe
-// // // // // //                                           ? const Color(0xFF0D1B2A)
-// // // // // //                                           : Colors.white,
-// // // // // //                                       fontWeight: isMe
-// // // // // //                                           ? FontWeight.w700
-// // // // // //                                           : FontWeight.w400,
-// // // // // //                                     ),
-// // // // // //                                   ),
-// // // // // //                                 ),
-// // // // // //                               ],
-// // // // // //                             ),
-// // // // // //                           );
-// // // // // //                         },
-// // // // // //                       );
-// // // // // //               },
-// // // // // //             ),
-// // // // // //           ),
-// // // // // //           Container(
-// // // // // //             padding: EdgeInsets.fromLTRB(
-// // // // // //               12,
-// // // // // //               8,
-// // // // // //               12,
-// // // // // //               MediaQuery.viewInsetsOf(context).bottom + 12,
-// // // // // //             ),
-// // // // // //             color: const Color(0xFF1A2E45),
-// // // // // //             child: Row(
-// // // // // //               children: [
-// // // // // //                 Expanded(
-// // // // // //                   child: TextField(
-// // // // // //                     controller: _ctrl,
-// // // // // //                     style: const TextStyle(color: Colors.white),
-// // // // // //                     textInputAction: TextInputAction.send,
-// // // // // //                     onSubmitted: (_) => _send(),
-// // // // // //                     decoration: InputDecoration(
-// // // // // //                       hintText: 'Say something…',
-// // // // // //                       hintStyle: const TextStyle(color: Colors.white38),
-// // // // // //                       filled: true,
-// // // // // //                       fillColor: Colors.white.withOpacity(0.07),
-// // // // // //                       border: OutlineInputBorder(
-// // // // // //                         borderRadius: BorderRadius.circular(24),
-// // // // // //                         borderSide: BorderSide.none,
-// // // // // //                       ),
-// // // // // //                       contentPadding: const EdgeInsets.symmetric(
-// // // // // //                         horizontal: 16,
-// // // // // //                         vertical: 10,
-// // // // // //                       ),
-// // // // // //                       isDense: true,
-// // // // // //                     ),
-// // // // // //                   ),
-// // // // // //                 ),
-// // // // // //                 const SizedBox(width: 8),
-// // // // // //                 GestureDetector(
-// // // // // //                   onTap: _send,
-// // // // // //                   child: Container(
-// // // // // //                     width: 44,
-// // // // // //                     height: 44,
-// // // // // //                     decoration: const BoxDecoration(
-// // // // // //                       color: Color(0xFFFFD60A),
-// // // // // //                       shape: BoxShape.circle,
-// // // // // //                     ),
-// // // // // //                     child: const Icon(
-// // // // // //                       Icons.send_rounded,
-// // // // // //                       color: Color(0xFF0D1B2A),
-// // // // // //                       size: 20,
-// // // // // //                     ),
-// // // // // //                   ),
-// // // // // //                 ),
-// // // // // //               ],
-// // // // // //             ),
-// // // // // //           ),
-// // // // // //         ],
-// // // // // //       ),
-// // // // // //     );
-// // // // // //   }
-// // // // // // }
-
-// // // // // // const _kChatColors = [
-// // // // // //   Color(0xFF4ECDC4),
-// // // // // //   Color(0xFFA855F7),
-// // // // // //   Color(0xFFFF6B6B),
-// // // // // //   Color(0xFF4ADE80),
-// // // // // //   Color(0xFFFB923C),
-// // // // // //   Color(0xFF60A5FA),
-// // // // // //   Color(0xFFF472B6),
-// // // // // //   Color(0xFFFFD60A),
-// // // // // //   Color(0xFF34D399),
-// // // // // //   Color(0xFFC084FC),
-// // // // // // ];
-
-// // // // // // // ── Paused overlay ────────────────────────────────────────────────────────────
-// // // // // // class _PausedOverlay extends StatefulWidget {
-// // // // // //   const _PausedOverlay({required this.onLeave});
-// // // // // //   final VoidCallback onLeave;
-
-// // // // // //   @override
-// // // // // //   State<_PausedOverlay> createState() => _PausedOverlayState();
-// // // // // // }
-
-// // // // // // class _PausedOverlayState extends State<_PausedOverlay>
-// // // // // //     with SingleTickerProviderStateMixin {
-// // // // // //   late final AnimationController _pulse;
-
-// // // // // //   @override
-// // // // // //   void initState() {
-// // // // // //     super.initState();
-// // // // // //     _pulse = AnimationController(
-// // // // // //       vsync: this,
-// // // // // //       duration: const Duration(milliseconds: 1400),
-// // // // // //     )..repeat(reverse: true);
-// // // // // //   }
-
-// // // // // //   @override
-// // // // // //   void dispose() {
-// // // // // //     _pulse.dispose();
-// // // // // //     super.dispose();
-// // // // // //   }
-
-// // // // // //   @override
-// // // // // //   Widget build(BuildContext context) {
-// // // // // //     return Dialog.fullscreen(
-// // // // // //       backgroundColor: Colors.transparent,
-// // // // // //       child: Scaffold(
-// // // // // //         backgroundColor: Colors.transparent,
-// // // // // //         body: Center(
-// // // // // //           child: Padding(
-// // // // // //             padding: const EdgeInsets.all(32),
-// // // // // //             child: Column(
-// // // // // //               mainAxisSize: MainAxisSize.min,
-// // // // // //               children: [
-// // // // // //                 AnimatedBuilder(
-// // // // // //                   animation: _pulse,
-// // // // // //                   builder: (_, child) =>
-// // // // // //                       Opacity(opacity: 0.6 + _pulse.value * 0.4, child: child),
-// // // // // //                   child: const Text('⏸', style: TextStyle(fontSize: 72)),
-// // // // // //                 ),
-// // // // // //                 const SizedBox(height: 24),
-// // // // // //                 const Text(
-// // // // // //                   'Game Paused',
-// // // // // //                   style: TextStyle(
-// // // // // //                     color: Colors.white,
-// // // // // //                     fontSize: 28,
-// // // // // //                     fontWeight: FontWeight.w800,
-// // // // // //                     letterSpacing: -0.5,
-// // // // // //                   ),
-// // // // // //                 ),
-// // // // // //                 const SizedBox(height: 12),
-// // // // // //                 const Text(
-// // // // // //                   'The host stepped away and will\nreturn shortly.',
-// // // // // //                   textAlign: TextAlign.center,
-// // // // // //                   style: TextStyle(
-// // // // // //                     color: Colors.white70,
-// // // // // //                     fontSize: 16,
-// // // // // //                     height: 1.5,
-// // // // // //                   ),
-// // // // // //                 ),
-// // // // // //                 const SizedBox(height: 40),
-// // // // // //                 OutlinedButton(
-// // // // // //                   style: OutlinedButton.styleFrom(
-// // // // // //                     foregroundColor: Colors.white,
-// // // // // //                     side: const BorderSide(color: Colors.white38),
-// // // // // //                     padding: const EdgeInsets.symmetric(
-// // // // // //                       horizontal: 32,
-// // // // // //                       vertical: 14,
-// // // // // //                     ),
-// // // // // //                   ),
-// // // // // //                   onPressed: widget.onLeave,
-// // // // // //                   child: const Text('Leave for Now'),
-// // // // // //                 ),
-// // // // // //               ],
-// // // // // //             ),
-// // // // // //           ),
-// // // // // //         ),
-// // // // // //       ),
-// // // // // //     );
-// // // // // //   }
-// // // // // // }
-
-// // // // // import 'dart:async';
-
-// // // // // import 'package:flutter/material.dart';
-// // // // // import 'package:flutter_animate/flutter_animate.dart';
-// // // // // import 'package:go_router/go_router.dart';
-// // // // // import 'package:jma3a/core/router/app_router.dart';
-// // // // // import 'package:jma3a/features/games/engine/base_game_engine.dart';
-// // // // // import 'package:jma3a/features/rooms/domain/room_entity.dart';
-// // // // // import 'package:jma3a/features/settings/presentation/screen_security_service.dart';
-// // // // // import 'package:provider/provider.dart';
-// // // // // import 'package:supabase_flutter/supabase_flutter.dart';
-
-// // // // // import '../../../../../core/di/service_locator.dart';
-// // // // // import '../../../../../core/extensions/context_ext.dart';
-// // // // // import '../../../../../core/providers/auth_provider.dart';
-// // // // // import '../../../../../core/router/route_names.dart';
-// // // // // import '../../../../../core/services/realtime_service.dart';
-// // // // // // import '../../../../../core/services/screen_security_service.dart';
-// // // // // import '../../../../../core/theme/app_colors.dart';
-// // // // // import '../../../../../shared/widgets/feedback/error_view.dart';
-// // // // // import '../../../../../shared/widgets/overlays/confirm_dialog.dart';
-// // // // // // import '../../engine/base_game_engine.dart';
-// // // // // import '../../domain/tod_models.dart';
-// // // // // import '../../tod_game_provider.dart';
-
-// // // // // import '../../data/tod_repository.dart';
-// // // // // import 'tod_card_screen.dart';
-// // // // // import 'tod_end_screen.dart';
-// // // // // import 'tod_loading_screen.dart';
-// // // // // import 'tod_punishment_screen.dart';
-// // // // // import '../widgets/tod_hud.dart';
-
-// // // // // /// Entry point for an active Truth or Dare session.
-// // // // // ///
-// // // // // /// Responsibilities:
-// // // // // ///  - Owns and scopes TodGameProvider for this session
-// // // // // ///  - Wires RealtimeService callbacks → TodGameProvider
-// // // // // ///  - Routes between loading / error / active / game-over screens
-// // // // // ///  - Forwards game_state and player_action from the room Broadcast channel
-// // // // // class TodGameScreen extends StatefulWidget {
-// // // // //   const TodGameScreen({
-// // // // //     super.key,
-// // // // //     required this.roomId,
-// // // // //     required this.config,
-// // // // //     required this.playerIds,
-// // // // //     required this.playerDisplayNames,
-// // // // //     required this.packId,
-// // // // //     required this.isOwner,
-// // // // //     this.sessionId,
-// // // // //     this.isModerator = false,
-// // // // //     this.packCoverUrl,
-// // // // //   });
-
-// // // // //   final String roomId;
-// // // // //   final GameConfig config;
-// // // // //   final List<String> playerIds;
-// // // // //   final Map<String, String> playerDisplayNames; // userId → displayName
-// // // // //   final String packId;
-// // // // //   final bool isOwner;
-// // // // //   final String? sessionId;
-// // // // //   final bool isModerator;
-// // // // //   final String? packCoverUrl;
-
-// // // // //   @override
-// // // // //   State<TodGameScreen> createState() => _TodGameScreenState();
-// // // // // }
-
-// // // // // class _TodGameScreenState extends State<TodGameScreen> {
-// // // // //   late final TodGameProvider _provider;
-
-// // // // //   // Subscriptions to the room Broadcast channel
-// // // // //   // (channel already open by RoomProvider — we just register callbacks)
-// // // // //   StreamSubscription<RealtimeSubscribeStatus>? _statusSub;
-
-// // // // //   @override
-// // // // //   void initState() {
-// // // // //     super.initState();
-
-// // // // //     // Block screenshots/screen recording for the duration of gameplay —
-// // // // //     // proof photos/videos and responses shouldn't be capturable.
-// // // // //     ScreenSecurityService.instance.enable();
-// // // // //     ScreenSecurityService.instance.enableScreenshotDetection(() {
-// // // // //       // iOS can't block screenshots outright, only detect them — let the
-// // // // //       // room know, Snapchat-style, since it can't be silently captured.
-// // // // //       sl.realtimeService.broadcastRoomEvent(widget.roomId, {
-// // // // //         'type': 'screenshot_taken',
-// // // // //         'user_id': context.read<AuthProvider>().currentUser?.id,
-// // // // //       }).ignore();
-// // // // //     });
-
-// // // // //     final auth = context.read<AuthProvider>();
-// // // // //     final user = auth.currentUser!;
-
-// // // // //     _provider = TodGameProvider(
-// // // // //       realtimeService: sl.realtimeService,
-// // // // //       repository: TodRepository.instance,
-// // // // //       currentUserId: user.id,
-// // // // //       currentDisplayName: user.displayName ?? user.username ?? 'Player',
-// // // // //       isModerator: widget.isModerator,
-// // // // //     );
-
-// // // // //     // ── Wire Broadcast callbacks ────────────────────────────────────────────
-// // // // //     // The room channel is already subscribed by RoomProvider/LobbyScreen.
-// // // // //     // TodGameScreen registers its own game-specific handlers for game_state
-// // // // //     // and player_action by re-subscribing with extended handlers.
-// // // // //     //
-// // // // //     // We do this by using the RealtimeService._bcast pattern:
-// // // // //     // The channel already has onGameState/onPlayerAction wired to no-ops
-// // // // //     // in RoomProvider. We replace them here by storing callbacks and
-// // // // //     // intercepting from the top-level channel via a dedicated subscription.
-// // // // //     _wireRealtimeCallbacks();
-
-// // // // //     if (widget.isOwner) {
-// // // // //       final isPremium =
-// // // // //           context.read<AuthProvider>().currentUser?.isPremium ?? false;
-// // // // //       _provider.initAsOwner(
-// // // // //         roomId: widget.roomId,
-// // // // //         config: widget.config,
-// // // // //         playerIds: widget.playerIds,
-// // // // //         playerDisplayNames: widget.playerDisplayNames,
-// // // // //         packId: widget.packId,
-// // // // //         isPremium: isPremium,
-// // // // //         packCoverUrl: widget.packCoverUrl,
-// // // // //       );
-// // // // //     } else {
-// // // // //       _provider.initAsFollower(
-// // // // //         roomId: widget.roomId,
-// // // // //         config: widget.config,
-// // // // //         sessionId: widget.sessionId,
-// // // // //         packCoverUrl: widget.packCoverUrl,
-// // // // //       );
-// // // // //     }
-// // // // //   }
-
-// // // // //   @override
-// // // // //   void dispose() {
-// // // // //     ScreenSecurityService.instance.disable();
-// // // // //     _statusSub?.cancel();
-// // // // //     // Re-subscribe the room channel with lobby-mode handlers so the lobby
-// // // // //     // (which is still on the stack) continues to receive events after we pop.
-// // // // //     // DO NOT fully unsubscribe — that would cut off followers still in-game.
-// // // // //     sl.realtimeService
-// // // // //         .subscribe(
-// // // // //           roomId: widget.roomId,
-// // // // //           onGameState: (_) {},
-// // // // //           onPlayerAction: (_) {},
-// // // // //           onSyncRequest: (_) {},
-// // // // //           onGameStarted: (_) {},
-// // // // //           onGameEnded: (_) {},
-// // // // //           onRoomEvent: (_) {},
-// // // // //           onChatMessage: (_) {},
-// // // // //           onModeration: (_) {},
-// // // // //           onSettingsChange: (_) {},
-// // // // //           onPresenceSync: (_) {},
-// // // // //           onPresenceJoin: (_) {},
-// // // // //           onPresenceLeave: (_) {},
-// // // // //           onStatusChange: (_) {},
-// // // // //         )
-// // // // //         .ignore();
-// // // // //     _provider.dispose();
-// // // // //     super.dispose();
-// // // // //   }
-
-// // // // //   /// Wire game-specific callbacks into the existing room channel.
-// // // // //   ///
-// // // // //   /// Strategy: re-subscribe to the room channel with updated handlers that
-// // // // //   /// forward game_state and player_action to this provider.
-// // // // //   /// The channel is already open; we track callbacks via a thin interceptor.
-// // // // //   void _wireRealtimeCallbacks() {
-// // // // //     // Listen to channel status changes for reconnection awareness
-// // // // //     _statusSub = sl.realtimeService.statusStream(widget.roomId)?.listen((
-// // // // //       status,
-// // // // //     ) {
-// // // // //       if (status == RealtimeSubscribeStatus.subscribed &&
-// // // // //           !_provider.hasSyncedState) {
-// // // // //         // Channel reconnected — request state sync
-// // // // //         sl.realtimeService.broadcastSyncRequest(
-// // // // //           widget.roomId,
-// // // // //           context.read<AuthProvider>().currentUser!.id,
-// // // // //           0,
-// // // // //         );
-// // // // //       }
-// // // // //     });
-
-// // // // //     // Re-subscribe with game handlers added.
-// // // // //     // This safely replaces the channel subscription with game callbacks.
-// // // // //     // (No-op handlers in RoomProvider are replaced with active ones here.)
-// // // // //     _resubscribeWithGameHandlers();
-// // // // //   }
-
-// // // // //   void _resubscribeWithGameHandlers() {
-// // // // //     final userId = context.read<AuthProvider>().currentUser!.id;
-
-// // // // //     // Unsubscribe existing channel and re-subscribe with game callbacks merged
-// // // // //     sl.realtimeService.unsubscribe(widget.roomId).then((_) {
-// // // // //       sl.realtimeService.subscribe(
-// // // // //         roomId: widget.roomId,
-// // // // //         // ── Game-specific handlers ─────────────────────────────────────────
-// // // // //         onGameState: (p) => _provider.onStateBroadcast(p),
-// // // // //         onPlayerAction: (p) => _provider.onPlayerAction(p),
-// // // // //         onSyncRequest: (p) => _provider.onSyncRequest(p),
-// // // // //         onGameStarted: (_) {},
-// // // // //         onGameEnded: (p) {
-// // // // //           // Admin ended the game — take everyone back to the lobby
-// // // // //           if (mounted) {
-// // // // //             ScaffoldMessenger.of(context).showSnackBar(
-// // // // //               const SnackBar(content: Text('The host ended the game')),
-// // // // //             );
-// // // // //             // Pop back to lobby (the LobbyScreen is still on the stack)
-// // // // //             if (context.canPop())
-// // // // //               context.pop();
-// // // // //             else
-// // // // //               context.go(RouteNames.home);
-// // // // //           }
-// // // // //         },
-// // // // //         // ── Room lifecycle (passthrough — RoomProvider is disposed) ─────────
-// // // // //         onRoomEvent: (p) {
-// // // // //           final type = p['type'] as String?;
-// // // // //           if (type == 'screenshot_taken') {
-// // // // //             final shooterId = p['user_id'] as String?;
-// // // // //             final myId = context.read<AuthProvider>().currentUser?.id;
-// // // // //             if (shooterId != null && shooterId != myId && mounted) {
-// // // // //               ScaffoldMessenger.of(context).showSnackBar(
-// // // // //                 SnackBar(
-// // // // //                   content: Text(
-// // // // //                     '📸 ${widget.playerDisplayNames[shooterId] ?? 'Someone'} took a screenshot',
-// // // // //                   ),
-// // // // //                   backgroundColor: Colors.black87,
-// // // // //                 ),
-// // // // //               );
-// // // // //             }
-// // // // //             return;
-// // // // //           }
-// // // // //           if (type == 'player_left' && mounted) {
-// // // // //             final name = p['display_name'] as String? ?? 'A player';
-// // // // //             final forGood = p['for_good'] as bool? ?? true;
-// // // // //             final leavingId = p['user_id'] as String?;
-// // // // //             final returnMins = p['return_mins'] as int?;
-// // // // //             if (leavingId != null && widget.isOwner) {
-// // // // //               _provider.markPlayerAway(leavingId, forGood: forGood);
-// // // // //               // Auto-quit if owner is now the only active player
-// // // // //               final activePlayers =
-// // // // //                   _provider.state?.playerOrder
-// // // // //                       .where((id) => !_provider.awayPlayerIds.contains(id))
-// // // // //                       .toList() ??
-// // // // //                   [];
-// // // // //               if (activePlayers.length <= 1 && activePlayers.isNotEmpty) {
-// // // // //                 WidgetsBinding.instance.addPostFrameCallback((_) async {
-// // // // //                   if (!mounted) return;
-// // // // //                   await sl.realtimeService.broadcastRoomEvent(widget.roomId, {
-// // // // //                     'type': 'game_ended',
-// // // // //                     'reason': 'all_players_left',
-// // // // //                   });
-// // // // //                   await sl.roomRepository.updateStatus(
-// // // // //                     widget.roomId,
-// // // // //                     RoomStatus.waiting,
-// // // // //                   );
-// // // // //                   if (mounted) {
-// // // // //                     ScaffoldMessenger.of(context).showSnackBar(
-// // // // //                       const SnackBar(
-// // // // //                         content: Text('All players left — game ended'),
-// // // // //                         backgroundColor: Colors.orange,
-// // // // //                       ),
-// // // // //                     );
-// // // // //                     await Future.delayed(const Duration(milliseconds: 800));
-// // // // //                     if (mounted) {
-// // // // //                       if (context.canPop())
-// // // // //                         context.pop();
-// // // // //                       else
-// // // // //                         context.go('/home/room/${widget.roomId}');
-// // // // //                     }
-// // // // //                   }
-// // // // //                 });
-// // // // //               }
-// // // // //             }
-// // // // //             final msg = forGood
-// // // // //                 ? '👋 $name left the game'
-// // // // //                 : '🕐 $name stepped away (${returnMins != null ? 'back in ${returnMins}m' : 'coming back'})';
-// // // // //             ScaffoldMessenger.of(context).showSnackBar(
-// // // // //               SnackBar(
-// // // // //                 content: Text(msg),
-// // // // //                 backgroundColor: forGood
-// // // // //                     ? Colors.red.shade700
-// // // // //                     : Colors.orange.shade700,
-// // // // //                 duration: const Duration(seconds: 4),
-// // // // //               ),
-// // // // //             );
-// // // // //             return;
-// // // // //           }
-// // // // //           if (type == 'ownership_transferred' && mounted) {
-// // // // //             final myId = context.read<AuthProvider>().currentUser?.id;
-// // // // //             final newOwnerId = p['new_owner_id'] as String?;
-// // // // //             if (newOwnerId == myId) {
-// // // // //               ScaffoldMessenger.of(context).showSnackBar(
-// // // // //                 const SnackBar(
-// // // // //                   content: Text('👑 You are now the game host!'),
-// // // // //                   backgroundColor: Colors.purple,
-// // // // //                 ),
-// // // // //               );
-// // // // //             }
-// // // // //             return;
-// // // // //           }
-// // // // //           if (type == 'game_ended' && mounted) {
-// // // // //             final reason = p['reason'] as String?;
-// // // // //             if (reason == 'host_quit_to_lobby') {
-// // // // //               WidgetsBinding.instance.addPostFrameCallback((_) {
-// // // // //                 if (!mounted) return;
-// // // // //                 ScaffoldMessenger.of(context).showSnackBar(
-// // // // //                   const SnackBar(
-// // // // //                     content: Text('🔄 Host ended the game — back to lobby'),
-// // // // //                     duration: Duration(seconds: 3),
-// // // // //                   ),
-// // // // //                 );
-// // // // //                 if (context.canPop()) {
-// // // // //                   context.pop();
-// // // // //                 } else {
-// // // // //                   context.go('/home/room/${widget.roomId}');
-// // // // //                 }
-// // // // //               });
-// // // // //             }
-// // // // //             return;
-// // // // //           }
-// // // // //           if (type == 'tod_ready_count') {
-// // // // //             final ids = (p['ready_user_ids'] as List?)?.cast<String>() ?? [];
-// // // // //             _provider.onReadyCountUpdate(ids);
-// // // // //             return;
-// // // // //           }
-// // // // //           if ((type == 'room_closed' || type == 'owner_left') && mounted) {
-// // // // //             WidgetsBinding.instance.addPostFrameCallback((_) {
-// // // // //               if (mounted) {
-// // // // //                 showDialog(
-// // // // //                   context: context,
-// // // // //                   barrierDismissible: false,
-// // // // //                   builder: (ctx2) => AlertDialog(
-// // // // //                     title: const Text('Room Closed'),
-// // // // //                     content: const Text('The host closed the room.'),
-// // // // //                     actions: [
-// // // // //                       FilledButton(
-// // // // //                         onPressed: () {
-// // // // //                           Navigator.of(ctx2).pop();
-// // // // //                           AppRouter.router.go(RouteNames.home);
-// // // // //                         },
-// // // // //                         child: const Text('OK'),
-// // // // //                       ),
-// // // // //                     ],
-// // // // //                   ),
-// // // // //                 );
-// // // // //               } else {
-// // // // //                 AppRouter.router.go(RouteNames.home);
-// // // // //               }
-// // // // //             });
-// // // // //           }
-// // // // //         },
-// // // // //         onChatMessage: (p) {
-// // // // //           final msg = TodChatMsg(
-// // // // //             senderId: p['user_id'] as String? ?? '',
-// // // // //             senderName: p['display_name'] as String? ?? 'Player',
-// // // // //             text: p['content'] as String? ?? '',
-// // // // //             ts: DateTime.fromMillisecondsSinceEpoch(
-// // // // //               (p['ts'] as num?)?.toInt() ??
-// // // // //                   DateTime.now().millisecondsSinceEpoch,
-// // // // //             ),
-// // // // //           );
-// // // // //           _provider.addChatMessage(msg);
-// // // // //         },
-// // // // //         onModeration: (p) => _handleModerationEvent(p),
-// // // // //         onSettingsChange: (_) {},
-// // // // //         // ── Presence ──────────────────────────────────────────────────────
-// // // // //         onPresenceSync: (_) {},
-// // // // //         onPresenceJoin: (_) {},
-// // // // //         onPresenceLeave: (_) {},
-// // // // //         onStatusChange: (status) {
-// // // // //           if (!mounted) return;
-// // // // //           if (status == RealtimeSubscribeStatus.subscribed &&
-// // // // //               !_provider.hasSyncedState) {
-// // // // //             sl.realtimeService.broadcastSyncRequest(widget.roomId, userId, 0);
-// // // // //           }
-// // // // //         },
-// // // // //       );
-// // // // //     });
-// // // // //   }
-
-// // // // //   void _handleModerationEvent(Map<String, dynamic> p) {
-// // // // //     final type = p['type'] as String?;
-// // // // //     final targetId = p['target_user_id'] as String?;
-// // // // //     final currentId = context.read<AuthProvider>().currentUser?.id;
-
-// // // // //     // If kicked or banned, navigate back to lobby
-// // // // //     if ((type == 'kick' || type == 'ban') && targetId == currentId) {
-// // // // //       if (mounted) {
-// // // // //         ScaffoldMessenger.of(context).showSnackBar(
-// // // // //           const SnackBar(content: Text('You were removed from the room')),
-// // // // //         );
-// // // // //         context.go(RouteNames.home);
-// // // // //       }
-// // // // //     }
-// // // // //   }
-
-// // // // //   @override
-// // // // //   Widget build(BuildContext context) {
-// // // // //     return ChangeNotifierProvider.value(
-// // // // //       value: _provider,
-// // // // //       child: Consumer<TodGameProvider>(
-// // // // //         builder: (ctx, game, _) => _build(ctx, game),
-// // // // //       ),
-// // // // //     );
-// // // // //   }
-
-// // // // //   Widget _build(BuildContext ctx, TodGameProvider game) {
-// // // // //     if (game.loadState == TodLoadState.loading) {
-// // // // //       return const TodLoadingScreen();
-// // // // //     }
-
-// // // // //     if (game.loadState == TodLoadState.error) {
-// // // // //       return Scaffold(
-// // // // //         appBar: AppBar(
-// // // // //           leading: BackButton(
-// // // // //             onPressed: () async {
-// // // // //               if (widget.isOwner) {
-// // // // //                 // Owner leaving game → end game for everyone, go back to lobby
-// // // // //                 try {
-// // // // //                   await sl.realtimeService.broadcastGameEnded(widget.roomId, {
-// // // // //                     'reason': 'host_left',
-// // // // //                   });
-// // // // //                   await sl.roomRepository.updateStatus(
-// // // // //                     widget.roomId,
-// // // // //                     RoomStatus.waiting,
-// // // // //                   );
-// // // // //                 } catch (_) {}
-// // // // //               }
-// // // // //               if (ctx.mounted) ctx.go(RouteNames.home);
-// // // // //             },
-// // // // //           ),
-// // // // //         ),
-// // // // //         body: ErrorView(
-// // // // //           message: game.error ?? 'Failed to load game',
-// // // // //           onRetry: () => ctx.go(RouteNames.home),
-// // // // //         ),
-// // // // //       );
-// // // // //     }
-
-// // // // //     if (game.loadState == TodLoadState.gameOver ||
-// // // // //         (game.state?.isOver ?? false)) {
-// // // // //       return TodEndScreen(
-// // // // //         state: game.state!,
-// // // // //         displayNames: widget.playerDisplayNames,
-// // // // //         onLeave: () => ctx.go(RouteNames.home),
-// // // // //       );
-// // // // //     }
-
-// // // // //     final state = game.state;
-// // // // //     if (state == null) return const TodLoadingScreen();
-
-// // // // //     return _TodGameScaffold(
-// // // // //       state: state,
-// // // // //       game: game,
-// // // // //       displayNames: widget.playerDisplayNames,
-// // // // //       roomId: widget.roomId,
-// // // // //       isOwner: widget.isOwner,
-// // // // //     );
-// // // // //   }
-// // // // // }
-
-// // // // // // ── Scaffold with history support ─────────────────────────────────────────────
-
-// // // // // class _TodGameScaffold extends StatefulWidget {
-// // // // //   const _TodGameScaffold({
-// // // // //     required this.state,
-// // // // //     required this.game,
-// // // // //     required this.displayNames,
-// // // // //     required this.roomId,
-// // // // //     required this.isOwner,
-// // // // //   });
-// // // // //   final TodState state;
-// // // // //   final TodGameProvider game;
-// // // // //   final Map<String, String> displayNames;
-// // // // //   final String roomId;
-// // // // //   final bool isOwner;
-// // // // //   @override
-// // // // //   State<_TodGameScaffold> createState() => _TodGameScaffoldState();
-// // // // // }
-
-// // // // // class _TodGameScaffoldState extends State<_TodGameScaffold> {
-// // // // //   bool _showHistory = false;
-// // // // //   bool _showChat = false;
-// // // // //   int _unreadChat = 0;
-// // // // //   bool _isNavigatingAway = false;
-
-// // // // //   void _navigateAway(BuildContext ctx, String location) {
-// // // // //     _isNavigatingAway = true;
-// // // // //     if (ctx.canPop()) {
-// // // // //       ctx.pop();
-// // // // //     } else {
-// // // // //       ctx.go(location);
-// // // // //     }
-// // // // //   }
-
-// // // // //   @override
-// // // // //   Widget build(BuildContext context) {
-// // // // //     final state = widget.state;
-// // // // //     final game = widget.game;
-
-// // // // //     if (_showHistory) {
-// // // // //       return Scaffold(
-// // // // //         appBar: AppBar(
-// // // // //           leading: BackButton(
-// // // // //             onPressed: () => setState(() => _showHistory = false),
-// // // // //           ),
-// // // // //           title: Text('History (${state.history.length} rounds)'),
-// // // // //         ),
-// // // // //         body: _HistoryPanel(
-// // // // //           history: state.history,
-// // // // //           displayNames: widget.displayNames,
-// // // // //         ),
-// // // // //       );
-// // // // //     }
-
-// // // // //     return PopScope(
-// // // // //       canPop: false,
-// // // // //       onPopInvoked: (_) {
-// // // // //         if (_isNavigatingAway) return;
-// // // // //         WidgetsBinding.instance.addPostFrameCallback(
-// // // // //           (_) => _showLeaveDialog(context, game, state),
-// // // // //         );
-// // // // //       },
-// // // // //       child: Scaffold(
-// // // // //         appBar: AppBar(
-// // // // //           automaticallyImplyLeading: false,
-// // // // //           title: const Text(''),
-// // // // //           leading: IconButton(
-// // // // //             icon: const Icon(Icons.arrow_back),
-// // // // //             onPressed: () => _showLeaveDialog(context, game, state),
-// // // // //           ),
-// // // // //           actions: [
-// // // // //             // Chat button with unread badge
-// // // // //             Consumer<TodGameProvider>(
-// // // // //               builder: (_, g, __) => Stack(
-// // // // //                 alignment: Alignment.topRight,
-// // // // //                 children: [
-// // // // //                   IconButton(
-// // // // //                     icon: const Icon(Icons.chat_bubble_outline_rounded),
-// // // // //                     onPressed: () {
-// // // // //                       g.clearUnreadChat();
-// // // // //                       showModalBottomSheet(
-// // // // //                         context: context,
-// // // // //                         isScrollControlled: true,
-// // // // //                         backgroundColor: Colors.transparent,
-// // // // //                         builder: (_) =>
-// // // // //                             _InGameChatSheet(game: g, myId: g.currentUserId),
-// // // // //                       );
-// // // // //                     },
-// // // // //                   ),
-// // // // //                   if (g.unreadChat > 0)
-// // // // //                     Positioned(
-// // // // //                       top: 8,
-// // // // //                       right: 8,
-// // // // //                       child: Container(
-// // // // //                         width: 8,
-// // // // //                         height: 8,
-// // // // //                         decoration: const BoxDecoration(
-// // // // //                           color: Colors.red,
-// // // // //                           shape: BoxShape.circle,
-// // // // //                         ),
-// // // // //                       ),
-// // // // //                     ),
-// // // // //                 ],
-// // // // //               ),
-// // // // //             ),
-// // // // //             if (state.history.isNotEmpty)
-// // // // //               IconButton(
-// // // // //                 icon: const Icon(Icons.history_rounded),
-// // // // //                 tooltip: 'History',
-// // // // //                 onPressed: () => setState(() => _showHistory = true),
-// // // // //               ),
-// // // // //           ],
-// // // // //         ),
-// // // // //         body: SafeArea(
-// // // // //           child: Column(
-// // // // //             children: [
-// // // // //               TodHud(
-// // // // //                 state: state,
-// // // // //                 game: game,
-// // // // //                 displayNames: widget.displayNames,
-// // // // //               ),
-// // // // //               Expanded(
-// // // // //                 child: AnimatedSwitcher(
-// // // // //                   duration: const Duration(milliseconds: 300),
-// // // // //                   transitionBuilder: (child, anim) => FadeTransition(
-// // // // //                     opacity: anim,
-// // // // //                     child: SlideTransition(
-// // // // //                       position:
-// // // // //                           Tween<Offset>(
-// // // // //                             begin: const Offset(0, 0.05),
-// // // // //                             end: Offset.zero,
-// // // // //                           ).animate(
-// // // // //                             CurvedAnimation(
-// // // // //                               parent: anim,
-// // // // //                               curve: Curves.easeOutCubic,
-// // // // //                             ),
-// // // // //                           ),
-// // // // //                       child: child,
-// // // // //                     ),
-// // // // //                   ),
-// // // // //                   child: KeyedSubtree(
-// // // // //                     key: ValueKey('${state.phase}-${state.currentPlayerId}'),
-// // // // //                     child: _phaseWidget(
-// // // // //                       context,
-// // // // //                       game,
-// // // // //                       widget.displayNames,
-// // // // //                       state,
-// // // // //                     ),
-// // // // //                   ),
-// // // // //                 ),
-// // // // //               ),
-// // // // //             ],
-// // // // //           ),
-// // // // //         ),
-// // // // //       ), // end Scaffold (PopScope child)
-// // // // //     ); // end PopScope
-// // // // //   }
-
-// // // // //   Future<void> _showLeaveDialog(
-// // // // //     BuildContext ctx,
-// // // // //     TodGameProvider game,
-// // // // //     TodState state,
-// // // // //   ) async {
-// // // // //     if (!ctx.mounted) return;
-// // // // //     final isOwner = widget.isOwner;
-// // // // //     final myUserId = game.currentUserId;
-// // // // //     final isPremium = ctx.read<AuthProvider>().currentUser?.isPremium ?? false;
-
-// // // // //     if (isOwner) {
-// // // // //       final confirmed = await showDialog<bool>(
-// // // // //         context: ctx,
-// // // // //         builder: (dCtx) => AlertDialog(
-// // // // //           title: const Text('Quit Game?'),
-// // // // //           content: const Text(
-// // // // //             'The game will end for everyone and all players will return to the lobby.',
-// // // // //           ),
-// // // // //           actions: [
-// // // // //             TextButton(
-// // // // //               onPressed: () => Navigator.of(dCtx).pop(false),
-// // // // //               child: const Text('Cancel'),
-// // // // //             ),
-// // // // //             FilledButton(
-// // // // //               style: FilledButton.styleFrom(backgroundColor: Colors.red),
-// // // // //               onPressed: () => Navigator.of(dCtx).pop(true),
-// // // // //               child: const Text('End Game for Everyone'),
-// // // // //             ),
-// // // // //           ],
-// // // // //         ),
-// // // // //       );
-// // // // //       if (confirmed != true || !ctx.mounted) return;
-
-// // // // //       try {
-// // // // //         await sl.realtimeService.broadcastRoomEvent(widget.roomId, {
-// // // // //           'type': 'game_ended',
-// // // // //           'reason': 'host_quit_to_lobby',
-// // // // //         });
-// // // // //         await Future.delayed(const Duration(milliseconds: 400));
-// // // // //         await sl.roomRepository.updateStatus(widget.roomId, RoomStatus.waiting);
-// // // // //       } catch (_) {}
-// // // // //       if (ctx.mounted) {
-// // // // //         _isNavigatingAway = true;
-// // // // //         if (ctx.canPop()) {
-// // // // //           ctx.pop();
-// // // // //         } else {
-// // // // //           ctx.go('/home/room/${widget.roomId}');
-// // // // //         }
-// // // // //       }
-// // // // //     } else {
-// // // // //       // ── Player options ───────────────────────────────────────────────────
-// // // // //       final returnMins = isPremium ? 10 : 5;
-// // // // //       final choice = await showDialog<String>(
-// // // // //         context: ctx,
-// // // // //         builder: (_) => AlertDialog(
-// // // // //           title: const Text('Leave Game?'),
-// // // // //           content: Text(
-// // // // //             "If you'll return, your turns will be skipped until you're "
-// // // // //             'back. You have $returnMins minutes — after that your seat '
-// // // // //             'is lost.',
-// // // // //           ),
-// // // // //           actions: [
-// // // // //             TextButton(
-// // // // //               onPressed: () => Navigator.pop(ctx, 'cancel'),
-// // // // //               child: const Text('Stay'),
-// // // // //             ),
-// // // // //             FilledButton.tonal(
-// // // // //               onPressed: () => Navigator.pop(ctx, 'return'),
-// // // // //               child: Text("I'll Return ($returnMins min)"),
-// // // // //             ),
-// // // // //             FilledButton(
-// // // // //               style: FilledButton.styleFrom(backgroundColor: Colors.red),
-// // // // //               onPressed: () => Navigator.pop(ctx, 'definitive'),
-// // // // //               child: const Text('Leave for Good'),
-// // // // //             ),
-// // // // //           ],
-// // // // //         ),
-// // // // //       );
-// // // // //       if (choice == null || choice == 'cancel' || !ctx.mounted) return;
-
-// // // // //       final displayName = widget.displayNames[myUserId] ?? 'A player';
-
-// // // // //       if (choice == 'return') {
-// // // // //         try {
-// // // // //           await sl.roomRepository.setMemberAway(
-// // // // //             widget.roomId,
-// // // // //             myUserId,
-// // // // //             away: true,
-// // // // //           );
-// // // // //           await sl.realtimeService.broadcastRoomEvent(widget.roomId, {
-// // // // //             'type': 'player_left',
-// // // // //             'user_id': myUserId,
-// // // // //             'display_name': displayName,
-// // // // //             'for_good': false,
-// // // // //             'return_mins': returnMins,
-// // // // //           });
-// // // // //         } catch (_) {}
-// // // // //         if (ctx.mounted) {
-// // // // //           ScaffoldMessenger.of(ctx).showSnackBar(
-// // // // //             SnackBar(
-// // // // //               content: Text(
-// // // // //                 "You'll be back in $returnMins min — seat reserved",
-// // // // //               ),
-// // // // //               backgroundColor: Colors.orange.shade700,
-// // // // //               duration: const Duration(seconds: 3),
-// // // // //             ),
-// // // // //           );
-// // // // //           await Future.delayed(const Duration(milliseconds: 800));
-// // // // //           if (ctx.mounted) {
-// // // // //             _isNavigatingAway = true;
-// // // // //             ctx.go('/home/room/${widget.roomId}');
-// // // // //           }
-// // // // //         }
-// // // // //       } else {
-// // // // //         // Leave for good
-// // // // //         try {
-// // // // //           await sl.roomRepository.setMemberDefinitiveLeave(
-// // // // //             widget.roomId,
-// // // // //             myUserId,
-// // // // //           );
-// // // // //           await sl.realtimeService.broadcastRoomEvent(widget.roomId, {
-// // // // //             'type': 'player_left',
-// // // // //             'user_id': myUserId,
-// // // // //             'display_name': displayName,
-// // // // //             'for_good': true,
-// // // // //           });
-// // // // //         } catch (_) {}
-// // // // //         if (ctx.mounted) {
-// // // // //           // Check if admin is now alone — if so, admin auto-quits game
-// // // // //           await sl.realtimeService.broadcastRoomEvent(widget.roomId, {
-// // // // //             'type': 'check_auto_quit',
-// // // // //             'user_id': myUserId,
-// // // // //           });
-// // // // //           ctx.go('/home/room/${widget.roomId}');
-// // // // //         }
-// // // // //       }
-// // // // //     }
-// // // // //   }
-
-// // // // //   Widget _phaseWidget(
-// // // // //     BuildContext ctx,
-// // // // //     TodGameProvider game,
-// // // // //     Map<String, String> displayNames,
-// // // // //     TodState state,
-// // // // //   ) {
-// // // // //     return switch (state.phase) {
-// // // // //       TodTurnPhase.punishmentVoting => TodPunishmentScreen(
-// // // // //         state: state,
-// // // // //         game: game,
-// // // // //         displayNames: widget.displayNames,
-// // // // //       ),
-// // // // //       _ => TodCardScreen(
-// // // // //         state: state,
-// // // // //         game: game,
-// // // // //         displayNames: widget.displayNames,
-// // // // //       ),
-// // // // //     };
-// // // // //   }
-// // // // // }
-
-// // // // // // ── History panel ─────────────────────────────────────────────────────────────
-
-// // // // // class _HistoryPanel extends StatelessWidget {
-// // // // //   const _HistoryPanel({required this.history, required this.displayNames});
-// // // // //   final List<TodRoundRecord> history;
-// // // // //   final Map<String, String> displayNames;
-
-// // // // //   String _name(String id) =>
-// // // // //       displayNames[id] ?? id.substring(0, id.length.clamp(0, 6));
-
-// // // // //   @override
-// // // // //   Widget build(BuildContext context) {
-// // // // //     final theme = context.theme;
-// // // // //     if (history.isEmpty) {
-// // // // //       return const Center(child: Text('No rounds completed yet.'));
-// // // // //     }
-// // // // //     return ListView.builder(
-// // // // //       padding: const EdgeInsets.all(12),
-// // // // //       itemCount: history.length,
-// // // // //       itemBuilder: (_, i) {
-// // // // //         final round = history[history.length - 1 - i]; // newest first
-// // // // //         final reactTally = <String, int>{};
-// // // // //         for (final r in round.reactions) {
-// // // // //           reactTally[r.emoji] = (reactTally[r.emoji] ?? 0) + 1;
-// // // // //         }
-// // // // //         return Card(
-// // // // //           margin: const EdgeInsets.only(bottom: 10),
-// // // // //           child: ExpansionTile(
-// // // // //             leading: CircleAvatar(
-// // // // //               backgroundColor: theme.colorScheme.primaryContainer,
-// // // // //               child: Text(
-// // // // //                 '${round.roundNumber}',
-// // // // //                 style: theme.textTheme.labelLarge,
-// // // // //               ),
-// // // // //             ),
-// // // // //             title: Text(
-// // // // //               _name(round.playerId),
-// // // // //               style: theme.textTheme.bodyMedium?.copyWith(
-// // // // //                 fontWeight: FontWeight.w700,
-// // // // //               ),
-// // // // //             ),
-// // // // //             subtitle: Text(
-// // // // //               round.card != null
-// // // // //                   ? '${round.card!.type == TodCardType.truth ? "Truth" : "Dare"}: ${round.card!.content}'
-// // // // //                   : 'Skipped',
-// // // // //               maxLines: 1,
-// // // // //               overflow: TextOverflow.ellipsis,
-// // // // //               style: theme.textTheme.bodySmall,
-// // // // //             ),
-// // // // //             children: [
-// // // // //               Padding(
-// // // // //                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-// // // // //                 child: Column(
-// // // // //                   crossAxisAlignment: CrossAxisAlignment.start,
-// // // // //                   children: [
-// // // // //                     // Card content
-// // // // //                     if (round.card != null)
-// // // // //                       Container(
-// // // // //                         width: double.infinity,
-// // // // //                         padding: const EdgeInsets.all(10),
-// // // // //                         decoration: BoxDecoration(
-// // // // //                           color: round.card!.type == TodCardType.truth
-// // // // //                               ? Colors.blue.withOpacity(0.08)
-// // // // //                               : Colors.orange.withOpacity(0.08),
-// // // // //                           borderRadius: BorderRadius.circular(8),
-// // // // //                         ),
-// // // // //                         child: Text(
-// // // // //                           round.card!.content,
-// // // // //                           style: theme.textTheme.bodyMedium,
-// // // // //                         ),
-// // // // //                       ),
-// // // // //                     // Response
-// // // // //                     if (round.response.isNotEmpty) ...[
-// // // // //                       const SizedBox(height: 8),
-// // // // //                       Row(
-// // // // //                         crossAxisAlignment: CrossAxisAlignment.start,
-// // // // //                         children: [
-// // // // //                           const Text('💬 ', style: TextStyle(fontSize: 14)),
-// // // // //                           Expanded(
-// // // // //                             child: Text(
-// // // // //                               '"${round.response}"',
-// // // // //                               style: theme.textTheme.bodySmall?.copyWith(
-// // // // //                                 fontStyle: FontStyle.italic,
-// // // // //                               ),
-// // // // //                             ),
-// // // // //                           ),
-// // // // //                         ],
-// // // // //                       ),
-// // // // //                     ],
-// // // // //                     // Votes
-// // // // //                     if (round.voteCount > 0) ...[
-// // // // //                       const SizedBox(height: 6),
-// // // // //                       Text(
-// // // // //                         '👍 ${round.voteCount} vote${round.voteCount != 1 ? "s" : ""}',
-// // // // //                         style: theme.textTheme.bodySmall?.copyWith(
-// // // // //                           color: theme.colorScheme.primary,
-// // // // //                           fontWeight: FontWeight.w600,
-// // // // //                         ),
-// // // // //                       ),
-// // // // //                     ],
-// // // // //                     // Proof — history NEVER shows the actual photo/video,
-// // // // //                     // only whether one existed and who watched it.
-// // // // //                     if (round.hadProof) ...[
-// // // // //                       const SizedBox(height: 8),
-// // // // //                       _ProofWatchedBadge(watchedBy: round.proofWatchedBy),
-// // // // //                     ],
-// // // // //                     // Reactions
-// // // // //                     if (reactTally.isNotEmpty) ...[
-// // // // //                       const SizedBox(height: 8),
-// // // // //                       Wrap(
-// // // // //                         spacing: 6,
-// // // // //                         runSpacing: 4,
-// // // // //                         children: reactTally.entries
-// // // // //                             .map(
-// // // // //                               (e) => Container(
-// // // // //                                 padding: const EdgeInsets.symmetric(
-// // // // //                                   horizontal: 8,
-// // // // //                                   vertical: 3,
-// // // // //                                 ),
-// // // // //                                 decoration: BoxDecoration(
-// // // // //                                   color:
-// // // // //                                       theme.colorScheme.surfaceContainerHighest,
-// // // // //                                   borderRadius: BorderRadius.circular(16),
-// // // // //                                 ),
-// // // // //                                 child: Text(
-// // // // //                                   '${e.key} ${e.value}',
-// // // // //                                   style: const TextStyle(fontSize: 13),
-// // // // //                                 ),
-// // // // //                               ),
-// // // // //                             )
-// // // // //                             .toList(),
-// // // // //                       ),
-// // // // //                     ],
-// // // // //                   ],
-// // // // //                 ),
-// // // // //               ),
-// // // // //             ],
-// // // // //           ),
-// // // // //         );
-// // // // //       },
-// // // // //     );
-// // // // //   }
-// // // // // }
-
-// // // // // // Proof existed for this round — history shows only whether/who watched
-// // // // // // it, never the actual photo or video (that's only ever live during the
-// // // // // // turn itself, see TodState.turnProofUrl).
-// // // // // class _ProofWatchedBadge extends StatelessWidget {
-// // // // //   const _ProofWatchedBadge({required this.watchedBy});
-// // // // //   final List<String> watchedBy;
-
-// // // // //   @override
-// // // // //   Widget build(BuildContext context) {
-// // // // //     final watched = watchedBy.isNotEmpty;
-// // // // //     return Container(
-// // // // //       height: 36,
-// // // // //       padding: const EdgeInsets.symmetric(horizontal: 10),
-// // // // //       decoration: BoxDecoration(
-// // // // //         color: Colors.grey.shade200,
-// // // // //         borderRadius: BorderRadius.circular(8),
-// // // // //       ),
-// // // // //       alignment: Alignment.centerLeft,
-// // // // //       child: Row(
-// // // // //         mainAxisSize: MainAxisSize.min,
-// // // // //         children: [
-// // // // //           Icon(
-// // // // //             watched ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-// // // // //             size: 16,
-// // // // //             color: Colors.grey.shade600,
-// // // // //           ),
-// // // // //           const SizedBox(width: 6),
-// // // // //           Text(
-// // // // //             watched
-// // // // //                 ? 'Proof watched by ${watchedBy.length}'
-// // // // //                 : 'Proof sent — not watched',
-// // // // //             style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-// // // // //           ),
-// // // // //         ],
-// // // // //       ),
-// // // // //     );
-// // // // //   }
-// // // // // }
-
-// // // // // // ── In-game chat sheet ─────────────────────────────────────────────────────────
-// // // // // class _InGameChatSheet extends StatefulWidget {
-// // // // //   const _InGameChatSheet({required this.game, required this.myId});
-// // // // //   final TodGameProvider game;
-// // // // //   final String myId;
-// // // // //   @override
-// // // // //   State<_InGameChatSheet> createState() => _InGameChatSheetState();
-// // // // // }
-
-// // // // // class _InGameChatSheetState extends State<_InGameChatSheet> {
-// // // // //   final _ctrl = TextEditingController();
-// // // // //   final _scroll = ScrollController();
-// // // // //   @override
-// // // // //   void dispose() {
-// // // // //     _ctrl.dispose();
-// // // // //     _scroll.dispose();
-// // // // //     super.dispose();
-// // // // //   }
-
-// // // // //   void _send() {
-// // // // //     final t = _ctrl.text.trim();
-// // // // //     if (t.isEmpty) return;
-// // // // //     widget.game.sendChat(t);
-// // // // //     _ctrl.clear();
-// // // // //     WidgetsBinding.instance.addPostFrameCallback((_) {
-// // // // //       if (_scroll.hasClients)
-// // // // //         _scroll.animateTo(
-// // // // //           _scroll.position.maxScrollExtent,
-// // // // //           duration: 200.ms,
-// // // // //           curve: Curves.easeOut,
-// // // // //         );
-// // // // //     });
-// // // // //   }
-
-// // // // //   @override
-// // // // //   Widget build(BuildContext context) {
-// // // // //     return Container(
-// // // // //       height: MediaQuery.sizeOf(context).height * 0.65,
-// // // // //       decoration: const BoxDecoration(
-// // // // //         color: Color(0xFF1A2E45),
-// // // // //         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-// // // // //       ),
-// // // // //       child: Column(
-// // // // //         children: [
-// // // // //           Container(
-// // // // //             width: 36,
-// // // // //             height: 4,
-// // // // //             margin: const EdgeInsets.symmetric(vertical: 10),
-// // // // //             decoration: BoxDecoration(
-// // // // //               color: Colors.white24,
-// // // // //               borderRadius: BorderRadius.circular(2),
-// // // // //             ),
-// // // // //           ),
-// // // // //           const Text(
-// // // // //             '💬 Chat',
-// // // // //             style: TextStyle(
-// // // // //               color: Colors.white,
-// // // // //               fontWeight: FontWeight.w800,
-// // // // //               fontSize: 16,
-// // // // //             ),
-// // // // //           ),
-// // // // //           const Divider(color: Colors.white12),
-// // // // //           Expanded(
-// // // // //             child: ListenableBuilder(
-// // // // //               listenable: widget.game,
-// // // // //               builder: (_, __) {
-// // // // //                 final msgs = widget.game.chatMessages;
-// // // // //                 return msgs.isEmpty
-// // // // //                     ? const Center(
-// // // // //                         child: Text(
-// // // // //                           'No messages yet',
-// // // // //                           style: TextStyle(color: Colors.white38),
-// // // // //                         ),
-// // // // //                       )
-// // // // //                     : ListView.builder(
-// // // // //                         controller: _scroll,
-// // // // //                         padding: const EdgeInsets.all(12),
-// // // // //                         itemCount: msgs.length,
-// // // // //                         itemBuilder: (_, i) {
-// // // // //                           final m = msgs[i];
-// // // // //                           final isMe = m.senderId == widget.myId;
-// // // // //                           final color =
-// // // // //                               _kChatColors[m.senderId.hashCode.abs() %
-// // // // //                                   _kChatColors.length];
-// // // // //                           return Padding(
-// // // // //                             padding: EdgeInsets.only(
-// // // // //                               bottom: 8,
-// // // // //                               left: isMe ? 48 : 0,
-// // // // //                               right: isMe ? 0 : 48,
-// // // // //                             ),
-// // // // //                             child: Column(
-// // // // //                               crossAxisAlignment: isMe
-// // // // //                                   ? CrossAxisAlignment.end
-// // // // //                                   : CrossAxisAlignment.start,
-// // // // //                               children: [
-// // // // //                                 if (!isMe)
-// // // // //                                   Padding(
-// // // // //                                     padding: const EdgeInsets.only(
-// // // // //                                       left: 4,
-// // // // //                                       bottom: 2,
-// // // // //                                     ),
-// // // // //                                     child: Text(
-// // // // //                                       m.senderName,
-// // // // //                                       style: TextStyle(
-// // // // //                                         color: color,
-// // // // //                                         fontSize: 11,
-// // // // //                                         fontWeight: FontWeight.w700,
-// // // // //                                       ),
-// // // // //                                     ),
-// // // // //                                   ),
-// // // // //                                 Container(
-// // // // //                                   padding: const EdgeInsets.symmetric(
-// // // // //                                     horizontal: 12,
-// // // // //                                     vertical: 8,
-// // // // //                                   ),
-// // // // //                                   decoration: BoxDecoration(
-// // // // //                                     color: isMe
-// // // // //                                         ? const Color(0xFFFFD60A)
-// // // // //                                         : color.withOpacity(0.18),
-// // // // //                                     borderRadius: BorderRadius.circular(16)
-// // // // //                                         .copyWith(
-// // // // //                                           bottomRight: isMe
-// // // // //                                               ? const Radius.circular(4)
-// // // // //                                               : null,
-// // // // //                                           bottomLeft: isMe
-// // // // //                                               ? null
-// // // // //                                               : const Radius.circular(4),
-// // // // //                                         ),
-// // // // //                                   ),
-// // // // //                                   child: Text(
-// // // // //                                     m.text,
-// // // // //                                     style: TextStyle(
-// // // // //                                       color: isMe
-// // // // //                                           ? const Color(0xFF0D1B2A)
-// // // // //                                           : Colors.white,
-// // // // //                                       fontWeight: isMe
-// // // // //                                           ? FontWeight.w700
-// // // // //                                           : FontWeight.w400,
-// // // // //                                     ),
-// // // // //                                   ),
-// // // // //                                 ),
-// // // // //                               ],
-// // // // //                             ),
-// // // // //                           );
-// // // // //                         },
-// // // // //                       );
-// // // // //               },
-// // // // //             ),
-// // // // //           ),
-// // // // //           Container(
-// // // // //             padding: EdgeInsets.fromLTRB(
-// // // // //               12,
-// // // // //               8,
-// // // // //               12,
-// // // // //               MediaQuery.viewInsetsOf(context).bottom + 12,
-// // // // //             ),
-// // // // //             color: const Color(0xFF1A2E45),
-// // // // //             child: Row(
-// // // // //               children: [
-// // // // //                 Expanded(
-// // // // //                   child: TextField(
-// // // // //                     controller: _ctrl,
-// // // // //                     style: const TextStyle(color: Colors.white),
-// // // // //                     textInputAction: TextInputAction.send,
-// // // // //                     onSubmitted: (_) => _send(),
-// // // // //                     decoration: InputDecoration(
-// // // // //                       hintText: 'Say something…',
-// // // // //                       hintStyle: const TextStyle(color: Colors.white38),
-// // // // //                       filled: true,
-// // // // //                       fillColor: Colors.white.withOpacity(0.07),
-// // // // //                       border: OutlineInputBorder(
-// // // // //                         borderRadius: BorderRadius.circular(24),
-// // // // //                         borderSide: BorderSide.none,
-// // // // //                       ),
-// // // // //                       contentPadding: const EdgeInsets.symmetric(
-// // // // //                         horizontal: 16,
-// // // // //                         vertical: 10,
-// // // // //                       ),
-// // // // //                       isDense: true,
-// // // // //                     ),
-// // // // //                   ),
-// // // // //                 ),
-// // // // //                 const SizedBox(width: 8),
-// // // // //                 GestureDetector(
-// // // // //                   onTap: _send,
-// // // // //                   child: Container(
-// // // // //                     width: 44,
-// // // // //                     height: 44,
-// // // // //                     decoration: const BoxDecoration(
-// // // // //                       color: Color(0xFFFFD60A),
-// // // // //                       shape: BoxShape.circle,
-// // // // //                     ),
-// // // // //                     child: const Icon(
-// // // // //                       Icons.send_rounded,
-// // // // //                       color: Color(0xFF0D1B2A),
-// // // // //                       size: 20,
-// // // // //                     ),
-// // // // //                   ),
-// // // // //                 ),
-// // // // //               ],
-// // // // //             ),
-// // // // //           ),
-// // // // //         ],
-// // // // //       ),
-// // // // //     );
-// // // // //   }
-// // // // // }
-
-// // // // // const _kChatColors = [
-// // // // //   Color(0xFF4ECDC4),
-// // // // //   Color(0xFFA855F7),
-// // // // //   Color(0xFFFF6B6B),
-// // // // //   Color(0xFF4ADE80),
-// // // // //   Color(0xFFFB923C),
-// // // // //   Color(0xFF60A5FA),
-// // // // //   Color(0xFFF472B6),
-// // // // //   Color(0xFFFFD60A),
-// // // // //   Color(0xFF34D399),
-// // // // //   Color(0xFFC084FC),
-// // // // // ];
-
-// // // // // // ── Paused overlay ────────────────────────────────────────────────────────────
-// // // // // class _PausedOverlay extends StatefulWidget {
-// // // // //   const _PausedOverlay({required this.onLeave});
-// // // // //   final VoidCallback onLeave;
-
-// // // // //   @override
-// // // // //   State<_PausedOverlay> createState() => _PausedOverlayState();
-// // // // // }
-
-// // // // // class _PausedOverlayState extends State<_PausedOverlay>
-// // // // //     with SingleTickerProviderStateMixin {
-// // // // //   late final AnimationController _pulse;
-
-// // // // //   @override
-// // // // //   void initState() {
-// // // // //     super.initState();
-// // // // //     _pulse = AnimationController(
-// // // // //       vsync: this,
-// // // // //       duration: const Duration(milliseconds: 1400),
-// // // // //     )..repeat(reverse: true);
-// // // // //   }
-
-// // // // //   @override
-// // // // //   void dispose() {
-// // // // //     _pulse.dispose();
-// // // // //     super.dispose();
-// // // // //   }
-
-// // // // //   @override
-// // // // //   Widget build(BuildContext context) {
-// // // // //     return Dialog.fullscreen(
-// // // // //       backgroundColor: Colors.transparent,
-// // // // //       child: Scaffold(
-// // // // //         backgroundColor: Colors.transparent,
-// // // // //         body: Center(
-// // // // //           child: Padding(
-// // // // //             padding: const EdgeInsets.all(32),
-// // // // //             child: Column(
-// // // // //               mainAxisSize: MainAxisSize.min,
-// // // // //               children: [
-// // // // //                 AnimatedBuilder(
-// // // // //                   animation: _pulse,
-// // // // //                   builder: (_, child) =>
-// // // // //                       Opacity(opacity: 0.6 + _pulse.value * 0.4, child: child),
-// // // // //                   child: const Text('⏸', style: TextStyle(fontSize: 72)),
-// // // // //                 ),
-// // // // //                 const SizedBox(height: 24),
-// // // // //                 const Text(
-// // // // //                   'Game Paused',
-// // // // //                   style: TextStyle(
-// // // // //                     color: Colors.white,
-// // // // //                     fontSize: 28,
-// // // // //                     fontWeight: FontWeight.w800,
-// // // // //                     letterSpacing: -0.5,
-// // // // //                   ),
-// // // // //                 ),
-// // // // //                 const SizedBox(height: 12),
-// // // // //                 const Text(
-// // // // //                   'The host stepped away and will\nreturn shortly.',
-// // // // //                   textAlign: TextAlign.center,
-// // // // //                   style: TextStyle(
-// // // // //                     color: Colors.white70,
-// // // // //                     fontSize: 16,
-// // // // //                     height: 1.5,
-// // // // //                   ),
-// // // // //                 ),
-// // // // //                 const SizedBox(height: 40),
-// // // // //                 OutlinedButton(
-// // // // //                   style: OutlinedButton.styleFrom(
-// // // // //                     foregroundColor: Colors.white,
-// // // // //                     side: const BorderSide(color: Colors.white38),
-// // // // //                     padding: const EdgeInsets.symmetric(
-// // // // //                       horizontal: 32,
-// // // // //                       vertical: 14,
-// // // // //                     ),
-// // // // //                   ),
-// // // // //                   onPressed: widget.onLeave,
-// // // // //                   child: const Text('Leave for Now'),
-// // // // //                 ),
-// // // // //               ],
-// // // // //             ),
-// // // // //           ),
-// // // // //         ),
-// // // // //       ),
-// // // // //     );
-// // // // //   }
-// // // // // }
-
-// // // // import 'dart:async';
-
-// // // // import 'package:flutter/material.dart';
-// // // // import 'package:flutter_animate/flutter_animate.dart';
-// // // // import 'package:go_router/go_router.dart';
-// // // // import 'package:jma3a/core/router/app_router.dart';
-// // // // import 'package:jma3a/features/games/engine/base_game_engine.dart';
-// // // // import 'package:jma3a/features/rooms/domain/room_entity.dart';
-// // // // import 'package:jma3a/features/settings/presentation/screen_security_service.dart';
-// // // // import 'package:provider/provider.dart';
-// // // // import 'package:supabase_flutter/supabase_flutter.dart';
-
-// // // // import '../../../../../core/di/service_locator.dart';
-// // // // import '../../../../../core/extensions/context_ext.dart';
-// // // // import '../../../../../core/providers/auth_provider.dart';
-// // // // import '../../../../../core/router/route_names.dart';
-// // // // import '../../../../../core/services/realtime_service.dart';
-// // // // // import '../../../../../core/services/screen_security_service.dart';
-// // // // import '../../../../../core/theme/app_colors.dart';
-// // // // import '../../../../../shared/widgets/feedback/error_view.dart';
-// // // // import '../../../../../shared/widgets/overlays/confirm_dialog.dart';
-// // // // import '../../domain/tod_models.dart';
-// // // // import '../../tod_game_provider.dart';
-
-// // // // import '../../data/tod_repository.dart';
-// // // // import 'tod_card_screen.dart';
-// // // // import 'tod_end_screen.dart';
-// // // // import 'tod_loading_screen.dart';
-// // // // import 'tod_punishment_screen.dart';
-// // // // import '../widgets/tod_hud.dart';
-
-// // // // class TodGameScreen extends StatefulWidget {
-// // // //   const TodGameScreen({
-// // // //     super.key,
-// // // //     required this.roomId,
-// // // //     required this.config,
-// // // //     required this.playerIds,
-// // // //     required this.playerDisplayNames,
-// // // //     required this.packId,
-// // // //     required this.isOwner,
-// // // //     this.sessionId,
-// // // //     this.isModerator = false,
-// // // //     this.packCoverUrl,
-// // // //   });
-
-// // // //   final String roomId;
-// // // //   final GameConfig config;
-// // // //   final List<String> playerIds;
-// // // //   final Map<String, String> playerDisplayNames;
-// // // //   final String packId;
-// // // //   final bool isOwner;
-// // // //   final String? sessionId;
-// // // //   final bool isModerator;
-// // // //   final String? packCoverUrl;
-
-// // // //   @override
-// // // //   State<TodGameScreen> createState() => _TodGameScreenState();
-// // // // }
-
-// // // // class _TodGameScreenState extends State<TodGameScreen> {
-// // // //   late final TodGameProvider _provider;
-
-// // // //   StreamSubscription<RealtimeSubscribeStatus>? _statusSub;
-
-// // // //   @override
-// // // //   void initState() {
-// // // //     super.initState();
-
-// // // //     ScreenSecurityService.instance.enable();
-// // // //     ScreenSecurityService.instance.enableScreenshotDetection(() {
-// // // //       sl.realtimeService.broadcastRoomEvent(widget.roomId, {
-// // // //         'type': 'screenshot_taken',
-// // // //         'user_id': context.read<AuthProvider>().currentUser?.id,
-// // // //       }).ignore();
-// // // //     });
-
-// // // //     final auth = context.read<AuthProvider>();
-// // // //     final user = auth.currentUser!;
-
-// // // //     _provider = TodGameProvider(
-// // // //       realtimeService: sl.realtimeService,
-// // // //       repository: TodRepository.instance,
-// // // //       currentUserId: user.id,
-// // // //       currentDisplayName: user.displayName ?? user.username ?? 'Player',
-// // // //       isModerator: widget.isModerator,
-// // // //     );
-
-// // // //     _wireRealtimeCallbacks();
-
-// // // //     if (widget.isOwner) {
-// // // //       final isPremium =
-// // // //           context.read<AuthProvider>().currentUser?.isPremium ?? false;
-// // // //       _provider.initAsOwner(
-// // // //         roomId: widget.roomId,
-// // // //         config: widget.config,
-// // // //         playerIds: widget.playerIds,
-// // // //         playerDisplayNames: widget.playerDisplayNames,
-// // // //         packId: widget.packId,
-// // // //         isPremium: isPremium,
-// // // //         packCoverUrl: widget.packCoverUrl,
-// // // //       );
-// // // //     } else {
-// // // //       _provider.initAsFollower(
-// // // //         roomId: widget.roomId,
-// // // //         config: widget.config,
-// // // //         sessionId: widget.sessionId,
-// // // //         packCoverUrl: widget.packCoverUrl,
-// // // //       );
-// // // //     }
-// // // //   }
-
-// // // //   @override
-// // // //   void dispose() {
-// // // //     ScreenSecurityService.instance.disable();
-// // // //     _statusSub?.cancel();
-// // // //     sl.realtimeService
-// // // //         .subscribe(
-// // // //           roomId: widget.roomId,
-// // // //           onGameState: (_) {},
-// // // //           onPlayerAction: (_) {},
-// // // //           onSyncRequest: (_) {},
-// // // //           onGameStarted: (_) {},
-// // // //           onGameEnded: (_) {},
-// // // //           onRoomEvent: (_) {},
-// // // //           onChatMessage: (_) {},
-// // // //           onModeration: (_) {},
-// // // //           onSettingsChange: (_) {},
-// // // //           onPresenceSync: (_) {},
-// // // //           onPresenceJoin: (_) {},
-// // // //           onPresenceLeave: (_) {},
-// // // //           onStatusChange: (_) {},
-// // // //         )
-// // // //         .ignore();
-// // // //     _provider.dispose();
-// // // //     super.dispose();
-// // // //   }
-
-// // // //   void _wireRealtimeCallbacks() {
-// // // //     _statusSub = sl.realtimeService.statusStream(widget.roomId)?.listen((
-// // // //       status,
-// // // //     ) {
-// // // //       if (status == RealtimeSubscribeStatus.subscribed &&
-// // // //           !_provider.hasSyncedState) {
-// // // //         sl.realtimeService.broadcastSyncRequest(
-// // // //           widget.roomId,
-// // // //           context.read<AuthProvider>().currentUser!.id,
-// // // //           0,
-// // // //         );
-// // // //       }
-// // // //     });
-
-// // // //     _resubscribeWithGameHandlers();
-// // // //   }
-
-// // // //   void _resubscribeWithGameHandlers() {
-// // // //     final userId = context.read<AuthProvider>().currentUser!.id;
-
-// // // //     sl.realtimeService.unsubscribe(widget.roomId).then((_) {
-// // // //       sl.realtimeService.subscribe(
-// // // //         roomId: widget.roomId,
-// // // //         onGameState: (p) => _provider.onStateBroadcast(p),
-// // // //         onPlayerAction: (p) => _provider.onPlayerAction(p),
-// // // //         onSyncRequest: (p) => _provider.onSyncRequest(p),
-// // // //         onGameStarted: (_) {},
-// // // //         onGameEnded: (p) {
-// // // //           if (mounted) {
-// // // //             ScaffoldMessenger.of(context).showSnackBar(
-// // // //               const SnackBar(content: Text('The host ended the game')),
-// // // //             );
-// // // //             if (context.canPop())
-// // // //               context.pop();
-// // // //             else
-// // // //               context.go(RouteNames.home);
-// // // //           }
-// // // //         },
-// // // //         onRoomEvent: (p) {
-// // // //           final type = p['type'] as String?;
-// // // //           if (type == 'screenshot_taken') {
-// // // //             final shooterId = p['user_id'] as String?;
-// // // //             final myId = context.read<AuthProvider>().currentUser?.id;
-// // // //             if (shooterId != null && shooterId != myId && mounted) {
-// // // //               ScaffoldMessenger.of(context).showSnackBar(
-// // // //                 SnackBar(
-// // // //                   content: Text(
-// // // //                     '📸 ${widget.playerDisplayNames[shooterId] ?? 'Someone'} took a screenshot',
-// // // //                   ),
-// // // //                   backgroundColor: Colors.black87,
-// // // //                 ),
-// // // //               );
-// // // //             }
-// // // //             return;
-// // // //           }
-// // // //           if (type == 'player_left' && mounted) {
-// // // //             final name = p['display_name'] as String? ?? 'A player';
-// // // //             final forGood = p['for_good'] as bool? ?? true;
-// // // //             final leavingId = p['user_id'] as String?;
-// // // //             final returnMins = p['return_mins'] as int?;
-// // // //             if (leavingId != null && widget.isOwner) {
-// // // //               _provider.markPlayerAway(leavingId, forGood: forGood);
-// // // //               final activePlayers =
-// // // //                   _provider.state?.playerOrder
-// // // //                       .where((id) => !_provider.awayPlayerIds.contains(id))
-// // // //                       .toList() ??
-// // // //                   [];
-// // // //               if (activePlayers.length <= 1 && activePlayers.isNotEmpty) {
-// // // //                 WidgetsBinding.instance.addPostFrameCallback((_) async {
-// // // //                   if (!mounted) return;
-// // // //                   await sl.realtimeService.broadcastRoomEvent(widget.roomId, {
-// // // //                     'type': 'game_ended',
-// // // //                     'reason': 'all_players_left',
-// // // //                   });
-// // // //                   await sl.roomRepository.updateStatus(
-// // // //                     widget.roomId,
-// // // //                     RoomStatus.waiting,
-// // // //                   );
-// // // //                   if (mounted) {
-// // // //                     ScaffoldMessenger.of(context).showSnackBar(
-// // // //                       const SnackBar(
-// // // //                         content: Text('All players left — game ended'),
-// // // //                         backgroundColor: Colors.orange,
-// // // //                       ),
-// // // //                     );
-// // // //                     await Future.delayed(const Duration(milliseconds: 800));
-// // // //                     if (mounted) {
-// // // //                       if (context.canPop())
-// // // //                         context.pop();
-// // // //                       else
-// // // //                         context.go('/home/room/${widget.roomId}');
-// // // //                     }
-// // // //                   }
-// // // //                 });
-// // // //               }
-// // // //             }
-// // // //             final msg = forGood
-// // // //                 ? '👋 $name left the game'
-// // // //                 : '🕐 $name stepped away (${returnMins != null ? 'back in ${returnMins}m' : 'coming back'})';
-// // // //             ScaffoldMessenger.of(context).showSnackBar(
-// // // //               SnackBar(
-// // // //                 content: Text(msg),
-// // // //                 backgroundColor: forGood
-// // // //                     ? Colors.red.shade700
-// // // //                     : Colors.orange.shade700,
-// // // //                 duration: const Duration(seconds: 4),
-// // // //               ),
-// // // //             );
-// // // //             return;
-// // // //           }
-// // // //           if (type == 'ownership_transferred' && mounted) {
-// // // //             final myId = context.read<AuthProvider>().currentUser?.id;
-// // // //             final newOwnerId = p['new_owner_id'] as String?;
-// // // //             if (newOwnerId == myId) {
-// // // //               ScaffoldMessenger.of(context).showSnackBar(
-// // // //                 const SnackBar(
-// // // //                   content: Text('👑 You are now the game host!'),
-// // // //                   backgroundColor: Colors.purple,
-// // // //                 ),
-// // // //               );
-// // // //             }
-// // // //             return;
-// // // //           }
-// // // //           if (type == 'game_ended' && mounted) {
-// // // //             final reason = p['reason'] as String? ?? '';
-// // // //             WidgetsBinding.instance.addPostFrameCallback((_) {
-// // // //               if (!mounted) return;
-// // // //               final msg = reason == 'all_players_left'
-// // // //                   ? '👋 All players left — game ended'
-// // // //                   : '🔄 Host ended the game';
-// // // //               ScaffoldMessenger.of(context).showSnackBar(
-// // // //                 SnackBar(
-// // // //                   content: Text(msg),
-// // // //                   duration: const Duration(seconds: 3),
-// // // //                   behavior: SnackBarBehavior.fixed,
-// // // //                 ),
-// // // //               );
-// // // //               if (context.canPop()) {
-// // // //                 context.pop();
-// // // //               } else {
-// // // //                 context.go('/home/room/\${widget.roomId}');
-// // // //               }
-// // // //             });
-// // // //             return;
-// // // //           }
-// // // //           if (type == 'tod_ready_count') {
-// // // //             final ids = (p['ready_user_ids'] as List?)?.cast<String>() ?? [];
-// // // //             _provider.onReadyCountUpdate(ids);
-// // // //             return;
-// // // //           }
-// // // //           if ((type == 'room_closed' || type == 'owner_left') && mounted) {
-// // // //             WidgetsBinding.instance.addPostFrameCallback((_) {
-// // // //               if (!mounted) {
-// // // //                 AppRouter.router.go(RouteNames.home);
-// // // //                 return;
-// // // //               }
-// // // //               showDialog(
-// // // //                 context: context,
-// // // //                 barrierDismissible: false,
-// // // //                 builder: (ctx2) => AlertDialog(
-// // // //                   title: const Text('Room Closed'),
-// // // //                   content: const Text('The host closed the room.'),
-// // // //                   actions: [
-// // // //                     FilledButton(
-// // // //                       onPressed: () {
-// // // //                         Navigator.of(ctx2).pop();
-// // // //                         AppRouter.router.go(RouteNames.home);
-// // // //                       },
-// // // //                       child: const Text('OK'),
-// // // //                     ),
-// // // //                   ],
-// // // //                 ),
-// // // //               );
-// // // //             });
-// // // //             return;
-// // // //           }
-// // // //         },
-// // // //         onChatMessage: (p) {
-// // // //           final msg = TodChatMsg(
-// // // //             senderId: p['user_id'] as String? ?? '',
-// // // //             senderName: p['display_name'] as String? ?? 'Player',
-// // // //             text: p['content'] as String? ?? '',
-// // // //             ts: DateTime.fromMillisecondsSinceEpoch(
-// // // //               (p['ts'] as num?)?.toInt() ??
-// // // //                   DateTime.now().millisecondsSinceEpoch,
-// // // //             ),
-// // // //           );
-// // // //           _provider.addChatMessage(msg);
-// // // //         },
-// // // //         onModeration: (p) => _handleModerationEvent(p),
-// // // //         onSettingsChange: (_) {},
-// // // //         onPresenceSync: (_) {},
-// // // //         onPresenceJoin: (_) {},
-// // // //         onPresenceLeave: (_) {},
-// // // //         onStatusChange: (status) {
-// // // //           if (!mounted) return;
-// // // //           if (status == RealtimeSubscribeStatus.subscribed &&
-// // // //               !_provider.hasSyncedState) {
-// // // //             sl.realtimeService.broadcastSyncRequest(widget.roomId, userId, 0);
-// // // //           }
-// // // //         },
-// // // //       );
-// // // //     });
-// // // //   }
-
-// // // //   void _handleModerationEvent(Map<String, dynamic> p) {
-// // // //     final type = p['type'] as String?;
-// // // //     final targetId = p['target_user_id'] as String?;
-// // // //     final currentId = context.read<AuthProvider>().currentUser?.id;
-
-// // // //     if ((type == 'kick' || type == 'ban') && targetId == currentId) {
-// // // //       if (mounted) {
-// // // //         ScaffoldMessenger.of(context).showSnackBar(
-// // // //           const SnackBar(content: Text('You were removed from the room')),
-// // // //         );
-// // // //         context.go(RouteNames.home);
-// // // //       }
-// // // //     }
-// // // //   }
-
-// // // //   @override
-// // // //   Widget build(BuildContext context) {
-// // // //     return ChangeNotifierProvider.value(
-// // // //       value: _provider,
-// // // //       child: Consumer<TodGameProvider>(
-// // // //         builder: (ctx, game, _) => _build(ctx, game),
-// // // //       ),
-// // // //     );
-// // // //   }
-
-// // // //   Widget _build(BuildContext ctx, TodGameProvider game) {
-// // // //     if (game.loadState == TodLoadState.loading) {
-// // // //       return const TodLoadingScreen();
-// // // //     }
-
-// // // //     if (game.loadState == TodLoadState.error) {
-// // // //       return Scaffold(
-// // // //         appBar: AppBar(
-// // // //           leading: BackButton(
-// // // //             onPressed: () async {
-// // // //               if (widget.isOwner) {
-// // // //                 try {
-// // // //                   await sl.realtimeService.broadcastGameEnded(widget.roomId, {
-// // // //                     'reason': 'host_left',
-// // // //                   });
-// // // //                   await sl.roomRepository.updateStatus(
-// // // //                     widget.roomId,
-// // // //                     RoomStatus.waiting,
-// // // //                   );
-// // // //                 } catch (_) {}
-// // // //               }
-// // // //               if (ctx.mounted) ctx.go(RouteNames.home);
-// // // //             },
-// // // //           ),
-// // // //         ),
-// // // //         body: ErrorView(
-// // // //           message: game.error ?? 'Failed to load game',
-// // // //           onRetry: () => ctx.go(RouteNames.home),
-// // // //         ),
-// // // //       );
-// // // //     }
-
-// // // //     if (game.loadState == TodLoadState.gameOver ||
-// // // //         (game.state?.isOver ?? false)) {
-// // // //       return TodEndScreen(
-// // // //         state: game.state!,
-// // // //         displayNames: widget.playerDisplayNames,
-// // // //         onLeave: () => ctx.go(RouteNames.home),
-// // // //       );
-// // // //     }
-
-// // // //     final state = game.state;
-// // // //     if (state == null) return const TodLoadingScreen();
-
-// // // //     return _TodGameScaffold(
-// // // //       state: state,
-// // // //       game: game,
-// // // //       displayNames: widget.playerDisplayNames,
-// // // //       roomId: widget.roomId,
-// // // //       isOwner: widget.isOwner,
-// // // //     );
-// // // //   }
-// // // // }
-
-// // // // class _TodGameScaffold extends StatefulWidget {
-// // // //   const _TodGameScaffold({
-// // // //     required this.state,
-// // // //     required this.game,
-// // // //     required this.displayNames,
-// // // //     required this.roomId,
-// // // //     required this.isOwner,
-// // // //   });
-// // // //   final TodState state;
-// // // //   final TodGameProvider game;
-// // // //   final Map<String, String> displayNames;
-// // // //   final String roomId;
-// // // //   final bool isOwner;
-// // // //   @override
-// // // //   State<_TodGameScaffold> createState() => _TodGameScaffoldState();
-// // // // }
-
-// // // // class _TodGameScaffoldState extends State<_TodGameScaffold> {
-// // // //   bool _showHistory = false;
-// // // //   bool _showChat = false;
-// // // //   int _unreadChat = 0;
-// // // //   bool _isNavigatingAway = false;
-
-// // // //   void _navigateAway(BuildContext ctx, String location) {
-// // // //     _isNavigatingAway = true;
-// // // //     if (ctx.canPop()) {
-// // // //       ctx.pop();
-// // // //     } else {
-// // // //       ctx.go(location);
-// // // //     }
-// // // //   }
-
-// // // //   @override
-// // // //   Widget build(BuildContext context) {
-// // // //     final state = widget.state;
-// // // //     final game = widget.game;
-
-// // // //     if (_showHistory) {
-// // // //       return Scaffold(
-// // // //         appBar: AppBar(
-// // // //           leading: BackButton(
-// // // //             onPressed: () => setState(() => _showHistory = false),
-// // // //           ),
-// // // //           title: Text('History (${state.history.length} rounds)'),
-// // // //         ),
-// // // //         body: _HistoryPanel(
-// // // //           history: state.history,
-// // // //           displayNames: widget.displayNames,
-// // // //         ),
-// // // //       );
-// // // //     }
-
-// // // //     return PopScope(
-// // // //       canPop: false,
-// // // //       onPopInvoked: (_) {
-// // // //         if (_isNavigatingAway) return;
-// // // //         WidgetsBinding.instance.addPostFrameCallback(
-// // // //           (_) => _showLeaveDialog(context, game, state),
-// // // //         );
-// // // //       },
-// // // //       child: Scaffold(
-// // // //         appBar: AppBar(
-// // // //           automaticallyImplyLeading: false,
-// // // //           title: const Text(''),
-// // // //           leading: IconButton(
-// // // //             icon: const Icon(Icons.arrow_back),
-// // // //             onPressed: () => _showLeaveDialog(context, game, state),
-// // // //           ),
-// // // //           actions: [
-// // // //             Consumer<TodGameProvider>(
-// // // //               builder: (_, g, __) => Stack(
-// // // //                 alignment: Alignment.topRight,
-// // // //                 children: [
-// // // //                   IconButton(
-// // // //                     icon: const Icon(Icons.chat_bubble_outline_rounded),
-// // // //                     onPressed: () {
-// // // //                       g.clearUnreadChat();
-// // // //                       showModalBottomSheet(
-// // // //                         context: context,
-// // // //                         isScrollControlled: true,
-// // // //                         backgroundColor: Colors.transparent,
-// // // //                         builder: (_) =>
-// // // //                             _InGameChatSheet(game: g, myId: g.currentUserId),
-// // // //                       );
-// // // //                     },
-// // // //                   ),
-// // // //                   if (g.unreadChat > 0)
-// // // //                     Positioned(
-// // // //                       top: 8,
-// // // //                       right: 8,
-// // // //                       child: Container(
-// // // //                         width: 8,
-// // // //                         height: 8,
-// // // //                         decoration: const BoxDecoration(
-// // // //                           color: Colors.red,
-// // // //                           shape: BoxShape.circle,
-// // // //                         ),
-// // // //                       ),
-// // // //                     ),
-// // // //                 ],
-// // // //               ),
-// // // //             ),
-// // // //             if (state.history.isNotEmpty)
-// // // //               IconButton(
-// // // //                 icon: const Icon(Icons.history_rounded),
-// // // //                 tooltip: 'History',
-// // // //                 onPressed: () => setState(() => _showHistory = true),
-// // // //               ),
-// // // //           ],
-// // // //         ),
-// // // //         body: SafeArea(
-// // // //           child: Column(
-// // // //             children: [
-// // // //               TodHud(
-// // // //                 state: state,
-// // // //                 game: game,
-// // // //                 displayNames: widget.displayNames,
-// // // //               ),
-// // // //               Expanded(
-// // // //                 child: AnimatedSwitcher(
-// // // //                   duration: const Duration(milliseconds: 300),
-// // // //                   transitionBuilder: (child, anim) => FadeTransition(
-// // // //                     opacity: anim,
-// // // //                     child: SlideTransition(
-// // // //                       position:
-// // // //                           Tween<Offset>(
-// // // //                             begin: const Offset(0, 0.05),
-// // // //                             end: Offset.zero,
-// // // //                           ).animate(
-// // // //                             CurvedAnimation(
-// // // //                               parent: anim,
-// // // //                               curve: Curves.easeOutCubic,
-// // // //                             ),
-// // // //                           ),
-// // // //                       child: child,
-// // // //                     ),
-// // // //                   ),
-// // // //                   child: KeyedSubtree(
-// // // //                     key: ValueKey('${state.phase}-${state.currentPlayerId}'),
-// // // //                     child: _phaseWidget(
-// // // //                       context,
-// // // //                       game,
-// // // //                       widget.displayNames,
-// // // //                       state,
-// // // //                     ),
-// // // //                   ),
-// // // //                 ),
-// // // //               ),
-// // // //             ],
-// // // //           ),
-// // // //         ),
-// // // //       ),
-// // // //     );
-// // // //   }
-
-// // // //   Future<void> _showLeaveDialog(
-// // // //     BuildContext ctx,
-// // // //     TodGameProvider game,
-// // // //     TodState state,
-// // // //   ) async {
-// // // //     if (!ctx.mounted) return;
-// // // //     final isOwner = widget.isOwner;
-// // // //     final myUserId = game.currentUserId;
-// // // //     final isPremium = ctx.read<AuthProvider>().currentUser?.isPremium ?? false;
-
-// // // //     if (isOwner) {
-// // // //       final confirmed = await showDialog<bool>(
-// // // //         context: ctx,
-// // // //         builder: (dCtx) => AlertDialog(
-// // // //           title: const Text('Quit Game?'),
-// // // //           content: const Text(
-// // // //             'The game will end for everyone and all players will return to the lobby.',
-// // // //           ),
-// // // //           actions: [
-// // // //             TextButton(
-// // // //               onPressed: () => Navigator.of(dCtx).pop(false),
-// // // //               child: const Text('Cancel'),
-// // // //             ),
-// // // //             FilledButton(
-// // // //               style: FilledButton.styleFrom(backgroundColor: Colors.red),
-// // // //               onPressed: () => Navigator.of(dCtx).pop(true),
-// // // //               child: const Text('End Game for Everyone'),
-// // // //             ),
-// // // //           ],
-// // // //         ),
-// // // //       );
-// // // //       if (confirmed != true || !ctx.mounted) return;
-
-// // // //       try {
-// // // //         await sl.realtimeService.broadcastRoomEvent(widget.roomId, {
-// // // //           'type': 'game_ended',
-// // // //           'reason': 'host_quit_to_lobby',
-// // // //         });
-// // // //         await Future.delayed(const Duration(milliseconds: 400));
-// // // //         await sl.roomRepository.updateStatus(widget.roomId, RoomStatus.waiting);
-// // // //       } catch (_) {}
-// // // //       if (ctx.mounted) {
-// // // //         _isNavigatingAway = true;
-// // // //         if (ctx.canPop()) {
-// // // //           ctx.pop();
-// // // //         } else {
-// // // //           ctx.go('/home/room/${widget.roomId}');
-// // // //         }
-// // // //       }
-// // // //     } else {
-// // // //       final returnMins = isPremium ? 10 : 5;
-// // // //       final choice = await showDialog<String>(
-// // // //         context: ctx,
-// // // //         builder: (_) => AlertDialog(
-// // // //           title: const Text('Leave Game?'),
-// // // //           content: Text(
-// // // //             "If you'll return, your turns will be skipped until you're "
-// // // //             'back. You have $returnMins minutes — after that your seat '
-// // // //             'is lost.',
-// // // //           ),
-// // // //           actions: [
-// // // //             TextButton(
-// // // //               onPressed: () => Navigator.pop(ctx, 'cancel'),
-// // // //               child: const Text('Stay'),
-// // // //             ),
-// // // //             FilledButton.tonal(
-// // // //               onPressed: () => Navigator.pop(ctx, 'return'),
-// // // //               child: Text("I'll Return ($returnMins min)"),
-// // // //             ),
-// // // //             FilledButton(
-// // // //               style: FilledButton.styleFrom(backgroundColor: Colors.red),
-// // // //               onPressed: () => Navigator.pop(ctx, 'definitive'),
-// // // //               child: const Text('Leave for Good'),
-// // // //             ),
-// // // //           ],
-// // // //         ),
-// // // //       );
-// // // //       if (choice == null || choice == 'cancel' || !ctx.mounted) return;
-
-// // // //       final displayName = widget.displayNames[myUserId] ?? 'A player';
-
-// // // //       if (choice == 'return') {
-// // // //         try {
-// // // //           await sl.roomRepository.setMemberAway(
-// // // //             widget.roomId,
-// // // //             myUserId,
-// // // //             away: true,
-// // // //           );
-// // // //           await sl.realtimeService.broadcastRoomEvent(widget.roomId, {
-// // // //             'type': 'player_left',
-// // // //             'user_id': myUserId,
-// // // //             'display_name': displayName,
-// // // //             'for_good': false,
-// // // //             'return_mins': returnMins,
-// // // //           });
-// // // //         } catch (_) {}
-// // // //         if (ctx.mounted) {
-// // // //           ScaffoldMessenger.of(ctx).showSnackBar(
-// // // //             SnackBar(
-// // // //               content: Text(
-// // // //                 "You'll be back in $returnMins min — seat reserved",
-// // // //               ),
-// // // //               backgroundColor: Colors.orange.shade700,
-// // // //               duration: const Duration(seconds: 3),
-// // // //             ),
-// // // //           );
-// // // //           await Future.delayed(const Duration(milliseconds: 800));
-// // // //           if (ctx.mounted) {
-// // // //             _isNavigatingAway = true;
-// // // //             ctx.go('/home/room/${widget.roomId}');
-// // // //           }
-// // // //         }
-// // // //       } else {
-// // // //         try {
-// // // //           await sl.roomRepository.setMemberDefinitiveLeave(
-// // // //             widget.roomId,
-// // // //             myUserId,
-// // // //           );
-// // // //           await sl.realtimeService.broadcastRoomEvent(widget.roomId, {
-// // // //             'type': 'player_left',
-// // // //             'user_id': myUserId,
-// // // //             'display_name': displayName,
-// // // //             'for_good': true,
-// // // //           });
-// // // //         } catch (_) {}
-// // // //         if (ctx.mounted) {
-// // // //           await sl.realtimeService.broadcastRoomEvent(widget.roomId, {
-// // // //             'type': 'check_auto_quit',
-// // // //             'user_id': myUserId,
-// // // //           });
-// // // //           ctx.go('/home/room/${widget.roomId}');
-// // // //         }
-// // // //       }
-// // // //     }
-// // // //   }
-
-// // // //   Widget _phaseWidget(
-// // // //     BuildContext ctx,
-// // // //     TodGameProvider game,
-// // // //     Map<String, String> displayNames,
-// // // //     TodState state,
-// // // //   ) {
-// // // //     return switch (state.phase) {
-// // // //       TodTurnPhase.punishmentVoting => TodPunishmentScreen(
-// // // //         state: state,
-// // // //         game: game,
-// // // //         displayNames: widget.displayNames,
-// // // //       ),
-// // // //       _ => TodCardScreen(
-// // // //         state: state,
-// // // //         game: game,
-// // // //         displayNames: widget.displayNames,
-// // // //       ),
-// // // //     };
-// // // //   }
-// // // // }
-
-// // // // class _HistoryPanel extends StatelessWidget {
-// // // //   const _HistoryPanel({required this.history, required this.displayNames});
-// // // //   final List<TodRoundRecord> history;
-// // // //   final Map<String, String> displayNames;
-
-// // // //   String _name(String id) =>
-// // // //       displayNames[id] ?? id.substring(0, id.length.clamp(0, 6));
-
-// // // //   @override
-// // // //   Widget build(BuildContext context) {
-// // // //     final theme = context.theme;
-// // // //     if (history.isEmpty) {
-// // // //       return const Center(child: Text('No rounds completed yet.'));
-// // // //     }
-// // // //     return ListView.builder(
-// // // //       padding: const EdgeInsets.all(12),
-// // // //       itemCount: history.length,
-// // // //       itemBuilder: (_, i) {
-// // // //         final round = history[history.length - 1 - i];
-// // // //         final reactTally = <String, int>{};
-// // // //         for (final r in round.reactions) {
-// // // //           reactTally[r.emoji] = (reactTally[r.emoji] ?? 0) + 1;
-// // // //         }
-// // // //         return Card(
-// // // //           margin: const EdgeInsets.only(bottom: 10),
-// // // //           child: ExpansionTile(
-// // // //             leading: CircleAvatar(
-// // // //               backgroundColor: theme.colorScheme.primaryContainer,
-// // // //               child: Text(
-// // // //                 '${round.roundNumber}',
-// // // //                 style: theme.textTheme.labelLarge,
-// // // //               ),
-// // // //             ),
-// // // //             title: Text(
-// // // //               _name(round.playerId),
-// // // //               style: theme.textTheme.bodyMedium?.copyWith(
-// // // //                 fontWeight: FontWeight.w700,
-// // // //               ),
-// // // //             ),
-// // // //             subtitle: Text(
-// // // //               round.card != null
-// // // //                   ? '${round.card!.type == TodCardType.truth ? "Truth" : "Dare"}: ${round.card!.content}'
-// // // //                   : 'Skipped',
-// // // //               maxLines: 1,
-// // // //               overflow: TextOverflow.ellipsis,
-// // // //               style: theme.textTheme.bodySmall,
-// // // //             ),
-// // // //             children: [
-// // // //               Padding(
-// // // //                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-// // // //                 child: Column(
-// // // //                   crossAxisAlignment: CrossAxisAlignment.start,
-// // // //                   children: [
-// // // //                     if (round.card != null)
-// // // //                       Container(
-// // // //                         width: double.infinity,
-// // // //                         padding: const EdgeInsets.all(10),
-// // // //                         decoration: BoxDecoration(
-// // // //                           color: round.card!.type == TodCardType.truth
-// // // //                               ? Colors.blue.withOpacity(0.08)
-// // // //                               : Colors.orange.withOpacity(0.08),
-// // // //                           borderRadius: BorderRadius.circular(8),
-// // // //                         ),
-// // // //                         child: Text(
-// // // //                           round.card!.content,
-// // // //                           style: theme.textTheme.bodyMedium,
-// // // //                         ),
-// // // //                       ),
-// // // //                     if (round.response.isNotEmpty) ...[
-// // // //                       const SizedBox(height: 8),
-// // // //                       Row(
-// // // //                         crossAxisAlignment: CrossAxisAlignment.start,
-// // // //                         children: [
-// // // //                           const Text('💬 ', style: TextStyle(fontSize: 14)),
-// // // //                           Expanded(
-// // // //                             child: Text(
-// // // //                               '"${round.response}"',
-// // // //                               style: theme.textTheme.bodySmall?.copyWith(
-// // // //                                 fontStyle: FontStyle.italic,
-// // // //                               ),
-// // // //                             ),
-// // // //                           ),
-// // // //                         ],
-// // // //                       ),
-// // // //                     ],
-// // // //                     if (round.voteCount > 0) ...[
-// // // //                       const SizedBox(height: 6),
-// // // //                       Text(
-// // // //                         '👍 ${round.voteCount} vote${round.voteCount != 1 ? "s" : ""}',
-// // // //                         style: theme.textTheme.bodySmall?.copyWith(
-// // // //                           color: theme.colorScheme.primary,
-// // // //                           fontWeight: FontWeight.w600,
-// // // //                         ),
-// // // //                       ),
-// // // //                     ],
-// // // //                     if (round.hadProof) ...[
-// // // //                       const SizedBox(height: 8),
-// // // //                       _ProofWatchedBadge(watchedBy: round.proofWatchedBy),
-// // // //                     ],
-// // // //                     if (reactTally.isNotEmpty) ...[
-// // // //                       const SizedBox(height: 8),
-// // // //                       Wrap(
-// // // //                         spacing: 6,
-// // // //                         runSpacing: 4,
-// // // //                         children: reactTally.entries
-// // // //                             .map(
-// // // //                               (e) => Container(
-// // // //                                 padding: const EdgeInsets.symmetric(
-// // // //                                   horizontal: 8,
-// // // //                                   vertical: 3,
-// // // //                                 ),
-// // // //                                 decoration: BoxDecoration(
-// // // //                                   color:
-// // // //                                       theme.colorScheme.surfaceContainerHighest,
-// // // //                                   borderRadius: BorderRadius.circular(16),
-// // // //                                 ),
-// // // //                                 child: Text(
-// // // //                                   '${e.key} ${e.value}',
-// // // //                                   style: const TextStyle(fontSize: 13),
-// // // //                                 ),
-// // // //                               ),
-// // // //                             )
-// // // //                             .toList(),
-// // // //                       ),
-// // // //                     ],
-// // // //                   ],
-// // // //                 ),
-// // // //               ),
-// // // //             ],
-// // // //           ),
-// // // //         );
-// // // //       },
-// // // //     );
-// // // //   }
-// // // // }
-
-// // // // class _ProofWatchedBadge extends StatelessWidget {
-// // // //   const _ProofWatchedBadge({required this.watchedBy});
-// // // //   final List<String> watchedBy;
-
-// // // //   @override
-// // // //   Widget build(BuildContext context) {
-// // // //     final watched = watchedBy.isNotEmpty;
-// // // //     return Container(
-// // // //       height: 36,
-// // // //       padding: const EdgeInsets.symmetric(horizontal: 10),
-// // // //       decoration: BoxDecoration(
-// // // //         color: Colors.grey.shade200,
-// // // //         borderRadius: BorderRadius.circular(8),
-// // // //       ),
-// // // //       alignment: Alignment.centerLeft,
-// // // //       child: Row(
-// // // //         mainAxisSize: MainAxisSize.min,
-// // // //         children: [
-// // // //           Icon(
-// // // //             watched ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-// // // //             size: 16,
-// // // //             color: Colors.grey.shade600,
-// // // //           ),
-// // // //           const SizedBox(width: 6),
-// // // //           Text(
-// // // //             watched
-// // // //                 ? 'Proof watched by ${watchedBy.length}'
-// // // //                 : 'Proof sent — not watched',
-// // // //             style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-// // // //           ),
-// // // //         ],
-// // // //       ),
-// // // //     );
-// // // //   }
-// // // // }
-
-// // // // class _InGameChatSheet extends StatefulWidget {
-// // // //   const _InGameChatSheet({required this.game, required this.myId});
-// // // //   final TodGameProvider game;
-// // // //   final String myId;
-// // // //   @override
-// // // //   State<_InGameChatSheet> createState() => _InGameChatSheetState();
-// // // // }
-
-// // // // class _InGameChatSheetState extends State<_InGameChatSheet> {
-// // // //   final _ctrl = TextEditingController();
-// // // //   final _scroll = ScrollController();
-// // // //   @override
-// // // //   void dispose() {
-// // // //     _ctrl.dispose();
-// // // //     _scroll.dispose();
-// // // //     super.dispose();
-// // // //   }
-
-// // // //   void _send() {
-// // // //     final t = _ctrl.text.trim();
-// // // //     if (t.isEmpty) return;
-// // // //     widget.game.sendChat(t);
-// // // //     _ctrl.clear();
-// // // //     WidgetsBinding.instance.addPostFrameCallback((_) {
-// // // //       if (_scroll.hasClients)
-// // // //         _scroll.animateTo(
-// // // //           _scroll.position.maxScrollExtent,
-// // // //           duration: 200.ms,
-// // // //           curve: Curves.easeOut,
-// // // //         );
-// // // //     });
-// // // //   }
-
-// // // //   @override
-// // // //   Widget build(BuildContext context) {
-// // // //     return Container(
-// // // //       height: MediaQuery.sizeOf(context).height * 0.65,
-// // // //       decoration: const BoxDecoration(
-// // // //         color: Color(0xFF1A2E45),
-// // // //         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-// // // //       ),
-// // // //       child: Column(
-// // // //         children: [
-// // // //           Container(
-// // // //             width: 36,
-// // // //             height: 4,
-// // // //             margin: const EdgeInsets.symmetric(vertical: 10),
-// // // //             decoration: BoxDecoration(
-// // // //               color: Colors.white24,
-// // // //               borderRadius: BorderRadius.circular(2),
-// // // //             ),
-// // // //           ),
-// // // //           const Text(
-// // // //             '💬 Chat',
-// // // //             style: TextStyle(
-// // // //               color: Colors.white,
-// // // //               fontWeight: FontWeight.w800,
-// // // //               fontSize: 16,
-// // // //             ),
-// // // //           ),
-// // // //           const Divider(color: Colors.white12),
-// // // //           Expanded(
-// // // //             child: ListenableBuilder(
-// // // //               listenable: widget.game,
-// // // //               builder: (_, __) {
-// // // //                 final msgs = widget.game.chatMessages;
-// // // //                 return msgs.isEmpty
-// // // //                     ? const Center(
-// // // //                         child: Text(
-// // // //                           'No messages yet',
-// // // //                           style: TextStyle(color: Colors.white38),
-// // // //                         ),
-// // // //                       )
-// // // //                     : ListView.builder(
-// // // //                         controller: _scroll,
-// // // //                         padding: const EdgeInsets.all(12),
-// // // //                         itemCount: msgs.length,
-// // // //                         itemBuilder: (_, i) {
-// // // //                           final m = msgs[i];
-// // // //                           final isMe = m.senderId == widget.myId;
-// // // //                           final color =
-// // // //                               _kChatColors[m.senderId.hashCode.abs() %
-// // // //                                   _kChatColors.length];
-// // // //                           return Padding(
-// // // //                             padding: EdgeInsets.only(
-// // // //                               bottom: 8,
-// // // //                               left: isMe ? 48 : 0,
-// // // //                               right: isMe ? 0 : 48,
-// // // //                             ),
-// // // //                             child: Column(
-// // // //                               crossAxisAlignment: isMe
-// // // //                                   ? CrossAxisAlignment.end
-// // // //                                   : CrossAxisAlignment.start,
-// // // //                               children: [
-// // // //                                 if (!isMe)
-// // // //                                   Padding(
-// // // //                                     padding: const EdgeInsets.only(
-// // // //                                       left: 4,
-// // // //                                       bottom: 2,
-// // // //                                     ),
-// // // //                                     child: Text(
-// // // //                                       m.senderName,
-// // // //                                       style: TextStyle(
-// // // //                                         color: color,
-// // // //                                         fontSize: 11,
-// // // //                                         fontWeight: FontWeight.w700,
-// // // //                                       ),
-// // // //                                     ),
-// // // //                                   ),
-// // // //                                 Container(
-// // // //                                   padding: const EdgeInsets.symmetric(
-// // // //                                     horizontal: 12,
-// // // //                                     vertical: 8,
-// // // //                                   ),
-// // // //                                   decoration: BoxDecoration(
-// // // //                                     color: isMe
-// // // //                                         ? const Color(0xFFFFD60A)
-// // // //                                         : color.withOpacity(0.18),
-// // // //                                     borderRadius: BorderRadius.circular(16)
-// // // //                                         .copyWith(
-// // // //                                           bottomRight: isMe
-// // // //                                               ? const Radius.circular(4)
-// // // //                                               : null,
-// // // //                                           bottomLeft: isMe
-// // // //                                               ? null
-// // // //                                               : const Radius.circular(4),
-// // // //                                         ),
-// // // //                                   ),
-// // // //                                   child: Text(
-// // // //                                     m.text,
-// // // //                                     style: TextStyle(
-// // // //                                       color: isMe
-// // // //                                           ? const Color(0xFF0D1B2A)
-// // // //                                           : Colors.white,
-// // // //                                       fontWeight: isMe
-// // // //                                           ? FontWeight.w700
-// // // //                                           : FontWeight.w400,
-// // // //                                     ),
-// // // //                                   ),
-// // // //                                 ),
-// // // //                               ],
-// // // //                             ),
-// // // //                           );
-// // // //                         },
-// // // //                       );
-// // // //               },
-// // // //             ),
-// // // //           ),
-// // // //           Container(
-// // // //             padding: EdgeInsets.fromLTRB(
-// // // //               12,
-// // // //               8,
-// // // //               12,
-// // // //               MediaQuery.viewInsetsOf(context).bottom + 12,
-// // // //             ),
-// // // //             color: const Color(0xFF1A2E45),
-// // // //             child: Row(
-// // // //               children: [
-// // // //                 Expanded(
-// // // //                   child: TextField(
-// // // //                     controller: _ctrl,
-// // // //                     style: const TextStyle(color: Colors.white),
-// // // //                     textInputAction: TextInputAction.send,
-// // // //                     onSubmitted: (_) => _send(),
-// // // //                     decoration: InputDecoration(
-// // // //                       hintText: 'Say something…',
-// // // //                       hintStyle: const TextStyle(color: Colors.white38),
-// // // //                       filled: true,
-// // // //                       fillColor: Colors.white.withOpacity(0.07),
-// // // //                       border: OutlineInputBorder(
-// // // //                         borderRadius: BorderRadius.circular(24),
-// // // //                         borderSide: BorderSide.none,
-// // // //                       ),
-// // // //                       contentPadding: const EdgeInsets.symmetric(
-// // // //                         horizontal: 16,
-// // // //                         vertical: 10,
-// // // //                       ),
-// // // //                       isDense: true,
-// // // //                     ),
-// // // //                   ),
-// // // //                 ),
-// // // //                 const SizedBox(width: 8),
-// // // //                 GestureDetector(
-// // // //                   onTap: _send,
-// // // //                   child: Container(
-// // // //                     width: 44,
-// // // //                     height: 44,
-// // // //                     decoration: const BoxDecoration(
-// // // //                       color: Color(0xFFFFD60A),
-// // // //                       shape: BoxShape.circle,
-// // // //                     ),
-// // // //                     child: const Icon(
-// // // //                       Icons.send_rounded,
-// // // //                       color: Color(0xFF0D1B2A),
-// // // //                       size: 20,
-// // // //                     ),
-// // // //                   ),
-// // // //                 ),
-// // // //               ],
-// // // //             ),
-// // // //           ),
-// // // //         ],
-// // // //       ),
-// // // //     );
-// // // //   }
-// // // // }
-
-// // // // const _kChatColors = [
-// // // //   Color(0xFF4ECDC4),
-// // // //   Color(0xFFA855F7),
-// // // //   Color(0xFFFF6B6B),
-// // // //   Color(0xFF4ADE80),
-// // // //   Color(0xFFFB923C),
-// // // //   Color(0xFF60A5FA),
-// // // //   Color(0xFFF472B6),
-// // // //   Color(0xFFFFD60A),
-// // // //   Color(0xFF34D399),
-// // // //   Color(0xFFC084FC),
-// // // // ];
-
-// // // // class _PausedOverlay extends StatefulWidget {
-// // // //   const _PausedOverlay({required this.onLeave});
-// // // //   final VoidCallback onLeave;
-
-// // // //   @override
-// // // //   State<_PausedOverlay> createState() => _PausedOverlayState();
-// // // // }
-
-// // // // class _PausedOverlayState extends State<_PausedOverlay>
-// // // //     with SingleTickerProviderStateMixin {
-// // // //   late final AnimationController _pulse;
-
-// // // //   @override
-// // // //   void initState() {
-// // // //     super.initState();
-// // // //     _pulse = AnimationController(
-// // // //       vsync: this,
-// // // //       duration: const Duration(milliseconds: 1400),
-// // // //     )..repeat(reverse: true);
-// // // //   }
-
-// // // //   @override
-// // // //   void dispose() {
-// // // //     _pulse.dispose();
-// // // //     super.dispose();
-// // // //   }
-
-// // // //   @override
-// // // //   Widget build(BuildContext context) {
-// // // //     return Dialog.fullscreen(
-// // // //       backgroundColor: Colors.transparent,
-// // // //       child: Scaffold(
-// // // //         backgroundColor: Colors.transparent,
-// // // //         body: Center(
-// // // //           child: Padding(
-// // // //             padding: const EdgeInsets.all(32),
-// // // //             child: Column(
-// // // //               mainAxisSize: MainAxisSize.min,
-// // // //               children: [
-// // // //                 AnimatedBuilder(
-// // // //                   animation: _pulse,
-// // // //                   builder: (_, child) =>
-// // // //                       Opacity(opacity: 0.6 + _pulse.value * 0.4, child: child),
-// // // //                   child: const Text('⏸', style: TextStyle(fontSize: 72)),
-// // // //                 ),
-// // // //                 const SizedBox(height: 24),
-// // // //                 const Text(
-// // // //                   'Game Paused',
-// // // //                   style: TextStyle(
-// // // //                     color: Colors.white,
-// // // //                     fontSize: 28,
-// // // //                     fontWeight: FontWeight.w800,
-// // // //                     letterSpacing: -0.5,
-// // // //                   ),
-// // // //                 ),
-// // // //                 const SizedBox(height: 12),
-// // // //                 const Text(
-// // // //                   'The host stepped away and will\nreturn shortly.',
-// // // //                   textAlign: TextAlign.center,
-// // // //                   style: TextStyle(
-// // // //                     color: Colors.white70,
-// // // //                     fontSize: 16,
-// // // //                     height: 1.5,
-// // // //                   ),
-// // // //                 ),
-// // // //                 const SizedBox(height: 40),
-// // // //                 OutlinedButton(
-// // // //                   style: OutlinedButton.styleFrom(
-// // // //                     foregroundColor: Colors.white,
-// // // //                     side: const BorderSide(color: Colors.white38),
-// // // //                     padding: const EdgeInsets.symmetric(
-// // // //                       horizontal: 32,
-// // // //                       vertical: 14,
-// // // //                     ),
-// // // //                   ),
-// // // //                   onPressed: widget.onLeave,
-// // // //                   child: const Text('Leave for Now'),
-// // // //                 ),
-// // // //               ],
-// // // //             ),
-// // // //           ),
-// // // //         ),
-// // // //       ),
-// // // //     );
-// // // //   }
-// // // // }
-
-// // // import 'dart:async';
-
-// // // import 'package:flutter/material.dart';
-// // // import 'package:flutter_animate/flutter_animate.dart';
-// // // import 'package:go_router/go_router.dart';
-// // // import 'package:jma3a/core/router/app_router.dart';
-// // // import 'package:jma3a/features/games/engine/base_game_engine.dart';
-// // // import 'package:jma3a/features/rooms/domain/room_entity.dart';
-// // // import 'package:jma3a/features/settings/presentation/screen_security_service.dart';
-// // // import 'package:provider/provider.dart';
-// // // import 'package:supabase_flutter/supabase_flutter.dart';
-
-// // // import '../../../../../core/di/service_locator.dart';
-// // // import '../../../../../core/extensions/context_ext.dart';
-// // // import '../../../../../core/providers/auth_provider.dart';
-// // // import '../../../../../core/router/route_names.dart';
-// // // import '../../../../../core/services/realtime_service.dart';
-// // // // import '../../../../../core/services/screen_security_service.dart';
-// // // import '../../../../../core/theme/app_colors.dart';
-// // // import '../../../../../shared/widgets/feedback/error_view.dart';
-// // // import '../../../../../shared/widgets/overlays/confirm_dialog.dart';
-// // // import '../../domain/tod_models.dart';
-// // // import '../../tod_game_provider.dart';
-
-// // // import '../../data/tod_repository.dart';
-// // // import 'tod_card_screen.dart';
-// // // import 'tod_end_screen.dart';
-// // // import 'tod_loading_screen.dart';
-// // // import 'tod_punishment_screen.dart';
-// // // import '../widgets/tod_hud.dart';
-
-// // // class TodGameScreen extends StatefulWidget {
-// // //   const TodGameScreen({
-// // //     super.key,
-// // //     required this.roomId,
-// // //     required this.config,
-// // //     required this.playerIds,
-// // //     required this.playerDisplayNames,
-// // //     required this.packId,
-// // //     required this.isOwner,
-// // //     this.sessionId,
-// // //     this.isModerator = false,
-// // //     this.packCoverUrl,
-// // //   });
-
-// // //   final String roomId;
-// // //   final GameConfig config;
-// // //   final List<String> playerIds;
-// // //   final Map<String, String> playerDisplayNames;
-// // //   final String packId;
-// // //   final bool isOwner;
-// // //   final String? sessionId;
-// // //   final bool isModerator;
-// // //   final String? packCoverUrl;
-
-// // //   @override
-// // //   State<TodGameScreen> createState() => _TodGameScreenState();
-// // // }
-
-// // // class _TodGameScreenState extends State<TodGameScreen> {
-// // //   late final TodGameProvider _provider;
-
-// // //   StreamSubscription<RealtimeSubscribeStatus>? _statusSub;
-// // //   bool _isNavigatingAway = false;
-// // //   @override
-// // //   void initState() {
-// // //     super.initState();
-
-// // //     ScreenSecurityService.instance.enable();
-// // //     ScreenSecurityService.instance.enableScreenshotDetection(() {
-// // //       sl.realtimeService.broadcastRoomEvent(widget.roomId, {
-// // //         'type': 'screenshot_taken',
-// // //         'user_id': context.read<AuthProvider>().currentUser?.id,
-// // //       }).ignore();
-// // //     });
-
-// // //     final auth = context.read<AuthProvider>();
-// // //     final user = auth.currentUser!;
-
-// // //     _provider = TodGameProvider(
-// // //       realtimeService: sl.realtimeService,
-// // //       repository: TodRepository.instance,
-// // //       currentUserId: user.id,
-// // //       currentDisplayName: user.displayName ?? user.username ?? 'Player',
-// // //       isModerator: widget.isModerator,
-// // //     );
-
-// // //     _wireRealtimeCallbacks();
-
-// // //     if (widget.isOwner) {
-// // //       final isPremium =
-// // //           context.read<AuthProvider>().currentUser?.isPremium ?? false;
-// // //       _provider.initAsOwner(
-// // //         roomId: widget.roomId,
-// // //         config: widget.config,
-// // //         playerIds: widget.playerIds,
-// // //         playerDisplayNames: widget.playerDisplayNames,
-// // //         packId: widget.packId,
-// // //         isPremium: isPremium,
-// // //         packCoverUrl: widget.packCoverUrl,
-// // //       );
-// // //     } else {
-// // //       _provider.initAsFollower(
-// // //         roomId: widget.roomId,
-// // //         config: widget.config,
-// // //         sessionId: widget.sessionId,
-// // //         packCoverUrl: widget.packCoverUrl,
-// // //       );
-// // //     }
-// // //   }
-
-// // //   @override
-// // //   void dispose() {
-// // //     ScreenSecurityService.instance.disable();
-// // //     _statusSub?.cancel();
-// // //     sl.realtimeService
-// // //         .subscribe(
-// // //           roomId: widget.roomId,
-// // //           onGameState: (_) {},
-// // //           onPlayerAction: (_) {},
-// // //           onSyncRequest: (_) {},
-// // //           onGameStarted: (_) {},
-// // //           onGameEnded: (_) {},
-// // //           onRoomEvent: (_) {},
-// // //           onChatMessage: (_) {},
-// // //           onModeration: (_) {},
-// // //           onSettingsChange: (_) {},
-// // //           onPresenceSync: (_) {},
-// // //           onPresenceJoin: (_) {},
-// // //           onPresenceLeave: (_) {},
-// // //           onStatusChange: (_) {},
-// // //         )
-// // //         .ignore();
-// // //     _provider.dispose();
-// // //     super.dispose();
-// // //   }
-
-// // //   void _wireRealtimeCallbacks() {
-// // //     _statusSub = sl.realtimeService.statusStream(widget.roomId)?.listen((
-// // //       status,
-// // //     ) {
-// // //       if (status == RealtimeSubscribeStatus.subscribed &&
-// // //           !_provider.hasSyncedState) {
-// // //         sl.realtimeService.broadcastSyncRequest(
-// // //           widget.roomId,
-// // //           context.read<AuthProvider>().currentUser!.id,
-// // //           0,
-// // //         );
-// // //       }
-// // //     });
-
-// // //     _resubscribeWithGameHandlers();
-// // //   }
-
-// // //   void _resubscribeWithGameHandlers() {
-// // //     final userId = context.read<AuthProvider>().currentUser!.id;
-
-// // //     sl.realtimeService.unsubscribe(widget.roomId).then((_) {
-// // //       sl.realtimeService.subscribe(
-// // //         roomId: widget.roomId,
-// // //         onGameState: (p) => _provider.onStateBroadcast(p),
-// // //         onPlayerAction: (p) => _provider.onPlayerAction(p),
-// // //         onSyncRequest: (p) => _provider.onSyncRequest(p),
-// // //         onGameStarted: (_) {},
-// // //         onGameEnded: (p) {
-// // //           if (mounted) {
-// // //             ScaffoldMessenger.of(context).showSnackBar(
-// // //               const SnackBar(content: Text('The host ended the game')),
-// // //             );
-// // //             if (context.canPop())
-// // //               context.pop();
-// // //             else
-// // //               context.go(RouteNames.home);
-// // //           }
-// // //         },
-// // //         onRoomEvent: (p) {
-// // //           final type = p['type'] as String?;
-// // //           if (type == 'screenshot_taken') {
-// // //             final shooterId = p['user_id'] as String?;
-// // //             final myId = context.read<AuthProvider>().currentUser?.id;
-// // //             if (shooterId != null && shooterId != myId && mounted) {
-// // //               ScaffoldMessenger.of(context).showSnackBar(
-// // //                 SnackBar(
-// // //                   content: Text(
-// // //                     '📸 ${widget.playerDisplayNames[shooterId] ?? 'Someone'} took a screenshot',
-// // //                   ),
-// // //                   backgroundColor: Colors.black87,
-// // //                 ),
-// // //               );
-// // //             }
-// // //             return;
-// // //           }
-// // //           if (type == 'player_left' && mounted) {
-// // //             final name = p['display_name'] as String? ?? 'A player';
-// // //             final leavingId = p['user_id'] as String?;
-// // //             if (leavingId != null) {
-// // //               _provider.markPlayerAway(leavingId, forGood: true);
-// // //               if (widget.isOwner) {
-// // //                 final active =
-// // //                     _provider.state?.playerOrder
-// // //                         .where((id) => !_provider.awayPlayerIds.contains(id))
-// // //                         .toList() ??
-// // //                     [];
-// // //                 if (active.length <= 1) {
-// // //                   WidgetsBinding.instance.addPostFrameCallback((_) async {
-// // //                     if (!mounted) return;
-// // //                     try {
-// // //                       await sl.realtimeService.broadcastRoomEvent(
-// // //                         widget.roomId,
-// // //                         {'type': 'game_ended', 'reason': 'all_players_left'},
-// // //                       );
-// // //                       await sl.roomRepository.updateStatus(
-// // //                         widget.roomId,
-// // //                         RoomStatus.waiting,
-// // //                       );
-// // //                     } catch (_) {}
-// // //                     if (mounted) {
-// // //                       ScaffoldMessenger.of(context).showSnackBar(
-// // //                         const SnackBar(
-// // //                           content: Text('All players left — game ended'),
-// // //                           behavior: SnackBarBehavior.fixed,
-// // //                         ),
-// // //                       );
-// // //                       await Future.delayed(const Duration(milliseconds: 600));
-// // //                       if (mounted) {
-// // //                         _isNavigatingAway = true;
-// // //                         if (context.canPop())
-// // //                           context.pop();
-// // //                         else
-// // //                           context.go('/home/room/${widget.roomId}');
-// // //                       }
-// // //                     }
-// // //                   });
-// // //                   return;
-// // //                 }
-// // //               }
-// // //             }
-// // //             ScaffoldMessenger.of(context).showSnackBar(
-// // //               SnackBar(
-// // //                 content: Text('👋 $name left the game'),
-// // //                 backgroundColor: Colors.red.shade700,
-// // //                 duration: const Duration(seconds: 3),
-// // //                 behavior: SnackBarBehavior.fixed,
-// // //               ),
-// // //             );
-// // //             return;
-// // //           }
-// // //           if (type == 'ownership_transferred' && mounted) {
-// // //             final myId = context.read<AuthProvider>().currentUser?.id;
-// // //             final newOwnerId = p['new_owner_id'] as String?;
-// // //             if (newOwnerId == myId) {
-// // //               ScaffoldMessenger.of(context).showSnackBar(
-// // //                 const SnackBar(
-// // //                   content: Text('👑 You are now the game host!'),
-// // //                   backgroundColor: Colors.purple,
-// // //                 ),
-// // //               );
-// // //             }
-// // //             return;
-// // //           }
-// // //           if (type == 'game_ended' && mounted) {
-// // //             final reason = p['reason'] as String? ?? '';
-// // //             WidgetsBinding.instance.addPostFrameCallback((_) {
-// // //               if (!mounted) return;
-// // //               final msg = reason == 'all_players_left'
-// // //                   ? '👋 All players left — game ended'
-// // //                   : '🔄 Host ended the game';
-// // //               ScaffoldMessenger.of(context).showSnackBar(
-// // //                 SnackBar(
-// // //                   content: Text(msg),
-// // //                   duration: const Duration(seconds: 3),
-// // //                   behavior: SnackBarBehavior.fixed,
-// // //                 ),
-// // //               );
-// // //               if (context.canPop()) {
-// // //                 context.pop();
-// // //               } else {
-// // //                 context.go('/home/room/\${widget.roomId}');
-// // //               }
-// // //             });
-// // //             return;
-// // //           }
-// // //           if (type == 'tod_ready_count') {
-// // //             final ids = (p['ready_user_ids'] as List?)?.cast<String>() ?? [];
-// // //             _provider.onReadyCountUpdate(ids);
-// // //             return;
-// // //           }
-// // //           if ((type == 'room_closed' || type == 'owner_left') && mounted) {
-// // //             WidgetsBinding.instance.addPostFrameCallback((_) {
-// // //               if (!mounted) {
-// // //                 AppRouter.router.go(RouteNames.home);
-// // //                 return;
-// // //               }
-// // //               showDialog(
-// // //                 context: context,
-// // //                 barrierDismissible: false,
-// // //                 builder: (ctx2) => AlertDialog(
-// // //                   title: const Text('Room Closed'),
-// // //                   content: const Text('The host closed the room.'),
-// // //                   actions: [
-// // //                     FilledButton(
-// // //                       onPressed: () {
-// // //                         Navigator.of(ctx2).pop();
-// // //                         AppRouter.router.go(RouteNames.home);
-// // //                       },
-// // //                       child: const Text('OK'),
-// // //                     ),
-// // //                   ],
-// // //                 ),
-// // //               );
-// // //             });
-// // //             return;
-// // //           }
-// // //         },
-// // //         onChatMessage: (p) {
-// // //           final msg = TodChatMsg(
-// // //             senderId: p['user_id'] as String? ?? '',
-// // //             senderName: p['display_name'] as String? ?? 'Player',
-// // //             text: p['content'] as String? ?? '',
-// // //             ts: DateTime.fromMillisecondsSinceEpoch(
-// // //               (p['ts'] as num?)?.toInt() ??
-// // //                   DateTime.now().millisecondsSinceEpoch,
-// // //             ),
-// // //           );
-// // //           _provider.addChatMessage(msg);
-// // //         },
-// // //         onModeration: (p) => _handleModerationEvent(p),
-// // //         onSettingsChange: (_) {},
-// // //         onPresenceSync: (_) {},
-// // //         onPresenceJoin: (_) {},
-// // //         onPresenceLeave: (_) {},
-// // //         onStatusChange: (status) {
-// // //           if (!mounted) return;
-// // //           if (status == RealtimeSubscribeStatus.subscribed &&
-// // //               !_provider.hasSyncedState) {
-// // //             sl.realtimeService.broadcastSyncRequest(widget.roomId, userId, 0);
-// // //           }
-// // //         },
-// // //       );
-// // //     });
-// // //   }
-
-// // //   void _handleModerationEvent(Map<String, dynamic> p) {
-// // //     final type = p['type'] as String?;
-// // //     final targetId = p['target_user_id'] as String?;
-// // //     final currentId = context.read<AuthProvider>().currentUser?.id;
-
-// // //     if ((type == 'kick' || type == 'ban') && targetId == currentId) {
-// // //       if (mounted) {
-// // //         ScaffoldMessenger.of(context).showSnackBar(
-// // //           const SnackBar(content: Text('You were removed from the room')),
-// // //         );
-// // //         context.go(RouteNames.home);
-// // //       }
-// // //     }
-// // //   }
-
-// // //   @override
-// // //   Widget build(BuildContext context) {
-// // //     return ChangeNotifierProvider.value(
-// // //       value: _provider,
-// // //       child: Consumer<TodGameProvider>(
-// // //         builder: (ctx, game, _) => _build(ctx, game),
-// // //       ),
-// // //     );
-// // //   }
-
-// // //   Widget _build(BuildContext ctx, TodGameProvider game) {
-// // //     if (game.loadState == TodLoadState.loading) {
-// // //       return const TodLoadingScreen();
-// // //     }
-
-// // //     if (game.loadState == TodLoadState.error) {
-// // //       return Scaffold(
-// // //         appBar: AppBar(
-// // //           leading: BackButton(
-// // //             onPressed: () async {
-// // //               if (widget.isOwner) {
-// // //                 try {
-// // //                   await sl.realtimeService.broadcastGameEnded(widget.roomId, {
-// // //                     'reason': 'host_left',
-// // //                   });
-// // //                   await sl.roomRepository.updateStatus(
-// // //                     widget.roomId,
-// // //                     RoomStatus.waiting,
-// // //                   );
-// // //                 } catch (_) {}
-// // //               }
-// // //               if (ctx.mounted) ctx.go(RouteNames.home);
-// // //             },
-// // //           ),
-// // //         ),
-// // //         body: ErrorView(
-// // //           message: game.error ?? 'Failed to load game',
-// // //           onRetry: () => ctx.go(RouteNames.home),
-// // //         ),
-// // //       );
-// // //     }
-
-// // //     if (game.loadState == TodLoadState.gameOver ||
-// // //         (game.state?.isOver ?? false)) {
-// // //       return TodEndScreen(
-// // //         state: game.state!,
-// // //         displayNames: widget.playerDisplayNames,
-// // //         onLeave: () => ctx.go(RouteNames.home),
-// // //       );
-// // //     }
-
-// // //     final state = game.state;
-// // //     if (state == null) return const TodLoadingScreen();
-
-// // //     return _TodGameScaffold(
-// // //       state: state,
-// // //       game: game,
-// // //       displayNames: widget.playerDisplayNames,
-// // //       roomId: widget.roomId,
-// // //       isOwner: widget.isOwner,
-// // //     );
-// // //   }
-// // // }
-
-// // // class _TodGameScaffold extends StatefulWidget {
-// // //   const _TodGameScaffold({
-// // //     required this.state,
-// // //     required this.game,
-// // //     required this.displayNames,
-// // //     required this.roomId,
-// // //     required this.isOwner,
-// // //   });
-// // //   final TodState state;
-// // //   final TodGameProvider game;
-// // //   final Map<String, String> displayNames;
-// // //   final String roomId;
-// // //   final bool isOwner;
-// // //   @override
-// // //   State<_TodGameScaffold> createState() => _TodGameScaffoldState();
-// // // }
-
-// // // class _TodGameScaffoldState extends State<_TodGameScaffold> {
-// // //   bool _showHistory = false;
-// // //   bool _showChat = false;
-// // //   int _unreadChat = 0;
-// // //   bool _isNavigatingAway = false;
-
-// // //   void _navigateAway(BuildContext ctx, String location) {
-// // //     _isNavigatingAway = true;
-// // //     if (ctx.canPop()) {
-// // //       ctx.pop();
-// // //     } else {
-// // //       ctx.go(location);
-// // //     }
-// // //   }
-
-// // //   @override
-// // //   Widget build(BuildContext context) {
-// // //     final state = widget.state;
-// // //     final game = widget.game;
-
-// // //     if (_showHistory) {
-// // //       return Scaffold(
-// // //         appBar: AppBar(
-// // //           leading: BackButton(
-// // //             onPressed: () => setState(() => _showHistory = false),
-// // //           ),
-// // //           title: Text('History (${state.history.length} rounds)'),
-// // //         ),
-// // //         body: _HistoryPanel(
-// // //           history: state.history,
-// // //           displayNames: widget.displayNames,
-// // //         ),
-// // //       );
-// // //     }
-
-// // //     return PopScope(
-// // //       canPop: false,
-// // //       onPopInvoked: (_) {
-// // //         if (_isNavigatingAway) return;
-// // //         WidgetsBinding.instance.addPostFrameCallback(
-// // //           (_) => _showLeaveDialog(context, game, state),
-// // //         );
-// // //       },
-// // //       child: Scaffold(
-// // //         appBar: AppBar(
-// // //           automaticallyImplyLeading: false,
-// // //           title: const Text(''),
-// // //           leading: IconButton(
-// // //             icon: const Icon(Icons.arrow_back),
-// // //             onPressed: () => _showLeaveDialog(context, game, state),
-// // //           ),
-// // //           actions: [
-// // //             Consumer<TodGameProvider>(
-// // //               builder: (_, g, __) => Stack(
-// // //                 alignment: Alignment.topRight,
-// // //                 children: [
-// // //                   IconButton(
-// // //                     icon: const Icon(Icons.chat_bubble_outline_rounded),
-// // //                     onPressed: () {
-// // //                       g.clearUnreadChat();
-// // //                       showModalBottomSheet(
-// // //                         context: context,
-// // //                         isScrollControlled: true,
-// // //                         backgroundColor: Colors.transparent,
-// // //                         builder: (_) =>
-// // //                             _InGameChatSheet(game: g, myId: g.currentUserId),
-// // //                       );
-// // //                     },
-// // //                   ),
-// // //                   if (g.unreadChat > 0)
-// // //                     Positioned(
-// // //                       top: 8,
-// // //                       right: 8,
-// // //                       child: Container(
-// // //                         width: 8,
-// // //                         height: 8,
-// // //                         decoration: const BoxDecoration(
-// // //                           color: Colors.red,
-// // //                           shape: BoxShape.circle,
-// // //                         ),
-// // //                       ),
-// // //                     ),
-// // //                 ],
-// // //               ),
-// // //             ),
-// // //             if (state.history.isNotEmpty)
-// // //               IconButton(
-// // //                 icon: const Icon(Icons.history_rounded),
-// // //                 tooltip: 'History',
-// // //                 onPressed: () => setState(() => _showHistory = true),
-// // //               ),
-// // //           ],
-// // //         ),
-// // //         body: SafeArea(
-// // //           child: Column(
-// // //             children: [
-// // //               TodHud(
-// // //                 state: state,
-// // //                 game: game,
-// // //                 displayNames: widget.displayNames,
-// // //               ),
-// // //               Expanded(
-// // //                 child: AnimatedSwitcher(
-// // //                   duration: const Duration(milliseconds: 300),
-// // //                   transitionBuilder: (child, anim) => FadeTransition(
-// // //                     opacity: anim,
-// // //                     child: SlideTransition(
-// // //                       position:
-// // //                           Tween<Offset>(
-// // //                             begin: const Offset(0, 0.05),
-// // //                             end: Offset.zero,
-// // //                           ).animate(
-// // //                             CurvedAnimation(
-// // //                               parent: anim,
-// // //                               curve: Curves.easeOutCubic,
-// // //                             ),
-// // //                           ),
-// // //                       child: child,
-// // //                     ),
-// // //                   ),
-// // //                   child: KeyedSubtree(
-// // //                     key: ValueKey('${state.phase}-${state.currentPlayerId}'),
-// // //                     child: _phaseWidget(
-// // //                       context,
-// // //                       game,
-// // //                       widget.displayNames,
-// // //                       state,
-// // //                     ),
-// // //                   ),
-// // //                 ),
-// // //               ),
-// // //             ],
-// // //           ),
-// // //         ),
-// // //       ),
-// // //     );
-// // //   }
-
-// // //   Future<void> _showLeaveDialog(
-// // //     BuildContext ctx,
-// // //     TodGameProvider game,
-// // //     TodState state,
-// // //   ) async {
-// // //     if (!ctx.mounted) return;
-// // //     final isOwner = widget.isOwner;
-// // //     final myUserId = game.currentUserId;
-// // //     final isPremium = ctx.read<AuthProvider>().currentUser?.isPremium ?? false;
-
-// // //     if (isOwner) {
-// // //       final confirmed = await showDialog<bool>(
-// // //         context: ctx,
-// // //         builder: (dCtx) => AlertDialog(
-// // //           title: const Text('Quit Game?'),
-// // //           content: const Text(
-// // //             'The game will end for everyone and all players will return to the lobby.',
-// // //           ),
-// // //           actions: [
-// // //             TextButton(
-// // //               onPressed: () => Navigator.of(dCtx).pop(false),
-// // //               child: const Text('Cancel'),
-// // //             ),
-// // //             FilledButton(
-// // //               style: FilledButton.styleFrom(backgroundColor: Colors.red),
-// // //               onPressed: () => Navigator.of(dCtx).pop(true),
-// // //               child: const Text('End Game for Everyone'),
-// // //             ),
-// // //           ],
-// // //         ),
-// // //       );
-// // //       if (confirmed != true || !ctx.mounted) return;
-
-// // //       try {
-// // //         await sl.realtimeService.broadcastRoomEvent(widget.roomId, {
-// // //           'type': 'game_ended',
-// // //           'reason': 'host_quit_to_lobby',
-// // //         });
-// // //         await Future.delayed(const Duration(milliseconds: 400));
-// // //         await sl.roomRepository.updateStatus(widget.roomId, RoomStatus.waiting);
-// // //       } catch (_) {}
-// // //       if (ctx.mounted) {
-// // //         _isNavigatingAway = true;
-// // //         if (ctx.canPop()) {
-// // //           ctx.pop();
-// // //         } else {
-// // //           ctx.go('/home/room/${widget.roomId}');
-// // //         }
-// // //       }
-// // //     } else {
-// // //       final confirmed = await showDialog<bool>(
-// // //         context: ctx,
-// // //         builder: (_) => AlertDialog(
-// // //           title: const Text('Leave Game?'),
-// // //           content: const Text('You will be removed from the game.'),
-// // //           actions: [
-// // //             TextButton(
-// // //               onPressed: () => Navigator.pop(ctx, false),
-// // //               child: const Text('Stay'),
-// // //             ),
-// // //             FilledButton(
-// // //               style: FilledButton.styleFrom(backgroundColor: Colors.red),
-// // //               onPressed: () => Navigator.pop(ctx, true),
-// // //               child: const Text('Quit Game'),
-// // //             ),
-// // //           ],
-// // //         ),
-// // //       );
-// // //       if (confirmed != true || !ctx.mounted) return;
-
-// // //       final displayName = widget.displayNames[myUserId] ?? 'A player';
-// // //       try {
-// // //         await sl.roomRepository.setMemberDefinitiveLeave(
-// // //           widget.roomId,
-// // //           myUserId,
-// // //         );
-// // //         await sl.realtimeService.broadcastRoomEvent(widget.roomId, {
-// // //           'type': 'player_left',
-// // //           'user_id': myUserId,
-// // //           'display_name': displayName,
-// // //           'for_good': true,
-// // //         });
-// // //       } catch (_) {}
-// // //       if (ctx.mounted) {
-// // //         _isNavigatingAway = true;
-// // //         ctx.go('/home/room/${widget.roomId}');
-// // //       }
-// // //     }
-// // //   }
-
-// // //   Widget _phaseWidget(
-// // //     BuildContext ctx,
-// // //     TodGameProvider game,
-// // //     Map<String, String> displayNames,
-// // //     TodState state,
-// // //   ) {
-// // //     return switch (state.phase) {
-// // //       TodTurnPhase.punishmentVoting => TodPunishmentScreen(
-// // //         state: state,
-// // //         game: game,
-// // //         displayNames: widget.displayNames,
-// // //       ),
-// // //       _ => TodCardScreen(
-// // //         state: state,
-// // //         game: game,
-// // //         displayNames: widget.displayNames,
-// // //       ),
-// // //     };
-// // //   }
-// // // }
-
-// // // class _HistoryPanel extends StatelessWidget {
-// // //   const _HistoryPanel({required this.history, required this.displayNames});
-// // //   final List<TodRoundRecord> history;
-// // //   final Map<String, String> displayNames;
-
-// // //   String _name(String id) =>
-// // //       displayNames[id] ?? id.substring(0, id.length.clamp(0, 6));
-
-// // //   @override
-// // //   Widget build(BuildContext context) {
-// // //     final theme = context.theme;
-// // //     if (history.isEmpty) {
-// // //       return const Center(child: Text('No rounds completed yet.'));
-// // //     }
-// // //     return ListView.builder(
-// // //       padding: const EdgeInsets.all(12),
-// // //       itemCount: history.length,
-// // //       itemBuilder: (_, i) {
-// // //         final round = history[history.length - 1 - i];
-// // //         final reactTally = <String, int>{};
-// // //         for (final r in round.reactions) {
-// // //           reactTally[r.emoji] = (reactTally[r.emoji] ?? 0) + 1;
-// // //         }
-// // //         return Card(
-// // //           margin: const EdgeInsets.only(bottom: 10),
-// // //           child: ExpansionTile(
-// // //             leading: CircleAvatar(
-// // //               backgroundColor: theme.colorScheme.primaryContainer,
-// // //               child: Text(
-// // //                 '${round.roundNumber}',
-// // //                 style: theme.textTheme.labelLarge,
-// // //               ),
-// // //             ),
-// // //             title: Text(
-// // //               _name(round.playerId),
-// // //               style: theme.textTheme.bodyMedium?.copyWith(
-// // //                 fontWeight: FontWeight.w700,
-// // //               ),
-// // //             ),
-// // //             subtitle: Text(
-// // //               round.card != null
-// // //                   ? '${round.card!.type == TodCardType.truth ? "Truth" : "Dare"}: ${round.card!.content}'
-// // //                   : 'Skipped',
-// // //               maxLines: 1,
-// // //               overflow: TextOverflow.ellipsis,
-// // //               style: theme.textTheme.bodySmall,
-// // //             ),
-// // //             children: [
-// // //               Padding(
-// // //                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-// // //                 child: Column(
-// // //                   crossAxisAlignment: CrossAxisAlignment.start,
-// // //                   children: [
-// // //                     if (round.card != null)
-// // //                       Container(
-// // //                         width: double.infinity,
-// // //                         padding: const EdgeInsets.all(10),
-// // //                         decoration: BoxDecoration(
-// // //                           color: round.card!.type == TodCardType.truth
-// // //                               ? Colors.blue.withOpacity(0.08)
-// // //                               : Colors.orange.withOpacity(0.08),
-// // //                           borderRadius: BorderRadius.circular(8),
-// // //                         ),
-// // //                         child: Text(
-// // //                           round.card!.content,
-// // //                           style: theme.textTheme.bodyMedium,
-// // //                         ),
-// // //                       ),
-// // //                     if (round.response.isNotEmpty) ...[
-// // //                       const SizedBox(height: 8),
-// // //                       Row(
-// // //                         crossAxisAlignment: CrossAxisAlignment.start,
-// // //                         children: [
-// // //                           const Text('💬 ', style: TextStyle(fontSize: 14)),
-// // //                           Expanded(
-// // //                             child: Text(
-// // //                               '"${round.response}"',
-// // //                               style: theme.textTheme.bodySmall?.copyWith(
-// // //                                 fontStyle: FontStyle.italic,
-// // //                               ),
-// // //                             ),
-// // //                           ),
-// // //                         ],
-// // //                       ),
-// // //                     ],
-// // //                     if (round.voteCount > 0) ...[
-// // //                       const SizedBox(height: 6),
-// // //                       Text(
-// // //                         '👍 ${round.voteCount} vote${round.voteCount != 1 ? "s" : ""}',
-// // //                         style: theme.textTheme.bodySmall?.copyWith(
-// // //                           color: theme.colorScheme.primary,
-// // //                           fontWeight: FontWeight.w600,
-// // //                         ),
-// // //                       ),
-// // //                     ],
-// // //                     if (round.hadProof) ...[
-// // //                       const SizedBox(height: 8),
-// // //                       _ProofWatchedBadge(watchedBy: round.proofWatchedBy),
-// // //                     ],
-// // //                     if (reactTally.isNotEmpty) ...[
-// // //                       const SizedBox(height: 8),
-// // //                       Wrap(
-// // //                         spacing: 6,
-// // //                         runSpacing: 4,
-// // //                         children: reactTally.entries
-// // //                             .map(
-// // //                               (e) => Container(
-// // //                                 padding: const EdgeInsets.symmetric(
-// // //                                   horizontal: 8,
-// // //                                   vertical: 3,
-// // //                                 ),
-// // //                                 decoration: BoxDecoration(
-// // //                                   color:
-// // //                                       theme.colorScheme.surfaceContainerHighest,
-// // //                                   borderRadius: BorderRadius.circular(16),
-// // //                                 ),
-// // //                                 child: Text(
-// // //                                   '${e.key} ${e.value}',
-// // //                                   style: const TextStyle(fontSize: 13),
-// // //                                 ),
-// // //                               ),
-// // //                             )
-// // //                             .toList(),
-// // //                       ),
-// // //                     ],
-// // //                   ],
-// // //                 ),
-// // //               ),
-// // //             ],
-// // //           ),
-// // //         );
-// // //       },
-// // //     );
-// // //   }
-// // // }
-
-// // // class _ProofWatchedBadge extends StatelessWidget {
-// // //   const _ProofWatchedBadge({required this.watchedBy});
-// // //   final List<String> watchedBy;
-
-// // //   @override
-// // //   Widget build(BuildContext context) {
-// // //     final watched = watchedBy.isNotEmpty;
-// // //     return Container(
-// // //       height: 36,
-// // //       padding: const EdgeInsets.symmetric(horizontal: 10),
-// // //       decoration: BoxDecoration(
-// // //         color: Colors.grey.shade200,
-// // //         borderRadius: BorderRadius.circular(8),
-// // //       ),
-// // //       alignment: Alignment.centerLeft,
-// // //       child: Row(
-// // //         mainAxisSize: MainAxisSize.min,
-// // //         children: [
-// // //           Icon(
-// // //             watched ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-// // //             size: 16,
-// // //             color: Colors.grey.shade600,
-// // //           ),
-// // //           const SizedBox(width: 6),
-// // //           Text(
-// // //             watched
-// // //                 ? 'Proof watched by ${watchedBy.length}'
-// // //                 : 'Proof sent — not watched',
-// // //             style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-// // //           ),
-// // //         ],
-// // //       ),
-// // //     );
-// // //   }
-// // // }
-
-// // // class _InGameChatSheet extends StatefulWidget {
-// // //   const _InGameChatSheet({required this.game, required this.myId});
-// // //   final TodGameProvider game;
-// // //   final String myId;
-// // //   @override
-// // //   State<_InGameChatSheet> createState() => _InGameChatSheetState();
-// // // }
-
-// // // class _InGameChatSheetState extends State<_InGameChatSheet> {
-// // //   final _ctrl = TextEditingController();
-// // //   final _scroll = ScrollController();
-// // //   @override
-// // //   void dispose() {
-// // //     _ctrl.dispose();
-// // //     _scroll.dispose();
-// // //     super.dispose();
-// // //   }
-
-// // //   void _send() {
-// // //     final t = _ctrl.text.trim();
-// // //     if (t.isEmpty) return;
-// // //     widget.game.sendChat(t);
-// // //     _ctrl.clear();
-// // //     WidgetsBinding.instance.addPostFrameCallback((_) {
-// // //       if (_scroll.hasClients)
-// // //         _scroll.animateTo(
-// // //           _scroll.position.maxScrollExtent,
-// // //           duration: 200.ms,
-// // //           curve: Curves.easeOut,
-// // //         );
-// // //     });
-// // //   }
-
-// // //   @override
-// // //   Widget build(BuildContext context) {
-// // //     return Container(
-// // //       height: MediaQuery.sizeOf(context).height * 0.65,
-// // //       decoration: const BoxDecoration(
-// // //         color: Color(0xFF1A2E45),
-// // //         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-// // //       ),
-// // //       child: Column(
-// // //         children: [
-// // //           Container(
-// // //             width: 36,
-// // //             height: 4,
-// // //             margin: const EdgeInsets.symmetric(vertical: 10),
-// // //             decoration: BoxDecoration(
-// // //               color: Colors.white24,
-// // //               borderRadius: BorderRadius.circular(2),
-// // //             ),
-// // //           ),
-// // //           const Text(
-// // //             '💬 Chat',
-// // //             style: TextStyle(
-// // //               color: Colors.white,
-// // //               fontWeight: FontWeight.w800,
-// // //               fontSize: 16,
-// // //             ),
-// // //           ),
-// // //           const Divider(color: Colors.white12),
-// // //           Expanded(
-// // //             child: ListenableBuilder(
-// // //               listenable: widget.game,
-// // //               builder: (_, __) {
-// // //                 final msgs = widget.game.chatMessages;
-// // //                 return msgs.isEmpty
-// // //                     ? const Center(
-// // //                         child: Text(
-// // //                           'No messages yet',
-// // //                           style: TextStyle(color: Colors.white38),
-// // //                         ),
-// // //                       )
-// // //                     : ListView.builder(
-// // //                         controller: _scroll,
-// // //                         padding: const EdgeInsets.all(12),
-// // //                         itemCount: msgs.length,
-// // //                         itemBuilder: (_, i) {
-// // //                           final m = msgs[i];
-// // //                           final isMe = m.senderId == widget.myId;
-// // //                           final color =
-// // //                               _kChatColors[m.senderId.hashCode.abs() %
-// // //                                   _kChatColors.length];
-// // //                           return Padding(
-// // //                             padding: EdgeInsets.only(
-// // //                               bottom: 8,
-// // //                               left: isMe ? 48 : 0,
-// // //                               right: isMe ? 0 : 48,
-// // //                             ),
-// // //                             child: Column(
-// // //                               crossAxisAlignment: isMe
-// // //                                   ? CrossAxisAlignment.end
-// // //                                   : CrossAxisAlignment.start,
-// // //                               children: [
-// // //                                 if (!isMe)
-// // //                                   Padding(
-// // //                                     padding: const EdgeInsets.only(
-// // //                                       left: 4,
-// // //                                       bottom: 2,
-// // //                                     ),
-// // //                                     child: Text(
-// // //                                       m.senderName,
-// // //                                       style: TextStyle(
-// // //                                         color: color,
-// // //                                         fontSize: 11,
-// // //                                         fontWeight: FontWeight.w700,
-// // //                                       ),
-// // //                                     ),
-// // //                                   ),
-// // //                                 Container(
-// // //                                   padding: const EdgeInsets.symmetric(
-// // //                                     horizontal: 12,
-// // //                                     vertical: 8,
-// // //                                   ),
-// // //                                   decoration: BoxDecoration(
-// // //                                     color: isMe
-// // //                                         ? const Color(0xFFFFD60A)
-// // //                                         : color.withOpacity(0.18),
-// // //                                     borderRadius: BorderRadius.circular(16)
-// // //                                         .copyWith(
-// // //                                           bottomRight: isMe
-// // //                                               ? const Radius.circular(4)
-// // //                                               : null,
-// // //                                           bottomLeft: isMe
-// // //                                               ? null
-// // //                                               : const Radius.circular(4),
-// // //                                         ),
-// // //                                   ),
-// // //                                   child: Text(
-// // //                                     m.text,
-// // //                                     style: TextStyle(
-// // //                                       color: isMe
-// // //                                           ? const Color(0xFF0D1B2A)
-// // //                                           : Colors.white,
-// // //                                       fontWeight: isMe
-// // //                                           ? FontWeight.w700
-// // //                                           : FontWeight.w400,
-// // //                                     ),
-// // //                                   ),
-// // //                                 ),
-// // //                               ],
-// // //                             ),
-// // //                           );
-// // //                         },
-// // //                       );
-// // //               },
-// // //             ),
-// // //           ),
-// // //           Container(
-// // //             padding: EdgeInsets.fromLTRB(
-// // //               12,
-// // //               8,
-// // //               12,
-// // //               MediaQuery.viewInsetsOf(context).bottom + 12,
-// // //             ),
-// // //             color: const Color(0xFF1A2E45),
-// // //             child: Row(
-// // //               children: [
-// // //                 Expanded(
-// // //                   child: TextField(
-// // //                     controller: _ctrl,
-// // //                     style: const TextStyle(color: Colors.white),
-// // //                     textInputAction: TextInputAction.send,
-// // //                     onSubmitted: (_) => _send(),
-// // //                     decoration: InputDecoration(
-// // //                       hintText: 'Say something…',
-// // //                       hintStyle: const TextStyle(color: Colors.white38),
-// // //                       filled: true,
-// // //                       fillColor: Colors.white.withOpacity(0.07),
-// // //                       border: OutlineInputBorder(
-// // //                         borderRadius: BorderRadius.circular(24),
-// // //                         borderSide: BorderSide.none,
-// // //                       ),
-// // //                       contentPadding: const EdgeInsets.symmetric(
-// // //                         horizontal: 16,
-// // //                         vertical: 10,
-// // //                       ),
-// // //                       isDense: true,
-// // //                     ),
-// // //                   ),
-// // //                 ),
-// // //                 const SizedBox(width: 8),
-// // //                 GestureDetector(
-// // //                   onTap: _send,
-// // //                   child: Container(
-// // //                     width: 44,
-// // //                     height: 44,
-// // //                     decoration: const BoxDecoration(
-// // //                       color: Color(0xFFFFD60A),
-// // //                       shape: BoxShape.circle,
-// // //                     ),
-// // //                     child: const Icon(
-// // //                       Icons.send_rounded,
-// // //                       color: Color(0xFF0D1B2A),
-// // //                       size: 20,
-// // //                     ),
-// // //                   ),
-// // //                 ),
-// // //               ],
-// // //             ),
-// // //           ),
-// // //         ],
-// // //       ),
-// // //     );
-// // //   }
-// // // }
-
-// // // const _kChatColors = [
-// // //   Color(0xFF4ECDC4),
-// // //   Color(0xFFA855F7),
-// // //   Color(0xFFFF6B6B),
-// // //   Color(0xFF4ADE80),
-// // //   Color(0xFFFB923C),
-// // //   Color(0xFF60A5FA),
-// // //   Color(0xFFF472B6),
-// // //   Color(0xFFFFD60A),
-// // //   Color(0xFF34D399),
-// // //   Color(0xFFC084FC),
-// // // ];
-
-// // // class _PausedOverlay extends StatefulWidget {
-// // //   const _PausedOverlay({required this.onLeave});
-// // //   final VoidCallback onLeave;
-
-// // //   @override
-// // //   State<_PausedOverlay> createState() => _PausedOverlayState();
-// // // }
-
-// // // class _PausedOverlayState extends State<_PausedOverlay>
-// // //     with SingleTickerProviderStateMixin {
-// // //   late final AnimationController _pulse;
-
-// // //   @override
-// // //   void initState() {
-// // //     super.initState();
-// // //     _pulse = AnimationController(
-// // //       vsync: this,
-// // //       duration: const Duration(milliseconds: 1400),
-// // //     )..repeat(reverse: true);
-// // //   }
-
-// // //   @override
-// // //   void dispose() {
-// // //     _pulse.dispose();
-// // //     super.dispose();
-// // //   }
-
-// // //   @override
-// // //   Widget build(BuildContext context) {
-// // //     return Dialog.fullscreen(
-// // //       backgroundColor: Colors.transparent,
-// // //       child: Scaffold(
-// // //         backgroundColor: Colors.transparent,
-// // //         body: Center(
-// // //           child: Padding(
-// // //             padding: const EdgeInsets.all(32),
-// // //             child: Column(
-// // //               mainAxisSize: MainAxisSize.min,
-// // //               children: [
-// // //                 AnimatedBuilder(
-// // //                   animation: _pulse,
-// // //                   builder: (_, child) =>
-// // //                       Opacity(opacity: 0.6 + _pulse.value * 0.4, child: child),
-// // //                   child: const Text('⏸', style: TextStyle(fontSize: 72)),
-// // //                 ),
-// // //                 const SizedBox(height: 24),
-// // //                 const Text(
-// // //                   'Game Paused',
-// // //                   style: TextStyle(
-// // //                     color: Colors.white,
-// // //                     fontSize: 28,
-// // //                     fontWeight: FontWeight.w800,
-// // //                     letterSpacing: -0.5,
-// // //                   ),
-// // //                 ),
-// // //                 const SizedBox(height: 12),
-// // //                 const Text(
-// // //                   'The host stepped away and will\nreturn shortly.',
-// // //                   textAlign: TextAlign.center,
-// // //                   style: TextStyle(
-// // //                     color: Colors.white70,
-// // //                     fontSize: 16,
-// // //                     height: 1.5,
-// // //                   ),
-// // //                 ),
-// // //                 const SizedBox(height: 40),
-// // //                 OutlinedButton(
-// // //                   style: OutlinedButton.styleFrom(
-// // //                     foregroundColor: Colors.white,
-// // //                     side: const BorderSide(color: Colors.white38),
-// // //                     padding: const EdgeInsets.symmetric(
-// // //                       horizontal: 32,
-// // //                       vertical: 14,
-// // //                     ),
-// // //                   ),
-// // //                   onPressed: widget.onLeave,
-// // //                   child: const Text('Leave for Now'),
-// // //                 ),
-// // //               ],
-// // //             ),
-// // //           ),
-// // //         ),
-// // //       ),
-// // //     );
-// // //   }
-// // // }
-
-// // import 'dart:async';
-
-// // import 'package:flutter/material.dart';
-// // import 'package:flutter_animate/flutter_animate.dart';
-// // import 'package:go_router/go_router.dart';
-// // import 'package:jma3a/core/router/app_router.dart';
-// // import 'package:jma3a/features/games/engine/base_game_engine.dart';
-// // import 'package:jma3a/features/rooms/domain/room_entity.dart';
-// // import 'package:jma3a/features/settings/presentation/screen_security_service.dart';
-// // import 'package:provider/provider.dart';
-// // import 'package:supabase_flutter/supabase_flutter.dart';
-
-// // import '../../../../../core/di/service_locator.dart';
-// // import '../../../../../core/extensions/context_ext.dart';
-// // import '../../../../../core/providers/auth_provider.dart';
-// // import '../../../../../core/router/route_names.dart';
-// // import '../../../../../core/services/realtime_service.dart';
-// // import '../../../../../core/services/screen_security_service.dart';
-// // import '../../../../../core/theme/app_colors.dart';
-// // import '../../../../../shared/widgets/feedback/error_view.dart';
-// // import '../../../../../shared/widgets/overlays/confirm_dialog.dart';
-// // import '../../domain/tod_models.dart';
-// // import '../../tod_game_provider.dart';
-
-// // import '../../data/tod_repository.dart';
-// // import 'tod_card_screen.dart';
-// // import 'tod_end_screen.dart';
-// // import 'tod_loading_screen.dart';
-// // import 'tod_punishment_screen.dart';
-// // import '../widgets/tod_hud.dart';
-
-// // class TodGameScreen extends StatefulWidget {
-// //   const TodGameScreen({
-// //     super.key,
-// //     required this.roomId,
-// //     required this.config,
-// //     required this.playerIds,
-// //     required this.playerDisplayNames,
-// //     required this.packId,
-// //     required this.isOwner,
-// //     this.sessionId,
-// //     this.isModerator = false,
-// //     this.packCoverUrl,
-// //   });
-
-// //   final String roomId;
-// //   final GameConfig config;
-// //   final List<String> playerIds;
-// //   final Map<String, String> playerDisplayNames;
-// //   final String packId;
-// //   final bool isOwner;
-// //   final String? sessionId;
-// //   final bool isModerator;
-// //   final String? packCoverUrl;
-
-// //   @override
-// //   State<TodGameScreen> createState() => _TodGameScreenState();
-// // }
-
-// // class _TodGameScreenState extends State<TodGameScreen> {
-// //   late final TodGameProvider _provider;
-
-// //   StreamSubscription<RealtimeSubscribeStatus>? _statusSub;
-
-// //   @override
-// //   void initState() {
-// //     super.initState();
-
-// //     ScreenSecurityService.instance.enable();
-// //     ScreenSecurityService.instance.enableScreenshotDetection(() {
-// //       sl.realtimeService.broadcastRoomEvent(widget.roomId, {
-// //         'type': 'screenshot_taken',
-// //         'user_id': context.read<AuthProvider>().currentUser?.id,
-// //       }).ignore();
-// //     });
-
-// //     final auth = context.read<AuthProvider>();
-// //     final user = auth.currentUser!;
-
-// //     _provider = TodGameProvider(
-// //       realtimeService: sl.realtimeService,
-// //       repository: TodRepository.instance,
-// //       currentUserId: user.id,
-// //       currentDisplayName: user.displayName ?? user.username ?? 'Player',
-// //       isModerator: widget.isModerator,
-// //     );
-
-// //     _wireRealtimeCallbacks();
-
-// //     if (widget.isOwner) {
-// //       final isPremium =
-// //           context.read<AuthProvider>().currentUser?.isPremium ?? false;
-// //       _provider.initAsOwner(
-// //         roomId: widget.roomId,
-// //         config: widget.config,
-// //         playerIds: widget.playerIds,
-// //         playerDisplayNames: widget.playerDisplayNames,
-// //         packId: widget.packId,
-// //         isPremium: isPremium,
-// //         packCoverUrl: widget.packCoverUrl,
-// //       );
-// //     } else {
-// //       _provider.initAsFollower(
-// //         roomId: widget.roomId,
-// //         config: widget.config,
-// //         sessionId: widget.sessionId,
-// //         packCoverUrl: widget.packCoverUrl,
-// //       );
-// //     }
-// //   }
-
-// //   @override
-// //   void dispose() {
-// //     ScreenSecurityService.instance.disable();
-// //     _statusSub?.cancel();
-// //     sl.realtimeService.subscribe(
-// //       roomId: widget.roomId,
-// //       onGameState: (_) {},
-// //       onPlayerAction: (_) {},
-// //       onSyncRequest: (_) {},
-// //       onGameStarted: (_) {},
-// //       onGameEnded: (_) {},
-// //       onRoomEvent: (_) {},
-// //       onChatMessage: (_) {},
-// //       onModeration: (_) {},
-// //       onSettingsChange: (_) {},
-// //       onPresenceSync: (_) {},
-// //       onPresenceJoin: (_) {},
-// //       onPresenceLeave: (_) {},
-// //       onStatusChange: (_) {},
-// //     ).ignore();
-// //     _provider.dispose();
-// //     super.dispose();
-// //   }
-
-// //   void _wireRealtimeCallbacks() {
-// //     _statusSub = sl.realtimeService.statusStream(widget.roomId)?.listen((
-// //       status,
-// //     ) {
-// //       if (status == RealtimeSubscribeStatus.subscribed &&
-// //           !_provider.hasSyncedState) {
-// //         sl.realtimeService.broadcastSyncRequest(
-// //           widget.roomId,
-// //           context.read<AuthProvider>().currentUser!.id,
-// //           0,
-// //         );
-// //       }
-// //     });
-
-// //     _resubscribeWithGameHandlers();
-// //   }
-
-// //   void _resubscribeWithGameHandlers() {
-// //     final userId = context.read<AuthProvider>().currentUser!.id;
-
-// //     sl.realtimeService.unsubscribe(widget.roomId).then((_) {
-// //       sl.realtimeService.subscribe(
-// //         roomId: widget.roomId,
-// //         onGameState: (p) => _provider.onStateBroadcast(p),
-// //         onPlayerAction: (p) => _provider.onPlayerAction(p),
-// //         onSyncRequest: (p) => _provider.onSyncRequest(p),
-// //         onGameStarted: (_) {},
-// //         onGameEnded: (p) {
-// //           if (mounted) {
-// //             ScaffoldMessenger.of(context).showSnackBar(
-// //               const SnackBar(content: Text('The host ended the game')),
-// //             );
-// //             if (context.canPop())
-// //               context.pop();
-// //             else
-// //               context.go(RouteNames.home);
-// //           }
-// //         },
-// //         onRoomEvent: (p) {
-// //           final type = p['type'] as String?;
-// //           if (type == 'screenshot_taken') {
-// //             final shooterId = p['user_id'] as String?;
-// //             final myId = context.read<AuthProvider>().currentUser?.id;
-// //             if (shooterId != null && shooterId != myId && mounted) {
-// //               ScaffoldMessenger.of(context).showSnackBar(
-// //                 SnackBar(
-// //                   content: Text(
-// //                     '📸 ${widget.playerDisplayNames[shooterId] ?? 'Someone'} took a screenshot',
-// //                   ),
-// //                   backgroundColor: Colors.black87,
-// //                 ),
-// //               );
-// //             }
-// //             return;
-// //           }
-// //           if (type == 'player_left' && mounted) {
-// //             final name = p['display_name'] as String? ?? 'A player';
-// //             final leavingId = p['user_id'] as String?;
-// //             if (leavingId != null) {
-// //               _provider.markPlayerAway(leavingId, forGood: true);
-// //               if (widget.isOwner) {
-// //                 final active = _provider.state?.playerOrder
-// //                     .where((id) => !_provider.awayPlayerIds.contains(id))
-// //                     .toList() ?? [];
-// //                 if (active.length <= 1) {
-// //                   WidgetsBinding.instance.addPostFrameCallback((_) async {
-// //                     if (!mounted) return;
-// //                     try {
-// //                       await sl.realtimeService.broadcastRoomEvent(widget.roomId, {
-// //                         'type': 'game_ended',
-// //                         'reason': 'all_players_left',
-// //                       });
-// //                       await sl.roomRepository.updateStatus(widget.roomId, RoomStatus.waiting);
-// //                     } catch (_) {}
-// //                     if (mounted) {
-// //                       ScaffoldMessenger.of(context).showSnackBar(
-// //                         const SnackBar(
-// //                           content: Text('All players left — game ended'),
-// //                           behavior: SnackBarBehavior.fixed,
-// //                         ),
-// //                       );
-// //                       await Future.delayed(const Duration(milliseconds: 600));
-// //                       if (mounted) {
-// //                         _isNavigatingAway = true;
-// //                         if (context.canPop()) context.pop();
-// //                         else context.go('/home/room/${widget.roomId}');
-// //                       }
-// //                     }
-// //                   });
-// //                   return;
-// //                 }
-// //               }
-// //             }
-// //             ScaffoldMessenger.of(context).showSnackBar(
-// //               SnackBar(
-// //                 content: Text('👋 $name left the game'),
-// //                 backgroundColor: Colors.red.shade700,
-// //                 duration: const Duration(seconds: 3),
-// //                 behavior: SnackBarBehavior.fixed,
-// //               ),
-// //             );
-// //             return;
-// //           }
-// //           if (type == 'ownership_transferred' && mounted) {
-// //             final myId = context.read<AuthProvider>().currentUser?.id;
-// //             final newOwnerId = p['new_owner_id'] as String?;
-// //             if (newOwnerId == myId) {
-// //               ScaffoldMessenger.of(context).showSnackBar(
-// //                 const SnackBar(
-// //                   content: Text('👑 You are now the game host!'),
-// //                   backgroundColor: Colors.purple,
-// //                 ),
-// //               );
-// //             }
-// //             return;
-// //           }
-// //           if (type == 'game_ended' && mounted) {
-// //             final reason = p['reason'] as String? ?? '';
-// //             WidgetsBinding.instance.addPostFrameCallback((_) {
-// //               if (!mounted) return;
-// //               final isAllLeft = reason == 'all_players_left';
-// //               showDialog(
-// //                 context: context,
-// //                 barrierDismissible: false,
-// //                 builder: (ctx2) => AlertDialog(
-// //                   title: Text(isAllLeft ? 'Game Over' : 'Game Ended'),
-// //                   content: Text(
-// //                     isAllLeft
-// //                         ? 'All players left the game.'
-// //                         : 'The host ended the game.',
-// //                   ),
-// //                   actions: [
-// //                     FilledButton(
-// //                       onPressed: () {
-// //                         Navigator.of(ctx2).pop();
-// //                         _isNavigatingAway = true;
-// //                         if (context.canPop()) {
-// //                           context.pop();
-// //                         } else {
-// //                           context.go('/home/room/${widget.roomId}');
-// //                         }
-// //                       },
-// //                       child: const Text('Go to Lobby'),
-// //                     ),
-// //                   ],
-// //                 ),
-// //               );
-// //             });
-// //             return;
-// //           }
-// //           if (type == 'tod_ready_count') {
-// //             final ids = (p['ready_user_ids'] as List?)?.cast<String>() ?? [];
-// //             _provider.onReadyCountUpdate(ids);
-// //             return;
-// //           }
-// //           if ((type == 'room_closed' || type == 'owner_left') && mounted) {
-// //             WidgetsBinding.instance.addPostFrameCallback((_) {
-// //               if (!mounted) { AppRouter.router.go(RouteNames.home); return; }
-// //               showDialog(
-// //                 context: context,
-// //                 barrierDismissible: false,
-// //                 builder: (ctx2) => AlertDialog(
-// //                   title: const Text('Room Closed'),
-// //                   content: const Text('The host closed the room.'),
-// //                   actions: [
-// //                     FilledButton(
-// //                       onPressed: () {
-// //                         Navigator.of(ctx2).pop();
-// //                         AppRouter.router.go(RouteNames.home);
-// //                       },
-// //                       child: const Text('OK'),
-// //                     ),
-// //                   ],
-// //                 ),
-// //               );
-// //             });
-// //             return;
-// //           }
-// //         },
-// //         onChatMessage: (p) {
-// //           final msg = TodChatMsg(
-// //             senderId: p['user_id'] as String? ?? '',
-// //             senderName: p['display_name'] as String? ?? 'Player',
-// //             text: p['content'] as String? ?? '',
-// //             ts: DateTime.fromMillisecondsSinceEpoch(
-// //               (p['ts'] as num?)?.toInt() ??
-// //                   DateTime.now().millisecondsSinceEpoch,
-// //             ),
-// //           );
-// //           _provider.addChatMessage(msg);
-// //         },
-// //         onModeration: (p) => _handleModerationEvent(p),
-// //         onSettingsChange: (_) {},
-// //         onPresenceSync: (_) {},
-// //         onPresenceJoin: (_) {},
-// //         onPresenceLeave: (_) {},
-// //         onStatusChange: (status) {
-// //           if (!mounted) return;
-// //           if (status == RealtimeSubscribeStatus.subscribed &&
-// //               !_provider.hasSyncedState) {
-// //             sl.realtimeService.broadcastSyncRequest(widget.roomId, userId, 0);
-// //           }
-// //         },
-// //       );
-// //     });
-// //   }
-
-// //   void _handleModerationEvent(Map<String, dynamic> p) {
-// //     final type = p['type'] as String?;
-// //     final targetId = p['target_user_id'] as String?;
-// //     final currentId = context.read<AuthProvider>().currentUser?.id;
-
-// //     if ((type == 'kick' || type == 'ban') && targetId == currentId) {
-// //       if (mounted) {
-// //         ScaffoldMessenger.of(context).showSnackBar(
-// //           const SnackBar(content: Text('You were removed from the room')),
-// //         );
-// //         context.go(RouteNames.home);
-// //       }
-// //     }
-// //   }
-
-// //   @override
-// //   Widget build(BuildContext context) {
-// //     return ChangeNotifierProvider.value(
-// //       value: _provider,
-// //       child: Consumer<TodGameProvider>(
-// //         builder: (ctx, game, _) => _build(ctx, game),
-// //       ),
-// //     );
-// //   }
-
-// //   Widget _build(BuildContext ctx, TodGameProvider game) {
-// //     if (game.loadState == TodLoadState.loading) {
-// //       return const TodLoadingScreen();
-// //     }
-
-// //     if (game.loadState == TodLoadState.error) {
-// //       return Scaffold(
-// //         appBar: AppBar(
-// //           leading: BackButton(
-// //             onPressed: () async {
-// //               if (widget.isOwner) {
-// //                 try {
-// //                   await sl.realtimeService.broadcastGameEnded(widget.roomId, {
-// //                     'reason': 'host_left',
-// //                   });
-// //                   await sl.roomRepository.updateStatus(
-// //                     widget.roomId,
-// //                     RoomStatus.waiting,
-// //                   );
-// //                 } catch (_) {}
-// //               }
-// //               if (ctx.mounted) ctx.go(RouteNames.home);
-// //             },
-// //           ),
-// //         ),
-// //         body: ErrorView(
-// //           message: game.error ?? 'Failed to load game',
-// //           onRetry: () => ctx.go(RouteNames.home),
-// //         ),
-// //       );
-// //     }
-
-// //     if (game.loadState == TodLoadState.gameOver ||
-// //         (game.state?.isOver ?? false)) {
-// //       return TodEndScreen(
-// //         state: game.state!,
-// //         displayNames: widget.playerDisplayNames,
-// //         onLeave: () => ctx.go(RouteNames.home),
-// //       );
-// //     }
-
-// //     final state = game.state;
-// //     if (state == null) return const TodLoadingScreen();
-
-// //     return _TodGameScaffold(
-// //       state: state,
-// //       game: game,
-// //       displayNames: widget.playerDisplayNames,
-// //       roomId: widget.roomId,
-// //       isOwner: widget.isOwner,
-// //     );
-// //   }
-// // }
-
-// // class _TodGameScaffold extends StatefulWidget {
-// //   const _TodGameScaffold({
-// //     required this.state,
-// //     required this.game,
-// //     required this.displayNames,
-// //     required this.roomId,
-// //     required this.isOwner,
-// //   });
-// //   final TodState state;
-// //   final TodGameProvider game;
-// //   final Map<String, String> displayNames;
-// //   final String roomId;
-// //   final bool isOwner;
-// //   @override
-// //   State<_TodGameScaffold> createState() => _TodGameScaffoldState();
-// // }
-
-// // class _TodGameScaffoldState extends State<_TodGameScaffold> {
-// //   bool _showHistory = false;
-// //   bool _showChat = false;
-// //   int _unreadChat = 0;
-// //   bool _isNavigatingAway = false;
-
-// //   void _navigateAway(BuildContext ctx, String location) {
-// //     _isNavigatingAway = true;
-// //     if (ctx.canPop()) {
-// //       ctx.pop();
-// //     } else {
-// //       ctx.go(location);
-// //     }
-// //   }
-
-// //   @override
-// //   Widget build(BuildContext context) {
-// //     final state = widget.state;
-// //     final game = widget.game;
-
-// //     if (_showHistory) {
-// //       return Scaffold(
-// //         appBar: AppBar(
-// //           leading: BackButton(
-// //             onPressed: () => setState(() => _showHistory = false),
-// //           ),
-// //           title: Text('History (${state.history.length} rounds)'),
-// //         ),
-// //         body: _HistoryPanel(
-// //           history: state.history,
-// //           displayNames: widget.displayNames,
-// //         ),
-// //       );
-// //     }
-
-// //     return PopScope(
-// //       canPop: false,
-// //       onPopInvoked: (_) {
-// //         if (_isNavigatingAway) return;
-// //         WidgetsBinding.instance.addPostFrameCallback(
-// //           (_) => _showLeaveDialog(context, game, state),
-// //         );
-// //       },
-// //       child: Scaffold(
-// //         appBar: AppBar(
-// //           automaticallyImplyLeading: false,
-// //           title: const Text(''),
-// //           leading: IconButton(
-// //             icon: const Icon(Icons.arrow_back),
-// //             onPressed: () => _showLeaveDialog(context, game, state),
-// //           ),
-// //           actions: [
-// //             Consumer<TodGameProvider>(
-// //               builder: (_, g, __) => Stack(
-// //                 alignment: Alignment.topRight,
-// //                 children: [
-// //                   IconButton(
-// //                     icon: const Icon(Icons.chat_bubble_outline_rounded),
-// //                     onPressed: () {
-// //                       g.clearUnreadChat();
-// //                       showModalBottomSheet(
-// //                         context: context,
-// //                         isScrollControlled: true,
-// //                         backgroundColor: Colors.transparent,
-// //                         builder: (_) =>
-// //                             _InGameChatSheet(game: g, myId: g.currentUserId),
-// //                       );
-// //                     },
-// //                   ),
-// //                   if (g.unreadChat > 0)
-// //                     Positioned(
-// //                       top: 8,
-// //                       right: 8,
-// //                       child: Container(
-// //                         width: 8,
-// //                         height: 8,
-// //                         decoration: const BoxDecoration(
-// //                           color: Colors.red,
-// //                           shape: BoxShape.circle,
-// //                         ),
-// //                       ),
-// //                     ),
-// //                 ],
-// //               ),
-// //             ),
-// //             if (state.history.isNotEmpty)
-// //               IconButton(
-// //                 icon: const Icon(Icons.history_rounded),
-// //                 tooltip: 'History',
-// //                 onPressed: () => setState(() => _showHistory = true),
-// //               ),
-// //           ],
-// //         ),
-// //         body: SafeArea(
-// //           child: Column(
-// //             children: [
-// //               TodHud(
-// //                 state: state,
-// //                 game: game,
-// //                 displayNames: widget.displayNames,
-// //               ),
-// //               Expanded(
-// //                 child: AnimatedSwitcher(
-// //                   duration: const Duration(milliseconds: 300),
-// //                   transitionBuilder: (child, anim) => FadeTransition(
-// //                     opacity: anim,
-// //                     child: SlideTransition(
-// //                       position:
-// //                           Tween<Offset>(
-// //                             begin: const Offset(0, 0.05),
-// //                             end: Offset.zero,
-// //                           ).animate(
-// //                             CurvedAnimation(
-// //                               parent: anim,
-// //                               curve: Curves.easeOutCubic,
-// //                             ),
-// //                           ),
-// //                       child: child,
-// //                     ),
-// //                   ),
-// //                   child: KeyedSubtree(
-// //                     key: ValueKey('${state.phase}-${state.currentPlayerId}'),
-// //                     child: _phaseWidget(
-// //                       context,
-// //                       game,
-// //                       widget.displayNames,
-// //                       state,
-// //                     ),
-// //                   ),
-// //                 ),
-// //               ),
-// //             ],
-// //           ),
-// //         ),
-// //       ),
-// //     );
-// //   }
-
-// //   Future<void> _showLeaveDialog(
-// //     BuildContext ctx,
-// //     TodGameProvider game,
-// //     TodState state,
-// //   ) async {
-// //     if (!ctx.mounted) return;
-// //     final isOwner = widget.isOwner;
-// //     final myUserId = game.currentUserId;
-// //     final isPremium =
-// //         ctx.read<AuthProvider>().currentUser?.isPremium ?? false;
-
-// //     if (isOwner) {
-// //       final confirmed = await showDialog<bool>(
-// //         context: ctx,
-// //         builder: (dCtx) => AlertDialog(
-// //           title: const Text('Quit Game?'),
-// //           content: const Text(
-// //             'The game will end for everyone and all players will return to the lobby.',
-// //           ),
-// //           actions: [
-// //             TextButton(
-// //               onPressed: () => Navigator.of(dCtx).pop(false),
-// //               child: const Text('Cancel'),
-// //             ),
-// //             FilledButton(
-// //               style: FilledButton.styleFrom(backgroundColor: Colors.red),
-// //               onPressed: () => Navigator.of(dCtx).pop(true),
-// //               child: const Text('End Game for Everyone'),
-// //             ),
-// //           ],
-// //         ),
-// //       );
-// //       if (confirmed != true || !ctx.mounted) return;
-
-// //       try {
-// //         await sl.realtimeService.broadcastRoomEvent(widget.roomId, {
-// //           'type': 'game_ended',
-// //           'reason': 'host_quit_to_lobby',
-// //         });
-// //         await Future.delayed(const Duration(milliseconds: 400));
-// //         await sl.roomRepository.updateStatus(widget.roomId, RoomStatus.waiting);
-// //       } catch (_) {}
-// //       if (ctx.mounted) {
-// //         _isNavigatingAway = true;
-// //         if (ctx.canPop()) {
-// //           ctx.pop();
-// //         } else {
-// //           ctx.go('/home/room/${widget.roomId}');
-// //         }
-// //       }
-// //     } else {
-// //       final confirmed = await showDialog<bool>(
-// //         context: ctx,
-// //         builder: (_) => AlertDialog(
-// //           title: const Text('Leave Game?'),
-// //           content: const Text('You will be removed from the game.'),
-// //           actions: [
-// //             TextButton(
-// //               onPressed: () => Navigator.pop(ctx, false),
-// //               child: const Text('Stay'),
-// //             ),
-// //             FilledButton(
-// //               style: FilledButton.styleFrom(backgroundColor: Colors.red),
-// //               onPressed: () => Navigator.pop(ctx, true),
-// //               child: const Text('Quit Game'),
-// //             ),
-// //           ],
-// //         ),
-// //       );
-// //       if (confirmed != true || !ctx.mounted) return;
-
-// //       final displayName = widget.displayNames[myUserId] ?? 'A player';
-// //       try {
-// //         await sl.roomRepository.setMemberDefinitiveLeave(widget.roomId, myUserId);
-// //         await sl.realtimeService.broadcastRoomEvent(widget.roomId, {
-// //           'type': 'player_left',
-// //           'user_id': myUserId,
-// //           'display_name': displayName,
-// //           'for_good': true,
-// //         });
-// //       } catch (_) {}
-// //       if (ctx.mounted) {
-// //         _isNavigatingAway = true;
-// //         ctx.go('/home/room/${widget.roomId}');
-// //       }
-// //     }
-// //   }
-
-// //   Widget _phaseWidget(
-// //     BuildContext ctx,
-// //     TodGameProvider game,
-// //     Map<String, String> displayNames,
-// //     TodState state,
-// //   ) {
-// //     return switch (state.phase) {
-// //       TodTurnPhase.punishmentVoting => TodPunishmentScreen(
-// //         state: state,
-// //         game: game,
-// //         displayNames: widget.displayNames,
-// //       ),
-// //       _ => TodCardScreen(
-// //         state: state,
-// //         game: game,
-// //         displayNames: widget.displayNames,
-// //       ),
-// //     };
-// //   }
-// // }
-
-// // class _HistoryPanel extends StatelessWidget {
-// //   const _HistoryPanel({required this.history, required this.displayNames});
-// //   final List<TodRoundRecord> history;
-// //   final Map<String, String> displayNames;
-
-// //   String _name(String id) =>
-// //       displayNames[id] ?? id.substring(0, id.length.clamp(0, 6));
-
-// //   @override
-// //   Widget build(BuildContext context) {
-// //     final theme = context.theme;
-// //     if (history.isEmpty) {
-// //       return const Center(child: Text('No rounds completed yet.'));
-// //     }
-// //     return ListView.builder(
-// //       padding: const EdgeInsets.all(12),
-// //       itemCount: history.length,
-// //       itemBuilder: (_, i) {
-// //         final round = history[history.length - 1 - i];
-// //         final reactTally = <String, int>{};
-// //         for (final r in round.reactions) {
-// //           reactTally[r.emoji] = (reactTally[r.emoji] ?? 0) + 1;
-// //         }
-// //         return Card(
-// //           margin: const EdgeInsets.only(bottom: 10),
-// //           child: ExpansionTile(
-// //             leading: CircleAvatar(
-// //               backgroundColor: theme.colorScheme.primaryContainer,
-// //               child: Text(
-// //                 '${round.roundNumber}',
-// //                 style: theme.textTheme.labelLarge,
-// //               ),
-// //             ),
-// //             title: Text(
-// //               _name(round.playerId),
-// //               style: theme.textTheme.bodyMedium?.copyWith(
-// //                 fontWeight: FontWeight.w700,
-// //               ),
-// //             ),
-// //             subtitle: Text(
-// //               round.card != null
-// //                   ? '${round.card!.type == TodCardType.truth ? "Truth" : "Dare"}: ${round.card!.content}'
-// //                   : 'Skipped',
-// //               maxLines: 1,
-// //               overflow: TextOverflow.ellipsis,
-// //               style: theme.textTheme.bodySmall,
-// //             ),
-// //             children: [
-// //               Padding(
-// //                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-// //                 child: Column(
-// //                   crossAxisAlignment: CrossAxisAlignment.start,
-// //                   children: [
-// //                     if (round.card != null)
-// //                       Container(
-// //                         width: double.infinity,
-// //                         padding: const EdgeInsets.all(10),
-// //                         decoration: BoxDecoration(
-// //                           color: round.card!.type == TodCardType.truth
-// //                               ? Colors.blue.withOpacity(0.08)
-// //                               : Colors.orange.withOpacity(0.08),
-// //                           borderRadius: BorderRadius.circular(8),
-// //                         ),
-// //                         child: Text(
-// //                           round.card!.content,
-// //                           style: theme.textTheme.bodyMedium,
-// //                         ),
-// //                       ),
-// //                     if (round.response.isNotEmpty) ...[
-// //                       const SizedBox(height: 8),
-// //                       Row(
-// //                         crossAxisAlignment: CrossAxisAlignment.start,
-// //                         children: [
-// //                           const Text('💬 ', style: TextStyle(fontSize: 14)),
-// //                           Expanded(
-// //                             child: Text(
-// //                               '"${round.response}"',
-// //                               style: theme.textTheme.bodySmall?.copyWith(
-// //                                 fontStyle: FontStyle.italic,
-// //                               ),
-// //                             ),
-// //                           ),
-// //                         ],
-// //                       ),
-// //                     ],
-// //                     if (round.voteCount > 0) ...[
-// //                       const SizedBox(height: 6),
-// //                       Text(
-// //                         '👍 ${round.voteCount} vote${round.voteCount != 1 ? "s" : ""}',
-// //                         style: theme.textTheme.bodySmall?.copyWith(
-// //                           color: theme.colorScheme.primary,
-// //                           fontWeight: FontWeight.w600,
-// //                         ),
-// //                       ),
-// //                     ],
-// //                     if (round.hadProof) ...[
-// //                       const SizedBox(height: 8),
-// //                       _ProofWatchedBadge(watchedBy: round.proofWatchedBy),
-// //                     ],
-// //                     if (reactTally.isNotEmpty) ...[
-// //                       const SizedBox(height: 8),
-// //                       Wrap(
-// //                         spacing: 6,
-// //                         runSpacing: 4,
-// //                         children: reactTally.entries
-// //                             .map(
-// //                               (e) => Container(
-// //                                 padding: const EdgeInsets.symmetric(
-// //                                   horizontal: 8,
-// //                                   vertical: 3,
-// //                                 ),
-// //                                 decoration: BoxDecoration(
-// //                                   color:
-// //                                       theme.colorScheme.surfaceContainerHighest,
-// //                                   borderRadius: BorderRadius.circular(16),
-// //                                 ),
-// //                                 child: Text(
-// //                                   '${e.key} ${e.value}',
-// //                                   style: const TextStyle(fontSize: 13),
-// //                                 ),
-// //                               ),
-// //                             )
-// //                             .toList(),
-// //                       ),
-// //                     ],
-// //                   ],
-// //                 ),
-// //               ),
-// //             ],
-// //           ),
-// //         );
-// //       },
-// //     );
-// //   }
-// // }
-
-// // class _ProofWatchedBadge extends StatelessWidget {
-// //   const _ProofWatchedBadge({required this.watchedBy});
-// //   final List<String> watchedBy;
-
-// //   @override
-// //   Widget build(BuildContext context) {
-// //     final watched = watchedBy.isNotEmpty;
-// //     return Container(
-// //       height: 36,
-// //       padding: const EdgeInsets.symmetric(horizontal: 10),
-// //       decoration: BoxDecoration(
-// //         color: Colors.grey.shade200,
-// //         borderRadius: BorderRadius.circular(8),
-// //       ),
-// //       alignment: Alignment.centerLeft,
-// //       child: Row(
-// //         mainAxisSize: MainAxisSize.min,
-// //         children: [
-// //           Icon(
-// //             watched ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-// //             size: 16,
-// //             color: Colors.grey.shade600,
-// //           ),
-// //           const SizedBox(width: 6),
-// //           Text(
-// //             watched
-// //                 ? 'Proof watched by ${watchedBy.length}'
-// //                 : 'Proof sent — not watched',
-// //             style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-// //           ),
-// //         ],
-// //       ),
-// //     );
-// //   }
-// // }
-
-// // class _InGameChatSheet extends StatefulWidget {
-// //   const _InGameChatSheet({required this.game, required this.myId});
-// //   final TodGameProvider game;
-// //   final String myId;
-// //   @override
-// //   State<_InGameChatSheet> createState() => _InGameChatSheetState();
-// // }
-
-// // class _InGameChatSheetState extends State<_InGameChatSheet> {
-// //   final _ctrl = TextEditingController();
-// //   final _scroll = ScrollController();
-// //   @override
-// //   void dispose() {
-// //     _ctrl.dispose();
-// //     _scroll.dispose();
-// //     super.dispose();
-// //   }
-
-// //   void _send() {
-// //     final t = _ctrl.text.trim();
-// //     if (t.isEmpty) return;
-// //     widget.game.sendChat(t);
-// //     _ctrl.clear();
-// //     WidgetsBinding.instance.addPostFrameCallback((_) {
-// //       if (_scroll.hasClients)
-// //         _scroll.animateTo(
-// //           _scroll.position.maxScrollExtent,
-// //           duration: 200.ms,
-// //           curve: Curves.easeOut,
-// //         );
-// //     });
-// //   }
-
-// //   @override
-// //   Widget build(BuildContext context) {
-// //     return Container(
-// //       height: MediaQuery.sizeOf(context).height * 0.65,
-// //       decoration: const BoxDecoration(
-// //         color: Color(0xFF1A2E45),
-// //         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-// //       ),
-// //       child: Column(
-// //         children: [
-// //           Container(
-// //             width: 36,
-// //             height: 4,
-// //             margin: const EdgeInsets.symmetric(vertical: 10),
-// //             decoration: BoxDecoration(
-// //               color: Colors.white24,
-// //               borderRadius: BorderRadius.circular(2),
-// //             ),
-// //           ),
-// //           const Text(
-// //             '💬 Chat',
-// //             style: TextStyle(
-// //               color: Colors.white,
-// //               fontWeight: FontWeight.w800,
-// //               fontSize: 16,
-// //             ),
-// //           ),
-// //           const Divider(color: Colors.white12),
-// //           Expanded(
-// //             child: ListenableBuilder(
-// //               listenable: widget.game,
-// //               builder: (_, __) {
-// //                 final msgs = widget.game.chatMessages;
-// //                 return msgs.isEmpty
-// //                     ? const Center(
-// //                         child: Text(
-// //                           'No messages yet',
-// //                           style: TextStyle(color: Colors.white38),
-// //                         ),
-// //                       )
-// //                     : ListView.builder(
-// //                         controller: _scroll,
-// //                         padding: const EdgeInsets.all(12),
-// //                         itemCount: msgs.length,
-// //                         itemBuilder: (_, i) {
-// //                           final m = msgs[i];
-// //                           final isMe = m.senderId == widget.myId;
-// //                           final color =
-// //                               _kChatColors[m.senderId.hashCode.abs() %
-// //                                   _kChatColors.length];
-// //                           return Padding(
-// //                             padding: EdgeInsets.only(
-// //                               bottom: 8,
-// //                               left: isMe ? 48 : 0,
-// //                               right: isMe ? 0 : 48,
-// //                             ),
-// //                             child: Column(
-// //                               crossAxisAlignment: isMe
-// //                                   ? CrossAxisAlignment.end
-// //                                   : CrossAxisAlignment.start,
-// //                               children: [
-// //                                 if (!isMe)
-// //                                   Padding(
-// //                                     padding: const EdgeInsets.only(
-// //                                       left: 4,
-// //                                       bottom: 2,
-// //                                     ),
-// //                                     child: Text(
-// //                                       m.senderName,
-// //                                       style: TextStyle(
-// //                                         color: color,
-// //                                         fontSize: 11,
-// //                                         fontWeight: FontWeight.w700,
-// //                                       ),
-// //                                     ),
-// //                                   ),
-// //                                 Container(
-// //                                   padding: const EdgeInsets.symmetric(
-// //                                     horizontal: 12,
-// //                                     vertical: 8,
-// //                                   ),
-// //                                   decoration: BoxDecoration(
-// //                                     color: isMe
-// //                                         ? const Color(0xFFFFD60A)
-// //                                         : color.withOpacity(0.18),
-// //                                     borderRadius: BorderRadius.circular(16)
-// //                                         .copyWith(
-// //                                           bottomRight: isMe
-// //                                               ? const Radius.circular(4)
-// //                                               : null,
-// //                                           bottomLeft: isMe
-// //                                               ? null
-// //                                               : const Radius.circular(4),
-// //                                         ),
-// //                                   ),
-// //                                   child: Text(
-// //                                     m.text,
-// //                                     style: TextStyle(
-// //                                       color: isMe
-// //                                           ? const Color(0xFF0D1B2A)
-// //                                           : Colors.white,
-// //                                       fontWeight: isMe
-// //                                           ? FontWeight.w700
-// //                                           : FontWeight.w400,
-// //                                     ),
-// //                                   ),
-// //                                 ),
-// //                               ],
-// //                             ),
-// //                           );
-// //                         },
-// //                       );
-// //               },
-// //             ),
-// //           ),
-// //           Container(
-// //             padding: EdgeInsets.fromLTRB(
-// //               12,
-// //               8,
-// //               12,
-// //               MediaQuery.viewInsetsOf(context).bottom + 12,
-// //             ),
-// //             color: const Color(0xFF1A2E45),
-// //             child: Row(
-// //               children: [
-// //                 Expanded(
-// //                   child: TextField(
-// //                     controller: _ctrl,
-// //                     style: const TextStyle(color: Colors.white),
-// //                     textInputAction: TextInputAction.send,
-// //                     onSubmitted: (_) => _send(),
-// //                     decoration: InputDecoration(
-// //                       hintText: 'Say something…',
-// //                       hintStyle: const TextStyle(color: Colors.white38),
-// //                       filled: true,
-// //                       fillColor: Colors.white.withOpacity(0.07),
-// //                       border: OutlineInputBorder(
-// //                         borderRadius: BorderRadius.circular(24),
-// //                         borderSide: BorderSide.none,
-// //                       ),
-// //                       contentPadding: const EdgeInsets.symmetric(
-// //                         horizontal: 16,
-// //                         vertical: 10,
-// //                       ),
-// //                       isDense: true,
-// //                     ),
-// //                   ),
-// //                 ),
-// //                 const SizedBox(width: 8),
-// //                 GestureDetector(
-// //                   onTap: _send,
-// //                   child: Container(
-// //                     width: 44,
-// //                     height: 44,
-// //                     decoration: const BoxDecoration(
-// //                       color: Color(0xFFFFD60A),
-// //                       shape: BoxShape.circle,
-// //                     ),
-// //                     child: const Icon(
-// //                       Icons.send_rounded,
-// //                       color: Color(0xFF0D1B2A),
-// //                       size: 20,
-// //                     ),
-// //                   ),
-// //                 ),
-// //               ],
-// //             ),
-// //           ),
-// //         ],
-// //       ),
-// //     );
-// //   }
-// // }
-
-// // const _kChatColors = [
-// //   Color(0xFF4ECDC4),
-// //   Color(0xFFA855F7),
-// //   Color(0xFFFF6B6B),
-// //   Color(0xFF4ADE80),
-// //   Color(0xFFFB923C),
-// //   Color(0xFF60A5FA),
-// //   Color(0xFFF472B6),
-// //   Color(0xFFFFD60A),
-// //   Color(0xFF34D399),
-// //   Color(0xFFC084FC),
-// // ];
-
-// // class _PausedOverlay extends StatefulWidget {
-// //   const _PausedOverlay({required this.onLeave});
-// //   final VoidCallback onLeave;
-
-// //   @override
-// //   State<_PausedOverlay> createState() => _PausedOverlayState();
-// // }
-
-// // class _PausedOverlayState extends State<_PausedOverlay>
-// //     with SingleTickerProviderStateMixin {
-// //   late final AnimationController _pulse;
-
-// //   @override
-// //   void initState() {
-// //     super.initState();
-// //     _pulse = AnimationController(
-// //       vsync: this,
-// //       duration: const Duration(milliseconds: 1400),
-// //     )..repeat(reverse: true);
-// //   }
-
-// //   @override
-// //   void dispose() {
-// //     _pulse.dispose();
-// //     super.dispose();
-// //   }
-
-// //   @override
-// //   Widget build(BuildContext context) {
-// //     return Dialog.fullscreen(
-// //       backgroundColor: Colors.transparent,
-// //       child: Scaffold(
-// //         backgroundColor: Colors.transparent,
-// //         body: Center(
-// //           child: Padding(
-// //             padding: const EdgeInsets.all(32),
-// //             child: Column(
-// //               mainAxisSize: MainAxisSize.min,
-// //               children: [
-// //                 AnimatedBuilder(
-// //                   animation: _pulse,
-// //                   builder: (_, child) => Opacity(
-// //                     opacity: 0.6 + _pulse.value * 0.4,
-// //                     child: child,
-// //                   ),
-// //                   child: const Text(
-// //                     '⏸',
-// //                     style: TextStyle(fontSize: 72),
-// //                   ),
-// //                 ),
-// //                 const SizedBox(height: 24),
-// //                 const Text(
-// //                   'Game Paused',
-// //                   style: TextStyle(
-// //                     color: Colors.white,
-// //                     fontSize: 28,
-// //                     fontWeight: FontWeight.w800,
-// //                     letterSpacing: -0.5,
-// //                   ),
-// //                 ),
-// //                 const SizedBox(height: 12),
-// //                 const Text(
-// //                   'The host stepped away and will\nreturn shortly.',
-// //                   textAlign: TextAlign.center,
-// //                   style: TextStyle(
-// //                     color: Colors.white70,
-// //                     fontSize: 16,
-// //                     height: 1.5,
-// //                   ),
-// //                 ),
-// //                 const SizedBox(height: 40),
-// //                 OutlinedButton(
-// //                   style: OutlinedButton.styleFrom(
-// //                     foregroundColor: Colors.white,
-// //                     side: const BorderSide(color: Colors.white38),
-// //                     padding: const EdgeInsets.symmetric(
-// //                       horizontal: 32,
-// //                       vertical: 14,
-// //                     ),
-// //                   ),
-// //                   onPressed: widget.onLeave,
-// //                   child: const Text('Leave for Now'),
-// //                 ),
-// //               ],
-// //             ),
-// //           ),
-// //         ),
-// //       ),
-// //     );
-// //   }
-// // }
-
-// import 'dart:async';
-
-// import 'package:flutter/material.dart';
-// import 'package:flutter_animate/flutter_animate.dart';
-// import 'package:go_router/go_router.dart';
-// import 'package:jma3a/core/router/app_router.dart';
-// import 'package:jma3a/features/games/engine/base_game_engine.dart';
-// import 'package:jma3a/features/rooms/domain/room_entity.dart';
-// import 'package:jma3a/features/settings/presentation/screen_security_service.dart';
-// import 'package:provider/provider.dart';
-// import 'package:supabase_flutter/supabase_flutter.dart';
-
-// import '../../../../../core/di/service_locator.dart';
-// import '../../../../../core/extensions/context_ext.dart';
-// import '../../../../../core/providers/auth_provider.dart';
-// import '../../../../../core/router/route_names.dart';
-// import '../../../../../core/services/realtime_service.dart';
-// // import '../../../../../core/services/screen_security_service.dart';
-// import '../../../../../core/theme/app_colors.dart';
-// import '../../../../../shared/widgets/feedback/error_view.dart';
-// import '../../../../../shared/widgets/overlays/confirm_dialog.dart';
-// import '../../domain/tod_models.dart';
-// import '../../tod_game_provider.dart';
-
-// import '../../data/tod_repository.dart';
-// import 'tod_card_screen.dart';
-// import 'tod_end_screen.dart';
-// import 'tod_loading_screen.dart';
-// import 'tod_punishment_screen.dart';
-// import '../widgets/tod_hud.dart';
-
-// class TodGameScreen extends StatefulWidget {
-//   const TodGameScreen({
-//     super.key,
-//     required this.roomId,
-//     required this.config,
-//     required this.playerIds,
-//     required this.playerDisplayNames,
-//     required this.packId,
-//     required this.isOwner,
-//     this.sessionId,
-//     this.isModerator = false,
-//     this.packCoverUrl,
-//   });
-
-//   final String roomId;
-//   final GameConfig config;
-//   final List<String> playerIds;
-//   final Map<String, String> playerDisplayNames;
-//   final String packId;
-//   final bool isOwner;
-//   final String? sessionId;
-//   final bool isModerator;
-//   final String? packCoverUrl;
-
-//   @override
-//   State<TodGameScreen> createState() => _TodGameScreenState();
-// }
-
-// class _TodGameScreenState extends State<TodGameScreen> {
-//   late final TodGameProvider _provider;
-
-//   StreamSubscription<RealtimeSubscribeStatus>? _statusSub;
-
-//   @override
-//   void initState() {
-//     super.initState();
-
-//     ScreenSecurityService.instance.enable();
-//     ScreenSecurityService.instance.enableScreenshotDetection(() {
-//       sl.realtimeService.broadcastRoomEvent(widget.roomId, {
-//         'type': 'screenshot_taken',
-//         'user_id': context.read<AuthProvider>().currentUser?.id,
-//       }).ignore();
-//     });
-
-//     final auth = context.read<AuthProvider>();
-//     final user = auth.currentUser!;
-
-//     _provider = TodGameProvider(
-//       realtimeService: sl.realtimeService,
-//       repository: TodRepository.instance,
-//       currentUserId: user.id,
-//       currentDisplayName: user.displayName ?? user.username ?? 'Player',
-//       isModerator: widget.isModerator,
-//     );
-
-//     _wireRealtimeCallbacks();
-
-//     if (widget.isOwner) {
-//       final isPremium =
-//           context.read<AuthProvider>().currentUser?.isPremium ?? false;
-//       _provider.initAsOwner(
-//         roomId: widget.roomId,
-//         config: widget.config,
-//         playerIds: widget.playerIds,
-//         playerDisplayNames: widget.playerDisplayNames,
-//         packId: widget.packId,
-//         isPremium: isPremium,
-//         packCoverUrl: widget.packCoverUrl,
-//       );
-//     } else {
-//       _provider.initAsFollower(
-//         roomId: widget.roomId,
-//         config: widget.config,
-//         sessionId: widget.sessionId,
-//         packCoverUrl: widget.packCoverUrl,
-//       );
-//     }
-//   }
-
-//   @override
-//   void dispose() {
-//     ScreenSecurityService.instance.disable();
-//     _statusSub?.cancel();
-//     sl.realtimeService
-//         .subscribe(
-//           roomId: widget.roomId,
-//           onGameState: (_) {},
-//           onPlayerAction: (_) {},
-//           onSyncRequest: (_) {},
-//           onGameStarted: (_) {},
-//           onGameEnded: (_) {},
-//           onRoomEvent: (_) {},
-//           onChatMessage: (_) {},
-//           onModeration: (_) {},
-//           onSettingsChange: (_) {},
-//           onPresenceSync: (_) {},
-//           onPresenceJoin: (_) {},
-//           onPresenceLeave: (_) {},
-//           onStatusChange: (_) {},
-//         )
-//         .ignore();
-//     _provider.dispose();
-//     super.dispose();
-//   }
-
-//   void _wireRealtimeCallbacks() {
-//     _statusSub = sl.realtimeService.statusStream(widget.roomId)?.listen((
-//       status,
-//     ) {
-//       if (status == RealtimeSubscribeStatus.subscribed &&
-//           !_provider.hasSyncedState) {
-//         sl.realtimeService.broadcastSyncRequest(
-//           widget.roomId,
-//           context.read<AuthProvider>().currentUser!.id,
-//           0,
-//         );
-//       }
-//     });
-
-//     _resubscribeWithGameHandlers();
-//   }
-
-//   void _resubscribeWithGameHandlers() {
-//     final userId = context.read<AuthProvider>().currentUser!.id;
-
-//     sl.realtimeService.unsubscribe(widget.roomId).then((_) {
-//       sl.realtimeService.subscribe(
-//         roomId: widget.roomId,
-//         onGameState: (p) => _provider.onStateBroadcast(p),
-//         onPlayerAction: (p) => _provider.onPlayerAction(p),
-//         onSyncRequest: (p) => _provider.onSyncRequest(p),
-//         onGameStarted: (_) {},
-//         onGameEnded: (p) {
-//           if (mounted) {
-//             ScaffoldMessenger.of(context).showSnackBar(
-//               const SnackBar(content: Text('The host ended the game')),
-//             );
-//             if (context.canPop())
-//               context.pop();
-//             else
-//               context.go(RouteNames.home);
-//           }
-//         },
-//         onRoomEvent: (p) {
-//           final type = p['type'] as String?;
-//           if (type == 'screenshot_taken') {
-//             final shooterId = p['user_id'] as String?;
-//             final myId = context.read<AuthProvider>().currentUser?.id;
-//             if (shooterId != null && shooterId != myId && mounted) {
-//               ScaffoldMessenger.of(context).showSnackBar(
-//                 SnackBar(
-//                   content: Text(
-//                     '📸 ${widget.playerDisplayNames[shooterId] ?? 'Someone'} took a screenshot',
-//                   ),
-//                   backgroundColor: Colors.black87,
-//                 ),
-//               );
-//             }
-//             return;
-//           }
-//           if (type == 'player_left' && mounted) {
-//             final name = p['display_name'] as String? ?? 'A player';
-//             final leavingId = p['user_id'] as String?;
-//             if (leavingId != null) {
-//               _provider.markPlayerAway(leavingId, forGood: true);
-//               if (widget.isOwner) {
-//                 final active =
-//                     _provider.state?.playerOrder
-//                         .where((id) => !_provider.awayPlayerIds.contains(id))
-//                         .toList() ??
-//                     [];
-//                 if (active.length <= 1) {
-//                   WidgetsBinding.instance.addPostFrameCallback((_) async {
-//                     if (!mounted) return;
-//                     try {
-//                       await sl.realtimeService.broadcastRoomEvent(
-//                         widget.roomId,
-//                         {'type': 'game_ended', 'reason': 'all_players_left'},
-//                       );
-//                       await sl.roomRepository.updateStatus(
-//                         widget.roomId,
-//                         RoomStatus.waiting,
-//                       );
-//                     } catch (_) {}
-//                     if (mounted) {
-//                       ScaffoldMessenger.of(context).showSnackBar(
-//                         const SnackBar(
-//                           content: Text('All players left — game ended'),
-//                           behavior: SnackBarBehavior.fixed,
-//                         ),
-//                       );
-//                       await Future.delayed(const Duration(milliseconds: 600));
-//                       if (mounted) {
-//                         if (context.canPop())
-//                           context.pop();
-//                         else
-//                           context.go('/home/room/${widget.roomId}');
-//                       }
-//                     }
-//                   });
-//                   return;
-//                 }
-//               }
-//             }
-//             ScaffoldMessenger.of(context).showSnackBar(
-//               SnackBar(
-//                 content: Text('👋 $name left the game'),
-//                 backgroundColor: Colors.red.shade700,
-//                 duration: const Duration(seconds: 3),
-//                 behavior: SnackBarBehavior.fixed,
-//               ),
-//             );
-//             return;
-//           }
-//           if (type == 'ownership_transferred' && mounted) {
-//             final myId = context.read<AuthProvider>().currentUser?.id;
-//             final newOwnerId = p['new_owner_id'] as String?;
-//             if (newOwnerId == myId) {
-//               ScaffoldMessenger.of(context).showSnackBar(
-//                 const SnackBar(
-//                   content: Text('👑 You are now the game host!'),
-//                   backgroundColor: Colors.purple,
-//                 ),
-//               );
-//             }
-//             return;
-//           }
-//           if (type == 'game_ended' && mounted) {
-//             final reason = p['reason'] as String? ?? '';
-//             WidgetsBinding.instance.addPostFrameCallback((_) {
-//               if (!mounted) return;
-//               final isAllLeft = reason == 'all_players_left';
-//               showDialog(
-//                 context: context,
-//                 barrierDismissible: false,
-//                 builder: (ctx2) => AlertDialog(
-//                   title: Text(isAllLeft ? 'Game Over' : 'Game Ended'),
-//                   content: Text(
-//                     isAllLeft
-//                         ? 'All players left the game.'
-//                         : 'The host ended the game.',
-//                   ),
-//                   actions: [
-//                     FilledButton(
-//                       onPressed: () {
-//                         Navigator.of(ctx2).pop();
-//                         if (context.canPop()) {
-//                           context.pop();
-//                         } else {
-//                           context.go('/home/room/${widget.roomId}');
-//                         }
-//                       },
-//                       child: const Text('Go to Lobby'),
-//                     ),
-//                   ],
-//                 ),
-//               );
-//             });
-//             return;
-//           }
-//           if (type == 'tod_ready_count') {
-//             final ids = (p['ready_user_ids'] as List?)?.cast<String>() ?? [];
-//             _provider.onReadyCountUpdate(ids);
-//             return;
-//           }
-//           if ((type == 'room_closed' || type == 'owner_left') && mounted) {
-//             WidgetsBinding.instance.addPostFrameCallback((_) {
-//               if (!mounted) {
-//                 AppRouter.router.go(RouteNames.home);
-//                 return;
-//               }
-//               showDialog(
-//                 context: context,
-//                 barrierDismissible: false,
-//                 builder: (ctx2) => AlertDialog(
-//                   title: const Text('Room Closed'),
-//                   content: const Text('The host closed the room.'),
-//                   actions: [
-//                     FilledButton(
-//                       onPressed: () {
-//                         Navigator.of(ctx2).pop();
-//                         AppRouter.router.go(RouteNames.home);
-//                       },
-//                       child: const Text('OK'),
-//                     ),
-//                   ],
-//                 ),
-//               );
-//             });
-//             return;
-//           }
-//         },
-//         onChatMessage: (p) {
-//           final msg = TodChatMsg(
-//             senderId: p['user_id'] as String? ?? '',
-//             senderName: p['display_name'] as String? ?? 'Player',
-//             text: p['content'] as String? ?? '',
-//             ts: DateTime.fromMillisecondsSinceEpoch(
-//               (p['ts'] as num?)?.toInt() ??
-//                   DateTime.now().millisecondsSinceEpoch,
-//             ),
-//           );
-//           _provider.addChatMessage(msg);
-//         },
-//         onModeration: (p) => _handleModerationEvent(p),
-//         onSettingsChange: (_) {},
-//         onPresenceSync: (_) {},
-//         onPresenceJoin: (_) {},
-//         onPresenceLeave: (_) {},
-//         onStatusChange: (status) {
-//           if (!mounted) return;
-//           if (status == RealtimeSubscribeStatus.subscribed &&
-//               !_provider.hasSyncedState) {
-//             sl.realtimeService.broadcastSyncRequest(widget.roomId, userId, 0);
-//           }
-//         },
-//       );
-//     });
-//   }
-
-//   void _handleModerationEvent(Map<String, dynamic> p) {
-//     final type = p['type'] as String?;
-//     final targetId = p['target_user_id'] as String?;
-//     final currentId = context.read<AuthProvider>().currentUser?.id;
-
-//     if ((type == 'kick' || type == 'ban') && targetId == currentId) {
-//       if (mounted) {
-//         ScaffoldMessenger.of(context).showSnackBar(
-//           const SnackBar(content: Text('You were removed from the room')),
-//         );
-//         context.go(RouteNames.home);
-//       }
-//     }
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return ChangeNotifierProvider.value(
-//       value: _provider,
-//       child: Consumer<TodGameProvider>(
-//         builder: (ctx, game, _) => _build(ctx, game),
-//       ),
-//     );
-//   }
-
-//   Widget _build(BuildContext ctx, TodGameProvider game) {
-//     if (game.loadState == TodLoadState.loading) {
-//       return const TodLoadingScreen();
-//     }
-
-//     if (game.loadState == TodLoadState.error) {
-//       return Scaffold(
-//         appBar: AppBar(
-//           leading: BackButton(
-//             onPressed: () async {
-//               if (widget.isOwner) {
-//                 try {
-//                   await sl.realtimeService.broadcastGameEnded(widget.roomId, {
-//                     'reason': 'host_left',
-//                   });
-//                   await sl.roomRepository.updateStatus(
-//                     widget.roomId,
-//                     RoomStatus.waiting,
-//                   );
-//                 } catch (_) {}
-//               }
-//               if (ctx.mounted) ctx.go(RouteNames.home);
-//             },
-//           ),
-//         ),
-//         body: ErrorView(
-//           message: game.error ?? 'Failed to load game',
-//           onRetry: () => ctx.go(RouteNames.home),
-//         ),
-//       );
-//     }
-
-//     if (game.loadState == TodLoadState.gameOver ||
-//         (game.state?.isOver ?? false)) {
-//       return TodEndScreen(
-//         state: game.state!,
-//         displayNames: widget.playerDisplayNames,
-//         onLeave: () => ctx.go(RouteNames.home),
-//       );
-//     }
-
-//     final state = game.state;
-//     if (state == null) return const TodLoadingScreen();
-
-//     return _TodGameScaffold(
-//       state: state,
-//       game: game,
-//       displayNames: widget.playerDisplayNames,
-//       roomId: widget.roomId,
-//       isOwner: widget.isOwner,
-//     );
-//   }
-// }
-
-// class _TodGameScaffold extends StatefulWidget {
-//   const _TodGameScaffold({
-//     required this.state,
-//     required this.game,
-//     required this.displayNames,
-//     required this.roomId,
-//     required this.isOwner,
-//   });
-//   final TodState state;
-//   final TodGameProvider game;
-//   final Map<String, String> displayNames;
-//   final String roomId;
-//   final bool isOwner;
-//   @override
-//   State<_TodGameScaffold> createState() => _TodGameScaffoldState();
-// }
-
-// class _TodGameScaffoldState extends State<_TodGameScaffold> {
-//   bool _showHistory = false;
-//   bool _showChat = false;
-//   int _unreadChat = 0;
-//   bool _isNavigatingAway = false;
-
-//   void _navigateAway(BuildContext ctx, String location) {
-//     _isNavigatingAway = true;
-//     if (ctx.canPop()) {
-//       ctx.pop();
-//     } else {
-//       ctx.go(location);
-//     }
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     final state = widget.state;
-//     final game = widget.game;
-
-//     if (_showHistory) {
-//       return Scaffold(
-//         appBar: AppBar(
-//           leading: BackButton(
-//             onPressed: () => setState(() => _showHistory = false),
-//           ),
-//           title: Text('History (${state.history.length} rounds)'),
-//         ),
-//         body: _HistoryPanel(
-//           history: state.history,
-//           displayNames: widget.displayNames,
-//         ),
-//       );
-//     }
-
-//     return PopScope(
-//       canPop: false,
-//       onPopInvoked: (_) {
-//         if (_isNavigatingAway) return;
-//         WidgetsBinding.instance.addPostFrameCallback(
-//           (_) => _showLeaveDialog(context, game, state),
-//         );
-//       },
-//       child: Scaffold(
-//         appBar: AppBar(
-//           automaticallyImplyLeading: false,
-//           title: const Text(''),
-//           leading: IconButton(
-//             icon: const Icon(Icons.arrow_back),
-//             onPressed: () => _showLeaveDialog(context, game, state),
-//           ),
-//           actions: [
-//             Consumer<TodGameProvider>(
-//               builder: (_, g, __) => Stack(
-//                 alignment: Alignment.topRight,
-//                 children: [
-//                   IconButton(
-//                     icon: const Icon(Icons.chat_bubble_outline_rounded),
-//                     onPressed: () {
-//                       g.clearUnreadChat();
-//                       showModalBottomSheet(
-//                         context: context,
-//                         isScrollControlled: true,
-//                         backgroundColor: Colors.transparent,
-//                         builder: (_) =>
-//                             _InGameChatSheet(game: g, myId: g.currentUserId),
-//                       );
-//                     },
-//                   ),
-//                   if (g.unreadChat > 0)
-//                     Positioned(
-//                       top: 8,
-//                       right: 8,
-//                       child: Container(
-//                         width: 8,
-//                         height: 8,
-//                         decoration: const BoxDecoration(
-//                           color: Colors.red,
-//                           shape: BoxShape.circle,
-//                         ),
-//                       ),
-//                     ),
-//                 ],
-//               ),
-//             ),
-//             if (state.history.isNotEmpty)
-//               IconButton(
-//                 icon: const Icon(Icons.history_rounded),
-//                 tooltip: 'History',
-//                 onPressed: () => setState(() => _showHistory = true),
-//               ),
-//           ],
-//         ),
-//         body: SafeArea(
-//           child: Column(
-//             children: [
-//               TodHud(
-//                 state: state,
-//                 game: game,
-//                 displayNames: widget.displayNames,
-//               ),
-//               Expanded(
-//                 child: AnimatedSwitcher(
-//                   duration: const Duration(milliseconds: 300),
-//                   transitionBuilder: (child, anim) => FadeTransition(
-//                     opacity: anim,
-//                     child: SlideTransition(
-//                       position:
-//                           Tween<Offset>(
-//                             begin: const Offset(0, 0.05),
-//                             end: Offset.zero,
-//                           ).animate(
-//                             CurvedAnimation(
-//                               parent: anim,
-//                               curve: Curves.easeOutCubic,
-//                             ),
-//                           ),
-//                       child: child,
-//                     ),
-//                   ),
-//                   child: KeyedSubtree(
-//                     key: ValueKey('${state.phase}-${state.currentPlayerId}'),
-//                     child: _phaseWidget(
-//                       context,
-//                       game,
-//                       widget.displayNames,
-//                       state,
-//                     ),
-//                   ),
-//                 ),
-//               ),
-//             ],
-//           ),
-//         ),
-//       ),
-//     );
-//   }
-
-//   Future<void> _showLeaveDialog(
-//     BuildContext ctx,
-//     TodGameProvider game,
-//     TodState state,
-//   ) async {
-//     if (!ctx.mounted) return;
-//     final isOwner = widget.isOwner;
-//     final myUserId = game.currentUserId;
-//     final isPremium = ctx.read<AuthProvider>().currentUser?.isPremium ?? false;
-
-//     if (isOwner) {
-//       final confirmed = await showDialog<bool>(
-//         context: ctx,
-//         builder: (dCtx) => AlertDialog(
-//           title: const Text('Quit Game?'),
-//           content: const Text(
-//             'The game will end for everyone and all players will return to the lobby.',
-//           ),
-//           actions: [
-//             TextButton(
-//               onPressed: () => Navigator.of(dCtx).pop(false),
-//               child: const Text('Cancel'),
-//             ),
-//             FilledButton(
-//               style: FilledButton.styleFrom(backgroundColor: Colors.red),
-//               onPressed: () => Navigator.of(dCtx).pop(true),
-//               child: const Text('End Game for Everyone'),
-//             ),
-//           ],
-//         ),
-//       );
-//       if (confirmed != true || !ctx.mounted) return;
-
-//       try {
-//         await sl.realtimeService.broadcastRoomEvent(widget.roomId, {
-//           'type': 'game_ended',
-//           'reason': 'host_quit_to_lobby',
-//         });
-//         await Future.delayed(const Duration(milliseconds: 400));
-//         await sl.roomRepository.updateStatus(widget.roomId, RoomStatus.waiting);
-//       } catch (_) {}
-//       if (ctx.mounted) {
-//         _isNavigatingAway = true;
-//         if (ctx.canPop()) {
-//           ctx.pop();
-//         } else {
-//           ctx.go('/home/room/${widget.roomId}');
-//         }
-//       }
-//     } else {
-//       final confirmed = await showDialog<bool>(
-//         context: ctx,
-//         builder: (_) => AlertDialog(
-//           title: const Text('Leave Game?'),
-//           content: const Text('You will be removed from the game.'),
-//           actions: [
-//             TextButton(
-//               onPressed: () => Navigator.pop(ctx, false),
-//               child: const Text('Stay'),
-//             ),
-//             FilledButton(
-//               style: FilledButton.styleFrom(backgroundColor: Colors.red),
-//               onPressed: () => Navigator.pop(ctx, true),
-//               child: const Text('Quit Game'),
-//             ),
-//           ],
-//         ),
-//       );
-//       if (confirmed != true || !ctx.mounted) return;
-
-//       final displayName = widget.displayNames[myUserId] ?? 'A player';
-//       try {
-//         await sl.roomRepository.setMemberDefinitiveLeave(
-//           widget.roomId,
-//           myUserId,
-//         );
-//         await sl.realtimeService.broadcastRoomEvent(widget.roomId, {
-//           'type': 'player_left',
-//           'user_id': myUserId,
-//           'display_name': displayName,
-//           'for_good': true,
-//         });
-//       } catch (_) {}
-//       if (ctx.mounted) {
-//         _isNavigatingAway = true;
-//         ctx.go('/home/room/${widget.roomId}');
-//       }
-//     }
-//   }
-
-//   Widget _phaseWidget(
-//     BuildContext ctx,
-//     TodGameProvider game,
-//     Map<String, String> displayNames,
-//     TodState state,
-//   ) {
-//     return switch (state.phase) {
-//       TodTurnPhase.punishmentVoting => TodPunishmentScreen(
-//         state: state,
-//         game: game,
-//         displayNames: widget.displayNames,
-//       ),
-//       _ => TodCardScreen(
-//         state: state,
-//         game: game,
-//         displayNames: widget.displayNames,
-//       ),
-//     };
-//   }
-// }
-
-// class _HistoryPanel extends StatelessWidget {
-//   const _HistoryPanel({required this.history, required this.displayNames});
-//   final List<TodRoundRecord> history;
-//   final Map<String, String> displayNames;
-
-//   String _name(String id) =>
-//       displayNames[id] ?? id.substring(0, id.length.clamp(0, 6));
-
-//   @override
-//   Widget build(BuildContext context) {
-//     final theme = context.theme;
-//     if (history.isEmpty) {
-//       return const Center(child: Text('No rounds completed yet.'));
-//     }
-//     return ListView.builder(
-//       padding: const EdgeInsets.all(12),
-//       itemCount: history.length,
-//       itemBuilder: (_, i) {
-//         final round = history[history.length - 1 - i];
-//         final reactTally = <String, int>{};
-//         for (final r in round.reactions) {
-//           reactTally[r.emoji] = (reactTally[r.emoji] ?? 0) + 1;
-//         }
-//         return Card(
-//           margin: const EdgeInsets.only(bottom: 10),
-//           child: ExpansionTile(
-//             leading: CircleAvatar(
-//               backgroundColor: theme.colorScheme.primaryContainer,
-//               child: Text(
-//                 '${round.roundNumber}',
-//                 style: theme.textTheme.labelLarge,
-//               ),
-//             ),
-//             title: Text(
-//               _name(round.playerId),
-//               style: theme.textTheme.bodyMedium?.copyWith(
-//                 fontWeight: FontWeight.w700,
-//               ),
-//             ),
-//             subtitle: Text(
-//               round.card != null
-//                   ? '${round.card!.type == TodCardType.truth ? "Truth" : "Dare"}: ${round.card!.content}'
-//                   : 'Skipped',
-//               maxLines: 1,
-//               overflow: TextOverflow.ellipsis,
-//               style: theme.textTheme.bodySmall,
-//             ),
-//             children: [
-//               Padding(
-//                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-//                 child: Column(
-//                   crossAxisAlignment: CrossAxisAlignment.start,
-//                   children: [
-//                     if (round.card != null)
-//                       Container(
-//                         width: double.infinity,
-//                         padding: const EdgeInsets.all(10),
-//                         decoration: BoxDecoration(
-//                           color: round.card!.type == TodCardType.truth
-//                               ? Colors.blue.withOpacity(0.08)
-//                               : Colors.orange.withOpacity(0.08),
-//                           borderRadius: BorderRadius.circular(8),
-//                         ),
-//                         child: Text(
-//                           round.card!.content,
-//                           style: theme.textTheme.bodyMedium,
-//                         ),
-//                       ),
-//                     if (round.response.isNotEmpty) ...[
-//                       const SizedBox(height: 8),
-//                       Row(
-//                         crossAxisAlignment: CrossAxisAlignment.start,
-//                         children: [
-//                           const Text('💬 ', style: TextStyle(fontSize: 14)),
-//                           Expanded(
-//                             child: Text(
-//                               '"${round.response}"',
-//                               style: theme.textTheme.bodySmall?.copyWith(
-//                                 fontStyle: FontStyle.italic,
-//                               ),
-//                             ),
-//                           ),
-//                         ],
-//                       ),
-//                     ],
-//                     if (round.voteCount > 0) ...[
-//                       const SizedBox(height: 6),
-//                       Text(
-//                         '👍 ${round.voteCount} vote${round.voteCount != 1 ? "s" : ""}',
-//                         style: theme.textTheme.bodySmall?.copyWith(
-//                           color: theme.colorScheme.primary,
-//                           fontWeight: FontWeight.w600,
-//                         ),
-//                       ),
-//                     ],
-//                     if (round.hadProof) ...[
-//                       const SizedBox(height: 8),
-//                       _ProofWatchedBadge(watchedBy: round.proofWatchedBy),
-//                     ],
-//                     if (reactTally.isNotEmpty) ...[
-//                       const SizedBox(height: 8),
-//                       Wrap(
-//                         spacing: 6,
-//                         runSpacing: 4,
-//                         children: reactTally.entries
-//                             .map(
-//                               (e) => Container(
-//                                 padding: const EdgeInsets.symmetric(
-//                                   horizontal: 8,
-//                                   vertical: 3,
-//                                 ),
-//                                 decoration: BoxDecoration(
-//                                   color:
-//                                       theme.colorScheme.surfaceContainerHighest,
-//                                   borderRadius: BorderRadius.circular(16),
-//                                 ),
-//                                 child: Text(
-//                                   '${e.key} ${e.value}',
-//                                   style: const TextStyle(fontSize: 13),
-//                                 ),
-//                               ),
-//                             )
-//                             .toList(),
-//                       ),
-//                     ],
-//                   ],
-//                 ),
-//               ),
-//             ],
-//           ),
-//         );
-//       },
-//     );
-//   }
-// }
-
-// class _ProofWatchedBadge extends StatelessWidget {
-//   const _ProofWatchedBadge({required this.watchedBy});
-//   final List<String> watchedBy;
-
-//   @override
-//   Widget build(BuildContext context) {
-//     final watched = watchedBy.isNotEmpty;
-//     return Container(
-//       height: 36,
-//       padding: const EdgeInsets.symmetric(horizontal: 10),
-//       decoration: BoxDecoration(
-//         color: Colors.grey.shade200,
-//         borderRadius: BorderRadius.circular(8),
-//       ),
-//       alignment: Alignment.centerLeft,
-//       child: Row(
-//         mainAxisSize: MainAxisSize.min,
-//         children: [
-//           Icon(
-//             watched ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-//             size: 16,
-//             color: Colors.grey.shade600,
-//           ),
-//           const SizedBox(width: 6),
-//           Text(
-//             watched
-//                 ? 'Proof watched by ${watchedBy.length}'
-//                 : 'Proof sent — not watched',
-//             style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-// }
-
-// class _InGameChatSheet extends StatefulWidget {
-//   const _InGameChatSheet({required this.game, required this.myId});
-//   final TodGameProvider game;
-//   final String myId;
-//   @override
-//   State<_InGameChatSheet> createState() => _InGameChatSheetState();
-// }
-
-// class _InGameChatSheetState extends State<_InGameChatSheet> {
-//   final _ctrl = TextEditingController();
-//   final _scroll = ScrollController();
-//   @override
-//   void dispose() {
-//     _ctrl.dispose();
-//     _scroll.dispose();
-//     super.dispose();
-//   }
-
-//   void _send() {
-//     final t = _ctrl.text.trim();
-//     if (t.isEmpty) return;
-//     widget.game.sendChat(t);
-//     _ctrl.clear();
-//     WidgetsBinding.instance.addPostFrameCallback((_) {
-//       if (_scroll.hasClients)
-//         _scroll.animateTo(
-//           _scroll.position.maxScrollExtent,
-//           duration: 200.ms,
-//           curve: Curves.easeOut,
-//         );
-//     });
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Container(
-//       height: MediaQuery.sizeOf(context).height * 0.65,
-//       decoration: const BoxDecoration(
-//         color: Color(0xFF1A2E45),
-//         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-//       ),
-//       child: Column(
-//         children: [
-//           Container(
-//             width: 36,
-//             height: 4,
-//             margin: const EdgeInsets.symmetric(vertical: 10),
-//             decoration: BoxDecoration(
-//               color: Colors.white24,
-//               borderRadius: BorderRadius.circular(2),
-//             ),
-//           ),
-//           const Text(
-//             '💬 Chat',
-//             style: TextStyle(
-//               color: Colors.white,
-//               fontWeight: FontWeight.w800,
-//               fontSize: 16,
-//             ),
-//           ),
-//           const Divider(color: Colors.white12),
-//           Expanded(
-//             child: ListenableBuilder(
-//               listenable: widget.game,
-//               builder: (_, __) {
-//                 final msgs = widget.game.chatMessages;
-//                 return msgs.isEmpty
-//                     ? const Center(
-//                         child: Text(
-//                           'No messages yet',
-//                           style: TextStyle(color: Colors.white38),
-//                         ),
-//                       )
-//                     : ListView.builder(
-//                         controller: _scroll,
-//                         padding: const EdgeInsets.all(12),
-//                         itemCount: msgs.length,
-//                         itemBuilder: (_, i) {
-//                           final m = msgs[i];
-//                           final isMe = m.senderId == widget.myId;
-//                           final color =
-//                               _kChatColors[m.senderId.hashCode.abs() %
-//                                   _kChatColors.length];
-//                           return Padding(
-//                             padding: EdgeInsets.only(
-//                               bottom: 8,
-//                               left: isMe ? 48 : 0,
-//                               right: isMe ? 0 : 48,
-//                             ),
-//                             child: Column(
-//                               crossAxisAlignment: isMe
-//                                   ? CrossAxisAlignment.end
-//                                   : CrossAxisAlignment.start,
-//                               children: [
-//                                 if (!isMe)
-//                                   Padding(
-//                                     padding: const EdgeInsets.only(
-//                                       left: 4,
-//                                       bottom: 2,
-//                                     ),
-//                                     child: Text(
-//                                       m.senderName,
-//                                       style: TextStyle(
-//                                         color: color,
-//                                         fontSize: 11,
-//                                         fontWeight: FontWeight.w700,
-//                                       ),
-//                                     ),
-//                                   ),
-//                                 Container(
-//                                   padding: const EdgeInsets.symmetric(
-//                                     horizontal: 12,
-//                                     vertical: 8,
-//                                   ),
-//                                   decoration: BoxDecoration(
-//                                     color: isMe
-//                                         ? const Color(0xFFFFD60A)
-//                                         : color.withOpacity(0.18),
-//                                     borderRadius: BorderRadius.circular(16)
-//                                         .copyWith(
-//                                           bottomRight: isMe
-//                                               ? const Radius.circular(4)
-//                                               : null,
-//                                           bottomLeft: isMe
-//                                               ? null
-//                                               : const Radius.circular(4),
-//                                         ),
-//                                   ),
-//                                   child: Text(
-//                                     m.text,
-//                                     style: TextStyle(
-//                                       color: isMe
-//                                           ? const Color(0xFF0D1B2A)
-//                                           : Colors.white,
-//                                       fontWeight: isMe
-//                                           ? FontWeight.w700
-//                                           : FontWeight.w400,
-//                                     ),
-//                                   ),
-//                                 ),
-//                               ],
-//                             ),
-//                           );
-//                         },
-//                       );
-//               },
-//             ),
-//           ),
-//           Container(
-//             padding: EdgeInsets.fromLTRB(
-//               12,
-//               8,
-//               12,
-//               MediaQuery.viewInsetsOf(context).bottom + 12,
-//             ),
-//             color: const Color(0xFF1A2E45),
-//             child: Row(
-//               children: [
-//                 Expanded(
-//                   child: TextField(
-//                     controller: _ctrl,
-//                     style: const TextStyle(color: Colors.white),
-//                     textInputAction: TextInputAction.send,
-//                     onSubmitted: (_) => _send(),
-//                     decoration: InputDecoration(
-//                       hintText: 'Say something…',
-//                       hintStyle: const TextStyle(color: Colors.white38),
-//                       filled: true,
-//                       fillColor: Colors.white.withOpacity(0.07),
-//                       border: OutlineInputBorder(
-//                         borderRadius: BorderRadius.circular(24),
-//                         borderSide: BorderSide.none,
-//                       ),
-//                       contentPadding: const EdgeInsets.symmetric(
-//                         horizontal: 16,
-//                         vertical: 10,
-//                       ),
-//                       isDense: true,
-//                     ),
-//                   ),
-//                 ),
-//                 const SizedBox(width: 8),
-//                 GestureDetector(
-//                   onTap: _send,
-//                   child: Container(
-//                     width: 44,
-//                     height: 44,
-//                     decoration: const BoxDecoration(
-//                       color: Color(0xFFFFD60A),
-//                       shape: BoxShape.circle,
-//                     ),
-//                     child: const Icon(
-//                       Icons.send_rounded,
-//                       color: Color(0xFF0D1B2A),
-//                       size: 20,
-//                     ),
-//                   ),
-//                 ),
-//               ],
-//             ),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-// }
-
-// const _kChatColors = [
-//   Color(0xFF4ECDC4),
-//   Color(0xFFA855F7),
-//   Color(0xFFFF6B6B),
-//   Color(0xFF4ADE80),
-//   Color(0xFFFB923C),
-//   Color(0xFF60A5FA),
-//   Color(0xFFF472B6),
-//   Color(0xFFFFD60A),
-//   Color(0xFF34D399),
-//   Color(0xFFC084FC),
-// ];
-
-// class _PausedOverlay extends StatefulWidget {
-//   const _PausedOverlay({required this.onLeave});
-//   final VoidCallback onLeave;
-
-//   @override
-//   State<_PausedOverlay> createState() => _PausedOverlayState();
-// }
-
-// class _PausedOverlayState extends State<_PausedOverlay>
-//     with SingleTickerProviderStateMixin {
-//   late final AnimationController _pulse;
-
-//   @override
-//   void initState() {
-//     super.initState();
-//     _pulse = AnimationController(
-//       vsync: this,
-//       duration: const Duration(milliseconds: 1400),
-//     )..repeat(reverse: true);
-//   }
-
-//   @override
-//   void dispose() {
-//     _pulse.dispose();
-//     super.dispose();
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Dialog.fullscreen(
-//       backgroundColor: Colors.transparent,
-//       child: Scaffold(
-//         backgroundColor: Colors.transparent,
-//         body: Center(
-//           child: Padding(
-//             padding: const EdgeInsets.all(32),
-//             child: Column(
-//               mainAxisSize: MainAxisSize.min,
-//               children: [
-//                 AnimatedBuilder(
-//                   animation: _pulse,
-//                   builder: (_, child) =>
-//                       Opacity(opacity: 0.6 + _pulse.value * 0.4, child: child),
-//                   child: const Text('⏸', style: TextStyle(fontSize: 72)),
-//                 ),
-//                 const SizedBox(height: 24),
-//                 const Text(
-//                   'Game Paused',
-//                   style: TextStyle(
-//                     color: Colors.white,
-//                     fontSize: 28,
-//                     fontWeight: FontWeight.w800,
-//                     letterSpacing: -0.5,
-//                   ),
-//                 ),
-//                 const SizedBox(height: 12),
-//                 const Text(
-//                   'The host stepped away and will\nreturn shortly.',
-//                   textAlign: TextAlign.center,
-//                   style: TextStyle(
-//                     color: Colors.white70,
-//                     fontSize: 16,
-//                     height: 1.5,
-//                   ),
-//                 ),
-//                 const SizedBox(height: 40),
-//                 OutlinedButton(
-//                   style: OutlinedButton.styleFrom(
-//                     foregroundColor: Colors.white,
-//                     side: const BorderSide(color: Colors.white38),
-//                     padding: const EdgeInsets.symmetric(
-//                       horizontal: 32,
-//                       vertical: 14,
-//                     ),
-//                   ),
-//                   onPressed: widget.onLeave,
-//                   child: const Text('Leave for Now'),
-//                 ),
-//               ],
-//             ),
-//           ),
-//         ),
-//       ),
-//     );
-//   }
-// }
-
 import 'dart:async';
-
 import 'package:flutter/material.dart';
+import '../../../../../shared/widgets/game/dishonest_reasons_panel.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:jma3a/core/router/app_router.dart';
+import 'package:jma3a/core/utils/app_logger.dart';
 import 'package:jma3a/features/games/engine/base_game_engine.dart';
+import 'package:jma3a/features/games/presentation/widgets/game_screen_security_gate.dart';
 import 'package:jma3a/features/rooms/domain/room_entity.dart';
 import 'package:jma3a/features/rooms/presentation/room_provider.dart';
 import 'package:jma3a/features/settings/presentation/screen_security_service.dart';
-import 'package:jma3a/shared/widgets/animated_reaction_overlay.dart';
+import 'package:jma3a/shared/widgets/center_reaction_overlay.dart';
 import 'package:jma3a/shared/widgets/game_rules_sheet.dart';
 import 'package:jma3a/shared/widgets/no_active_players_banner.dart';
 import 'package:jma3a/shared/widgets/join_requests_panel.dart';
 import 'package:jma3a/shared/widgets/room_members_management_sheet.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
 import '../../../../../core/di/service_locator.dart';
 import '../../../../../core/extensions/context_ext.dart';
+import '../../../../../core/services/app_tutorial_service.dart';
+import '../../../../../shared/widgets/tutorial/screen_tutorial.dart';
 import '../../../../../core/providers/auth_provider.dart';
 import '../../../../../core/router/route_names.dart';
 import '../../../../../core/services/realtime_service.dart';
+import '../../../../../core/theme/app_colors.dart';
+import '../../../../../core/utils/game_end_navigation.dart';
+import '../../../../../shared/widgets/feedback/error_view.dart';
+import '../../../../../shared/widgets/overlays/confirm_dialog.dart';
+import '../../../../../shared/widgets/overlays/host_reconnect_overlay.dart';
+import '../../../../../shared/widgets/game/away_presence_snackbar_listener.dart';
+import '../../../../../shared/widgets/game/game_chat_sheet.dart';
+import '../../../game_session_messages.dart';
+import '../../domain/tod_models.dart';
+import '../../tod_game_provider.dart';
+import '../../data/tod_repository.dart';
+import 'tod_card_screen.dart';
+import 'tod_end_screen.dart';
+import 'tod_loading_screen.dart';
+import 'tod_punishment_screen.dart';
+import '../widgets/tod_hud.dart';
+
 // import '../../../../../core/services/screen_security_service.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/utils/game_end_navigation.dart';
 import '../../../../../shared/widgets/feedback/error_view.dart';
 import '../../../../../shared/widgets/overlays/confirm_dialog.dart';
+import '../../../../../shared/widgets/overlays/host_reconnect_overlay.dart';
+import '../../../game_session_messages.dart';
 import '../../domain/tod_models.dart';
 import '../../tod_game_provider.dart';
 
@@ -7301,6 +72,7 @@ class TodGameScreen extends StatefulWidget {
     this.isModerator = false,
     this.isSpectator = false,
     this.packCoverUrl,
+    this.isNewGameStart = false,
     this.roomProvider,
   });
 
@@ -7314,6 +86,12 @@ class TodGameScreen extends StatefulWidget {
   final bool isModerator;
   final bool isSpectator;
   final String? packCoverUrl;
+
+  /// True only for a genuine, fresh "Start Game" press (see
+  /// lobby_screen.dart's _onStartGame) — never set for a reconnect,
+  /// "Continue Game", or the automatic status-change listener, all of
+  /// which are entering an already-running game and must resume it.
+  final bool isNewGameStart;
   final RoomProvider? roomProvider;
 
   @override
@@ -7348,6 +126,77 @@ class _TodGameScreenState extends State<TodGameScreen> {
     _provider.applyOwnershipChange(amOwner);
   }
 
+  // The build() Consumer only listens to _provider (the game engine
+  // provider) — RoomProvider pausing/resuming for a disconnected host
+  // otherwise wouldn't trigger a rebuild at all, so the host-reconnect
+  // overlay (gated on widget.roomProvider?.isPausedForHostReconnect inside
+  // _build) would never actually appear or disappear on its own.
+  bool _lastKnownPaused = false;
+
+  // Guards the session-ended auto-navigate in _build's error branch against
+  // firing more than once (the error branch re-runs on every rebuild while
+  // loadState stays 'error').
+  bool _autoLeftOnSessionEnd = false;
+
+  void _onRoomPauseChanged() {
+    final rp = widget.roomProvider;
+    if (rp == null) return;
+    final paused = rp.isPausedForHostReconnect;
+    if (_lastKnownPaused != paused) {
+      _lastKnownPaused = paused;
+      if (mounted) setState(() {});
+    }
+    // Authoritative reconciliation fallback for a missed game_ended
+    // broadcast (Realtime Broadcast has no delivery guarantee) —
+    // RoomProvider already re-derives rooms.status from the database
+    // independently on its own 5s reconcile poll (_gameReconcileTimer ->
+    // _refreshMembers), so this eventually notices "the room is no longer
+    // in_game/paused" even when the broadcast that was supposed to
+    // announce it never arrived, without a second timer/poll of its own.
+    _leaveIfRoomNoLongerActive(rp);
+  }
+
+  void _leaveIfRoomNoLongerActive(RoomProvider rp) {
+    if (_autoLeftOnSessionEnd || _provider.isNavigatingAway) return;
+    final status = rp.room?.status;
+    // 'starting' is included here too — not just 'inGame'/'paused' — since
+    // the OWNER is already inside this game screen during STARTING_GAME
+    // (see LobbyScreen._syncGameRoute's isGameInProgress gate, which is
+    // owner-only for 'starting'). Bouncing them back to the lobby off a
+    // reconciliation poll that still reads 'starting' (the normal, brief
+    // window before this same owner's own initAsOwner flips the room to
+    // 'in_game' once session creation succeeds) would be exactly the
+    // premature loading->lobby bounce this whole state was introduced to
+    // eliminate. A non-owner never reaches this screen while status is
+    // still 'starting' at all, so this is a no-op safety net for them.
+    if (status == null ||
+        status == RoomStatus.inGame ||
+        status == RoomStatus.paused ||
+        status == RoomStatus.starting) {
+      return;
+    }
+    _autoLeftOnSessionEnd = true;
+    _provider.isNavigatingAway = true;
+    AppLogger.info(
+      'GAME_NAV leaveIfRoomNoLongerActive room=${widget.roomId} '
+      'isOwner=${widget.isOwner} status=$status canPop=${context.canPop()} '
+      'dest=lobby',
+    );
+    if (mounted) {
+      if (context.canPop()) {
+        context.pop();
+      } else {
+        // The game ended/was superseded, but the ROOM still exists (e.g.
+        // auto-end after a player was kicked, a host-timeout end). Return
+        // to this room's LOBBY, never RouteNames.home — sending the owner
+        // to the app home here is exactly the "admin kicked out when they
+        // kicked a player" bug. Genuine room deletion/kick/ban goes home
+        // via the RoomLifecycleEvent path in LobbyScreen instead.
+        context.go('/home/room/${widget.roomId}');
+      }
+    }
+  }
+
   // Previously nothing in this screen listened to RoomProvider's lifecycle
   // stream at all — a player sitting inside an active game when the owner
   // vanished (and no other member was eligible for auto-promotion) got no
@@ -7360,6 +209,7 @@ class _TodGameScreenState extends State<TodGameScreen> {
       case RoomLifecycleEvent.roomClosed:
       case RoomLifecycleEvent.kicked:
       case RoomLifecycleEvent.banned:
+      case RoomLifecycleEvent.removed:
       case RoomLifecycleEvent.ownershipTransferred:
         // handled by _onRoomOwnershipChanged / the target's own nav — and,
         // for roomClosed specifically, by LobbyScreen's own listener, which
@@ -7379,7 +229,7 @@ class _TodGameScreenState extends State<TodGameScreen> {
       case RoomLifecycleEvent.memberLeft:
         final name = widget.roomProvider?.lastDepartedMemberName;
         if (name != null && name.isNotEmpty) {
-          context.showSnackBar('$name left the game');
+          context.showSnackBar(context.l10n.todPlayerLeftGame(name));
         }
     }
   }
@@ -7398,6 +248,11 @@ class _TodGameScreenState extends State<TodGameScreen> {
     if (rp == null || !_provider.isOwner || state == null) return;
     for (final id in state.playerOrder) {
       final member = rp.members.where((m) => m.userId == id).firstOrNull;
+      // A game-muted player must NOT lose their turn: muting parks the turn
+      // on them (blocked — they can't submit), it does not skip them. So a
+      // mute must never route through markPlayerAway/force-advance here.
+      // Only a genuinely-absent player (disconnected) is marked away; the
+      // provider's own _turnSkipIds keeps muted players in the rotation.
       final isPresent = member != null && !member.isDisconnected;
       final isAway = _provider.awayPlayerIds.contains(id);
       if (isPresent && isAway) {
@@ -7427,7 +282,8 @@ class _TodGameScreenState extends State<TodGameScreen> {
       realtimeService: sl.realtimeService,
       repository: TodRepository.instance,
       currentUserId: user.id,
-      currentDisplayName: user.displayName ?? user.username ?? 'Player',
+      currentDisplayName:
+          user.displayName ?? user.username ?? context.l10n.packPlayer,
       isModerator: widget.isModerator,
     );
 
@@ -7444,6 +300,7 @@ class _TodGameScreenState extends State<TodGameScreen> {
         packId: widget.packId,
         isPremium: isPremium,
         packCoverUrl: widget.packCoverUrl,
+        isNewGame: widget.isNewGameStart,
       );
     } else {
       _provider.initAsFollower(
@@ -7455,7 +312,9 @@ class _TodGameScreenState extends State<TodGameScreen> {
     }
 
     _lastKnownRoomOwner = widget.isOwner;
+    _lastKnownPaused = widget.roomProvider?.isPausedForHostReconnect ?? false;
     widget.roomProvider?.addListener(_onRoomOwnershipChanged);
+    widget.roomProvider?.addListener(_onRoomPauseChanged);
     widget.roomProvider?.addListener(_syncAwayFromPresence);
     // initAsOwner/initAsFollower are async — _provider.state isn't
     // populated yet at this point, so also re-run once the game provider
@@ -7464,6 +323,8 @@ class _TodGameScreenState extends State<TodGameScreen> {
     _provider.addListener(_syncAwayFromPresence);
     _provider.permissionChecker = widget.roomProvider?.memberHasPermission;
     _provider.roomProvider = widget.roomProvider;
+    final roomId = widget.roomProvider?.room?.id;
+    if (roomId != null) _provider.startTargetedChatListener(roomId);
     _lifecycleSub = widget.roomProvider?.lifecycleEvents.listen(
       _onRoomLifecycleEvent,
     );
@@ -7472,6 +333,7 @@ class _TodGameScreenState extends State<TodGameScreen> {
   @override
   void dispose() {
     widget.roomProvider?.removeListener(_onRoomOwnershipChanged);
+    widget.roomProvider?.removeListener(_onRoomPauseChanged);
     widget.roomProvider?.removeListener(_syncAwayFromPresence);
     _provider.removeListener(_syncAwayFromPresence);
     _lifecycleSub?.cancel();
@@ -7526,23 +388,67 @@ class _TodGameScreenState extends State<TodGameScreen> {
       onSyncRequest: (p) => _provider.onSyncRequest(p),
       onGameStarted: (_) {},
       onGameEnded: (p) {
+        // A game_ended broadcast for a session that isn't this client's
+        // current one — a previous game's event delayed in flight (no
+        // delivery guarantee/ordering on Realtime Broadcast) arriving
+        // after a fresh game already started — must never end the game
+        // actually running now. Tolerant of either side being null (a
+        // session_id-less legacy caller, or this client not having
+        // resolved its own session_id yet) — only a CONFIRMED mismatch
+        // (both known, and different) is rejected, same rule already used
+        // for session_ready above.
+        final eventSessionId = p['session_id'] as String?;
+        if (eventSessionId != null &&
+            _provider.sessionId != null &&
+            eventSessionId != _provider.sessionId) {
+          AppLogger.warning(
+            'TodGameScreen: ignoring game_ended for stale session '
+            '$eventSessionId (current: ${_provider.sessionId})',
+          );
+          return;
+        }
+        // Idempotent navigation-away: another exit path
+        // (_leaveIfRoomNoLongerActive, the error/session-ended auto-leave,
+        // the quit flow, or a duplicate game_ended) may have already
+        // started leaving this screen. Same combined guard
+        // _leaveIfRoomNoLongerActive uses — once EITHER latch is set, every
+        // other exit becomes a no-op, so we can never double-pop / navigate
+        // after this route is already gone.
+        if (_autoLeftOnSessionEnd || _provider.isNavigatingAway) return;
         if (mounted) {
           // Mark this as a programmatic exit before popping, so the
           // _TodGameScaffold's PopScope (which shares this same
           // TodGameProvider instance) doesn't mistake it for the user
           // backing out and open the Quit Game dialog on top of it.
+          _autoLeftOnSessionEnd = true;
           _provider.isNavigatingAway = true;
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('The host ended the game')),
+            SnackBar(content: Text(context.l10n.todHostEndedGame)),
           );
+          // game_ended means the SESSION ended, not the room — return to
+          // the room lobby, never app home (see _leaveIfRoomNoLongerActive).
           if (context.canPop())
             context.pop();
           else
-            context.go(RouteNames.home);
+            context.go('/home/room/${widget.roomId}');
         }
       },
       onRoomEvent: (p) {
         final type = p['type'] as String?;
+        if (type == 'session_ready') {
+          // The owner's own live tracking of who's confirmed loading this
+          // session — a follower's DB confirmation (durable, for
+          // reconnect) also fires this as a broadcast so the owner learns
+          // it immediately instead of only on its next poll.
+          final sessionId = p['session_id'] as String?;
+          final userId = p['user_id'] as String?;
+          if (sessionId != null &&
+              userId != null &&
+              sessionId == _provider.sessionId) {
+            _provider.handleSessionReadyEvent(userId);
+          }
+          return;
+        }
         if (type == 'screenshot_taken') {
           final shooterId = p['user_id'] as String?;
           final myId = context.read<AuthProvider>().currentUser?.id;
@@ -7550,7 +456,10 @@ class _TodGameScreenState extends State<TodGameScreen> {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(
-                  '📸 ${widget.playerDisplayNames[shooterId] ?? 'Someone'} took a screenshot',
+                  context.l10n.todScreenshotTaken(
+                    widget.playerDisplayNames[shooterId] ??
+                        context.l10n.someone,
+                  ),
                 ),
                 backgroundColor: Colors.black87,
               ),
@@ -7559,52 +468,28 @@ class _TodGameScreenState extends State<TodGameScreen> {
           return;
         }
         if (type == 'player_left' && mounted) {
-          final name = p['display_name'] as String? ?? 'A player';
+          final name =
+              p['display_name'] as String? ?? context.l10n.defaultPlayerName;
           final leavingId = p['user_id'] as String?;
           if (leavingId != null) {
             _provider.markPlayerAway(leavingId, forGood: true);
-            if (widget.isOwner) {
-              final active =
-                  _provider.state?.playerOrder
-                      .where((id) => !_provider.awayPlayerIds.contains(id))
-                      .toList() ??
-                  [];
-              if (active.length <= 1) {
-                WidgetsBinding.instance.addPostFrameCallback((_) async {
-                  if (!mounted) return;
-                  try {
-                    await sl.realtimeService.broadcastRoomEvent(widget.roomId, {
-                      'type': 'game_ended',
-                      'reason': 'all_players_left',
-                    });
-                    await sl.roomRepository.updateStatus(
-                      widget.roomId,
-                      RoomStatus.waiting,
-                    );
-                  } catch (_) {}
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('All players left — game ended'),
-                        behavior: SnackBarBehavior.fixed,
-                      ),
-                    );
-                    await Future.delayed(const Duration(milliseconds: 600));
-                    if (mounted) {
-                      if (context.canPop())
-                        context.pop();
-                      else
-                        context.go('/home/room/${widget.roomId}');
-                    }
-                  }
-                });
-                return;
-              }
-            }
           }
+          // The "fewer than 2 active players left -> end the game" check
+          // previously lived here, computed from this screen's own
+          // in-memory playerOrder/awayPlayerIds — ToD-only, and blind to
+          // every departure path that doesn't broadcast 'player_left'
+          // specifically (disconnect timeout, a kick/ban whose broadcast
+          // was missed, a purely server-side sweep). It's now centralized
+          // in RoomProvider._maybeAutoEndGame, computed from real DB
+          // membership truth via the same reconciliation path kicked/
+          // banned-removal already relies on (see _refreshMembers), and
+          // shared by all 3 games uniformly instead of re-implemented per
+          // screen. That path broadcasts the same 'game_ended' room event
+          // (reason: 'not_enough_players'), handled below same as a
+          // host-initiated end.
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('👋 $name left the game'),
+              content: Text(context.l10n.todPlayerLeftGame(name)),
               backgroundColor: Colors.red.shade700,
               duration: const Duration(seconds: 3),
               behavior: SnackBarBehavior.fixed,
@@ -7624,8 +509,8 @@ class _TodGameScreenState extends State<TodGameScreen> {
           final newOwnerId = p['new_owner_id'] as String?;
           if (newOwnerId == myId) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('👑 You are now the game host!'),
+              SnackBar(
+                content: Text(context.l10n.todYouAreNowHost),
                 backgroundColor: Colors.purple,
               ),
             );
@@ -7636,16 +521,21 @@ class _TodGameScreenState extends State<TodGameScreen> {
           final reason = p['reason'] as String? ?? '';
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!mounted) return;
-            final isAllLeft = reason == 'all_players_left';
+            final isAllLeft =
+                reason == 'all_players_left' || reason == 'not_enough_players';
             showDialog(
               context: context,
               barrierDismissible: false,
               builder: (ctx2) => AlertDialog(
-                title: Text(isAllLeft ? 'Game Over' : 'Game Ended'),
+                title: Text(
+                  isAllLeft
+                      ? context.l10n.todGameOver
+                      : context.l10n.todGameEnded,
+                ),
                 content: Text(
                   isAllLeft
-                      ? 'All players left the game.'
-                      : 'The host ended the game.',
+                      ? context.l10n.todAllPlayersLeftGameBody
+                      : context.l10n.todHostEndedGameBody,
                 ),
                 actions: [
                   FilledButton(
@@ -7657,7 +547,7 @@ class _TodGameScreenState extends State<TodGameScreen> {
                         context.go('/home/room/${widget.roomId}');
                       }
                     },
-                    child: const Text('Go to Lobby'),
+                    child: Text(context.l10n.todGoToLobby),
                   ),
                 ],
               ),
@@ -7678,6 +568,10 @@ class _TodGameScreenState extends State<TodGameScreen> {
           _provider.onPlayerActivityUpdate(p);
           return;
         }
+        if (type == 'dishonest_reason_added') {
+          _provider.onDishonestReasonAdded(p);
+          return;
+        }
         if ((type == 'room_closed' || type == 'owner_left') && mounted) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!mounted) {
@@ -7688,15 +582,15 @@ class _TodGameScreenState extends State<TodGameScreen> {
               context: context,
               barrierDismissible: false,
               builder: (ctx2) => AlertDialog(
-                title: const Text('Room Closed'),
-                content: const Text('The host closed the room.'),
+                title: Text(context.l10n.lobbyRoomClosedTitle),
+                content: Text(context.l10n.lobbyRoomClosedBody),
                 actions: [
                   FilledButton(
                     onPressed: () {
                       Navigator.of(ctx2).pop();
                       AppRouter.router.go(RouteNames.home);
                     },
-                    child: const Text('OK'),
+                    child: Text(context.l10n.ok),
                   ),
                 ],
               ),
@@ -7707,12 +601,17 @@ class _TodGameScreenState extends State<TodGameScreen> {
       },
       onChatMessage: (p) {
         final msg = TodChatMsg(
+          id: p['id'] as String?,
           senderId: p['user_id'] as String? ?? '',
-          senderName: p['display_name'] as String? ?? 'Player',
+          senderName:
+              p['display_name'] as String? ?? context.l10n.defaultPlayerName,
           text: p['content'] as String? ?? '',
           ts: DateTime.fromMillisecondsSinceEpoch(
             (p['ts'] as num?)?.toInt() ?? DateTime.now().millisecondsSinceEpoch,
           ),
+          replyToId: p['reply_to_id'] as String?,
+          replyToSenderName: p['reply_to_sender_name'] as String?,
+          replyToText: p['reply_to_text'] as String?,
         );
         _provider.addChatMessage(msg);
       },
@@ -7741,7 +640,7 @@ class _TodGameScreenState extends State<TodGameScreen> {
       if (targetId == currentId && mounted) {
         _provider.isNavigatingAway = true;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('You were removed from this game')),
+          SnackBar(content: Text(context.l10n.todRemovedFromGame)),
         );
         if (context.canPop()) {
           context.pop();
@@ -7762,121 +661,251 @@ class _TodGameScreenState extends State<TodGameScreen> {
       // game_kick, regardless of whose client this is.
       _provider.markPlayerAway(targetId, forGood: true);
       if (targetId == currentId && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('You were removed from the room')),
-        );
+        // Name the actual actor (admin/moderator display name from the
+        // broadcast's by_name), never a generic "admin". Falls back to the
+        // unattributed string only when the payload omits the name.
+        final byName = (p['by_name'] as String?)?.trim();
+        final msg = (byName != null && byName.isNotEmpty)
+            ? (type == 'ban'
+                  ? context.l10n.moderationYouWereBannedBy(byName)
+                  : context.l10n.moderationYouWereKickedBy(byName))
+            : (type == 'ban'
+                  ? context.l10n.moderationYouWereBanned
+                  : context.l10n.moderationYouWereKicked);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(msg)));
         context.go(RouteNames.home);
       }
     }
   }
 
   @override
+  // Premium Plus away-from-app snackbar (item 1) — wraps whatever this
+  // build() returns; no-op (returns [child] unchanged) when this screen
+  // has no roomProvider.
+  Widget _wrapAwayListener(Widget child) {
+    final rp = widget.roomProvider;
+    return rp == null
+        ? child
+        : AwayPresenceSnackbarListener(roomProvider: rp, child: child);
+  }
+
   Widget build(BuildContext context) {
     // Stacked so the members management entry point stays reachable across
     // every phase this screen can render (choosing/reading/awaiting/
     // punishment-voting/game-over) without needing to be threaded into each
     // phase's own Scaffold individually.
-    return Stack(
-      children: [
-        ChangeNotifierProvider.value(
-          value: _provider,
-          child: Consumer<TodGameProvider>(
-            builder: (ctx, game, _) => _build(ctx, game),
+    return _wrapAwayListener(
+      Stack(
+        children: [
+          ChangeNotifierProvider.value(
+            value: _provider,
+            child: Consumer<TodGameProvider>(
+              builder: (ctx, game, _) => _build(ctx, game),
+            ),
           ),
-        ),
-        RoomMembersFab(
-          roomProvider: widget.roomProvider,
-          gameKickPlayer: _provider.kickPlayerFromGame,
-          gameBanPlayer: _provider.banPlayerFromGame,
-          heroTag: 'tod_members_${widget.roomId}',
-        ),
-        NoActivePlayersBanner(
-          roomProvider: widget.roomProvider,
-          isOwner: widget.isOwner,
-          onEndGame: () => _provider.endGame(),
-        ),
-        // LobbyScreen stays mounted underneath this pushed game route, but
-        // isn't visible while a moderator is actively here — mirror its
-        // join-requests panel so requests filed mid-game (see
-        // RoomProvider.initialize's new brand-new-player gate) are seen.
-        if (widget.roomProvider?.canAcceptJoins ?? false)
+          RoomMembersFab(
+            roomProvider: widget.roomProvider,
+            gameKickPlayer: _provider.kickPlayerFromGame,
+            gameBanPlayer: _provider.banPlayerFromGame,
+            heroTag: 'tod_members_${widget.roomId}',
+          ),
+          // Positioned below kToolbarHeight, not just SafeArea's status-bar
+          // inset — these are later Stack children than the game phase's own
+          // Scaffold/AppBar below, so Stack paints them ON TOP of it; without
+          // accounting for the AppBar's own height too, they land inside the
+          // AppBar's vertical span and visually overlap/block it.
           Positioned(
-            top: 8,
-            left: 12,
-            right: 12,
-            child: SafeArea(
-              bottom: false,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxHeight: 260),
-                child: Material(
-                  color: Theme.of(context).colorScheme.surface,
-                  elevation: 4,
-                  borderRadius: BorderRadius.circular(12),
-                  clipBehavior: Clip.antiAlias,
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(8),
-                    child: JoinRequestsPanel(
-                      roomId: widget.roomId,
-                      inGame: true,
-                    ),
+            top: kToolbarHeight,
+            left: 0,
+            right: 0,
+            child: NoActivePlayersBanner(
+              roomProvider: widget.roomProvider,
+              isOwner: widget.isOwner,
+              onEndGame: () => _provider.endGame(),
+            ),
+          ),
+          // LobbyScreen stays mounted underneath this pushed game route, but
+          // isn't visible while a moderator is actively here — mirror its
+          // join-requests panel so requests filed mid-game (see
+          // RoomProvider.initialize's new brand-new-player gate) are seen.
+          if (widget.roomProvider?.canAcceptJoins ?? false)
+            Positioned(
+              top: kToolbarHeight + 8,
+              left: 12,
+              right: 12,
+              child: SafeArea(
+                bottom: false,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 260),
+                  // Item 11 — the elevated-card chrome now lives INSIDE
+                  // JoinRequestsPanel (floatingCard: true) so it only exists
+                  // together with real content — see its own doc comment.
+                  // No wrapper here means no leftover footprint when there's
+                  // nothing pending.
+                  child: JoinRequestsPanel(
+                    roomId: widget.roomId,
+                    inGame: true,
+                    floatingCard: true,
                   ),
                 ),
               ),
             ),
-          ),
-        ChangeNotifierProvider.value(
-          value: _provider,
-          child: Consumer<TodGameProvider>(
-            builder: (ctx, game, _) => AnimatedReactionOverlay(
-              reactions: (game.state?.currentReactions ?? const [])
-                  .map((r) => (emoji: r.emoji, ts: r.ts))
-                  .toList(),
+          // Positioned.fill is required here: AnimatedReactionOverlay is
+          // itself a Stack, and an un-positioned Stack nested inside this
+          // outer Stack gets sized to fit its content and pinned to the
+          // outer Stack's default alignment (AlignmentDirectional.topStart —
+          // top-RIGHT under RTL/Arabic) instead of filling the screen. Its
+          // internal Positioned children are computed from the full device
+          // size (MediaQuery.sizeOf), so without this they all collapsed
+          // into that corner instead of spanning the game screen.
+          Positioned.fill(
+            child: ChangeNotifierProvider.value(
+              value: _provider,
+              child: Consumer<TodGameProvider>(
+                builder: (ctx, game, _) => CenterReactionOverlay(
+                  reactions: (game.state?.currentReactions ?? const [])
+                      .map((r) => (emoji: r.emoji, ts: r.ts, userId: r.userId))
+                      .toList(),
+                  avatarResolver: widget.roomProvider?.memberById,
+                ),
+              ),
             ),
           ),
-        ),
-        // Persistent indicator so everyone understands the rules before
-        // playing, not just when someone happens to skip — per the room
-        // owner's punishment-mode setting.
-        if (_provider.config?.enablePunishments ?? false)
-          const Positioned(
-            top: 8,
-            left: 0,
-            right: 0,
-            child: Center(child: _PunishmentModeBadge()),
-          ),
-      ],
+          // Persistent indicator so everyone understands the rules before
+          // playing, not just when someone happens to skip — per the room
+          // owner's punishment-mode setting.
+          if (_provider.config?.enablePunishments ?? false)
+            const Positioned(
+              top: kToolbarHeight + 8,
+              left: 0,
+              right: 0,
+              child: Center(child: _PunishmentModeBadge()),
+            ),
+        ],
+      ),
     );
   }
 
   Widget _build(BuildContext ctx, TodGameProvider game) {
+    // Host disconnected mid-game — replaces everything else until the room
+    // un-pauses (host back) or the game ends (timeout). Takes priority over
+    // every other state; there is nothing meaningful to show underneath it.
+    //
+    // NEVER shown to the OWNER themselves: the overlay literally says
+    // "waiting for the admin to return", which is nonsensical for the admin
+    // — they ARE the host. On the admin's own reconnect the reconcile sets
+    // local status=paused for a frame (before _maybeOwnerSelfResumeFromPause
+    // finishes the DB-first flip back to in_game), which briefly rendered
+    // this overlay to the admin. Suppressing it for the owner keeps the
+    // admin visually on the game/loading state throughout the resume — no
+    // flash. Only the getter/gameplay gate (isSessionActive) and the
+    // countdown are untouched; every OTHER (non-owner) client still sees
+    // the normal waiting screen while the admin is genuinely away.
+    if (widget.roomProvider?.isPausedForHostReconnect == true &&
+        widget.roomProvider?.isOwner != true) {
+      return HostReconnectOverlay(roomProvider: widget.roomProvider!);
+    }
+
     if (game.loadState == TodLoadState.loading) {
       return const TodLoadingScreen();
     }
 
+    // A definitive failure must take priority over "still starting" —
+    // game.isSessionStarting (_lifecycleState == 'starting') stays true
+    // forever once session creation fails (nothing ever advances it past
+    // 'starting'), so checking isSessionStarting before this error branch
+    // would make a real, already-surfaced error permanently unreachable
+    // in the UI: the "waiting for players" loading screen below would win
+    // every single build, masking the error completely and presenting as
+    // an infinite loading screen with no indication anything had gone
+    // wrong. This check must come BEFORE isSessionStarting for exactly
+    // that reason (latent here — ToD's own create_game_session call
+    // doesn't currently fail in practice — but identical to the
+    // already-observed bug in NHIE/Meme, fixed the same way for
+    // consistency).
     if (game.loadState == TodLoadState.error) {
+      Future<void> leaveToLobby() async {
+        if (widget.isOwner) {
+          try {
+            await sl.realtimeService.broadcastGameEnded(widget.roomId, {
+              'reason': 'host_left',
+              'session_id': game.sessionId,
+            });
+            await sl.roomRepository.updateStatus(
+              widget.roomId,
+              RoomStatus.waiting,
+            );
+          } catch (_) {}
+        }
+        // Prefer popping back to the LobbyScreen instance already alive
+        // underneath this pushed game route over go(), which may not
+        // resolve the Future _pushGameRoute is awaiting to clear its
+        // _navigatedToGame guard — leaving a second game in this same room
+        // permanently unable to navigate. Same pattern as
+        // goToLobbyOrHome/onGameEnded.
+        if (ctx.mounted) {
+          if (ctx.canPop()) {
+            ctx.pop();
+          } else {
+            // Room still exists (session ended/failed to start, e.g. a
+            // player was kicked during loading) — return to its LOBBY, not
+            // the app home. See _leaveIfRoomNoLongerActive's rationale.
+            ctx.go('/home/room/${widget.roomId}');
+          }
+        }
+      }
+
+      // The session-ended case (aborted elsewhere — auto-end, a
+      // disconnect timeout, the owner quitting) is not a real error the
+      // user needs to read and dismiss — it's this client finding out
+      // late that the game is already over, exactly what onGameEnded
+      // handles for everyone whose broadcast *did* arrive in time (no
+      // delivery guarantee on Realtime Broadcast — this is the fallback
+      // for whoever's didn't). Leave automatically instead of parking on
+      // a screen that looks like a crash and waiting for a manual tap.
+      if (game.error == kSessionEndedErrorMessage) {
+        // Never render the red ErrorView for this specific case — even a
+        // single visible frame of it before the postFrameCallback below
+        // fires reads as "an error appeared" to the user, even though it's
+        // just this client finding out late that the game already ended
+        // cleanly elsewhere. A plain loading screen while leaving happens
+        // in the background looks identical to every other brief
+        // navigation transition in this app.
+        if (!_autoLeftOnSessionEnd) {
+          _autoLeftOnSessionEnd = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) => leaveToLobby());
+        }
+        return const TodLoadingScreen();
+      }
+
       return Scaffold(
-        appBar: AppBar(
-          leading: BackButton(
-            onPressed: () async {
-              if (widget.isOwner) {
-                try {
-                  await sl.realtimeService.broadcastGameEnded(widget.roomId, {
-                    'reason': 'host_left',
-                  });
-                  await sl.roomRepository.updateStatus(
-                    widget.roomId,
-                    RoomStatus.waiting,
-                  );
-                } catch (_) {}
-              }
-              if (ctx.mounted) ctx.go(RouteNames.home);
-            },
-          ),
-        ),
+        appBar: AppBar(leading: BackButton(onPressed: leaveToLobby)),
         body: ErrorView(
           message: game.error ?? 'Failed to load game',
           onRetry: () => ctx.go(RouteNames.home),
         ),
+      );
+    }
+
+    // Session ready barrier: state is already loaded and rendering fine
+    // (that's specifically what made the old bug invisible — the screen
+    // LOOKED ready) but this client's own session hasn't reached ACTIVE
+    // yet, so no gameplay UI is shown at all — nothing to press, nothing
+    // to silently ignore. Checked AFTER the error branch above — see its
+    // comment for why the order matters.
+    if (game.isSessionStarting) {
+      // The ready-count is only tracked on the owner's client (it's the
+      // one collecting confirmations) — a follower just sees the plain
+      // waiting copy instead of a "0/0" that would mean nothing to them.
+      return TodLoadingScreen(
+        subtitle: game.expectedReadyCount > 0
+            ? ctx.l10n.todWaitingForPlayers(
+                game.readyConfirmedCount,
+                game.expectedReadyCount,
+              )
+            : null,
       );
     }
 
@@ -7885,7 +914,11 @@ class _TodGameScreenState extends State<TodGameScreen> {
       return TodEndScreen(
         state: game.state!,
         displayNames: widget.playerDisplayNames,
-        onLeave: () => goToLobbyOrHome(ctx, widget.roomId),
+        onLeave: () => goToLobbyOrHome(
+          ctx,
+          widget.roomId,
+          roomProvider: widget.roomProvider,
+        ),
       );
     }
 
@@ -7919,14 +952,14 @@ class _PunishmentModeBadge extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 6)],
         ),
-        child: const Row(
+        child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.gavel_rounded, size: 14, color: Colors.white),
-            SizedBox(width: 6),
+            const Icon(Icons.gavel_rounded, size: 14, color: Colors.white),
+            const SizedBox(width: 6),
             Text(
-              'Punishment mode ON',
-              style: TextStyle(
+              context.l10n.todPunishmentModeOn,
+              style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w700,
                 fontSize: 12,
@@ -7961,6 +994,50 @@ class _TodGameScaffoldState extends State<_TodGameScaffold> {
   bool _showChat = false;
   int _unreadChat = 0;
 
+  // First-time Truth or Dare overview highlight (the always-present HUD).
+  final GlobalKey _hudShowcaseKey = GlobalKey();
+
+  // The route-level back guard owned by GameScreenSecurityGate. Registering
+  // here routes EVERY back gesture — including one made while an internal
+  // sub-view (round history / chat) is open, which the old per-screen PopScope
+  // couldn't see — through _handleGameBack, so back can never escape the game.
+  GameBackController? _backGuard;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final guard = GameBackGuard.of(context);
+    if (!identical(guard, _backGuard)) {
+      _backGuard?.unregister(_handleGameBack);
+      _backGuard = guard;
+      _backGuard?.register(_handleGameBack);
+    }
+  }
+
+  @override
+  void dispose() {
+    _backGuard?.unregister(_handleGameBack);
+    super.dispose();
+  }
+
+  /// Single back handler for the active Truth-or-Dare screen: close an open
+  /// sub-view first (so back dismisses history/chat instead of leaving the
+  /// game), otherwise run the existing quit-confirmation flow. Always consumes
+  /// the gesture so the game route never pops out from under an active game.
+  Future<bool> _handleGameBack() async {
+    if (!mounted) return true;
+    if (_showChat) {
+      setState(() => _showChat = false);
+      return true;
+    }
+    if (_showHistory) {
+      setState(() => _showHistory = false);
+      return true;
+    }
+    await _showLeaveDialog(context, widget.game, widget.state);
+    return true;
+  }
+
   void _navigateAway(BuildContext ctx, String location) {
     // widget.game (TodGameProvider) is shared with _TodGameScreenState,
     // which owns the realtime listeners — this is the single flag both
@@ -7985,113 +1062,156 @@ class _TodGameScaffoldState extends State<_TodGameScaffold> {
           leading: BackButton(
             onPressed: () => setState(() => _showHistory = false),
           ),
-          title: Text('History (${state.history.length} rounds)'),
+          title: Text(context.l10n.todHistoryRoundsCount(state.history.length)),
         ),
         body: _HistoryPanel(
           history: state.history,
           displayNames: widget.displayNames,
+          game: game,
         ),
       );
     }
 
-    return PopScope(
-      canPop: false,
-      onPopInvoked: (_) {
-        if (widget.game.isNavigatingAway) return;
-        WidgetsBinding.instance.addPostFrameCallback(
-          (_) => _showLeaveDialog(context, game, state),
-        );
-      },
-      child: Scaffold(
-        appBar: AppBar(
-          automaticallyImplyLeading: false,
-          title: const Text(''),
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () => _showLeaveDialog(context, game, state),
-          ),
-          actions: [
-            Consumer<TodGameProvider>(
-              builder: (_, g, __) => Stack(
-                alignment: Alignment.topRight,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.chat_bubble_outline_rounded),
-                    onPressed: () {
-                      g.clearUnreadChat();
-                      showModalBottomSheet(
-                        context: context,
-                        isScrollControlled: true,
-                        backgroundColor: Colors.transparent,
-                        builder: (_) =>
-                            _InGameChatSheet(game: g, myId: g.currentUserId),
-                      );
-                    },
-                  ),
-                  if (g.unreadChat > 0)
-                    Positioned(
-                      top: 8,
-                      right: 8,
-                      child: Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
+    return ScreenTutorial(
+      tutorialId: TutorialIds.todIntro,
+      steps: [_hudShowcaseKey],
+      child: PopScope(
+        // Kept as a redundant route-pop blocker only; the actual back ACTION is
+        // handled once, centrally, by GameScreenSecurityGate via _handleGameBack
+        // (registered above) — so a system back fires the quit dialog exactly
+        // once, and sub-views the old handler couldn't see are covered too.
+        canPop: false,
+        onPopInvoked: (_) {},
+        child: Scaffold(
+          appBar: AppBar(
+            // Solid brand-purple so it flows straight into TodHud's own
+            // purple-to-blue gradient below it — one continuous "party" chrome
+            // instead of the system-themed AppBar it used to be.
+            backgroundColor: AppColors.brandPurpleDark,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            systemOverlayStyle: SystemUiOverlayStyle.light,
+            automaticallyImplyLeading: false,
+            title: const Text(''),
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => _showLeaveDialog(context, game, state),
+            ),
+            actions: [
+              Consumer<TodGameProvider>(
+                builder: (_, g, __) => Stack(
+                  alignment: Alignment.topRight,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.chat_bubble_outline_rounded),
+                      onPressed: () {
+                        g.clearUnreadChat();
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: Colors.transparent,
+                          builder: (_) => GameChatSheet(
+                            listenable: g,
+                            messagesOf: () => g.chatMessages,
+                            myId: g.currentUserId,
+                            title: context.l10n.todChatTitle,
+                            onSend: (text, {replyTo}) =>
+                                g.sendChat(text, replyTo: replyTo),
+                            memberOf: g.roomProvider?.memberById,
+                            isPremiumPlus:
+                                context
+                                    .read<AuthProvider>()
+                                    .currentUser
+                                    ?.isPremiumPlusActive ??
+                                false,
+                            participants: g.gameParticipants,
+                            onSendTargeted:
+                                (
+                                  text, {
+                                  required recipientIds,
+                                  required recipientNames,
+                                  replyTo,
+                                }) => g.sendTargetedChat(
+                                  text,
+                                  recipientIds: recipientIds,
+                                  recipientNames: recipientNames,
+                                  replyTo: replyTo,
+                                ),
+                          ),
+                        );
+                      },
+                    ),
+                    if (g.unreadChat > 0)
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                          ),
                         ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            if (state.history.isNotEmpty)
-              IconButton(
-                icon: const Icon(Icons.history_rounded),
-                tooltip: 'History',
-                onPressed: () => setState(() => _showHistory = true),
-              ),
-            RulesButton(gameType: GameType.truthOrDare, config: game.config),
-          ],
-        ),
-        body: SafeArea(
-          child: Column(
-            children: [
-              TodHud(
-                state: state,
-                game: game,
-                displayNames: widget.displayNames,
-              ),
-              Expanded(
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 300),
-                  transitionBuilder: (child, anim) => FadeTransition(
-                    opacity: anim,
-                    child: SlideTransition(
-                      position:
-                          Tween<Offset>(
-                            begin: const Offset(0, 0.05),
-                            end: Offset.zero,
-                          ).animate(
-                            CurvedAnimation(
-                              parent: anim,
-                              curve: Curves.easeOutCubic,
-                            ),
-                          ),
-                      child: child,
-                    ),
+              if (state.history.isNotEmpty)
+                IconButton(
+                  icon: const Icon(Icons.history_rounded),
+                  tooltip: context.l10n.sharedHistoryTooltip,
+                  onPressed: () => setState(() => _showHistory = true),
+                ),
+              RulesButton(gameType: GameType.truthOrDare, config: game.config),
+            ],
+          ),
+          body: SafeArea(
+            child: Column(
+              children: [
+                tutorialShowcase(
+                  context: context,
+                  showcaseKey: _hudShowcaseKey,
+                  title: context.l10n.tutTodTitle,
+                  description: context.l10n.tutTodBody,
+                  child: TodHud(
+                    state: state,
+                    game: game,
+                    displayNames: widget.displayNames,
                   ),
-                  child: KeyedSubtree(
-                    key: ValueKey('${state.phase}-${state.currentPlayerId}'),
-                    child: _phaseWidget(
-                      context,
-                      game,
-                      widget.displayNames,
-                      state,
+                ),
+                Expanded(
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    transitionBuilder: (child, anim) => FadeTransition(
+                      opacity: anim,
+                      child: SlideTransition(
+                        position:
+                            Tween<Offset>(
+                              begin: const Offset(0, 0.05),
+                              end: Offset.zero,
+                            ).animate(
+                              CurvedAnimation(
+                                parent: anim,
+                                curve: Curves.easeOutCubic,
+                              ),
+                            ),
+                        child: child,
+                      ),
+                    ),
+                    child: KeyedSubtree(
+                      key: ValueKey('${state.phase}-${state.currentPlayerId}'),
+                      child: _phaseWidget(
+                        context,
+                        game,
+                        widget.displayNames,
+                        state,
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -8111,17 +1231,17 @@ class _TodGameScaffoldState extends State<_TodGameScaffold> {
     final confirmed = await showDialog<bool>(
       context: ctx,
       builder: (dCtx) => AlertDialog(
-        title: const Text('Quit Game?'),
-        content: const Text('Leave the current game?'),
+        title: Text(ctx.l10n.todQuitGameTitle),
+        content: Text(ctx.l10n.todQuitGameBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dCtx).pop(false),
-            child: const Text('Cancel'),
+            child: Text(ctx.l10n.cancel),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.of(dCtx).pop(true),
-            child: const Text('Quit Game'),
+            child: Text(ctx.l10n.todQuitGame),
           ),
         ],
       ),
@@ -8138,6 +1258,7 @@ class _TodGameScaffoldState extends State<_TodGameScaffold> {
       try {
         await sl.realtimeService.broadcastGameEnded(widget.roomId, {
           'reason': 'host_quit_to_lobby',
+          'session_id': game.sessionId,
         });
         await sl.roomRepository.updateStatus(widget.roomId, RoomStatus.waiting);
       } catch (_) {}
@@ -8146,7 +1267,8 @@ class _TodGameScaffoldState extends State<_TodGameScaffold> {
       // A normal player/spectator quitting the game also leaves the room
       // entirely (frees their slot, updates counts) — for_good:true tells
       // every client's RoomProvider to remove them from the member list.
-      final displayName = widget.displayNames[myUserId] ?? 'A player';
+      final displayName =
+          widget.displayNames[myUserId] ?? ctx.l10n.defaultPlayerName;
       try {
         await sl.roomRepository.setMemberDefinitiveLeave(
           widget.roomId,
@@ -8187,19 +1309,51 @@ class _TodGameScaffoldState extends State<_TodGameScaffold> {
   }
 }
 
-class _HistoryPanel extends StatelessWidget {
-  const _HistoryPanel({required this.history, required this.displayNames});
+class _HistoryPanel extends StatefulWidget {
+  const _HistoryPanel({
+    required this.history,
+    required this.displayNames,
+    required this.game,
+  });
   final List<TodRoundRecord> history;
   final Map<String, String> displayNames;
+  final TodGameProvider game;
+
+  @override
+  State<_HistoryPanel> createState() => _HistoryPanelState();
+}
+
+class _HistoryPanelState extends State<_HistoryPanel> {
+  // turnStartedAt -> (distinctViewers, totalViews). Fetched exactly once
+  // when the panel opens (never from build()/a stream callback) so it
+  // can't re-fire on every rebuild; {} until the fetch resolves, which
+  // simply means no round shows a replay count yet.
+  Map<int, ({int distinctViewers, int totalViews})> _viewStats = const {};
+
+  @override
+  void initState() {
+    super.initState();
+    final turnStartedAts = widget.history
+        .where((r) => r.hadProof && r.turnStartedAt != null)
+        .map((r) => r.turnStartedAt!)
+        .toSet()
+        .toList();
+    if (turnStartedAts.isNotEmpty) {
+      widget.game.fetchProofViewStats(turnStartedAts).then((stats) {
+        if (mounted) setState(() => _viewStats = stats);
+      });
+    }
+  }
 
   String _name(String id) =>
-      displayNames[id] ?? id.substring(0, id.length.clamp(0, 6));
+      widget.displayNames[id] ?? id.substring(0, id.length.clamp(0, 6));
 
   @override
   Widget build(BuildContext context) {
+    final history = widget.history;
     final theme = context.theme;
     if (history.isEmpty) {
-      return const Center(child: Text('No rounds completed yet.'));
+      return Center(child: Text(context.l10n.todNoRoundsYet));
     }
     return ListView.builder(
       padding: const EdgeInsets.all(12),
@@ -8228,8 +1382,13 @@ class _HistoryPanel extends StatelessWidget {
             ),
             subtitle: Text(
               round.card != null
-                  ? '${round.card!.type == TodCardType.truth ? "Truth" : "Dare"}: ${round.card!.content}'
-                  : 'Skipped',
+                  ? context.l10n.todRoundTypeContent(
+                      round.card!.type == TodCardType.truth
+                          ? context.l10n.todTruth
+                          : context.l10n.todDare,
+                      round.card!.content,
+                    )
+                  : context.l10n.todSkipped,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.bodySmall,
@@ -8263,7 +1422,7 @@ class _HistoryPanel extends StatelessWidget {
                           const Text('💬 ', style: TextStyle(fontSize: 14)),
                           Expanded(
                             child: Text(
-                              '"${round.response}"',
+                              context.l10n.todQuotedResponse(round.response),
                               style: theme.textTheme.bodySmall?.copyWith(
                                 fontStyle: FontStyle.italic,
                               ),
@@ -8275,7 +1434,7 @@ class _HistoryPanel extends StatelessWidget {
                     if (round.voteCount > 0) ...[
                       const SizedBox(height: 6),
                       Text(
-                        '👍 ${round.voteCount} vote${round.voteCount != 1 ? "s" : ""}',
+                        context.l10n.todVoteCount(round.voteCount),
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.primary,
                           fontWeight: FontWeight.w600,
@@ -8285,6 +1444,18 @@ class _HistoryPanel extends StatelessWidget {
                     if (round.hadProof) ...[
                       const SizedBox(height: 8),
                       _ProofWatchedBadge(watchedBy: round.proofWatchedBy),
+                      const SizedBox(height: 4),
+                      _ReplayCountBadge(
+                        replays: switch (
+                            round.turnStartedAt != null
+                                ? _viewStats[round.turnStartedAt!]
+                                : null) {
+                          final stats? =>
+                            (stats.totalViews - stats.distinctViewers)
+                                .clamp(0, 1 << 30),
+                          null => 0,
+                        },
+                      ),
                     ],
                     if (reactTally.isNotEmpty) ...[
                       const SizedBox(height: 8),
@@ -8312,6 +1483,20 @@ class _HistoryPanel extends StatelessWidget {
                             .toList(),
                       ),
                     ],
+                    // Item: Game History → my own past turn → dishonest
+                    // reasons. Only ever shown/fetched for a round the
+                    // VIEWER themselves played — a spectator or another
+                    // player's round never reaches this branch, and even
+                    // if it did, honesty_votes' own RLS ("participant
+                    // read": voter OR target only) independently blocks
+                    // the read. Voter identity is never returned — see
+                    // HonestyVoteRepository.getDishonestReasons.
+                    if (round.playerId == widget.game.currentUserId)
+                      DishonestReasonsPanel(
+                        key: ValueKey('history_dishonest_${round.roundNumber}'),
+                        fetch: () => widget.game
+                            .getDishonestReasonsForRound(round.roundNumber),
+                      ),
                   ],
                 ),
               ),
@@ -8348,9 +1533,7 @@ class _ProofWatchedBadge extends StatelessWidget {
           ),
           const SizedBox(width: 6),
           Text(
-            watched
-                ? 'Proof watched by ${watchedBy.length}'
-                : 'Proof sent — not watched',
+            context.l10n.todProofWatchedByCount(watchedBy.length),
             style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
           ),
         ],
@@ -8359,225 +1542,34 @@ class _ProofWatchedBadge extends StatelessWidget {
   }
 }
 
-class _InGameChatSheet extends StatefulWidget {
-  const _InGameChatSheet({required this.game, required this.myId});
-  final TodGameProvider game;
-  final String myId;
-  @override
-  State<_InGameChatSheet> createState() => _InGameChatSheetState();
-}
-
-class _InGameChatSheetState extends State<_InGameChatSheet> {
-  final _ctrl = TextEditingController();
-  final _scroll = ScrollController();
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    _scroll.dispose();
-    super.dispose();
-  }
-
-  void _send() {
-    final t = _ctrl.text.trim();
-    if (t.isEmpty) return;
-    widget.game.sendChat(t);
-    _ctrl.clear();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scroll.hasClients)
-        _scroll.animateTo(
-          _scroll.position.maxScrollExtent,
-          duration: 200.ms,
-          curve: Curves.easeOut,
-        );
-    });
-  }
+class _ReplayCountBadge extends StatelessWidget {
+  const _ReplayCountBadge({required this.replays});
+  final int replays;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: MediaQuery.sizeOf(context).height * 0.65,
-      decoration: const BoxDecoration(
-        color: Color(0xFF1A2E45),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      height: 36,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade200,
+        borderRadius: BorderRadius.circular(8),
       ),
-      child: Column(
+      alignment: Alignment.centerLeft,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 36,
-            height: 4,
-            margin: const EdgeInsets.symmetric(vertical: 10),
-            decoration: BoxDecoration(
-              color: Colors.white24,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const Text(
-            '💬 Chat',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w800,
-              fontSize: 16,
-            ),
-          ),
-          const Divider(color: Colors.white12),
-          Expanded(
-            child: ListenableBuilder(
-              listenable: widget.game,
-              builder: (_, __) {
-                final msgs = widget.game.chatMessages;
-                return msgs.isEmpty
-                    ? const Center(
-                        child: Text(
-                          'No messages yet',
-                          style: TextStyle(color: Colors.white38),
-                        ),
-                      )
-                    : ListView.builder(
-                        controller: _scroll,
-                        padding: const EdgeInsets.all(12),
-                        itemCount: msgs.length,
-                        itemBuilder: (_, i) {
-                          final m = msgs[i];
-                          final isMe = m.senderId == widget.myId;
-                          final color =
-                              _kChatColors[m.senderId.hashCode.abs() %
-                                  _kChatColors.length];
-                          return Padding(
-                            padding: EdgeInsets.only(
-                              bottom: 8,
-                              left: isMe ? 48 : 0,
-                              right: isMe ? 0 : 48,
-                            ),
-                            child: Column(
-                              crossAxisAlignment: isMe
-                                  ? CrossAxisAlignment.end
-                                  : CrossAxisAlignment.start,
-                              children: [
-                                if (!isMe)
-                                  Padding(
-                                    padding: const EdgeInsets.only(
-                                      left: 4,
-                                      bottom: 2,
-                                    ),
-                                    child: Text(
-                                      m.senderName,
-                                      style: TextStyle(
-                                        color: color,
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 8,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: isMe
-                                        ? const Color(0xFFFFD60A)
-                                        : color.withOpacity(0.18),
-                                    borderRadius: BorderRadius.circular(16)
-                                        .copyWith(
-                                          bottomRight: isMe
-                                              ? const Radius.circular(4)
-                                              : null,
-                                          bottomLeft: isMe
-                                              ? null
-                                              : const Radius.circular(4),
-                                        ),
-                                  ),
-                                  child: Text(
-                                    m.text,
-                                    style: TextStyle(
-                                      color: isMe
-                                          ? const Color(0xFF0D1B2A)
-                                          : Colors.white,
-                                      fontWeight: isMe
-                                          ? FontWeight.w700
-                                          : FontWeight.w400,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      );
-              },
-            ),
-          ),
-          Container(
-            padding: EdgeInsets.fromLTRB(
-              12,
-              8,
-              12,
-              MediaQuery.viewInsetsOf(context).bottom + 12,
-            ),
-            color: const Color(0xFF1A2E45),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _ctrl,
-                    style: const TextStyle(color: Colors.white),
-                    textInputAction: TextInputAction.send,
-                    onSubmitted: (_) => _send(),
-                    decoration: InputDecoration(
-                      hintText: 'Say something…',
-                      hintStyle: const TextStyle(color: Colors.white38),
-                      filled: true,
-                      fillColor: Colors.white.withOpacity(0.07),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(24),
-                        borderSide: BorderSide.none,
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 10,
-                      ),
-                      isDense: true,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                GestureDetector(
-                  onTap: _send,
-                  child: Container(
-                    width: 44,
-                    height: 44,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFFFD60A),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.send_rounded,
-                      color: Color(0xFF0D1B2A),
-                      size: 20,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+          Icon(Icons.replay_rounded, size: 16, color: Colors.grey.shade600),
+          const SizedBox(width: 6),
+          Text(
+            context.l10n.todReplayCount(replays),
+            style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
           ),
         ],
       ),
     );
   }
 }
-
-const _kChatColors = [
-  Color(0xFF4ECDC4),
-  Color(0xFFA855F7),
-  Color(0xFFFF6B6B),
-  Color(0xFF4ADE80),
-  Color(0xFFFB923C),
-  Color(0xFF60A5FA),
-  Color(0xFFF472B6),
-  Color(0xFFFFD60A),
-  Color(0xFF34D399),
-  Color(0xFFC084FC),
-];
 
 class _PausedOverlay extends StatefulWidget {
   const _PausedOverlay({required this.onLeave});
@@ -8625,9 +1617,9 @@ class _PausedOverlayState extends State<_PausedOverlay>
                   child: const Text('⏸', style: TextStyle(fontSize: 72)),
                 ),
                 const SizedBox(height: 24),
-                const Text(
-                  'Game Paused',
-                  style: TextStyle(
+                Text(
+                  context.l10n.todGamePausedTitle,
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 28,
                     fontWeight: FontWeight.w800,
@@ -8635,8 +1627,8 @@ class _PausedOverlayState extends State<_PausedOverlay>
                   ),
                 ),
                 const SizedBox(height: 12),
-                const Text(
-                  'The host stepped away and will\nreturn shortly.',
+                Text(
+                  context.l10n.todHostSteppedAway,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.white70,
@@ -8655,7 +1647,7 @@ class _PausedOverlayState extends State<_PausedOverlay>
                     ),
                   ),
                   onPressed: widget.onLeave,
-                  child: const Text('Leave for Now'),
+                  child: Text(context.l10n.todLeaveForNow),
                 ),
               ],
             ),

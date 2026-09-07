@@ -108,7 +108,8 @@ CREATE TYPE "public"."notification_type_enum" AS ENUM (
     'system',
     'achievement',
     'wallet_deposit_rejected',
-    'wallet_withdrawal_rejected'
+    'wallet_withdrawal_rejected',
+    'room_chat_message'
 );
 
 
@@ -1482,6 +1483,10 @@ BEGIN
   UPDATE public.game_sessions
   SET status = 'aborted', ended_at = now(), updated_at = now()
   WHERE room_id = p_room_id AND status IN ('active', 'paused');
+
+  UPDATE public.room_members
+  SET left_at = now()
+  WHERE room_id = p_room_id AND left_at IS NULL;
 END;
 $$;
 
@@ -1525,6 +1530,187 @@ $$;
 
 
 ALTER FUNCTION "public"."close_abandoned_room"("p_room_id" "uuid") OWNER TO "postgres";
+
+
+-- Batch D keep-game close: marks the room closed for NEW entrants (hidden
+-- from Browse, joins rejected) WITHOUT ending anything — status, deleted_at
+-- and game_sessions are all left untouched so the live session keeps running
+-- and its player_ids keep playing. Strictly separate from the destructive
+-- close_room above (which is still used for owner-leave / terminal teardown).
+CREATE OR REPLACE FUNCTION "public"."close_room_keep_game"("p_room_id" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+  v_owner_id uuid;
+  v_closed_at timestamptz;
+  v_relevant integer;
+BEGIN
+  SELECT owner_id, closed_at INTO v_owner_id, v_closed_at
+  FROM public.rooms
+  WHERE id = p_room_id AND deleted_at IS NULL
+  FOR UPDATE;
+
+  IF v_owner_id IS NULL THEN
+    RAISE EXCEPTION 'room_not_found';
+  END IF;
+  IF v_owner_id <> auth.uid() THEN
+    RAISE EXCEPTION 'permission_denied';
+  END IF;
+  IF v_closed_at IS NOT NULL THEN
+    RAISE EXCEPTION 'already_closed';
+  END IF;
+
+  SELECT count(*) INTO v_relevant
+  FROM public.room_members
+  WHERE room_id = p_room_id AND left_at IS NULL AND kicked_at IS NULL;
+  IF v_relevant <= 1 THEN
+    RAISE EXCEPTION 'not_enough_members';
+  END IF;
+
+  UPDATE public.rooms
+  SET closed_at = now(), updated_at = now()
+  WHERE id = p_room_id AND closed_at IS NULL;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."close_room_keep_game"("p_room_id" "uuid") OWNER TO "postgres";
+
+
+-- Reverse of close_room_keep_game: clears closed_at so the room is joinable
+-- and browsable again per its normal rules. Owner-only; touches ONLY
+-- closed_at (no delete, no new room/session, no game-data/settings reset).
+CREATE OR REPLACE FUNCTION "public"."reopen_room_keep_game"("p_room_id" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+  v_owner_id uuid;
+  v_closed_at timestamptz;
+BEGIN
+  SELECT owner_id, closed_at INTO v_owner_id, v_closed_at
+  FROM public.rooms
+  WHERE id = p_room_id AND deleted_at IS NULL
+  FOR UPDATE;
+
+  IF v_owner_id IS NULL THEN
+    RAISE EXCEPTION 'room_not_found';
+  END IF;
+  IF v_owner_id <> auth.uid() THEN
+    RAISE EXCEPTION 'permission_denied';
+  END IF;
+  IF v_closed_at IS NULL THEN
+    RAISE EXCEPTION 'not_closed';
+  END IF;
+
+  UPDATE public.rooms
+  SET closed_at = NULL, updated_at = now()
+  WHERE id = p_room_id AND closed_at IS NOT NULL AND deleted_at IS NULL;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."reopen_room_keep_game"("p_room_id" "uuid") OWNER TO "postgres";
+
+
+-- Reactivation backstop for keep-game-closed rooms: a trigger (sees OLD+NEW)
+-- blocks a kicked/left player from resurrecting their room_members row into a
+-- closed room via the joinRoom upsert's DO UPDATE path, which RLS WITH CHECK
+-- cannot distinguish from an ordinary self-update. Present members and the
+-- owner and genuine active-session participants are unaffected.
+CREATE OR REPLACE FUNCTION "public"."room_members_block_reactivation_when_closed"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+BEGIN
+  IF NEW.left_at IS NULL
+     AND (TG_OP = 'INSERT' OR (TG_OP = 'UPDATE' AND OLD.left_at IS NOT NULL)) THEN
+    IF EXISTS (SELECT 1 FROM public.rooms r
+               WHERE r.id = NEW.room_id AND r.closed_at IS NOT NULL) THEN
+      IF NOT EXISTS (SELECT 1 FROM public.rooms r
+                     WHERE r.id = NEW.room_id AND r.owner_id = NEW.user_id)
+         AND NOT (
+           NEW.kicked_at IS NULL
+           AND NOT NEW.left_definitively
+           AND NOT EXISTS (
+             SELECT 1 FROM public.room_bans b
+             WHERE b.room_id = NEW.room_id AND b.user_id = NEW.user_id
+               AND b.lifted_at IS NULL
+               AND (b.banned_until IS NULL OR b.banned_until > now())
+           )
+           AND (
+             -- (a) genuine active/paused game-session participant
+             -- reconnecting.
+             EXISTS (
+               SELECT 1 FROM public.game_sessions gs
+               WHERE gs.room_id = NEW.room_id
+                 AND gs.status IN ('active', 'paused')
+                 AND NEW.user_id = ANY(gs.player_ids)
+             )
+             -- (b) a row that already existed before this reactivation
+             -- (TG_OP = 'UPDATE' only reaches here when OLD.left_at WAS
+             -- set, per the outer IF) — a legitimate existing member
+             -- simply reconnecting, not a brand-new joiner.
+             OR TG_OP = 'UPDATE'
+             -- (c) a still-valid (not declined, not expired) invitation —
+             -- an admin inviting someone into a closed room must work.
+             OR EXISTS (
+               SELECT 1 FROM public.room_invites ri
+               WHERE ri.room_id = NEW.room_id
+                 AND ri.invited_user = NEW.user_id
+                 AND ri.declined_at IS NULL
+                 AND ri.expires_at > now()
+             )
+           )
+         )
+      THEN
+        RAISE EXCEPTION 'room_closed';
+      END IF;
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."room_members_block_reactivation_when_closed"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."rooms_auto_reopen_when_owner_alone"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+  v_owner_id uuid;
+  v_active_count integer;
+  v_owner_still_active boolean;
+BEGIN
+  SELECT owner_id INTO v_owner_id FROM public.rooms
+  WHERE id = NEW.room_id AND closed_at IS NOT NULL AND deleted_at IS NULL;
+  IF v_owner_id IS NULL THEN
+    RETURN NEW;
+  END IF;
+
+  SELECT count(*) INTO v_active_count
+  FROM public.room_members
+  WHERE room_id = NEW.room_id AND left_at IS NULL;
+
+  IF v_active_count = 1 THEN
+    SELECT EXISTS (
+      SELECT 1 FROM public.room_members
+      WHERE room_id = NEW.room_id AND left_at IS NULL AND user_id = v_owner_id
+    ) INTO v_owner_still_active;
+
+    IF v_owner_still_active THEN
+      UPDATE public.rooms
+      SET closed_at = NULL, updated_at = now()
+      WHERE id = NEW.room_id AND closed_at IS NOT NULL;
+    END IF;
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."rooms_auto_reopen_when_owner_alone"() OWNER TO "postgres";
 
 
 -- Replaces the previous raw client insert (RoomRepository.createRoom),
@@ -1715,6 +1901,111 @@ $$;
 ALTER FUNCTION "public"."decide_join_request"("p_request_id" "uuid", "p_approve" boolean) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."accept_room_invite"("p_room_id" "uuid") RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+  v_uid uuid := auth.uid();
+  v_has_invite boolean;
+  v_status text;
+  v_max_players smallint;
+  v_active_players integer;
+  v_seat_order integer;
+  v_membership_id uuid;
+BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'not_authenticated';
+  END IF;
+
+  -- Validate the invitation belongs to THIS caller and is still usable. Keyed
+  -- on invited_user = auth.uid(): an invitation only ever authorizes the
+  -- invited user_id. accepted_at is intentionally not required to be null so a
+  -- re-accepted / duplicate invitation resolves idempotently to the existing
+  -- membership instead of creating a second identity.
+  SELECT EXISTS (
+    SELECT 1 FROM public.room_invites
+    WHERE room_id = p_room_id
+      AND invited_user = v_uid
+      AND declined_at IS NULL
+      AND expires_at > now()
+  ) INTO v_has_invite;
+  IF NOT v_has_invite THEN
+    RAISE EXCEPTION 'no_valid_invite';
+  END IF;
+
+  SELECT status, max_players INTO v_status, v_max_players
+  FROM public.rooms WHERE id = p_room_id;
+  IF v_status IS NULL THEN
+    RAISE EXCEPTION 'room_not_found';
+  END IF;
+  IF v_status = 'closed' THEN
+    RAISE EXCEPTION 'room_closed';
+  END IF;
+
+  -- An invitation never overrides a ban.
+  IF EXISTS (
+    SELECT 1 FROM public.room_bans
+    WHERE room_id = p_room_id
+      AND user_id = v_uid
+      AND lifted_at IS NULL
+      AND (banned_until IS NULL OR banned_until > now())
+  ) THEN
+    RAISE EXCEPTION 'banned';
+  END IF;
+
+  -- Capacity — only when not already an active player (reuse never consumes a
+  -- new seat). Mirrors decide_join_request's gate.
+  IF NOT EXISTS (
+    SELECT 1 FROM public.room_members
+    WHERE room_id = p_room_id AND user_id = v_uid
+      AND left_at IS NULL AND role <> 'spectator'::public.room_member_role_enum
+  ) THEN
+    SELECT count(*) INTO v_active_players FROM public.room_members
+    WHERE room_id = p_room_id AND left_at IS NULL
+      AND role <> 'spectator'::public.room_member_role_enum
+      AND user_id <> v_uid;
+    IF v_active_players >= v_max_players THEN
+      RAISE EXCEPTION 'room_full';
+    END IF;
+  END IF;
+
+  -- Reuse-or-create exactly one membership. ON CONFLICT on (room_id, user_id)
+  -- makes this race-safe: concurrent invite/request flows for the same user
+  -- collapse into a single row.
+  SELECT count(*) INTO v_seat_order FROM public.room_members
+  WHERE room_id = p_room_id AND left_at IS NULL;
+
+  INSERT INTO public.room_members
+    (room_id, user_id, seat_order, role, is_hidden_spectator, is_ready, left_at, joined_at)
+  VALUES
+    (p_room_id, v_uid, v_seat_order, 'player', false, false, NULL, now())
+  ON CONFLICT (room_id, user_id) DO UPDATE
+    SET left_at = NULL,
+        kicked_at = NULL,
+        left_definitively = false,
+        is_away = false
+  RETURNING id INTO v_membership_id;
+
+  -- Reconcile the pending join request for the SAME user_id — the invitation
+  -- is the admin's explicit authorization, so the request is fulfilled
+  -- (approved), never left pending and never a second approval state.
+  UPDATE public.room_join_requests
+  SET status = 'approved', resolved_at = now()
+  WHERE room_id = p_room_id AND user_id = v_uid AND status = 'pending';
+
+  -- Mark the invitation consumed.
+  UPDATE public.room_invites
+  SET accepted_at = now()
+  WHERE room_id = p_room_id AND invited_user = v_uid AND accepted_at IS NULL;
+
+  RETURN v_membership_id;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."accept_room_invite"("p_room_id" "uuid") OWNER TO "postgres";
+
+
 -- Same rationale as decide_join_request above — performs the room_members
 -- admission itself on approval rather than depending on a follow-up
 -- client-side joinRoom() call from the moderator's session.
@@ -1779,16 +2070,22 @@ CREATE OR REPLACE FUNCTION "public"."request_game_rejoin"("p_room_id" "uuid") RE
 DECLARE
   v_room_status public.room_status_enum;
   v_max_players smallint;
+  v_closed_at timestamptz;
   v_session_id uuid;
   v_active_count integer;
   v_request_id uuid;
 BEGIN
-  SELECT status, max_players INTO v_room_status, v_max_players
+  SELECT status, max_players, closed_at
+    INTO v_room_status, v_max_players, v_closed_at
   FROM public.rooms
   WHERE id = p_room_id AND deleted_at IS NULL
   FOR UPDATE;
   IF v_room_status IS NULL THEN
     RAISE EXCEPTION 'room_not_found';
+  END IF;
+  -- Keep-game-closed rooms accept no new entrants, rejoiners included.
+  IF v_closed_at IS NOT NULL THEN
+    RAISE EXCEPTION 'room_closed';
   END IF;
   IF v_room_status NOT IN ('in_game', 'paused') THEN
     RAISE EXCEPTION 'game_finished';
@@ -1938,13 +2235,17 @@ BEGIN
   END IF;
 
   RETURN QUERY
-  SELECT r.id, r.name, r.cover_emoji, r.game_type, r.deleted_at, r.max_players, r.created_at
+  SELECT r.id, r.name, r.cover_emoji, r.game_type,
+         COALESCE(r.closed_at, r.deleted_at) AS closed_at,
+         r.max_players, r.created_at
   FROM public.rooms r
   WHERE r.owner_id = auth.uid()
-    AND r.status = 'closed'::public.room_status_enum
-    AND r.deleted_at IS NOT NULL
-    AND r.deleted_at >= now() - interval '5 days'
-  ORDER BY r.deleted_at DESC;
+    AND (
+      (r.status = 'closed'::public.room_status_enum AND r.deleted_at IS NOT NULL)
+      OR r.closed_at IS NOT NULL
+    )
+    AND COALESCE(r.closed_at, r.deleted_at) >= now() - interval '5 days'
+  ORDER BY COALESCE(r.closed_at, r.deleted_at) DESC;
 END;
 $$;
 
@@ -2261,6 +2562,80 @@ $$;
 ALTER FUNCTION "public"."send_notification"("p_user_id" "uuid", "p_type" "public"."notification_type_enum", "p_title" "jsonb", "p_body" "jsonb", "p_data" "jsonb") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."notify_room_chat_message"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+  v_sender_name text;
+  v_snippet text;
+  v_title jsonb;
+  v_recipient record;
+BEGIN
+  IF NEW.is_system OR NEW.is_deleted THEN
+    RETURN NEW;
+  END IF;
+
+  IF NEW.is_anonymous THEN
+    v_sender_name := 'Anonymous';
+  ELSE
+    SELECT COALESCE(display_name, username, 'Player') INTO v_sender_name
+    FROM public.profiles WHERE id = NEW.user_id;
+  END IF;
+
+  v_snippet := CASE
+    WHEN char_length(NEW.content) > 120 THEN left(NEW.content, 120) || '…'
+    ELSE NEW.content
+  END;
+  v_title := jsonb_build_object('en', v_sender_name);
+
+  FOR v_recipient IN
+    SELECT user_id FROM public.room_members
+    WHERE room_id = NEW.room_id
+      AND left_at IS NULL
+      AND user_id <> NEW.user_id
+  LOOP
+    PERFORM public.send_notification(
+      v_recipient.user_id,
+      'room_chat_message'::public.notification_type_enum,
+      v_title,
+      jsonb_build_object('en', v_snippet),
+      jsonb_build_object(
+        'room_id', NEW.room_id,
+        'message_id', NEW.id,
+        'sender_id', NEW.user_id
+      )
+    );
+  END LOOP;
+
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."notify_room_chat_message"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."enforce_room_chat_reply_same_room"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+BEGIN
+  IF NEW.reply_to_id IS NOT NULL THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM "public"."room_chat_messages"
+      WHERE "id" = NEW.reply_to_id AND "room_id" = NEW.room_id
+    ) THEN
+      RAISE EXCEPTION 'reply_to_id % does not belong to room %', NEW.reply_to_id, NEW.room_id
+        USING ERRCODE = '23514';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."enforce_room_chat_reply_same_room"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."set_updated_at"() RETURNS "trigger"
     LANGUAGE "plpgsql"
     AS $$
@@ -2324,13 +2699,16 @@ ALTER FUNCTION "public"."start_game_session_checks"("p_user_id" "uuid", "p_room_
 -- necessarily the room's actual owner_id, matching how "isOwner" already
 -- means "engine host" throughout the game providers, not literally the room
 -- owner.
-CREATE OR REPLACE FUNCTION "public"."create_game_session"("p_room_id" "uuid", "p_pack_id" "uuid", "p_game_type" "text", "p_player_ids" "uuid"[], "p_max_rounds" smallint, "p_turn_timer_secs" smallint, "p_allow_skip" boolean, "p_allow_spicy" boolean, "p_state_snapshot" "jsonb" DEFAULT '{}'::"jsonb") RETURNS "uuid"
+CREATE OR REPLACE FUNCTION "public"."create_game_session"("p_room_id" "uuid", "p_pack_id" "uuid", "p_game_type" "text", "p_player_ids" "uuid"[], "p_max_rounds" smallint, "p_turn_timer_secs" smallint, "p_allow_skip" boolean, "p_allow_spicy" boolean, "p_state_snapshot" "jsonb" DEFAULT '{}'::"jsonb", "p_unique_cards" boolean DEFAULT false) RETURNS "uuid"
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
 DECLARE
   v_id uuid;
   v_min_players smallint;
   v_eligible_count integer;
+  v_card_count integer;
+  v_per_round integer;
+  v_max_possible_rounds integer;
 BEGIN
   -- Starting a game is owner-only — never delegable to a moderator, even
   -- via a granted permission (previously start_game could be granted,
@@ -2346,15 +2724,30 @@ BEGIN
   -- precedent below — this can't be a true pre-flight block without
   -- restructuring that sequence, but it does stop the session (and thus
   -- the actual game) from ever being created.
+  SELECT count(*) INTO v_eligible_count FROM public.room_members
+  WHERE room_id = p_room_id AND left_at IS NULL
+    AND role <> 'spectator'::public.room_member_role_enum
+    AND last_seen_at > now() - interval '25 seconds';
+
   IF p_pack_id IS NOT NULL THEN
-    SELECT min_players INTO v_min_players FROM public.packs WHERE id = p_pack_id;
-    IF v_min_players IS NOT NULL THEN
-      SELECT count(*) INTO v_eligible_count FROM public.room_members
-      WHERE room_id = p_room_id AND left_at IS NULL
-        AND role <> 'spectator'::public.room_member_role_enum
-        AND last_seen_at > now() - interval '25 seconds';
-      IF v_eligible_count < v_min_players THEN
-        RAISE EXCEPTION 'not_enough_players';
+    SELECT min_players, card_count INTO v_min_players, v_card_count
+    FROM public.packs WHERE id = p_pack_id;
+    IF v_min_players IS NOT NULL AND v_eligible_count < v_min_players THEN
+      RAISE EXCEPTION 'not_enough_players';
+    END IF;
+
+    -- Items 2/3/4/8 — reject an impossible Max Rounds configuration
+    -- before a session is ever created, rather than letting the engine
+    -- discover the card pool is exhausted mid-game. Mirrors
+    -- lib/features/games/engine/round_capacity.dart exactly.
+    IF p_unique_cards AND v_card_count IS NOT NULL THEN
+      v_per_round := CASE
+        WHEN p_game_type = 'truth_or_dare' THEN greatest(v_eligible_count, 1)
+        ELSE 1
+      END;
+      v_max_possible_rounds := v_card_count / v_per_round;
+      IF p_max_rounds > v_max_possible_rounds THEN
+        RAISE EXCEPTION 'max_rounds_exceeds_capacity';
       END IF;
     END IF;
   END IF;
@@ -2373,7 +2766,7 @@ END;
 $$;
 
 
-ALTER FUNCTION "public"."create_game_session"("p_room_id" "uuid", "p_pack_id" "uuid", "p_game_type" "text", "p_player_ids" "uuid"[], "p_max_rounds" smallint, "p_turn_timer_secs" smallint, "p_allow_skip" boolean, "p_allow_spicy" boolean, "p_state_snapshot" "jsonb") OWNER TO "postgres";
+ALTER FUNCTION "public"."create_game_session"("p_room_id" "uuid", "p_pack_id" "uuid", "p_game_type" "text", "p_player_ids" "uuid"[], "p_max_rounds" smallint, "p_turn_timer_secs" smallint, "p_allow_skip" boolean, "p_allow_spicy" boolean, "p_state_snapshot" "jsonb", "p_unique_cards" boolean) OWNER TO "postgres";
 
 
 -- Real backend enforcement for Truth-or-Dare proof viewing — previously
@@ -2395,7 +2788,21 @@ DECLARE
   v_existing_count integer;
   v_max_views integer;
   v_view_number integer;
+  v_has_turn_proof boolean := false;
 BEGIN
+  -- Serializes this function's check-then-insert for this exact
+  -- (session, turn, viewer) triple only — a concurrent call for a
+  -- DIFFERENT viewer, turn, or session is never blocked by this. Fixes
+  -- the check-then-act race where two rapid/concurrent replay requests
+  -- from the same viewer could both read the same pre-insert count and
+  -- both pass the limit check.
+  PERFORM pg_advisory_xact_lock(
+    hashtextextended(
+      p_session_id::text || ':' || p_turn_started_at::text || ':' || auth.uid()::text,
+      0
+    )
+  );
+
   SELECT room_id INTO v_room_id FROM public.game_sessions WHERE id = p_session_id;
   IF v_room_id IS NULL THEN
     RAISE EXCEPTION 'session_not_found';
@@ -2407,9 +2814,20 @@ BEGIN
     RAISE EXCEPTION 'not_a_member';
   END IF;
 
-  SELECT proof_visibility_policy, proof_replay_mode, proof_visibility_selected_user_ids
-    INTO v_policy, v_replay_mode, v_selected_ids
-  FROM public.room_settings WHERE room_id = v_room_id;
+  -- Prefer the per-turn, synchronously-persisted proof metadata (the
+  -- player's own per-submission visibility choice) — falls back to the
+  -- room's own proof_visibility_policy settings verbatim when no per-turn
+  -- row exists yet (an older client, or a session predating this).
+  SELECT true, visibility, view_mode, visible_to_ids
+    INTO v_has_turn_proof, v_policy, v_replay_mode, v_selected_ids
+  FROM public.tod_turn_proofs
+  WHERE session_id = p_session_id AND turn_started_at = p_turn_started_at;
+
+  IF NOT COALESCE(v_has_turn_proof, false) THEN
+    SELECT proof_visibility_policy, proof_replay_mode, proof_visibility_selected_user_ids
+      INTO v_policy, v_replay_mode, v_selected_ids
+    FROM public.room_settings WHERE room_id = v_room_id;
+  END IF;
 
   IF v_policy = 'players_only' AND v_role = 'spectator'::public.room_member_role_enum THEN
     RAISE EXCEPTION 'not_permitted';
@@ -2423,10 +2841,13 @@ BEGIN
 
   SELECT is_premium INTO v_is_premium FROM public.profiles WHERE id = auth.uid();
 
-  v_max_views := CASE
-    WHEN v_replay_mode = 'replay_once' THEN 2 + (CASE WHEN v_is_premium THEN 1 ELSE 0 END)
-    ELSE 1 -- 'once' or 'timed' — a single view, no replay
-  END;
+  -- Premium always gets exactly ONE extra view (one replay) on top of
+  -- whatever the room's configured proof mode already grants everyone —
+  -- never two. 'once'/'timed' base = 1 (free=1, premium=2, i.e. initial +
+  -- one replay). 'replay_once' base = 2 (that mode already grants every
+  -- viewer one replay; premium adds one more on top = 3).
+  v_max_views := (CASE WHEN v_replay_mode = 'replay_once' THEN 2 ELSE 1 END)
+    + (CASE WHEN v_is_premium THEN 1 ELSE 0 END);
 
   SELECT count(*) INTO v_existing_count FROM public.tod_proof_views
   WHERE session_id = p_session_id AND turn_started_at = p_turn_started_at AND viewer_id = auth.uid();
@@ -2451,6 +2872,53 @@ $$;
 
 
 ALTER FUNCTION "public"."record_proof_view"("p_session_id" "uuid", "p_turn_started_at" bigint) OWNER TO "postgres";
+
+
+-- Writer for tod_turn_proofs — called once by the submitting player right
+-- when they press Done on a Dare with proof, so record_proof_view above
+-- can enforce THIS turn's own visibility/viewing choice immediately
+-- (rather than the room-wide default, or the periodic ~10s state
+-- snapshot, which is far too stale to gate access against).
+CREATE OR REPLACE FUNCTION "public"."save_tod_proof_metadata"("p_session_id" "uuid", "p_turn_started_at" bigint, "p_visibility" "text", "p_visible_to_ids" "uuid"[], "p_view_mode" "text", "p_view_seconds" integer) RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+  v_room_id uuid;
+BEGIN
+  SELECT room_id INTO v_room_id FROM public.game_sessions WHERE id = p_session_id;
+  IF v_room_id IS NULL THEN
+    RAISE EXCEPTION 'session_not_found';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM public.room_members
+    WHERE room_id = v_room_id AND user_id = auth.uid() AND left_at IS NULL
+  ) THEN
+    RAISE EXCEPTION 'not_a_member';
+  END IF;
+
+  IF p_visibility NOT IN ('everyone', 'players_only', 'spectators_only', 'selected') THEN
+    RAISE EXCEPTION 'invalid_visibility';
+  END IF;
+  IF p_view_mode NOT IN ('once', 'timed', 'replay_once') THEN
+    RAISE EXCEPTION 'invalid_view_mode';
+  END IF;
+
+  INSERT INTO public.tod_turn_proofs
+    (session_id, turn_started_at, visibility, visible_to_ids, view_mode, view_seconds, submitted_by)
+  VALUES
+    (p_session_id, p_turn_started_at, p_visibility, COALESCE(p_visible_to_ids, '{}'),
+     p_view_mode, GREATEST(p_view_seconds, 0), auth.uid())
+  ON CONFLICT (session_id, turn_started_at) DO UPDATE
+    SET visibility = EXCLUDED.visibility,
+        visible_to_ids = EXCLUDED.visible_to_ids,
+        view_mode = EXCLUDED.view_mode,
+        view_seconds = EXCLUDED.view_seconds;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."save_tod_proof_metadata"("p_session_id" "uuid", "p_turn_started_at" bigint, "p_visibility" "text", "p_visible_to_ids" "uuid"[], "p_view_mode" "text", "p_view_seconds" integer) OWNER TO "postgres";
 
 
 -- Ownership transfer: requires Premium, and at most once per UTC calendar
@@ -2979,7 +3447,13 @@ CREATE TABLE IF NOT EXISTS "public"."game_sessions" (
     "paused_at" timestamp with time zone,
     "total_pause_ms" bigint DEFAULT 0 NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    -- The full GameConfig this session actually started with (currently
+    -- populated by ToD only — TodRepository.createSession's follow-up
+    -- UPDATE — and read back on reconnect by findActiveSession/
+    -- findLatestSession). See
+    -- migration_2026_tod_force_dare_persistence.sql.
+    "config" "jsonb" DEFAULT '{}'::"jsonb" NOT NULL
 );
 
 ALTER TABLE ONLY "public"."game_sessions" REPLICA IDENTITY FULL;
@@ -3228,6 +3702,22 @@ CREATE TABLE IF NOT EXISTS "public"."pack_categories" (
 
 
 ALTER TABLE "public"."pack_categories" OWNER TO "postgres";
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."pack_situation_filters" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "slug" "text" NOT NULL,
+    "name_json" "jsonb" NOT NULL,
+    "icon" "text" DEFAULT '🏷️'::"text",
+    "sort_order" smallint DEFAULT 0 NOT NULL,
+    "is_active" boolean DEFAULT true NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "pack_situation_filters_slug_check" CHECK (("slug" ~ '^[a-z0-9_-]{1,30}$'::"text"))
+);
+
+
+ALTER TABLE "public"."pack_situation_filters" OWNER TO "postgres";
 
 
 -- Mirrors creator_verifications: the creator inserts their own pending
@@ -3648,6 +4138,7 @@ CREATE TABLE IF NOT EXISTS "public"."rooms" (
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "deleted_at" timestamp with time zone,
+    "closed_at" timestamp with time zone,
     "requires_approval" boolean DEFAULT false NOT NULL,
     "owner_transferred_at" timestamp with time zone,
     "created_by" "uuid",
@@ -3939,12 +4430,21 @@ CREATE TABLE IF NOT EXISTS "public"."room_settings" (
     "proof_view_seconds" smallint DEFAULT 5 NOT NULL,
     "proof_replay_mode" "text" DEFAULT 'once'::"text" NOT NULL,
     "proof_visibility_selected_user_ids" "uuid"[] DEFAULT ARRAY[]::"uuid"[] NOT NULL,
+    -- Item 18.2: ToD's per-session "Force Dare after N Truths" choice,
+    -- persisted here (like every other session-start setting) so
+    -- reconnect/host-migration navigation can read it back instead of
+    -- silently reverting to 'unlimited' — see
+    -- migration_2026_tod_force_dare_persistence.sql.
+    "force_dare_mode" "text" DEFAULT 'unlimited'::"text" NOT NULL,
+    "max_truths" smallint DEFAULT 2 NOT NULL,
     CONSTRAINT "room_settings_max_rounds_check" CHECK ((("max_rounds" >= 1) AND ("max_rounds" <= 50))),
     CONSTRAINT "room_settings_turn_timer_secs_check" CHECK ((("turn_timer_secs" >= 15) AND ("turn_timer_secs" <= 300))),
     CONSTRAINT "room_settings_proof_visibility_policy_check" CHECK (("proof_visibility_policy" = ANY (ARRAY['everyone'::"text", 'players_only'::"text", 'spectators_only'::"text", 'selected'::"text"]))),
     CONSTRAINT "room_settings_proof_replay_mode_check" CHECK (("proof_replay_mode" = ANY (ARRAY['once'::"text", 'replay_once'::"text", 'timed'::"text"]))),
     CONSTRAINT "room_settings_proof_view_seconds_check" CHECK ((("proof_view_seconds" = 0) OR (("proof_view_seconds" >= 2) AND ("proof_view_seconds" <= 30)))),
-    CONSTRAINT "room_settings_punishment_source_check" CHECK (("punishment_source" = ANY (ARRAY['players'::"text", 'pack'::"text"])))
+    CONSTRAINT "room_settings_punishment_source_check" CHECK (("punishment_source" = ANY (ARRAY['players'::"text", 'pack'::"text"]))),
+    CONSTRAINT "room_settings_force_dare_mode_check" CHECK (("force_dare_mode" = ANY (ARRAY['unlimited'::"text", 'per_player'::"text", 'per_turn'::"text"]))),
+    CONSTRAINT "room_settings_max_truths_check" CHECK ((("max_truths" >= 1) AND ("max_truths" <= 20)))
 );
 
 
@@ -3972,6 +4472,28 @@ CREATE TABLE IF NOT EXISTS "public"."tod_proof_views" (
 
 
 ALTER TABLE "public"."tod_proof_views" OWNER TO "postgres";
+
+
+-- Synchronously-written per-turn proof visibility + viewing rules — see
+-- save_tod_proof_metadata / record_proof_view. Distinct from the
+-- append-only tod_proof_views ledger above (one row per actual view);
+-- this is one row per TURN, upserted by the submitter.
+CREATE TABLE IF NOT EXISTS "public"."tod_turn_proofs" (
+    "session_id" "uuid" NOT NULL,
+    "turn_started_at" bigint NOT NULL,
+    "visibility" "text" DEFAULT 'everyone'::"text" NOT NULL,
+    "visible_to_ids" "uuid"[] DEFAULT '{}'::"uuid"[] NOT NULL,
+    "view_mode" "text" DEFAULT 'once'::"text" NOT NULL,
+    "view_seconds" integer DEFAULT 5 NOT NULL,
+    "submitted_by" "uuid" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "tod_turn_proofs_visibility_check" CHECK (("visibility" = ANY (ARRAY['everyone'::"text", 'players_only'::"text", 'spectators_only'::"text", 'selected'::"text"]))),
+    CONSTRAINT "tod_turn_proofs_view_mode_check" CHECK (("view_mode" = ANY (ARRAY['once'::"text", 'timed'::"text", 'replay_once'::"text"]))),
+    CONSTRAINT "tod_turn_proofs_view_seconds_check" CHECK (("view_seconds" >= 0))
+);
+
+
+ALTER TABLE "public"."tod_turn_proofs" OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "public"."session_custom_cards" (
@@ -4267,6 +4789,16 @@ ALTER TABLE ONLY "public"."pack_categories"
 
 
 
+ALTER TABLE ONLY "public"."pack_situation_filters"
+    ADD CONSTRAINT "pack_situation_filters_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."pack_situation_filters"
+    ADD CONSTRAINT "pack_situation_filters_slug_key" UNIQUE ("slug");
+
+
+
 ALTER TABLE ONLY "public"."pack_languages"
     ADD CONSTRAINT "pack_languages_pkey" PRIMARY KEY ("code");
 
@@ -4484,6 +5016,11 @@ ALTER TABLE ONLY "public"."sms_delivery_log"
 
 ALTER TABLE ONLY "public"."tod_proof_views"
     ADD CONSTRAINT "tod_proof_views_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."tod_turn_proofs"
+    ADD CONSTRAINT "tod_turn_proofs_pkey" PRIMARY KEY ("session_id", "turn_started_at");
 
 
 
@@ -5002,6 +5539,14 @@ CREATE OR REPLACE TRIGGER "trg_pack_analytics_updated_at" BEFORE UPDATE ON "publ
 
 
 
+CREATE OR REPLACE TRIGGER "trg_room_chat_messages_notify" AFTER INSERT ON "public"."room_chat_messages" FOR EACH ROW EXECUTE FUNCTION "public"."notify_room_chat_message"();
+
+
+
+CREATE OR REPLACE TRIGGER "trg_room_chat_reply_same_room" BEFORE INSERT OR UPDATE OF "reply_to_id", "room_id" ON "public"."room_chat_messages" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_room_chat_reply_same_room"();
+
+
+
 CREATE OR REPLACE TRIGGER "trg_pack_cards_count" AFTER INSERT OR DELETE OR UPDATE OF "is_active" ON "public"."pack_cards" FOR EACH ROW EXECUTE FUNCTION "public"."refresh_pack_card_count"();
 
 
@@ -5043,6 +5588,13 @@ CREATE OR REPLACE TRIGGER "trg_reports_updated_at" BEFORE UPDATE ON "public"."re
 
 
 CREATE OR REPLACE TRIGGER "trg_room_members_update_count" AFTER INSERT OR UPDATE OF "left_at" ON "public"."room_members" FOR EACH ROW EXECUTE FUNCTION "public"."refresh_room_player_count"();
+
+
+CREATE OR REPLACE TRIGGER "trg_room_members_block_reactivation_when_closed" BEFORE INSERT OR UPDATE ON "public"."room_members" FOR EACH ROW EXECUTE FUNCTION "public"."room_members_block_reactivation_when_closed"();
+
+
+
+CREATE OR REPLACE TRIGGER "trg_room_members_auto_reopen_when_owner_alone" AFTER UPDATE ON "public"."room_members" FOR EACH ROW WHEN ((("new"."left_at" IS NOT NULL) AND ("old"."left_at" IS NULL))) EXECUTE FUNCTION "public"."rooms_auto_reopen_when_owner_alone"();
 
 
 
@@ -5665,6 +6217,11 @@ ALTER TABLE ONLY "public"."tod_proof_views"
 
 
 
+ALTER TABLE ONLY "public"."tod_turn_proofs"
+    ADD CONSTRAINT "tod_turn_proofs_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "public"."game_sessions"("id") ON DELETE CASCADE;
+
+
+
 ALTER TABLE ONLY "public"."spectator_requests"
     ADD CONSTRAINT "spectator_requests_decided_by_fkey" FOREIGN KEY ("decided_by") REFERENCES "auth"."users"("id");
 
@@ -6042,6 +6599,13 @@ CREATE POLICY "pack_categories: public read" ON "public"."pack_categories" FOR S
 
 
 
+ALTER TABLE "public"."pack_situation_filters" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "pack_situation_filters: public read" ON "public"."pack_situation_filters" FOR SELECT USING (true);
+
+
+
 ALTER TABLE "public"."pack_languages" ENABLE ROW LEVEL SECURITY;
 
 
@@ -6398,7 +6962,7 @@ CREATE POLICY "room_members: self insert" ON "public"."room_members" FOR INSERT 
    FROM "public"."room_bans"
   WHERE (("room_bans"."room_id" = "room_members"."room_id") AND ("room_bans"."user_id" = "auth"."uid"()) AND ("room_bans"."lifted_at" IS NULL) AND (("room_bans"."banned_until" IS NULL) OR ("room_bans"."banned_until" > "now"())))))) AND (EXISTS ( SELECT 1
    FROM "public"."rooms"
-  WHERE (("rooms"."id" = "room_members"."room_id") AND ("rooms"."deleted_at" IS NULL) AND ("rooms"."status" <> 'closed'::"public"."room_status_enum") AND (("rooms"."status" <> 'in_game'::"public"."room_status_enum") OR ("rooms"."owner_id" = "auth"."uid"()) OR (EXISTS ( SELECT 1
+  WHERE (("rooms"."id" = "room_members"."room_id") AND ("rooms"."deleted_at" IS NULL) AND ("rooms"."closed_at" IS NULL) AND ("rooms"."status" <> 'closed'::"public"."room_status_enum") AND (("rooms"."status" <> 'in_game'::"public"."room_status_enum") OR ("rooms"."owner_id" = "auth"."uid"()) OR (EXISTS ( SELECT 1
            FROM "public"."room_members" "rm2"
           WHERE (("rm2"."room_id" = "rooms"."id") AND ("rm2"."user_id" = "auth"."uid"()))))))))));
 
@@ -6547,6 +7111,14 @@ CREATE POLICY "sms_delivery_log: no client access" ON "public"."sms_delivery_log
 
 
 ALTER TABLE "public"."tod_proof_views" ENABLE ROW LEVEL SECURITY;
+
+
+
+-- No general-access policies — every read/write goes exclusively through
+-- the SECURITY DEFINER RPCs (record_proof_view reads this; only
+-- save_tod_proof_metadata writes it), so RLS stays enabled with a
+-- default-deny for direct table access.
+ALTER TABLE "public"."tod_turn_proofs" ENABLE ROW LEVEL SECURITY;
 
 
 
@@ -6977,6 +7549,12 @@ GRANT ALL ON FUNCTION "public"."ban_room_member"("p_room_id" "uuid", "p_target_u
 GRANT ALL ON FUNCTION "public"."close_room"("p_room_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."close_room"("p_room_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."close_room"("p_room_id" "uuid") TO "service_role";
+GRANT ALL ON FUNCTION "public"."close_room_keep_game"("p_room_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."close_room_keep_game"("p_room_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."close_room_keep_game"("p_room_id" "uuid") TO "service_role";
+GRANT ALL ON FUNCTION "public"."reopen_room_keep_game"("p_room_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."reopen_room_keep_game"("p_room_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."reopen_room_keep_game"("p_room_id" "uuid") TO "service_role";
 
 
 GRANT ALL ON FUNCTION "public"."close_abandoned_room"("p_room_id" "uuid") TO "anon";
@@ -6996,15 +7574,21 @@ GRANT ALL ON FUNCTION "public"."mark_room_member_away"("p_room_id" "uuid", "p_ta
 
 
 
-GRANT ALL ON FUNCTION "public"."create_game_session"("p_room_id" "uuid", "p_pack_id" "uuid", "p_game_type" "text", "p_player_ids" "uuid"[], "p_max_rounds" smallint, "p_turn_timer_secs" smallint, "p_allow_skip" boolean, "p_allow_spicy" boolean, "p_state_snapshot" "jsonb") TO "anon";
-GRANT ALL ON FUNCTION "public"."create_game_session"("p_room_id" "uuid", "p_pack_id" "uuid", "p_game_type" "text", "p_player_ids" "uuid"[], "p_max_rounds" smallint, "p_turn_timer_secs" smallint, "p_allow_skip" boolean, "p_allow_spicy" boolean, "p_state_snapshot" "jsonb") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."create_game_session"("p_room_id" "uuid", "p_pack_id" "uuid", "p_game_type" "text", "p_player_ids" "uuid"[], "p_max_rounds" smallint, "p_turn_timer_secs" smallint, "p_allow_skip" boolean, "p_allow_spicy" boolean, "p_state_snapshot" "jsonb") TO "service_role";
+GRANT ALL ON FUNCTION "public"."create_game_session"("p_room_id" "uuid", "p_pack_id" "uuid", "p_game_type" "text", "p_player_ids" "uuid"[], "p_max_rounds" smallint, "p_turn_timer_secs" smallint, "p_allow_skip" boolean, "p_allow_spicy" boolean, "p_state_snapshot" "jsonb", "p_unique_cards" boolean) TO "anon";
+GRANT ALL ON FUNCTION "public"."create_game_session"("p_room_id" "uuid", "p_pack_id" "uuid", "p_game_type" "text", "p_player_ids" "uuid"[], "p_max_rounds" smallint, "p_turn_timer_secs" smallint, "p_allow_skip" boolean, "p_allow_spicy" boolean, "p_state_snapshot" "jsonb", "p_unique_cards" boolean) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."create_game_session"("p_room_id" "uuid", "p_pack_id" "uuid", "p_game_type" "text", "p_player_ids" "uuid"[], "p_max_rounds" smallint, "p_turn_timer_secs" smallint, "p_allow_skip" boolean, "p_allow_spicy" boolean, "p_state_snapshot" "jsonb", "p_unique_cards" boolean) TO "service_role";
 
 
 
 GRANT ALL ON FUNCTION "public"."record_proof_view"("p_session_id" "uuid", "p_turn_started_at" bigint) TO "anon";
 GRANT ALL ON FUNCTION "public"."record_proof_view"("p_session_id" "uuid", "p_turn_started_at" bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."record_proof_view"("p_session_id" "uuid", "p_turn_started_at" bigint) TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."save_tod_proof_metadata"("p_session_id" "uuid", "p_turn_started_at" bigint, "p_visibility" "text", "p_visible_to_ids" "uuid"[], "p_view_mode" "text", "p_view_seconds" integer) TO "anon";
+GRANT ALL ON FUNCTION "public"."save_tod_proof_metadata"("p_session_id" "uuid", "p_turn_started_at" bigint, "p_visibility" "text", "p_visible_to_ids" "uuid"[], "p_view_mode" "text", "p_view_seconds" integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."save_tod_proof_metadata"("p_session_id" "uuid", "p_turn_started_at" bigint, "p_visibility" "text", "p_visible_to_ids" "uuid"[], "p_view_mode" "text", "p_view_seconds" integer) TO "service_role";
 
 
 
@@ -7017,6 +7601,12 @@ GRANT ALL ON FUNCTION "public"."mute_room_member"("p_room_id" "uuid", "p_target_
 GRANT ALL ON FUNCTION "public"."decide_join_request"("p_request_id" "uuid", "p_approve" boolean) TO "anon";
 GRANT ALL ON FUNCTION "public"."decide_join_request"("p_request_id" "uuid", "p_approve" boolean) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."decide_join_request"("p_request_id" "uuid", "p_approve" boolean) TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."accept_room_invite"("p_room_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."accept_room_invite"("p_room_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."accept_room_invite"("p_room_id" "uuid") TO "service_role";
 
 
 
@@ -7208,6 +7798,12 @@ GRANT ALL ON TABLE "public"."pack_cards" TO "service_role";
 GRANT ALL ON TABLE "public"."pack_categories" TO "anon";
 GRANT ALL ON TABLE "public"."pack_categories" TO "authenticated";
 GRANT ALL ON TABLE "public"."pack_categories" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."pack_situation_filters" TO "anon";
+GRANT ALL ON TABLE "public"."pack_situation_filters" TO "authenticated";
+GRANT ALL ON TABLE "public"."pack_situation_filters" TO "service_role";
 
 
 
@@ -7458,6 +8054,12 @@ GRANT ALL ON TABLE "public"."sms_delivery_log" TO "service_role";
 GRANT ALL ON TABLE "public"."tod_proof_views" TO "anon";
 GRANT ALL ON TABLE "public"."tod_proof_views" TO "authenticated";
 GRANT ALL ON TABLE "public"."tod_proof_views" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."tod_turn_proofs" TO "anon";
+GRANT ALL ON TABLE "public"."tod_turn_proofs" TO "authenticated";
+GRANT ALL ON TABLE "public"."tod_turn_proofs" TO "service_role";
 
 
 

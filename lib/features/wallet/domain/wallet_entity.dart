@@ -1,5 +1,7 @@
 import 'package:equatable/equatable.dart';
 
+import '../../../core/l10n/generated/app_localizations.dart';
+
 /// ============================================================
 /// Wallet Domain Layer
 /// All monetary values stored as integer MRU (Mauritanian Ouguiya).
@@ -25,16 +27,16 @@ enum TransactionType {
     _             => deposit,
   };
 
-  String get displayLabel => switch (this) {
-    deposit    => 'Deposit',
-    withdrawal => 'Withdrawal',
-    purchase   => 'Pack Purchase',
-    refund     => 'Refund',
-    commission => 'Creator Earnings',
-    payout     => 'Payout',
-    adjustment => 'Adjustment',
-    bonus      => 'Bonus',
-    transfer   => 'Balance Transfer',
+  String displayLabel(AppLocalizations l10n) => switch (this) {
+    deposit    => l10n.walletTypeDeposit,
+    withdrawal => l10n.walletTypeWithdrawal,
+    purchase   => l10n.walletTypePurchase,
+    refund     => l10n.walletTypeRefund,
+    commission => l10n.walletTypeCommission,
+    payout     => l10n.walletTypePayout,
+    adjustment => l10n.walletTypeAdjustment,
+    bonus      => l10n.walletTypeBonus,
+    transfer   => l10n.walletTypeTransfer,
   };
 
   bool get isCredit => this == deposit || this == refund ||
@@ -72,13 +74,13 @@ enum TransactionStatus {
       this == cancelled || this == reversed;
   bool get isPending  => this == pending || this == processing;
 
-  String get displayLabel => switch (this) {
-    pending    => 'Pending',
-    processing => 'Processing',
-    completed  => 'Completed',
-    failed     => 'Failed',
-    cancelled  => 'Cancelled',
-    reversed   => 'Reversed',
+  String displayLabel(AppLocalizations l10n) => switch (this) {
+    pending    => l10n.walletStatusPending,
+    processing => l10n.walletStatusProcessing,
+    completed  => l10n.walletStatusCompleted,
+    failed     => l10n.walletStatusFailed,
+    cancelled  => l10n.walletStatusCancelled,
+    reversed   => l10n.walletStatusReversed,
   };
 }
 
@@ -111,18 +113,40 @@ enum PaymentMethodType {
 enum DepositStatus {
   pending, underReview, approved, rejected;
 
+  /// CORRECTION PASS — root cause of the "approved/rejected deposit still
+  /// shows Pending" bug: `deposits.status` is the SAME shared Postgres
+  /// enum `transaction_status_enum` withdrawals/wallet_transactions use
+  /// (pending/processing/completed/failed/cancelled/reversed) — confirmed
+  /// live via pg_get_functiondef on admin_approve_deposit/
+  /// admin_reject_deposit, which write 'completed'/'cancelled'
+  /// respectively. This mapping previously only recognized
+  /// 'under_review'/'approved'/'rejected' — three strings the backend
+  /// NEVER actually writes — so every completed/cancelled row silently
+  /// fell through to the `_ => pending` default, regardless of freshness,
+  /// caching, or realtime. WithdrawalEntity.status already uses
+  /// TransactionStatus directly and was never affected by this — kept
+  /// DepositStatus's existing nicer semantic buckets/labels intact rather
+  /// than widening its blast radius by changing DepositEntity's field
+  /// type, since other call sites already pattern-match these 4 cases.
   static DepositStatus fromString(String s) => switch (s) {
-    'under_review' => underReview,
-    'approved'     => approved,
-    'rejected'     => rejected,
-    _              => pending,
+    'processing'          => underReview,
+    'completed'           => approved,
+    'cancelled'           => rejected,
+    'failed'              => rejected,
+    'reversed'            => rejected,
+    // Kept for forward/backward safety in case a caller ever passes the
+    // human-facing strings directly instead of the raw DB enum value.
+    'under_review'        => underReview,
+    'approved'            => approved,
+    'rejected'            => rejected,
+    _                     => pending,
   };
 
-  String get displayLabel => switch (this) {
-    pending     => 'Pending',
-    underReview => 'Under Review',
-    approved    => 'Approved',
-    rejected    => 'Rejected',
+  String displayLabel(AppLocalizations l10n) => switch (this) {
+    pending     => l10n.walletDepositStatusPending,
+    underReview => l10n.walletDepositStatusUnderReview,
+    approved    => l10n.walletDepositStatusApproved,
+    rejected    => l10n.walletDepositStatusRejected,
   };
 
   bool get isTerminal => this == approved || this == rejected;
@@ -305,6 +329,7 @@ class PaymentMethodEntity extends Equatable {
     this.minAmountMru,
     this.maxAmountMru,
     this.sortOrder = 0,
+    this.paymentReferenceMaxLength,
   });
 
   final String  id;
@@ -320,6 +345,14 @@ class PaymentMethodEntity extends Equatable {
   final int?    minAmountMru;
   final int?    maxAmountMru;
   final int     sortOrder;
+
+  /// Per-method configurable payment-reference maximum (task section 3) —
+  /// jma3a-api's requestDeposit is the authoritative enforcement; this is
+  /// surfaced so the deposit form can match it exactly. Null for methods
+  /// that don't carry it (e.g. a payment_methods_config row read through a
+  /// path that doesn't join it) — the deposit screen falls back to a
+  /// generous default rather than guessing.
+  final int? paymentReferenceMaxLength;
 
   @override
   List<Object?> get props => [id, type, name, isActive];

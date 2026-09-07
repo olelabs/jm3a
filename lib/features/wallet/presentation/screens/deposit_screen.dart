@@ -3,10 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 
+import '../../../../core/config/platform_config_provider.dart';
 import '../../../../core/extensions/context_ext.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/buttons/j_button.dart';
-import '../../../../shared/widgets/cards/j_card.dart';
+import '../../../../shared/widgets/feedback/error_view.dart';
 import '../wallet_provider.dart';
 import '../widgets/payment_method_card.dart';
 import 'transaction_status_screen.dart';
@@ -46,9 +47,19 @@ class _DepositScreenState extends State<DepositScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // §11: deposits_enabled — server-side (a BEFORE INSERT trigger on
+    // `deposits`) is the real enforcement; this is presentation-only, so a
+    // disabled admin toggle shows a clear unavailable state up front
+    // instead of only failing after the user fills the whole form in.
+    if (!context.watch<PlatformConfigProvider>().depositsEnabled) {
+      return Scaffold(
+        appBar: AppBar(title: Text(context.l10n.walletDeposit)),
+        body: ErrorView(message: context.l10n.walletDepositsUnavailable),
+      );
+    }
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Deposit'),
+        title: Text(context.l10n.walletDeposit),
         bottom: _step > 0
             ? PreferredSize(
                 preferredSize: const Size.fromHeight(4),
@@ -67,6 +78,7 @@ class _DepositScreenState extends State<DepositScreen> {
           child: switch (_step) {
             0 => _MethodSelectionStep(
                 methods:    context.watch<WalletProvider>().depositMethods,
+                loaded:     context.watch<WalletProvider>().paymentMethodsLoaded,
                 onSelected: (m) =>
                     setState(() { _selectedMethod = m; _step = 1; }),
               ),
@@ -106,16 +118,19 @@ class _DepositScreenState extends State<DepositScreen> {
         MaterialPageRoute(
           builder: (_) => TransactionStatusScreen(
             isSuccess:   true,
-            title:       'Deposit Submitted!',
-            subtitle:    'Your deposit of ${result.deposit?.formattedAmount} '
-                'is under review. Balance will update once approved.',
+            title:       context.l10n.walletDepositSubmittedTitle,
+            subtitle:    context.l10n.walletDepositSubmittedSubtitle(
+              result.deposit?.formattedAmount ?? '',
+            ),
             icon:        Icons.hourglass_top_rounded,
             iconColor:   AppColors.warningAmber,
           ),
         ),
       );
     } else {
-      context.showErrorSnackBar(result.error ?? 'Deposit request failed.');
+      context.showErrorSnackBar(
+        result.error ?? context.l10n.walletDepositRequestFailed,
+      );
     }
   }
 }
@@ -124,9 +139,11 @@ class _DepositScreenState extends State<DepositScreen> {
 class _MethodSelectionStep extends StatelessWidget {
   const _MethodSelectionStep({
     required this.methods,
+    required this.loaded,
     required this.onSelected,
   });
   final List<PaymentMethodEntity> methods;
+  final bool loaded;
   final void Function(PaymentMethodEntity) onSelected;
 
   @override
@@ -136,22 +153,34 @@ class _MethodSelectionStep extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Select payment method',
+          Text(context.l10n.walletSelectPaymentMethod,
               style: context.textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.w700))
               .animate().fadeIn(),
           const SizedBox(height: 6),
-          Text('Choose how you want to add funds.',
+          Text(context.l10n.walletChooseHowToAddFunds,
               style: context.textTheme.bodyMedium?.copyWith(
                   color: context.colorScheme.onSurfaceVariant))
               .animate(delay: 40.ms).fadeIn(),
           const SizedBox(height: 24),
 
-          if (methods.isEmpty)
+          if (methods.isEmpty && !loaded)
             const Center(
               child: Padding(
                 padding: EdgeInsets.all(32),
                 child: CircularProgressIndicator(),
+              ),
+            )
+          else if (methods.isEmpty)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Text(
+                  context.l10n.walletFinanceServiceUnavailable,
+                  textAlign: TextAlign.center,
+                  style: context.textTheme.bodyMedium?.copyWith(
+                      color: context.colorScheme.onSurfaceVariant),
+                ),
               ),
             )
           else
@@ -248,14 +277,14 @@ class _AmountStepState extends State<_AmountStep> {
 
             // Account info
             if (widget.method.accountNumber != null) ...[
-              _InfoRow(label: 'Account', value: widget.method.accountNumber!),
+              _InfoRow(label: context.l10n.accountLabel, value: widget.method.accountNumber!),
               if (widget.method.accountName != null)
-                _InfoRow(label: 'Name', value: widget.method.accountName!),
+                _InfoRow(label: context.l10n.nameLabel, value: widget.method.accountName!),
               const SizedBox(height: 20),
             ],
 
             // Amount input
-            Text('Transfer amount',
+            Text(context.l10n.walletTransferAmount,
                 style: theme.textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
@@ -270,40 +299,44 @@ class _AmountStepState extends State<_AmountStep> {
                 suffixText: 'MRU',
                 prefixIcon: const Icon(Icons.money_rounded),
                 helperText: _amount > 0
-                    ? 'Amount: ${_amount.toString()} MRU'
+                    ? context.l10n.walletAmountValue(_amount.toString())
                     : null,
               ),
               validator: (v) {
                 final n = int.tryParse(v?.replaceAll(',', '') ?? '0') ?? 0;
-                if (n < 100)  return 'Minimum deposit: 100 MRU';
-                if (n > 1_000_000) return 'Maximum deposit: 1,000,000 MRU';
+                if (n < 100)  return context.l10n.walletMinDeposit;
+                if (n > 1_000_000) return context.l10n.walletMaxDeposit;
                 return null;
               },
             ).animate(delay: 80.ms).fadeIn(),
             const SizedBox(height: 16),
 
             // Phone number
-            Text('Your phone number',
+            Text(context.l10n.walletYourPhoneNumber,
                 style: theme.textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
             TextFormField(
               controller: widget.phoneCtrl,
-              keyboardType: TextInputType.phone,
+              keyboardType: TextInputType.number,
               textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(
-                hintText:   '+222 XX XX XX XX',
-                prefixIcon: Icon(Icons.phone_outlined),
+              // Exactly 8 digits, digits only — mirrors jma3a-api's
+              // authoritative server-side check exactly (task section 2),
+              // never stricter or looser.
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(8)],
+              decoration: InputDecoration(
+                hintText:   context.l10n.walletPhoneNumberHint,
+                prefixIcon: const Icon(Icons.phone_outlined),
               ),
               validator: (v) {
-                if ((v?.trim() ?? '').length < 8) return 'Enter a valid phone number';
+                if (!RegExp(r'^\d{8}$').hasMatch(v?.trim() ?? '')) return context.l10n.phoneInvalid;
                 return null;
               },
             ).animate(delay: 100.ms).fadeIn(),
             const SizedBox(height: 16),
 
             // Payment reference
-            Text('Payment reference / transaction ID',
+            Text(context.l10n.walletPaymentReferenceLabel,
                 style: theme.textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
@@ -311,13 +344,20 @@ class _AmountStepState extends State<_AmountStep> {
               controller: widget.referenceCtrl,
               keyboardType: TextInputType.text,
               textInputAction: TextInputAction.done,
-              decoration: const InputDecoration(
-                hintText:   'e.g. TXN123456789',
-                prefixIcon: Icon(Icons.receipt_outlined),
+              // Configured per payment method (payment_methods_config.
+              // payment_reference_max_length, task section 3) — never
+              // silently truncates; the field simply refuses further
+              // input once the limit is reached (standard maxLength
+              // behavior), and jma3a-api enforces the same limit
+              // authoritatively regardless of what the client allowed.
+              maxLength: widget.method.paymentReferenceMaxLength ?? 100,
+              decoration: InputDecoration(
+                hintText:   context.l10n.walletReferenceHint,
+                prefixIcon: const Icon(Icons.receipt_outlined),
               ),
               validator: (v) {
                 if ((v?.trim() ?? '').length < 3) {
-                  return 'Enter the reference from your payment';
+                  return context.l10n.walletEnterReference;
                 }
                 return null;
               },
@@ -332,17 +372,16 @@ class _AmountStepState extends State<_AmountStep> {
                 color: AppColors.warningAmber.withOpacity(0.08),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Row(
+              child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.warning_amber_rounded,
+                  const Icon(Icons.warning_amber_rounded,
                       color: AppColors.warningAmber, size: 16),
-                  SizedBox(width: 8),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Only submit after completing the transfer. '
-                      'Deposits are manually reviewed and may take 1–24 hours.',
-                      style: TextStyle(fontSize: 12, height: 1.5),
+                      context.l10n.walletDepositWarningNotice,
+                      style: const TextStyle(fontSize: 12, height: 1.5),
                     ),
                   ),
                 ],
@@ -356,14 +395,14 @@ class _AmountStepState extends State<_AmountStep> {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: widget.onBack,
-                    child: const Text('Back'),
+                    child: Text(context.l10n.back),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   flex: 2,
                   child: JButton(
-                    label:     'Submit Deposit',
+                    label:     context.l10n.walletSubmitDeposit,
                     onPressed: widget.onSubmit,
                     isLoading: widget.isSubmitting,
                     icon:      Icons.send_rounded,
@@ -389,13 +428,13 @@ class _InfoRow extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 4),
       child: Row(
         children: [
-          Text('$label: ',
+          Text(context.l10n.labelColonSuffix(label),
               style: context.textTheme.bodySmall?.copyWith(
                   color: context.colorScheme.onSurfaceVariant)),
           GestureDetector(
             onTap: () {
               Clipboard.setData(ClipboardData(text: value));
-              context.showSnackBar('Copied!');
+              context.showSnackBar(context.l10n.copiedNotice);
             },
             child: Row(
               mainAxisSize: MainAxisSize.min,

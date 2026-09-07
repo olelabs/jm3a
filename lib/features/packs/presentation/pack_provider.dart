@@ -969,14 +969,31 @@ class PackProvider extends BaseProvider {
 
   List<PackEntity> _localPacks = [];
 
+  // ── Search ──────────────────────────────────────────────────────────────
+  List<PackEntity> _searchResults = [];
+  String _searchQuery = '';
+  int _searchPage = 0;
+  bool _hasMoreSearchResults = true;
+  bool _isSearching = false;
+  bool _isLoadingMoreSearch = false;
+
+  List<PackEntity> get searchResults => _searchResults;
+  String get searchQuery => _searchQuery;
+  bool get isSearching => _isSearching;
+  bool get isLoadingMoreSearch => _isLoadingMoreSearch;
+  bool get hasMoreSearchResults => _hasMoreSearchResults;
+
   List<PackEntity> get browsePacks => _browsePacks;
   List<PackEntity> get featuredPacks => _featuredPacks;
   List<PackEntity> get localPacks => _localPacks;
 
-  int downloadLimitFor({required bool isPremium}) => isPremium ? 10 : 1;
-
-  bool isAtDownloadLimit({required bool isPremium}) =>
-      _localPacks.length >= downloadLimitFor(isPremium: isPremium);
+  // The actual limit value comes from PlatformConfigProvider
+  // (app_settings-backed, never hardcoded here) — callers pass it in
+  // rather than this provider computing it, since PackProvider isn't wired
+  // to PlatformConfigProvider. This is a local-storage limit (how many
+  // packs are cached offline on this device) with no shared server
+  // resource at stake, so it stays a client-side presentation limit.
+  bool isAtDownloadLimit({required int limit}) => _localPacks.length >= limit;
 
   List<String> get allDownloadedPackIds => _downloadStates.entries
       .where((e) => e.value.isDownloaded)
@@ -1049,6 +1066,10 @@ class PackProvider extends BaseProvider {
     _browsePacks = [];
     _featuredPacks = [];
     _promotedPacks = [];
+    _searchResults = [];
+    _searchQuery = '';
+    _searchPage = 0;
+    _hasMoreSearchResults = true;
     _purchasedPacks = [];
     _createdPacks = [];
     _purchaseRecords = [];
@@ -1109,6 +1130,97 @@ class PackProvider extends BaseProvider {
     }
   }
 
+  /// Searches by pack name, creator name, or category — see
+  /// PackRepository.searchPacks. Reuses the same gameType/categoryId/
+  /// freeOnly filter params the Browse tab already has, so a search
+  /// happening under an active filter narrows within it rather than
+  /// ignoring it. A dedicated _isSearching (not the base runAsync
+  /// isLoading) so search and Browse-tab loading never stomp on each
+  /// other's spinner state — same reason loadMoreBrowsePacks above has
+  /// its own _isLoadingMore instead of reusing isLoading.
+  Future<void> search(
+    String query, {
+    bool reset = true,
+    String? gameType,
+    String? categoryId,
+    bool freeOnly = false,
+  }) async {
+    _searchQuery = query;
+    if (reset) {
+      _searchPage = 0;
+      _hasMoreSearchResults = true;
+      _searchResults = [];
+    }
+    // Same 2-character floor as FriendsProvider.search — short-circuits
+    // before ever calling the repository, not just a display-layer gate,
+    // so a 1-character query never fires a request (wasteful, and
+    // plainto_tsquery would happily return a huge unfiltered match set).
+    if (query.trim().length < 2) {
+      _searchResults = [];
+      _isSearching = false;
+      notifyListeners();
+      return;
+    }
+    if (!_hasMoreSearchResults) return;
+
+    _isSearching = true;
+    notifyListeners();
+    try {
+      const perPage = 20;
+      final results = await _repo.searchPacks(
+        query: query,
+        gameType: gameType,
+        categoryId: categoryId,
+        freeOnly: freeOnly,
+        page: _searchPage,
+        perPage: perPage,
+      );
+      _searchResults = reset ? results : [..._searchResults, ...results];
+      _hasMoreSearchResults = results.length == perPage;
+      _searchPage++;
+      await _hydrateDownloadStates(results.map((p) => p.id).toList());
+    } catch (e) {
+      AppLogger.error('PackProvider: search failed', error: e);
+    } finally {
+      _isSearching = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> loadMoreSearchResults({
+    String? gameType,
+    String? categoryId,
+    bool freeOnly = false,
+  }) async {
+    if (_isLoadingMoreSearch ||
+        !_hasMoreSearchResults ||
+        _searchQuery.trim().isEmpty) {
+      return;
+    }
+    _isLoadingMoreSearch = true;
+    notifyListeners();
+    try {
+      await search(
+        _searchQuery,
+        reset: false,
+        gameType: gameType,
+        categoryId: categoryId,
+        freeOnly: freeOnly,
+      );
+    } finally {
+      _isLoadingMoreSearch = false;
+      notifyListeners();
+    }
+  }
+
+  void clearSearch() {
+    _searchQuery = '';
+    _searchResults = [];
+    _searchPage = 0;
+    _hasMoreSearchResults = true;
+    notifyListeners();
+  }
+
   Future<void> _loadFeatured() => runAsync(() async {
     _featuredPacks = await _repo.getFeaturedPacks();
     _promotedPacks = await _repo.getPromotedPacks();
@@ -1131,6 +1243,16 @@ class PackProvider extends BaseProvider {
     }, setLoading: false);
   }
 
+  /// Client-side, best-effort mirror of the real server-side guarantee
+  /// (idx_packs_one_draft_per_creator) — purely so the "+ New Pack" entry
+  /// point can show a friendly blocking message immediately instead of
+  /// always navigating in and failing on save. [createdPacks] can be
+  /// stale (not yet refreshed after another device deleted/published a
+  /// draft), so this is presentation-only: the database is still what
+  /// actually prevents a second draft from ever being created.
+  bool get hasDraftPack =>
+      _createdPacks.any((p) => p.status == PackStatus.draft);
+
   Future<String?> purchasePack(PackEntity pack) async {
     try {
       await _repo.purchasePack(pack.id);
@@ -1146,10 +1268,15 @@ class PackProvider extends BaseProvider {
     }
   }
 
-  Future<bool> downloadPack(PackEntity pack, {required bool isPremium}) async {
+  /// [offlinePackLimit] comes from PlatformConfigProvider
+  /// (app_settings-backed), never hardcoded here.
+  Future<bool> downloadPack(
+    PackEntity pack, {
+    required bool isPremium,
+    required int offlinePackLimit,
+  }) async {
     if (!isOwned(pack)) return false;
-    final limit = isPremium ? 10 : 1;
-    if (_localPacks.length >= limit) return false;
+    if (_localPacks.length >= offlinePackLimit) return false;
     await _downloader.download(pack);
     await _hydrateAllDownloads();
     return true;
@@ -1187,6 +1314,16 @@ class PackProvider extends BaseProvider {
         userId: currentUserId!,
         rating: rating,
       );
+      success = true;
+    }, setLoading: false);
+    return success;
+  }
+
+  Future<bool> unratePack(String packId) async {
+    if (currentUserId == null) return false;
+    var success = false;
+    await runAsync(() async {
+      await _repo.unratePack(packId: packId, userId: currentUserId!);
       success = true;
     }, setLoading: false);
     return success;

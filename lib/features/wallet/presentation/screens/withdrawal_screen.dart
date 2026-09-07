@@ -3,9 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 
+import '../../../../core/config/platform_config_provider.dart';
 import '../../../../core/extensions/context_ext.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/buttons/j_button.dart';
+import '../../../../shared/widgets/feedback/error_view.dart';
 import '../wallet_provider.dart';
 import '../widgets/payment_method_card.dart';
 import 'transaction_status_screen.dart';
@@ -44,9 +46,17 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // §11: withdrawals_enabled — server-side (a BEFORE INSERT trigger on
+    // `withdrawals`) is the real enforcement; this is presentation-only.
+    if (!context.watch<PlatformConfigProvider>().withdrawalsEnabled) {
+      return Scaffold(
+        appBar: AppBar(title: Text(context.l10n.walletWithdraw)),
+        body: ErrorView(message: context.l10n.walletWithdrawalsUnavailable),
+      );
+    }
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Withdraw'),
+        title: Text(context.l10n.walletWithdraw),
         bottom: _step > 0
             ? PreferredSize(
                 preferredSize: const Size.fromHeight(4),
@@ -67,6 +77,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
               child: switch (_step) {
                 0 => _MethodSelectionStep(
                     methods: wallet.withdrawMethods,
+                    loaded: wallet.paymentMethodsLoaded,
                     onSelected: (m) =>
                         setState(() { _selectedMethod = m; _step = 1; }),
                   ),
@@ -115,16 +126,19 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
         MaterialPageRoute(
           builder: (_) => TransactionStatusScreen(
             isSuccess:   true,
-            title:       'Withdrawal Submitted!',
-            subtitle:    'Your withdrawal of ${result.withdrawal?.formattedAmount} '
-                'is being processed. Funds will arrive within 1–24 hours.',
+            title:       context.l10n.walletWithdrawalSubmittedTitle,
+            subtitle:    context.l10n.walletWithdrawalSubmittedSubtitle(
+              result.withdrawal?.formattedAmount ?? '',
+            ),
             icon:        Icons.schedule_rounded,
             iconColor:   AppColors.infoBlue,
           ),
         ),
       );
     } else {
-      context.showErrorSnackBar(result.error ?? 'Withdrawal request failed.');
+      context.showErrorSnackBar(
+        result.error ?? context.l10n.walletWithdrawalRequestFailed,
+      );
     }
   }
 }
@@ -132,9 +146,11 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
 class _MethodSelectionStep extends StatelessWidget {
   const _MethodSelectionStep({
     required this.methods,
+    required this.loaded,
     required this.onSelected,
   });
   final List<PaymentMethodEntity> methods;
+  final bool loaded;
   final void Function(PaymentMethodEntity) onSelected;
 
   @override
@@ -144,13 +160,25 @@ class _MethodSelectionStep extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Select payout method',
+          Text(context.l10n.walletSelectPayoutMethod,
               style: context.textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.w700))
               .animate().fadeIn(),
           const SizedBox(height: 24),
-          if (methods.isEmpty)
+          if (methods.isEmpty && !loaded)
             const Center(child: CircularProgressIndicator())
+          else if (methods.isEmpty)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Text(
+                  context.l10n.walletFinanceServiceUnavailable,
+                  textAlign: TextAlign.center,
+                  style: context.textTheme.bodyMedium?.copyWith(
+                      color: context.colorScheme.onSurfaceVariant),
+                ),
+              ),
+            )
           else
             ...methods.asMap().entries.map((e) =>
                 Padding(
@@ -227,7 +255,7 @@ class _AmountStepState extends State<_AmountStep> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Available earnings',
+                      Text(context.l10n.walletAvailableEarnings,
                           style: theme.textTheme.labelSmall?.copyWith(
                               color: theme.colorScheme.onSurfaceVariant)),
                       Text(widget.wallet.formattedEarningsBalance,
@@ -241,7 +269,7 @@ class _AmountStepState extends State<_AmountStep> {
 
             const SizedBox(height: 20),
 
-            Text('Amount to withdraw',
+            Text(context.l10n.walletAmountToWithdraw,
                 style: theme.textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
@@ -259,9 +287,9 @@ class _AmountStepState extends State<_AmountStep> {
               validator: (v) {
                 final n = int.tryParse(v?.replaceAll(',', '') ?? '0') ?? 0;
                 if (n < _WithdrawalScreen._minWithdrawal) {
-                  return 'Minimum withdrawal: ${_WithdrawalScreen._minWithdrawal} MRU';
+                  return context.l10n.walletMinWithdrawal(_WithdrawalScreen._minWithdrawal);
                 }
-                if (n > balance) return 'Insufficient balance';
+                if (n > balance) return context.l10n.walletInsufficientBalance;
                 return null;
               },
             ).animate(delay: 80.ms).fadeIn(),
@@ -283,21 +311,24 @@ class _AmountStepState extends State<_AmountStep> {
 
             const SizedBox(height: 16),
 
-            Text('Payout phone number',
+            Text(context.l10n.walletPayoutPhoneNumber,
                 style: theme.textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
             TextFormField(
               controller: widget.phoneCtrl,
-              keyboardType: TextInputType.phone,
+              keyboardType: TextInputType.number,
               textInputAction: TextInputAction.done,
-              decoration: const InputDecoration(
-                hintText:   '+222 XX XX XX XX',
-                prefixIcon: Icon(Icons.phone_outlined),
+              // Exactly 8 digits, digits only — mirrors jma3a-api's
+              // authoritative server-side check exactly (task section 2).
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(8)],
+              decoration: InputDecoration(
+                hintText:   context.l10n.walletPhoneNumberHint,
+                prefixIcon: const Icon(Icons.phone_outlined),
               ),
               validator: (v) {
-                if ((v?.trim() ?? '').length < 8) {
-                  return 'Enter a valid phone number';
+                if (!RegExp(r'^\d{8}$').hasMatch(v?.trim() ?? '')) {
+                  return context.l10n.phoneInvalid;
                 }
                 return null;
               },
@@ -310,14 +341,14 @@ class _AmountStepState extends State<_AmountStep> {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: widget.onBack,
-                    child: const Text('Back'),
+                    child: Text(context.l10n.back),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   flex: 2,
                   child: JButton(
-                    label:     'Continue →',
+                    label:     context.l10n.walletContinueArrow,
                     onPressed: () {
                       if (widget.formKey.currentState?.validate() ?? false) {
                         widget.onConfirm();
@@ -367,7 +398,7 @@ class _ConfirmStep extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Confirm withdrawal',
+          Text(context.l10n.walletConfirmWithdrawal,
               style: theme.textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.w700))
               .animate().fadeIn(),
@@ -382,16 +413,16 @@ class _ConfirmStep extends StatelessWidget {
             ),
             child: Column(
               children: [
-                _ConfirmRow(label: 'Method',   value: method.name),
-                _ConfirmRow(label: 'Phone',    value: phone),
-                _ConfirmRow(label: 'Amount',
+                _ConfirmRow(label: context.l10n.walletMethodLabel,   value: method.name),
+                _ConfirmRow(label: context.l10n.walletPhoneLabel,    value: phone),
+                _ConfirmRow(label: context.l10n.amountLabel,
                     value: '$amountMru MRU',
                     valueStyle: TextStyle(
                         color:      AppColors.errorRed,
                         fontWeight: FontWeight.w800,
                         fontSize:   18)),
                 const Divider(height: 24),
-                _ConfirmRow(label: 'Balance after',
+                _ConfirmRow(label: context.l10n.walletBalanceAfter,
                     value: '$balanceAfter MRU',
                     valueStyle: TextStyle(
                         color: balanceAfter < 0
@@ -410,17 +441,16 @@ class _ConfirmStep extends StatelessWidget {
               color:        AppColors.warningAmber.withOpacity(0.08),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Row(
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.warning_amber_rounded,
+                const Icon(Icons.warning_amber_rounded,
                     color: AppColors.warningAmber, size: 18),
-                SizedBox(width: 10),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'Withdrawals are processed manually. '
-                    'Funds arrive in 1–24 hours once approved.',
-                    style: TextStyle(fontSize: 13, height: 1.5),
+                    context.l10n.walletWithdrawalProcessingNotice,
+                    style: const TextStyle(fontSize: 13, height: 1.5),
                   ),
                 ),
               ],
@@ -434,14 +464,14 @@ class _ConfirmStep extends StatelessWidget {
               Expanded(
                 child: OutlinedButton(
                   onPressed: onBack,
-                  child: const Text('Back'),
+                  child: Text(context.l10n.back),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 flex: 2,
                 child: JButton(
-                  label:     'Confirm Withdrawal',
+                  label:     context.l10n.walletConfirmWithdrawal,
                   onPressed: onSubmit,
                   isLoading: isSubmitting,
                   isDestructive: false,

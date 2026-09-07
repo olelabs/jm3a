@@ -100,7 +100,7 @@ class _BackgroundColorScreenState extends State<BackgroundColorScreen> {
       setState(() => _saving = false);
       context.showErrorSnackBar(
         context.read<ProfileProvider>().lastFailure?.message ??
-            'Could not save background color.',
+            context.l10n.premiumBackgroundSaveFailed,
       );
     }
   }
@@ -119,7 +119,7 @@ class _BackgroundColorScreenState extends State<BackgroundColorScreen> {
       setState(() => _saving = false);
       context.showErrorSnackBar(
         context.read<ProfileProvider>().lastFailure?.message ??
-            'Could not reset background color.',
+            context.l10n.premiumBackgroundResetFailed,
       );
     }
   }
@@ -128,7 +128,7 @@ class _BackgroundColorScreenState extends State<BackgroundColorScreen> {
   Widget build(BuildContext context) {
     final theme = context.theme;
     return Scaffold(
-      appBar: AppBar(title: const Text('Background Color')),
+      appBar: AppBar(title: Text(context.l10n.premiumBackgroundColorTitle)),
       body: SafeArea(
         child: Column(
           children: [
@@ -139,8 +139,7 @@ class _BackgroundColorScreenState extends State<BackgroundColorScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(
-                      'Blends into your selected theme — text, cards, and '
-                      'icons adapt automatically.',
+                      context.l10n.premiumBlendsIntoTheme,
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
@@ -153,7 +152,7 @@ class _BackgroundColorScreenState extends State<BackgroundColorScreen> {
                     ),
                     const SizedBox(height: 20),
                     Text(
-                      'Choose a background',
+                      context.l10n.premiumChooseBackground,
                       style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w800,
                       ),
@@ -195,8 +194,8 @@ class _BackgroundColorScreenState extends State<BackgroundColorScreen> {
                     Flexible(
                       child: TextButton(
                         onPressed: _saving ? null : _reset,
-                        child: const Text(
-                          'Reset to Default',
+                        child: Text(
+                          context.l10n.resetToDefault,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -221,7 +220,7 @@ class _BackgroundColorScreenState extends State<BackgroundColorScreen> {
                                   strokeWidth: 2,
                                 ),
                               )
-                            : const Text('Save'),
+                            : Text(context.l10n.save),
                       ),
                     ),
                   ],
@@ -379,7 +378,7 @@ class _BackgroundPreviewMockup extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'Page background',
+            context.l10n.premiumPageBackground,
             style: TextStyle(
               color: ink,
               fontWeight: FontWeight.w700,
@@ -400,7 +399,7 @@ class _BackgroundPreviewMockup extends StatelessWidget {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'Card text stays readable',
+                    context.l10n.premiumCardTextReadable,
                     style: TextStyle(color: ink, fontWeight: FontWeight.w600),
                   ),
                 ),
@@ -415,7 +414,7 @@ class _BackgroundPreviewMockup extends StatelessWidget {
                     disabledForegroundColor:
                         activeTheme.colorScheme.onPrimary,
                   ),
-                  child: const Text('Action'),
+                  child: Text(context.l10n.actionLabel),
                 ),
               ],
             ),

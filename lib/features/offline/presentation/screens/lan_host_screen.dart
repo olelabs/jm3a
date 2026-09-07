@@ -84,7 +84,7 @@ class _LanHostScreenState extends State<LanHostScreen> {
     final theme = context.theme;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('LAN Room')),
+      appBar: AppBar(title: Text(context.l10n.offlineLanRoom)),
       body: Consumer<OfflineGameProvider>(
         builder: (ctx, game, _) {
           if (game.loadState == OfflineLoadState.error) {
@@ -97,13 +97,13 @@ class _LanHostScreenState extends State<LanHostScreen> {
                     const Text('❌', style: TextStyle(fontSize: 48)),
                     const SizedBox(height: 12),
                     Text(
-                      game.error ?? 'Failed to start',
+                      game.error ?? context.l10n.offlineFailedToStart,
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 16),
                     OutlinedButton(
                       onPressed: () => Navigator.pop(ctx),
-                      child: const Text('Go back'),
+                      child: Text(context.l10n.offlineGoBack),
                     ),
                   ],
                 ),
@@ -137,15 +137,15 @@ class _LanHostScreenState extends State<LanHostScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
-                              'Room is broadcasting',
-                              style: TextStyle(
+                            Text(
+                              context.l10n.offlineRoomBroadcasting,
+                              style: const TextStyle(
                                 color: Colors.white70,
                                 fontSize: 12,
                               ),
                             ),
                             Text(
-                              '${widget.hostName}\'s Room',
+                              context.l10n.offlineHostsRoom(widget.hostName),
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 18,
@@ -153,7 +153,7 @@ class _LanHostScreenState extends State<LanHostScreen> {
                               ),
                             ),
                             Text(
-                              '${widget.gameType.displayName} • ${widget.pack.name}',
+                              context.l10n.offlineGameTypeAndPack(widget.gameType.displayName, widget.pack.name),
                               style: const TextStyle(
                                 color: Colors.white70,
                                 fontSize: 13,
@@ -188,7 +188,7 @@ class _LanHostScreenState extends State<LanHostScreen> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Other players: open Jma3a → Play → LAN → Join Room',
+                          context.l10n.offlineOtherPlayersJoinInstructions,
                           style: TextStyle(
                             fontSize: 12,
                             color: AppColors.infoBlue.withOpacity(0.8),
@@ -205,7 +205,7 @@ class _LanHostScreenState extends State<LanHostScreen> {
                 Row(
                   children: [
                     Text(
-                      'Players — ${sessionPlayers.length}',
+                      context.l10n.offlinePlayersCountDash(sessionPlayers.length),
                       style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
@@ -300,8 +300,8 @@ class _PlayerChip extends StatelessWidget {
                   color: AppColors.ownerBadge.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child: const Text(
-                  'HOST',
+                child: Text(
+                  context.l10n.offlineHostBadge,
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
@@ -465,7 +465,7 @@ class _LanJoinScreenState extends State<LanJoinScreen> {
     final rooms = _rooms.where((r) => !r.isStale && !r.isFull).toList();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Join LAN Room')),
+      appBar: AppBar(title: Text(context.l10n.offlineJoinLanRoomTitle)),
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -473,10 +473,10 @@ class _LanJoinScreenState extends State<LanJoinScreen> {
           children: [
             TextField(
               controller: _nameCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Your name',
-                prefixIcon: Icon(Icons.person_outline_rounded),
-                hintText: 'Enter your name to join',
+              decoration: InputDecoration(
+                labelText: context.l10n.offlineYourName,
+                prefixIcon: const Icon(Icons.person_outline_rounded),
+                hintText: context.l10n.offlineEnterNameToJoin,
               ),
               textCapitalization: TextCapitalization.words,
               onChanged: (_) => setState(() {}), // re-evaluate button state
@@ -487,7 +487,7 @@ class _LanJoinScreenState extends State<LanJoinScreen> {
             Row(
               children: [
                 Text(
-                  'Nearby rooms',
+                  context.l10n.offlineNearbyRooms,
                   style: theme.textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
@@ -511,14 +511,14 @@ class _LanJoinScreenState extends State<LanJoinScreen> {
                           const Text('📡', style: TextStyle(fontSize: 48)),
                           const SizedBox(height: 12),
                           Text(
-                            'Scanning for rooms…',
+                            context.l10n.offlineScanningForRooms,
                             style: theme.textTheme.bodyMedium?.copyWith(
                               color: theme.colorScheme.onSurfaceVariant,
                             ),
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            'Make sure host device is on the same WiFi.',
+                            context.l10n.offlineSameWifiHint,
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: theme.colorScheme.onSurfaceVariant,
                             ),
@@ -571,9 +571,12 @@ class _LanJoinScreenState extends State<LanJoinScreen> {
                                             ),
                                       ),
                                       Text(
-                                        '${room.gameType.displayName} • '
-                                        '${room.packName} • '
-                                        '${room.playerCount}/${room.maxPlayers} players',
+                                        context.l10n.offlineRoomMeta(
+                                          room.gameType.displayName,
+                                          room.packName,
+                                          room.playerCount,
+                                          room.maxPlayers,
+                                        ),
                                         style: theme.textTheme.bodySmall
                                             ?.copyWith(
                                               color: theme
@@ -598,7 +601,7 @@ class _LanJoinScreenState extends State<LanJoinScreen> {
             ),
 
             JButton(
-              label: 'Join Room',
+              label: context.l10n.offlineJoinRoomButton,
               onPressed:
                   _selectedRoom != null && _nameCtrl.text.trim().isNotEmpty
                   ? _join
@@ -610,7 +613,7 @@ class _LanJoinScreenState extends State<LanJoinScreen> {
               Padding(
                 padding: const EdgeInsets.only(top: 6),
                 child: Text(
-                  'Enter your name above to join',
+                  context.l10n.offlineEnterNameAboveToJoin,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 12,

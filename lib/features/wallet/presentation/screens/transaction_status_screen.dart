@@ -71,7 +71,7 @@ class TransactionStatusScreen extends StatelessWidget {
                 style: FilledButton.styleFrom(
                   minimumSize: const Size(double.infinity, 52),
                 ),
-                child: const Text('Back to Wallet'),
+                child: Text(context.l10n.walletBackToWallet),
               ).animate(delay: 400.ms).fadeIn(),
             ],
           ),

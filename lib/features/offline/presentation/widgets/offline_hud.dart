@@ -56,7 +56,7 @@ class OfflineHud extends StatelessWidget {
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    'Round $round / $maxRounds',
+                    context.l10n.todRoundBadge(round, maxRounds),
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 12,

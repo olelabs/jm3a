@@ -23,7 +23,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Creator Earnings')),
+      appBar: AppBar(title: Text(context.l10n.walletCreatorEarningsTitle)),
       body: Consumer<WalletProvider>(
         builder: (ctx, wallet, _) {
           final earnings = wallet.earnings;
@@ -40,11 +40,11 @@ class _EarningsScreenState extends State<EarningsScreen> {
                   const Text('📦',
                       style: TextStyle(fontSize: 56)),
                   const SizedBox(height: 16),
-                  Text('No earnings yet',
+                  Text(ctx.l10n.walletNoEarningsYet,
                       style: ctx.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w700)),
                   const SizedBox(height: 8),
-                  Text('Create and sell packs to earn commissions.',
+                  Text(ctx.l10n.walletCreateSellPacksHint,
                       style: ctx.textTheme.bodyMedium?.copyWith(
                           color: ctx.colorScheme.onSurfaceVariant),
                       textAlign: TextAlign.center),
@@ -75,8 +75,8 @@ class _EarningsScreenState extends State<EarningsScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Creator earnings rate',
-                              style: TextStyle(
+                          Text(ctx.l10n.walletCreatorEarningsRateLabel,
+                              style: const TextStyle(
                                   color: Colors.white70, fontSize: 12)),
                           Text(
                             '${((1 - earnings.commissionRate) * 100).round()}%',
@@ -86,7 +86,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
                                 fontWeight: FontWeight.w800),
                           ),
                           Text(
-                            'of every pack sale (${(earnings.commissionRate * 100).round()}% platform fee)',
+                            ctx.l10n.walletOfEveryPackSale((earnings.commissionRate * 100).round()),
                             style: const TextStyle(
                                 color: Colors.white70, fontSize: 12),
                           ),
@@ -109,22 +109,22 @@ class _EarningsScreenState extends State<EarningsScreen> {
                 childAspectRatio: 1.5,
                 children: [
                   _EarningStatCard(
-                      label: 'Total Earned',
+                      label: ctx.l10n.walletEarningsTotal,
                       value: earnings.formatted,
                       icon:  '📈',
                       color: AppColors.successGreen),
                   _EarningStatCard(
-                      label: 'This Month',
+                      label: ctx.l10n.walletEarningsThisMonth,
                       value: earnings.thisMonthFormatted,
                       icon:  '📅',
                       color: AppColors.infoBlue),
                   _EarningStatCard(
-                      label: 'Pending',
+                      label: ctx.l10n.pendingLabel,
                       value: earnings.pendingFormatted,
                       icon:  '⏳',
                       color: AppColors.warningAmber),
                   _EarningStatCard(
-                      label: 'Total Sales',
+                      label: ctx.l10n.walletEarningsTotalSales,
                       value: '${earnings.totalSales}',
                       icon:  '🛒',
                       color: AppColors.purple),
@@ -151,7 +151,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Available for withdrawal',
+                          Text(ctx.l10n.walletAvailableForWithdrawal,
                               style: TextStyle(
                                   fontWeight: FontWeight.w600, fontSize: 13)),
                           Text(earnings.availableFormatted,
@@ -231,18 +231,18 @@ class _HowEarningsWork extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('How earnings work',
+        Text(context.l10n.walletHowEarningsWork,
             style: context.textTheme.titleSmall?.copyWith(
                 fontWeight: FontWeight.w700)),
         const SizedBox(height: 10),
-        const _BulletItem(
-            text: 'You earn 85% of every pack sale.'),
-        const _BulletItem(
-            text: '15% platform fee keeps Jma3a running.'),
-        const _BulletItem(
-            text: 'Earnings are credited after purchase is confirmed.'),
-        const _BulletItem(
-            text: 'Minimum withdrawal: 500 MRU.'),
+        _BulletItem(
+            text: context.l10n.walletBulletEarn85),
+        _BulletItem(
+            text: context.l10n.walletBulletPlatformFee),
+        _BulletItem(
+            text: context.l10n.walletBulletCreditedAfterConfirm),
+        _BulletItem(
+            text: context.l10n.walletBulletMinWithdrawal),
       ],
     );
   }

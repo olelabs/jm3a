@@ -316,6 +316,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../../../../core/extensions/context_ext.dart';
 import '../../../../../../core/theme/app_colors.dart';
+import '../../../../../../shared/widgets/cards/honesty_score_line.dart';
 import '../../../../../../shared/widgets/cards/user_avatar.dart';
 
 class TodPlayerBanner extends StatelessWidget {
@@ -329,6 +330,8 @@ class TodPlayerBanner extends StatelessWidget {
     this.avatarConfig,
     this.avatarUrl,
     this.isPremium = false,
+    this.honestyPoints,
+    this.generalScore,
   });
 
   final String playerId;
@@ -340,11 +343,18 @@ class TodPlayerBanner extends StatelessWidget {
   final String? avatarUrl;
   final bool isPremium;
 
+  /// Live values from RoomProvider.members (the single shared source of
+  /// truth also used by the lobby — see MemberTile) — null while the
+  /// current player isn't resolvable from that list yet, in which case
+  /// the stat row is simply omitted rather than showing a fabricated 0.
+  final int? honestyPoints;
+  final int? generalScore;
+
   @override
   Widget build(BuildContext context) {
     final theme = context.theme;
 
-    return AnimatedContainer(
+    final banner = AnimatedContainer(
       duration: const Duration(milliseconds: 250),
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -355,6 +365,15 @@ class TodPlayerBanner extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         border: isMyTurn
             ? Border.all(color: AppColors.truthColor.withOpacity(0.3))
+            : null,
+        boxShadow: isMyTurn
+            ? [
+                BoxShadow(
+                  color: AppColors.truthColor.withOpacity(0.18),
+                  blurRadius: 16,
+                  offset: const Offset(0, 6),
+                ),
+              ]
             : null,
       ),
       child: Row(
@@ -374,15 +393,35 @@ class TodPlayerBanner extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  isMyTurn ? '✨ Your turn!' : "It's their turn",
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: isMyTurn
-                        ? AppColors.truthColor
-                        : theme.colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w600,
+                if (isMyTurn)
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.truthColor,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Text(
+                      '⚡ YOUR TURN',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.4,
+                      ),
+                    ),
+                  )
+                else
+                  Text(
+                    "It's their turn",
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
                 Text(
                   playerName,
                   style: theme.textTheme.titleSmall?.copyWith(
@@ -394,6 +433,15 @@ class TodPlayerBanner extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
+                if (honestyPoints != null && generalScore != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: HonestyScoreLine(
+                      honestyPoints: honestyPoints!,
+                      generalScore: generalScore!,
+                      iconSize: 11,
+                    ),
+                  ),
               ],
             ),
           ),
@@ -401,6 +449,14 @@ class TodPlayerBanner extends StatelessWidget {
         ],
       ),
     );
+
+    // Own subtle entrance separate from the outer phase transition — a
+    // small pop/slide whenever this banner is rebuilt for a new turn, since
+    // it's the primary "whose turn is it" signal.
+    return banner
+        .animate()
+        .fadeIn(duration: 220.ms)
+        .slideY(begin: -0.08, end: 0, duration: 220.ms, curve: Curves.easeOut);
   }
 }
 
@@ -432,16 +488,31 @@ class _PlayerAvatar extends StatelessWidget {
 
     if (!isMyTurn) return avatar;
 
-    return avatar
-        .animate(onPlay: (c) => c.repeat())
-        .scaleXY(
-          begin: 1.0,
-          end: 1.08,
-          duration: 800.ms,
-          curve: Curves.easeInOut,
-        )
-        .then()
-        .scaleXY(begin: 1.08, end: 1.0, duration: 800.ms);
+    // Soft ambient glow ring behind the active player's avatar, on top of
+    // the existing pulse — makes "whose turn" readable at a glance even
+    // before the eye lands on the name text.
+    return Container(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.truthColor.withOpacity(0.45),
+            blurRadius: 14,
+            spreadRadius: 1,
+          ),
+        ],
+      ),
+      child: avatar
+          .animate(onPlay: (c) => c.repeat())
+          .scaleXY(
+            begin: 1.0,
+            end: 1.08,
+            duration: 800.ms,
+            curve: Curves.easeInOut,
+          )
+          .then()
+          .scaleXY(begin: 1.08, end: 1.0, duration: 800.ms),
+    );
   }
 }
 

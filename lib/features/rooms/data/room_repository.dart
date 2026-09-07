@@ -2548,6 +2548,12 @@ class RoomRepository extends BaseRepository {
     int offset = 0,
     String? gameTypeFilter,
     String? userId,
+    // The owned/member/paused merge below is bounded by the CALLER's own
+    // memberships (small, not paginated) and would otherwise be re-fetched
+    // and re-merged on every single page — duplicating those rows into the
+    // list on page 2+. Room Browser's infinite scroll passes false for
+    // every page after the first, which already carried the full merge.
+    bool includeUserRooms = true,
   }) => guardedCall(
     operationName: 'getPublicRooms',
     operation: () async {
@@ -2556,21 +2562,24 @@ class RoomRepository extends BaseRepository {
           .select('*, room_settings(*)')
           .eq('visibility', 'public')
           .inFilter('status', ['waiting', 'in_game'])
-          .isFilter('deleted_at', null);
+          .isFilter('deleted_at', null)
+          // Batch D: keep-game-closed rooms are hidden from Browse.
+          .isFilter('closed_at', null);
       if (gameTypeFilter != null) q = q.eq('game_type', gameTypeFilter);
       final publicRows = await q
           .order('last_active_at', ascending: false)
           .range(offset, offset + limit - 1);
 
       List<dynamic> privateRows = [];
-      if (userId != null) {
+      if (userId != null && includeUserRooms) {
         var ownedQ = _supabase
             .from('rooms')
             .select('*, room_settings(*)')
             .eq('owner_id', userId)
             .eq('visibility', 'private')
             .inFilter('status', ['waiting', 'in_game', 'paused'])
-            .isFilter('deleted_at', null);
+            .isFilter('deleted_at', null)
+            .isFilter('closed_at', null);
         if (gameTypeFilter != null)
           ownedQ = ownedQ.eq('game_type', gameTypeFilter);
         final ownedRows = await ownedQ.order(
@@ -2594,7 +2603,8 @@ class RoomRepository extends BaseRepository {
               .eq('visibility', 'private')
               .inFilter('id', memberRoomIds)
               .inFilter('status', ['waiting', 'in_game', 'paused'])
-              .isFilter('deleted_at', null);
+              .isFilter('deleted_at', null)
+              .isFilter('closed_at', null);
           if (gameTypeFilter != null)
             memberQ = memberQ.eq('game_type', gameTypeFilter);
           final memberRoomRows = await memberQ.order(
@@ -2611,7 +2621,8 @@ class RoomRepository extends BaseRepository {
             .select('*, room_settings(*)')
             .eq('owner_id', userId)
             .eq('status', 'paused')
-            .isFilter('deleted_at', null);
+            .isFilter('deleted_at', null)
+            .isFilter('closed_at', null);
         if (gameTypeFilter != null)
           pausedOwnedQ = pausedOwnedQ.eq('game_type', gameTypeFilter);
         final pausedOwnedRows = await pausedOwnedQ.order(
@@ -2626,7 +2637,8 @@ class RoomRepository extends BaseRepository {
               .select('*, room_settings(*)')
               .inFilter('id', memberRoomIds)
               .eq('status', 'paused')
-              .isFilter('deleted_at', null);
+              .isFilter('deleted_at', null)
+              .isFilter('closed_at', null);
           if (gameTypeFilter != null)
             pausedMemberQ = pausedMemberQ.eq('game_type', gameTypeFilter);
           pausedMemberRows = await pausedMemberQ.order(
@@ -2635,6 +2647,28 @@ class RoomRepository extends BaseRepository {
           );
         }
         privateRows = [...privateRows, ...pausedOwnedRows, ...pausedMemberRows];
+
+        // Batch D owner exception: the keep-game-closed filter above hides a
+        // closed room from EVERYONE (including its owner). But the owner must
+        // still be able to find/manage their own closed room, so add it back
+        // in ONLY for the owner — any visibility, any status, as long as it's
+        // closed and not terminally deleted. Other users' public/member
+        // queries keep the closed_at filter, so a closed room stays hidden
+        // from them. Dedup below collapses any overlap.
+        var ownedClosedQ = _supabase
+            .from('rooms')
+            .select('*, room_settings(*)')
+            .eq('owner_id', userId)
+            .isFilter('deleted_at', null)
+            .not('closed_at', 'is', null);
+        if (gameTypeFilter != null) {
+          ownedClosedQ = ownedClosedQ.eq('game_type', gameTypeFilter);
+        }
+        final ownedClosedRows = await ownedClosedQ.order(
+          'last_active_at',
+          ascending: false,
+        );
+        privateRows = [...privateRows, ...ownedClosedRows];
       }
 
       Set<String> bannedRoomIds = {};
@@ -2710,10 +2744,17 @@ class RoomRepository extends BaseRepository {
             message: 'That many players requires a higher subscription tier.',
           );
         }
+        if (e.message.contains('daily_room_limit_exceeded')) {
+          // Normally caught by the pre-flight hasHitDailyRoomLimit() check
+          // in the UI — this is the server-side backstop (e.g. a race
+          // between two rapid taps) and is the actual authoritative check.
+          throw const RateLimitFailure(
+            message: "You've reached your daily room-creation limit.",
+            code: 'daily_room_limit_exceeded',
+          );
+        }
         rethrow;
       }
-
-      await _incrementRoomQuota(ownerId);
 
       return _rowToEntity(row);
     },
@@ -2724,15 +2765,32 @@ class RoomRepository extends BaseRepository {
     required String roomId,
     String role = 'player',
     bool isHiddenSpectator = false,
+    // A verified participant of this room's current/most-recent game session
+    // (see RoomProvider's isSessionParticipant — frozen game_sessions.player_ids,
+    // and NOT kicked/left) is RETURNING to a room the host closed with the game
+    // kept alive, not joining fresh. For them the closed-status rejection below
+    // must be skipped so they can reactivate their existing membership. Every
+    // other gate (owner-abandoned, capacity, ban) still runs, and the server's
+    // RLS + reactivation trigger remain the real boundary; the caller only sets
+    // this after authoritatively confirming participation.
+    bool isReturningParticipant = false,
   }) => guardedCall(
     operationName: 'joinRoom',
     operation: () async {
-      final row = await _supabase
-          .from('rooms')
-          .select()
-          .eq('id', roomId)
-          .isFilter('deleted_at', null)
-          .maybeSingle();
+      // A joining user isn't a room_member yet — for a PRIVATE room, the
+      // normal RLS-restricted `rooms` read can't see it at this exact
+      // moment (that's what previously produced a false "Room unavailable"
+      // for valid private rooms joined by code). get_room_for_join is
+      // SECURITY DEFINER and bypasses that chicken-and-egg gap; every
+      // check below (closed/abandoned/capacity/ban) still runs exactly as
+      // before, this only fixes the read.
+      final rows = await _supabase.rpc(
+        'get_room_for_join',
+        params: {'p_room_id': roomId},
+      );
+      final row = (rows is List && rows.isNotEmpty)
+          ? rows.first as Map<String, dynamic>
+          : null;
 
       if (row == null)
         throw const NotFoundFailure(
@@ -2740,7 +2798,10 @@ class RoomRepository extends BaseRepository {
         );
 
       final room = _rowToEntity(row);
-      if (room.status == RoomStatus.closed)
+      // A returning session participant is NOT turned away by closed_at — they
+      // are resuming their own game/room (see the parameter's doc). A genuine
+      // new joiner still hits the wall.
+      if (room.status == RoomStatus.closed && !isReturningParticipant)
         throw const NotFoundFailure(
           message: 'This room has been closed by the host.',
         );
@@ -2842,20 +2903,21 @@ class RoomRepository extends BaseRepository {
       final row = (rows as List).first as Map<String, dynamic>;
       final roomId = row['id'] as String;
 
-      final roomRow = await _supabase
-          .from('rooms')
-          .select('status, requires_approval')
-          .eq('id', roomId)
-          .maybeSingle();
-
-      final status = roomRow?['status'] as String? ?? '';
+      // get_room_by_invite_code is SECURITY DEFINER and already returned
+      // status/requires_approval for this room — re-querying `rooms`
+      // directly here used to go through the normal RLS-restricted client,
+      // which silently returned nothing for private rooms (the source of
+      // the "Room unavailable" bug), defaulting requires_approval to false
+      // and skipping the approval gate. Using the RPC's own row avoids the
+      // second, RLS-blocked read entirely.
+      final status = row['status'] as String? ?? '';
       if (status == 'closed') {
         throw const NotFoundFailure(
           message: 'This room has been closed by the host.',
         );
       }
 
-      final requiresApproval = roomRow?['requires_approval'] as bool? ?? false;
+      final requiresApproval = row['requires_approval'] as bool? ?? false;
       if (requiresApproval && invitedBy == null) {
         await requestToJoin(userId: userId, roomId: roomId);
         throw const PendingApprovalFailure();
@@ -2963,6 +3025,31 @@ class RoomRepository extends BaseRepository {
     },
   );
 
+  /// Eligibility-annotated accepted-friends list for the invite picker —
+  /// every ineligibility reason POST /invite itself enforces (already in
+  /// the room, banned from it, blocked, room full, already in another
+  /// active game, platform-banned), computed server-side via the same
+  /// shared check, so the picker can never show someone as invitable who
+  /// the actual invite call would then reject. Returns userId -> reason
+  /// code (null/absent means eligible).
+  Future<Map<String, String?>> getInvitableFriends(String roomId) =>
+      guardedCall(
+        operationName: 'getInvitableFriends',
+        operation: () async {
+          final resp = await _api.get<Map<String, dynamic>>(
+            '/v1/rooms/$roomId/invitable-friends',
+          );
+          final friends =
+              (resp.data!['data'] as Map<String, dynamic>)['friends'] as List;
+          return {
+            for (final row in friends.cast<Map<String, dynamic>>())
+              row['user_id'] as String: (row['eligible'] as bool? ?? false)
+                  ? null
+                  : row['reason_code'] as String?,
+          };
+        },
+      );
+
   Future<void> notifyFriendsRoomCreated(String roomId) => guardedCall(
     operationName: 'notifyFriendsRoomCreated',
     operation: () async {
@@ -2977,7 +3064,7 @@ class RoomRepository extends BaseRepository {
   Future<void> notifyModeration({
     required String roomId,
     required String targetUserId,
-    required String action, // 'kick' | 'ban'
+    required String action, // 'kick' | 'ban' | 'mute'
   }) => guardedCall(
     operationName: 'notifyModeration',
     operation: () async {
@@ -2992,20 +3079,6 @@ class RoomRepository extends BaseRepository {
     operationName: 'notifyJoinRequest',
     operation: () async {
       await _api.post('/v1/rooms/$roomId/join-request-notify');
-    },
-  );
-
-  Future<void> notifyJoinDecision({
-    required String roomId,
-    required String targetUserId,
-    required bool approved,
-  }) => guardedCall(
-    operationName: 'notifyJoinDecision',
-    operation: () async {
-      await _api.post(
-        '/v1/rooms/$roomId/join-decision-notify',
-        data: {'target_user_id': targetUserId, 'approved': approved},
-      );
     },
   );
 
@@ -3053,6 +3126,48 @@ class RoomRepository extends BaseRepository {
           .eq('room_id', roomId)
           .eq('invited_user', userId)
           .isFilter('accepted_at', null);
+    },
+  );
+
+  /// Authoritative, atomic invitation acceptance. In ONE SECURITY DEFINER RPC
+  /// keyed on auth.uid() the server: validates the invite belongs to the
+  /// caller, rejects bans, enforces capacity, reuses-or-creates exactly one
+  /// membership (race-safe via the room_members (room_id,user_id) unique key),
+  /// resolves any pending join request for the same user to 'approved', and
+  /// marks the invite consumed. Replaces the old markInviteAccepted+joinRoom
+  /// pair, which never reconciled the pending request (the duplicate-identity
+  /// bug). Returns the single membership id.
+  Future<String?> acceptRoomInvite({required String roomId}) => guardedCall(
+    operationName: 'acceptRoomInvite',
+    operation: () async {
+      try {
+        final res = await _supabase.rpc(
+          'accept_room_invite',
+          params: {'p_room_id': roomId},
+        );
+        return res as String?;
+      } on PostgrestException catch (e) {
+        if (e.message.contains('no_valid_invite')) {
+          throw const ForbiddenFailure(
+            message: 'This invitation is no longer valid.',
+          );
+        }
+        if (e.message.contains('banned')) {
+          throw const ForbiddenFailure(
+            message: 'You are banned from this room.',
+          );
+        }
+        if (e.message.contains('room_full')) {
+          throw const ConflictFailure(message: 'Room is full.');
+        }
+        if (e.message.contains('room_closed') ||
+            e.message.contains('room_not_found')) {
+          throw const NotFoundFailure(
+            message: 'This room is no longer available.',
+          );
+        }
+        rethrow;
+      }
     },
   );
 
@@ -3145,14 +3260,22 @@ class RoomRepository extends BaseRepository {
         // it as valid OR as a hard stop.
       }
 
-      final roomRow = await _supabase
-          .from('rooms')
-          .select('name, status, deleted_at')
-          .eq('id', roomId)
-          .maybeSingle();
-      if (roomRow == null ||
-          roomRow['deleted_at'] != null ||
-          roomRow['status'] == 'closed') {
+      // Reuses get_room_for_join (added earlier for joinRoom's own
+      // chicken-and-egg RLS gap: a fresh room_members row makes
+      // is_room_member() true, but that doesn't help THIS read if it's
+      // racing the same transaction, and a just-approved join-request
+      // member hitting this fallback deserves the same guaranteed read
+      // as a just-joined-by-code one) instead of a plain RLS-restricted
+      // `rooms` select, which is what previously made an approved
+      // private-room join request look "invalid/unavailable" on tap.
+      final rows = await _supabase.rpc(
+        'get_room_for_join',
+        params: {'p_room_id': roomId},
+      );
+      final roomRow = (rows is List && rows.isNotEmpty)
+          ? rows.first as Map<String, dynamic>
+          : null;
+      if (roomRow == null || roomRow['status'] == 'closed') {
         AppLogger.info(
           'getInviteInfo: room $roomId is gone/closed — no valid invite '
           'or fallback',
@@ -3263,52 +3386,23 @@ class RoomRepository extends BaseRepository {
     },
   );
 
-  Future<int> getRoomsCreatedToday(String userId) => guardedCall(
-    operationName: 'getRoomsCreatedToday',
+  /// One-round-trip pre-flight snapshot of room-creation eligibility (item
+  /// 7 — v2 of the daily limit added last session, now also covering the
+  /// global enable/disable switch and the per-tier minimum-hours gate),
+  /// via get_room_creation_status() — counted server-side from the real
+  /// `rooms` table, same authoritative source create_room() itself
+  /// enforces against. UX pre-check only; create_room() always re-checks
+  /// everything live and is the actual enforcement, regardless of what
+  /// this returns.
+  Future<RoomCreationStatus> getRoomCreationStatus() => guardedCall(
+    operationName: 'getRoomCreationStatus',
     operation: () async {
-      final today = DateTime.now().toIso8601String().substring(0, 10);
-      final row = await _supabase
-          .from('room_creation_quotas')
-          .select('rooms_today, quota_date')
-          .eq('user_id', userId)
-          .maybeSingle();
-      if (row == null || row['quota_date'] != today) return 0;
-      return row['rooms_today'] as int? ?? 0;
+      final result =
+          await _supabase.rpc('get_room_creation_status')
+              as Map<String, dynamic>;
+      return RoomCreationStatus.fromMap(result);
     },
   );
-
-  Future<bool> hasHitDailyRoomLimit({
-    required String userId,
-    required bool isPremium,
-  }) async {
-    final count = await getRoomsCreatedToday(userId);
-    final limit = isPremium ? 15 : 5;
-    return count >= limit;
-  }
-
-  Future<void> _incrementRoomQuota(String userId) async {
-    try {
-      final today = DateTime.now().toIso8601String().substring(0, 10);
-      final existing = await _supabase
-          .from('room_creation_quotas')
-          .select('rooms_today, quota_date')
-          .eq('user_id', userId)
-          .maybeSingle();
-      if (existing == null || existing['quota_date'] != today) {
-        await _supabase.from('room_creation_quotas').upsert({
-          'user_id': userId,
-          'quota_date': today,
-          'rooms_today': 1,
-        }, onConflict: 'user_id');
-      } else {
-        final current = existing['rooms_today'] as int? ?? 0;
-        await _supabase
-            .from('room_creation_quotas')
-            .update({'rooms_today': current + 1, 'quota_date': today})
-            .eq('user_id', userId);
-      }
-    } catch (_) {}
-  }
 
   Future<void> clearPack(String roomId) => guardedCall(
     operationName: 'clearPack',
@@ -3546,35 +3640,61 @@ class RoomRepository extends BaseRepository {
     },
   );
 
-  Future<List<Map<String, dynamic>>> getPendingRejoinRequests(
-    String roomId,
-  ) => guardedCall(
-    operationName: 'getPendingRejoinRequests',
-    operation: () async {
-      final rows = await _supabase
-          .from('game_rejoin_requests')
-          .select('id, user_id, created_at')
-          .eq('room_id', roomId)
-          .eq('status', 'pending')
-          .order('created_at');
-      final requests = (rows as List).cast<Map<String, dynamic>>();
+  /// user_id -> request id, for every pending rejoin request in the room.
+  /// Every client needs this (not just the admin's _RejoinRequestsPanel,
+  /// which needs full profile data too) to show "Waiting for game
+  /// approval" inline on that member's own row wherever the member list is
+  /// rendered — the lobby list AND the in-game member-management sheet,
+  /// which also needs the request id to let a moderator Accept/Reject
+  /// directly from that surface instead of only from the lobby panel. Per
+  /// game_rejoin_requests' RLS ("own or room member" SELECT — any member
+  /// may read every pending request for their room). Deliberately a
+  /// separate, lighter query so polling this for the member list doesn't
+  /// also pay for a profile fetch per pending row every cycle.
+  Future<Map<String, String>> getPendingRejoinUserIds(String roomId) =>
+      guardedCall(
+        operationName: 'getPendingRejoinUserIds',
+        operation: () async {
+          final rows = await _supabase
+              .from('game_rejoin_requests')
+              .select('id, user_id')
+              .eq('room_id', roomId)
+              .eq('status', 'pending');
+          return {
+            for (final r in (rows as List))
+              r['user_id'] as String: r['id'] as String,
+          };
+        },
+      );
 
-      final enriched = <Map<String, dynamic>>[];
-      for (final req in requests) {
-        final uid = req['user_id'] as String;
-        final profileRows = await _supabase
-            .from('profiles')
-            .select('display_name, username, avatar_url')
-            .eq('id', uid)
-            .limit(1);
-        enriched.add({
-          ...req,
-          'profiles': profileRows.isNotEmpty ? profileRows.first : {},
-        });
-      }
-      return enriched;
-    },
-  );
+  Future<List<Map<String, dynamic>>> getPendingRejoinRequests(String roomId) =>
+      guardedCall(
+        operationName: 'getPendingRejoinRequests',
+        operation: () async {
+          final rows = await _supabase
+              .from('game_rejoin_requests')
+              .select('id, user_id, created_at')
+              .eq('room_id', roomId)
+              .eq('status', 'pending')
+              .order('created_at');
+          final requests = (rows as List).cast<Map<String, dynamic>>();
+
+          final enriched = <Map<String, dynamic>>[];
+          for (final req in requests) {
+            final uid = req['user_id'] as String;
+            final profileRows = await _supabase
+                .from('profiles')
+                .select('display_name, username, avatar_url')
+                .eq('id', uid)
+                .limit(1);
+            enriched.add({
+              ...req,
+              'profiles': profileRows.isNotEmpty ? profileRows.first : {},
+            });
+          }
+          return enriched;
+        },
+      );
 
   Future<void> decideGameRejoinRequest({
     required String requestId,
@@ -3667,6 +3787,40 @@ class RoomRepository extends BaseRepository {
     },
   );
 
+  /// The only path a non-owner client may use to end a game — both
+  /// `rooms` and `game_sessions` restrict direct UPDATE to the current
+  /// owner via RLS, so RoomProvider's deterministic "designated closer"
+  /// (ends the game when the owner never reconnects within the 60s pause
+  /// window, or when active players drop below 2 while the owner is
+  /// disconnected) can never do this with a plain updateStatus() call —
+  /// see migration_2026_designated_closer_force_end.sql. SECURITY DEFINER,
+  /// re-derives the owner's own absence server-side before allowing it.
+  Future<void> forceEndGameIfOwnerAbsent(String roomId) => guardedCall(
+    operationName: 'forceEndGameIfOwnerAbsent',
+    operation: () async {
+      await _supabase.rpc(
+        'force_end_game_if_owner_absent',
+        params: {'p_room_id': roomId},
+      );
+    },
+  );
+
+  /// The only path a non-owner client may use to pause a game — same RLS
+  /// restriction and same fix shape as [forceEndGameIfOwnerAbsent] above.
+  /// Pausing is, by definition, always triggered by a bystander (the owner
+  /// can't detect their own absence), so a plain updateStatus() call here
+  /// would silently affect 0 rows under RLS — see
+  /// migration_2026_pause_if_owner_absent.sql.
+  Future<void> pauseGameIfOwnerAbsent(String roomId) => guardedCall(
+    operationName: 'pauseGameIfOwnerAbsent',
+    operation: () async {
+      await _supabase.rpc(
+        'pause_game_if_owner_absent',
+        params: {'p_room_id': roomId},
+      );
+    },
+  );
+
   /// The ownership branch queries `rooms` directly by `owner_id`, mirroring
   /// create_room's own `already_has_open_room` guard exactly — previously
   /// this went through `room_members.left_at IS NULL`, which a bystander's
@@ -3724,17 +3878,16 @@ class RoomRepository extends BaseRepository {
   /// partially-running game. No-ops safely for anyone who isn't the
   /// room's creator or current owner, so it's safe to call unconditionally
   /// on every room entry. See recover_owner_room in schema.sql.
-  Future<Map<String, dynamic>?> recoverOwnerRoom(String roomId) =>
-      guardedCall(
-        operationName: 'recoverOwnerRoom',
-        operation: () async {
-          final result = await _supabase.rpc(
-            'recover_owner_room',
-            params: {'p_room_id': roomId},
-          );
-          return (result as Map?)?.cast<String, dynamic>();
-        },
+  Future<Map<String, dynamic>?> recoverOwnerRoom(String roomId) => guardedCall(
+    operationName: 'recoverOwnerRoom',
+    operation: () async {
+      final result = await _supabase.rpc(
+        'recover_owner_room',
+        params: {'p_room_id': roomId},
       );
+      return (result as Map?)?.cast<String, dynamic>();
+    },
+  );
 
   Future<void> forceLeaveRoom({
     required String userId,
@@ -3787,6 +3940,35 @@ class RoomRepository extends BaseRepository {
         update['deleted_at'] = DateTime.now().toIso8601String();
       }
       await _supabase.from('rooms').update(update).eq('id', roomId);
+
+      // Every call site that flips a room back to `waiting` is ending
+      // whatever game was running (host quit, auto-end on not-enough-
+      // players, kick/ban leaving the admin alone, the manual "End Game"
+      // button) — none of those paths run the per-engine "isGameOver"
+      // completion update each game screen does on a NATURAL end of game,
+      // so the game_sessions row would otherwise be left at
+      // status='active' forever. That stale row keeps occupying
+      // idx_game_sessions_one_active_per_room, so the next "Start Game"
+      // press in this room would silently resume it (create_game_session
+      // returns an existing active session's id instead of creating a
+      // fresh one) and any still-reconnecting player would find it via
+      // findActiveSession and treat it as legitimately live even though
+      // the room already left the in-game state. Closing it here, once,
+      // covers every current and future call site instead of repeating
+      // this at each one.
+      if (status == RoomStatus.waiting) {
+        try {
+          await _supabase
+              .from('game_sessions')
+              .update({
+                'status': 'aborted',
+                'lifecycle_state': 'ended',
+                'ended_at': DateTime.now().toIso8601String(),
+              })
+              .eq('room_id', roomId)
+              .eq('status', 'active');
+        } catch (_) {}
+      }
     },
   );
 
@@ -3801,7 +3983,7 @@ class RoomRepository extends BaseRepository {
         },
       );
 
-  Future<(RoomEntity, List<RoomMemberEntity>, RoomSettingsEntity, List<String>)>
+  Future<(RoomEntity, List<RoomMemberEntity>, RoomSettingsEntity)>
   getRoomWithDetails(String roomId) => guardedCall(
     operationName: 'getRoomWithDetails',
     operation: () async {
@@ -3814,7 +3996,7 @@ class RoomRepository extends BaseRepository {
       final membersRows = await _supabase
           .from('room_members')
           .select(
-            '*, profiles(id, username, display_name, avatar_url, avatar_config, is_premium, premium_tier)',
+            '*, profiles(id, username, display_name, avatar_url, avatar_config, is_premium, premium_tier, honesty_points, general_score)',
           )
           .eq('room_id', roomId)
           .isFilter('left_at', null)
@@ -3854,6 +4036,12 @@ class RoomRepository extends BaseRepository {
           isSpectator: (r['role'] as String?) == 'spectator',
           isHiddenSpectator: r['is_hidden_spectator'] as bool? ?? false,
           isMuted: r['is_muted'] as bool? ?? false,
+          // Was never read here, so is_game_muted always came back false
+          // from every fresh fetch — a game-muted player was silently
+          // un-muted on every reconnect/CDC refresh/room_reconcile poll,
+          // even though the DB row (and mute_player_in_game RPC) were
+          // correct the whole time. See RoomProvider._refreshMembers.
+          isGameMuted: r['is_game_muted'] as bool? ?? false,
           isAway: r['is_away'] as bool? ?? false,
           leftDefinitively: r['left_definitively'] as bool? ?? false,
           isPremium: profile['is_premium'] as bool? ?? false,
@@ -3862,6 +4050,8 @@ class RoomRepository extends BaseRepository {
               ? DateTime.tryParse(r['joined_at'] as String)
               : null,
           moderatorPermissions: modPermissions[uid] ?? const {},
+          honestyPoints: (profile['honesty_points'] as num?)?.toInt() ?? 0,
+          generalScore: (profile['general_score'] as num?)?.toInt() ?? 0,
         );
       }).toList();
 
@@ -3870,16 +4060,7 @@ class RoomRepository extends BaseRepository {
           ? RoomSettingsEntity.fromMap(settingsRow)
           : const RoomSettingsEntity();
 
-      final mutedRows = await _supabase
-          .from('room_members')
-          .select('user_id')
-          .eq('room_id', roomId)
-          .eq('is_muted', true)
-          .isFilter('left_at', null);
-
-      final mutedIds = mutedRows.map((r) => r['user_id'] as String).toList();
-
-      return (_rowToEntity(roomRow), members, settings, mutedIds);
+      return (_rowToEntity(roomRow), members, settings);
     },
   );
 
@@ -3890,12 +4071,26 @@ class RoomRepository extends BaseRepository {
   }) => guardedCall(
     operationName: 'getChatHistory',
     operation: () async {
+      // Real-device root-cause fix (missing premium identity in chat):
+      // is_premium/premium_tier were never in this join at all — even
+      // fixing _chatRowToEntity's own read side couldn't have surfaced
+      // them, since the data was never fetched in the first place. Same
+      // columns/convention getRoomWithMembers already uses for
+      // RoomMemberEntity.isPremium/premiumTier above.
       var q = _supabase
           .from('room_chat_messages')
-          .select('*, profiles!user_id(id, display_name, avatar_url)')
+          .select(
+            '*, profiles!user_id(id, display_name, avatar_url, is_premium, premium_tier)',
+          )
           .eq('room_id', roomId)
           .eq('is_deleted', false)
-          .eq('is_system', false);
+          .eq('is_system', false)
+          // Lobby history only — a targeted in-game message (game_session_id
+          // set) belongs to getGameChatHistory below, not here. RLS already
+          // restricts which rows come back to ones this user may see at all
+          // (sender, recipient, or an 'everyone' message); this filter is
+          // purely about which UI surface a row belongs to.
+          .isFilter('game_session_id', null);
 
       if (before != null) {
         final cursor = await _supabase
@@ -3913,6 +4108,7 @@ class RoomRepository extends BaseRepository {
   );
 
   Future<void> persistChatMessage({
+    required String id,
     required String roomId,
     required String userId,
     required String content,
@@ -3923,7 +4119,21 @@ class RoomRepository extends BaseRepository {
   }) => guardedCall(
     operationName: 'persistChatMessage',
     operation: () async {
+      // Root-cause fix (real-device "reply fails" bug): [id] is the SAME
+      // client-generated id already used for the optimistic local entry
+      // and the realtime broadcast payload (see RoomProvider
+      // .sendChatMessage) — this insert used to omit 'id' entirely,
+      // letting the column's own DEFAULT gen_random_uuid() assign a
+      // DIFFERENT id to the persisted row. Every client that received
+      // this message via realtime (the normal case) then held it under
+      // an id that didn't match the database row, so swiping to reply to
+      // it sent a reply_to_id that violated room_chat_messages
+      // _reply_to_id_fkey (no row actually had that id) — a foreign-key
+      // violation on every single reply. Explicitly writing 'id' here
+      // makes client id == broadcast id == database id for every
+      // message, unconditionally.
       await _supabase.from('room_chat_messages').insert({
+        'id': id,
         'room_id': roomId,
         'user_id': userId,
         'content': content,
@@ -3961,16 +4171,42 @@ class RoomRepository extends BaseRepository {
     String roomId,
     String targetUserId, {
     required bool muted,
+    int? durationSeconds,
   }) => guardedCall(
     operationName: 'muteMember',
     operation: () async {
-      // Permission-gated server-side (mute_chat).
+      // Permission-gated server-side (mute_chat). durationSeconds null =
+      // permanent (see mute_room_member's p_duration_seconds handling).
       await _supabase.rpc(
         'mute_room_member',
         params: {
           'p_room_id': roomId,
           'p_target_user_id': targetUserId,
           'p_muted': muted,
+          'p_duration_seconds': durationSeconds,
+        },
+      );
+    },
+  );
+
+  /// Persists in-game action mute (RoomMemberEntity.isGameMuted) via the
+  /// mute_player_in_game RPC — distinct from [muteMember], which only
+  /// covers text chat. durationSeconds null = permanent.
+  Future<void> muteMemberInGame(
+    String roomId,
+    String targetUserId, {
+    required bool muted,
+    int? durationSeconds,
+  }) => guardedCall(
+    operationName: 'muteMemberInGame',
+    operation: () async {
+      await _supabase.rpc(
+        'mute_player_in_game',
+        params: {
+          'p_room_id': roomId,
+          'p_target_user_id': targetUserId,
+          'p_muted': muted,
+          'p_duration_seconds': durationSeconds,
         },
       );
     },
@@ -4073,6 +4309,9 @@ class RoomRepository extends BaseRepository {
     },
   );
 
+  // Game participation only — must never touch left_at (room membership is
+  // a separate concept; a player marked away here is still, deliberately,
+  // a full room member — see RoomProvider's arrivedMidGame self-mark).
   Future<void> setMemberAway(
     String roomId,
     String userId, {
@@ -4082,10 +4321,7 @@ class RoomRepository extends BaseRepository {
     operation: () async {
       await _supabase
           .from('room_members')
-          .update({
-            'is_away': away,
-            'left_at': away ? DateTime.now().toIso8601String() : null,
-          })
+          .update({'is_away': away})
           .eq('room_id', roomId)
           .eq('user_id', userId);
     },
@@ -4107,47 +4343,48 @@ class RoomRepository extends BaseRepository {
         },
       );
 
-  Future<void> transferOwnership(String roomId, String newOwnerId) =>
-      guardedCall(
-        operationName: 'transferOwnership',
-        operation: () async {
-          // Server-enforced (once-per-calendar-day, owner-only, non-
-          // spectator target) via a SECURITY DEFINER RPC — a plain
-          // .update() cannot be trusted to enforce the limit since a
-          // modified client/direct API call could bypass a client-side
-          // check entirely.
-          try {
-            await _supabase.rpc(
-              'transfer_room_ownership',
-              params: {'p_room_id': roomId, 'p_new_owner_id': newOwnerId},
-            );
-          } on PostgrestException catch (e) {
-            if (e.message.contains('premium_required')) {
-              throw const ForbiddenFailure(
-                message: 'Transferring room ownership requires Premium.',
-              );
-            }
-            if (e.message.contains('transfer_limit_reached')) {
-              throw const RateLimitFailure(
-                message:
-                    "You've already transferred ownership today — try again tomorrow.",
-              );
-            }
-            if (e.message.contains('target_is_spectator')) {
-              throw const ValidationFailure(
-                message: 'A spectator cannot become the room owner.',
-              );
-            }
-            if (e.message.contains('target_not_member')) {
-              throw const ValidationFailure(
-                message: 'That player is no longer in the room.',
-              );
-            }
-            rethrow;
-          }
-        },
-      );
-
+  Future<void> transferOwnership(
+    String roomId,
+    String newOwnerId,
+  ) => guardedCall(
+    operationName: 'transferOwnership',
+    operation: () async {
+      // Server-enforced (once-per-calendar-day, owner-only, non-
+      // spectator target) via a SECURITY DEFINER RPC — a plain
+      // .update() cannot be trusted to enforce the limit since a
+      // modified client/direct API call could bypass a client-side
+      // check entirely.
+      try {
+        await _supabase.rpc(
+          'transfer_room_ownership',
+          params: {'p_room_id': roomId, 'p_new_owner_id': newOwnerId},
+        );
+      } on PostgrestException catch (e) {
+        if (e.message.contains('premium_required')) {
+          throw const ForbiddenFailure(
+            message: 'Transferring room ownership requires Premium.',
+          );
+        }
+        if (e.message.contains('transfer_limit_reached')) {
+          throw const RateLimitFailure(
+            message:
+                "You've already transferred ownership today — try again tomorrow.",
+          );
+        }
+        if (e.message.contains('target_is_spectator')) {
+          throw const ValidationFailure(
+            message: 'A spectator cannot become the room owner.',
+          );
+        }
+        if (e.message.contains('target_not_member')) {
+          throw const ValidationFailure(
+            message: 'That player is no longer in the room.',
+          );
+        }
+        rethrow;
+      }
+    },
+  );
 
   /// Grants moderator status (if not already granted) and sets their exact
   /// permission set in one call — an empty set is equivalent to
@@ -4187,6 +4424,93 @@ class RoomRepository extends BaseRepository {
     },
   );
 
+  /// Batch D keep-game close: marks the room closed for new entrants
+  /// (`rooms.closed_at`) WITHOUT deleting it or aborting the live game. The
+  /// RPC enforces owner-only and the "more than one relevant member" rule
+  /// server-side; distinct exceptions are surfaced so the UI can explain why.
+  Future<void> closeRoomKeepGame(String roomId) => guardedCall(
+    operationName: 'closeRoomKeepGame',
+    operation: () async {
+      try {
+        await _supabase.rpc(
+          'close_room_keep_game',
+          params: {'p_room_id': roomId},
+        );
+      } on PostgrestException catch (e) {
+        if (e.message.contains('not_enough_members')) {
+          throw const ValidationFailure(
+            message:
+                'You need at least one other person in the room to close it.',
+          );
+        }
+        if (e.message.contains('already_closed')) {
+          throw const ConflictFailure(message: 'This room is already closed.');
+        }
+        if (e.message.contains('permission_denied')) {
+          throw const ForbiddenFailure(
+            message: 'Only the room owner can close the room.',
+          );
+        }
+        if (e.message.contains('room_not_found')) {
+          throw const NotFoundFailure(message: 'Room not found.');
+        }
+        rethrow;
+      }
+    },
+  );
+
+  /// Batch D reopen: reverses a keep-game close (clears `rooms.closed_at`) so
+  /// the room accepts new entrants and reappears in Browse per its normal
+  /// rules. Server-authoritative (owner-only, checks closed/not-deleted);
+  /// never deletes, never creates a room/session, never resets game data.
+  Future<void> reopenRoom(String roomId) => guardedCall(
+    operationName: 'reopenRoom',
+    operation: () async {
+      try {
+        await _supabase.rpc(
+          'reopen_room_keep_game',
+          params: {'p_room_id': roomId},
+        );
+      } on PostgrestException catch (e) {
+        if (e.message.contains('permission_denied')) {
+          throw const ForbiddenFailure(
+            message: 'Only the room owner can reopen the room.',
+          );
+        }
+        if (e.message.contains('not_closed')) {
+          throw const ConflictFailure(message: 'This room is not closed.');
+        }
+        if (e.message.contains('room_not_found')) {
+          throw const NotFoundFailure(message: 'Room not found.');
+        }
+        rethrow;
+      }
+    },
+  );
+
+  /// Lightweight "is this room still a real, non-deleted room" probe used by
+  /// the game-end navigation. Unlike getRoomWithDetails (which throws on any
+  /// transient read error and would then wrongly send someone Home), this
+  /// distinguishes a genuinely deleted/gone room (false) from a keep-game-
+  /// closed-but-alive one (true) — a transient failure is treated as "still
+  /// exists" so a flaky network never ejects a player from their own room.
+  Future<bool> roomStillExists(String roomId) => guardedCall(
+    operationName: 'roomStillExists',
+    operation: () async {
+      try {
+        final row = await _supabase
+            .from('rooms')
+            .select('deleted_at')
+            .eq('id', roomId)
+            .maybeSingle();
+        if (row == null) return false;
+        return row['deleted_at'] == null;
+      } catch (_) {
+        return true;
+      }
+    },
+  );
+
   RoomEntity _rowToEntity(Map<String, dynamic> row) {
     return RoomEntity(
       id: row['id'] as String,
@@ -4215,6 +4539,9 @@ class RoomRepository extends BaseRepository {
       createdAt: row['created_at'] != null
           ? DateTime.tryParse(row['created_at'] as String)
           : null,
+      closedAt: row['closed_at'] != null
+          ? DateTime.tryParse(row['closed_at'] as String)
+          : null,
     );
   }
 
@@ -4229,11 +4556,106 @@ class RoomRepository extends BaseRepository {
       content: row['content'] as String,
       createdAt: DateTime.parse(row['created_at'] as String),
       isDeleted: row['is_deleted'] as bool? ?? false,
+      // Real-device root-cause fix (missing avatar/premium identity in
+      // chat): getChatHistory's own query above now actually selects
+      // is_premium/premium_tier — this is the read side. is_anonymous
+      // was already selected (via '*') but never read into the entity
+      // here either, so a reloaded/reconnected client's own history fetch
+      // couldn't tell an anonymous message apart from a normal one.
+      isAnonymous: row['is_anonymous'] as bool? ?? false,
+      senderIsPremium: profile['is_premium'] as bool? ?? false,
+      senderPremiumTier: profile['premium_tier'] as String?,
       replyToId: row['reply_to_id'] as String?,
       replyToContent: row['reply_to_content'] as String?,
       replyToDisplayName: row['reply_to_display_name'] as String?,
+      audienceType: row['audience_type'] as String? ?? 'everyone',
+      gameSessionId: row['game_session_id'] as String?,
     );
   }
+
+  /// History for a targeted in-game chat (item 2) — the ONLY kind of
+  /// in-game message that's ever persisted (normal "everyone" game chat
+  /// stays broadcast-only/ephemeral, exactly as before this feature).
+  /// Same RLS-gated table as lobby chat, scoped to one game_sessions row.
+  Future<List<ChatMessageEntity>> getGameChatHistory(
+    String roomId,
+    String gameSessionId, {
+    int limit = 50,
+  }) => guardedCall(
+    operationName: 'getGameChatHistory',
+    operation: () async {
+      final rows = await _supabase
+          .from('room_chat_messages')
+          .select(
+            '*, profiles!user_id(id, display_name, avatar_url, is_premium, premium_tier)',
+          )
+          .eq('room_id', roomId)
+          .eq('game_session_id', gameSessionId)
+          .eq('is_deleted', false)
+          .order('created_at', ascending: false)
+          .limit(limit);
+      return rows.reversed.map(_chatRowToEntity).toList();
+    },
+  );
+
+  /// Item 2 — the ONE authoritative entry point for a Premium Plus
+  /// targeted message. Everything security-relevant (entitlement, room/
+  /// game membership, "every recipient belongs to this context") is
+  /// re-verified inside the SECURITY DEFINER RPC itself — this is a thin
+  /// wrapper, never a second place that logic could drift from the RPC.
+  Future<ChatMessageEntity> sendTargetedChatMessage({
+    required String roomId,
+    required String content,
+    required List<String> recipientIds,
+    String? gameSessionId,
+    String? replyToId,
+    String? replyToContent,
+    String? replyToDisplayName,
+  }) => guardedCall(
+    operationName: 'sendTargetedChatMessage',
+    operation: () async {
+      try {
+        final row = await _supabase.rpc(
+          'send_targeted_chat_message',
+          params: {
+            'p_room_id': roomId,
+            'p_content': content,
+            'p_recipient_ids': recipientIds,
+            'p_game_session_id': gameSessionId,
+            'p_reply_to_id': replyToId,
+            'p_reply_to_content': replyToContent,
+            'p_reply_to_display_name': replyToDisplayName,
+          },
+        );
+        return _chatRowToEntity(Map<String, dynamic>.from(row as Map));
+      } on PostgrestException catch (e) {
+        if (e.message.contains('not_premium_plus')) {
+          throw const ForbiddenFailure(
+            message: 'Only Premium Plus members can target specific people.',
+          );
+        }
+        if (e.message.contains('not_room_member') ||
+            e.message.contains('not_in_game_session')) {
+          throw const ForbiddenFailure(
+            message: 'You are no longer part of this room/game.',
+          );
+        }
+        if (e.message.contains('recipient_outside_context')) {
+          throw const ValidationFailure(
+            message: 'One of the selected people is no longer available.',
+          );
+        }
+        if (e.message.contains('muted')) {
+          throw const ForbiddenFailure(message: 'You are muted in this room.');
+        }
+        if (e.message.contains('no_recipients') ||
+            e.message.contains('empty_content')) {
+          throw const ValidationFailure(message: 'Message cannot be sent.');
+        }
+        rethrow;
+      }
+    },
+  );
 
   /// Premium-only, strictly read-only archive of rooms the caller owned
   /// that closed within the last 5 days — server-enforced via
@@ -4252,6 +4674,29 @@ class RoomRepository extends BaseRepository {
         }
         rethrow;
       }
+    },
+  );
+
+  /// Ids of the caller's OWN rooms that are keep-game-closed but still ALIVE
+  /// (closed_at set, NOT terminally deleted). These are the only closed rooms
+  /// eligible for re-entry / reopen — a terminal (deleted_at) room is
+  /// permanently gone and stays read-only history. Used by ClosedRoomsScreen
+  /// to tell the two apart WITHOUT changing get_my_closed_rooms' shape (that
+  /// RPC coalesces closed_at/deleted_at and can't distinguish them). Owner-
+  /// scoped by owner_id; RLS `rooms: read` already permits the owner to read
+  /// their own rooms, so no new SQL/RPC is needed.
+  Future<Set<String>> getReopenableClosedRoomIds() => guardedCall(
+    operationName: 'getReopenableClosedRoomIds',
+    operation: () async {
+      final uid = _supabase.auth.currentUser?.id;
+      if (uid == null) return <String>{};
+      final rows = await _supabase
+          .from('rooms')
+          .select('id')
+          .eq('owner_id', uid)
+          .isFilter('deleted_at', null)
+          .not('closed_at', 'is', null);
+      return (rows as List).map((r) => r['id'] as String).toSet();
     },
   );
 

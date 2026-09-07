@@ -102,7 +102,12 @@ abstract final class ErrorHandler {
           message: message ?? 'Invalid request.',
           code: code,
         ),
-      401 => const AuthFailure(),
+      // Unlike every other branch here, this used to discard the parsed
+      // message/code entirely — harmless for a bare expired-JWT 401 (no
+      // body), but wrong for POST /v1/auth/login's 401 invalid_credentials
+      // response, which carries a specific user-facing message that must
+      // reach the login screen instead of the generic fallback below.
+      401 => AuthFailure(message: message ?? 'Authentication required.', code: code),
       403 => const ForbiddenFailure(),
       404 => NotFoundFailure(message: message ?? 'Not found.', code: code),
       409 => ConflictFailure(message: message ?? 'Conflict.', code: code),

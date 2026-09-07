@@ -1,12 +1,24 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../../../core/extensions/context_ext.dart';
 import '../../../../core/services/presence_service.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../features/games/engine/base_game_engine.dart';
 import '../../../../shared/widgets/cards/j_card.dart';
 import '../../../../shared/widgets/cards/user_avatar.dart';
 import '../../data/friends_repository.dart';
+
+/// GameType.toDbString() -> display name, or null if unresolvable/absent.
+/// Shared by OnlineIndicator's label and FriendTile's in-game row so the
+/// two premium-detail surfaces never disagree.
+String? resolveGameDisplayName(String? gameType) {
+  if (gameType == null) return null;
+  final resolved = GameType.values.cast<GameType?>().firstWhere(
+    (g) => g?.toDbString() == gameType,
+    orElse: () => null,
+  );
+  return resolved?.displayName;
+}
 
 // ── Online indicator ──────────────────────────────────────────────────────────
 
@@ -16,23 +28,52 @@ class OnlineIndicator extends StatelessWidget {
     required this.status,
     this.size = 10,
     this.showLabel = false,
+    this.roomStatus,
+    this.gameType,
+    this.showDetail = false,
   });
 
   final UserPresenceStatus status;
   final double size;
   final bool showLabel;
 
+  /// 'lobby' or 'in_game' — see PresenceService.setInGame. Only rendered
+  /// when [showDetail] is true.
+  final String? roomStatus;
+
+  /// GameType.toDbString(), only meaningful when roomStatus == 'in_game'.
+  final String? gameType;
+
+  /// Premium-only detail gate — "Premium users should be able to see
+  /// detailed friend status ... Basic users should only see the normal
+  /// allowed status". The caller decides this from the *viewer's* own
+  /// premium status, not the friend being displayed.
+  final bool showDetail;
+
   Color get _color => switch (status) {
     UserPresenceStatus.online => AppColors.successGreen,
     UserPresenceStatus.inGame => AppColors.brandOrangeLight,
+    UserPresenceStatus.backgrounded => AppColors.amberOrangeLight,
     UserPresenceStatus.offline => AppColors.textTertiaryLight,
   };
 
-  String get _label => switch (status) {
-    UserPresenceStatus.online => 'Online',
-    UserPresenceStatus.inGame => 'In Game',
-    UserPresenceStatus.offline => 'Offline',
-  };
+  String _label(BuildContext context) {
+    if (showDetail && status == UserPresenceStatus.inGame) {
+      if (roomStatus == 'in_game') {
+        final display = resolveGameDisplayName(gameType);
+        if (display != null) {
+          return context.l10n.friendsStatusPlayingGame(display);
+        }
+      }
+      if (roomStatus == 'lobby') return context.l10n.friendsStatusInRoomLobby;
+    }
+    return switch (status) {
+      UserPresenceStatus.online => context.l10n.friendsStatusOnline,
+      UserPresenceStatus.inGame => context.l10n.friendsStatusInGame,
+      UserPresenceStatus.backgrounded => context.l10n.presenceUserIsAway,
+      UserPresenceStatus.offline => context.l10n.friendsStatusOffline,
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -56,7 +97,7 @@ class OnlineIndicator extends StatelessWidget {
         dot,
         const SizedBox(width: 4),
         Text(
-          _label,
+          _label(context),
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w500,
@@ -76,6 +117,9 @@ class FriendTile extends StatelessWidget {
     required this.friend,
     required this.status,
     this.roomId,
+    this.roomStatus,
+    this.gameType,
+    this.showDetail = false,
     this.onTap,
     this.onJoinRoom,
     this.onRemove,
@@ -85,6 +129,13 @@ class FriendTile extends StatelessWidget {
   final FriendEntity friend;
   final UserPresenceStatus status;
   final String? roomId;
+
+  /// See OnlineIndicator — 'lobby'/'in_game' and the game type, plus
+  /// [showDetail] gating whether they're actually shown (premium viewers
+  /// only; passed in by the caller from the *viewer's* premium status).
+  final String? roomStatus;
+  final String? gameType;
+  final bool showDetail;
   final VoidCallback? onTap;
   final VoidCallback? onJoinRoom;
   final VoidCallback? onRemove;
@@ -122,7 +173,13 @@ class FriendTile extends StatelessWidget {
                       shape: BoxShape.circle,
                     ),
                     padding: const EdgeInsets.all(1.5),
-                    child: OnlineIndicator(status: status, size: 10),
+                    child: OnlineIndicator(
+                      status: status,
+                      size: 10,
+                      roomStatus: roomStatus,
+                      gameType: gameType,
+                      showDetail: showDetail,
+                    ),
                   ),
                 ),
               ],
@@ -150,14 +207,18 @@ class FriendTile extends StatelessWidget {
                       ),
                     ),
 
-                  // In-game label
+                  // In-game label — premium viewers get the specific
+                  // lobby/game-type detail; basic viewers keep the
+                  // existing generic "Playing Now" text unchanged.
                   if (status == UserPresenceStatus.inGame)
                     Row(
                       children: [
                         const Text('🎮', style: TextStyle(fontSize: 11)),
                         const SizedBox(width: 3),
                         Text(
-                          'Playing now',
+                          showDetail
+                              ? _detailedInGameLabel(context)
+                              : context.l10n.friendsPlayingNow,
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: AppColors.brandOrangeLight,
                             fontWeight: FontWeight.w600,
@@ -177,16 +238,28 @@ class FriendTile extends StatelessWidget {
                 if (onJoinRoom != null)
                   Padding(
                     padding: const EdgeInsets.only(right: 4),
-                    child: FilledButton.tonal(
-                      onPressed: onJoinRoom,
-                      style: FilledButton.styleFrom(
-                        visualDensity: VisualDensity.compact,
-                        backgroundColor: AppColors.brandOrangeLight.withOpacity(
-                          0.12,
+                    // Explicit minimumSize:Size.zero — Row gives an
+                    // unbounded max width to a non-Expanded child
+                    // regardless of mainAxisSize, and the app-wide
+                    // FilledButton theme defaults minimumSize to
+                    // Size(double.infinity, 52); without this override
+                    // this throws "BoxConstraints forces an infinite
+                    // width" (see the identical fix in friends_screen.dart
+                    // for the full explanation).
+                    child: SizedBox(
+                      height: 34,
+                      child: FilledButton.tonal(
+                        onPressed: onJoinRoom,
+                        style: FilledButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          backgroundColor: AppColors.brandOrangeLight
+                              .withOpacity(0.12),
+                          foregroundColor: AppColors.warningAmber,
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
-                        foregroundColor: AppColors.warningAmber,
+                        child: Text(context.l10n.roomsJoin),
                       ),
-                      child: const Text('Join'),
                     ),
                   ),
 
@@ -201,13 +274,13 @@ class FriendTile extends StatelessWidget {
                     padding: EdgeInsets.zero,
                     itemBuilder: (_) => [
                       if (onRemove != null)
-                        const PopupMenuItem(
+                        PopupMenuItem(
                           value: 'remove',
                           child: Row(
                             children: [
-                              Icon(Icons.person_remove_outlined),
-                              SizedBox(width: 8),
-                              Text('Remove friend'),
+                              const Icon(Icons.person_remove_outlined),
+                              const SizedBox(width: 8),
+                              Text(context.l10n.friendsRemoveFriend),
                             ],
                           ),
                         ),
@@ -222,7 +295,7 @@ class FriendTile extends StatelessWidget {
                               ),
                               const SizedBox(width: 8),
                               Text(
-                                'Block',
+                                context.l10n.friendsBlock,
                                 style: TextStyle(color: AppColors.errorRed),
                               ),
                             ],
@@ -240,5 +313,15 @@ class FriendTile extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _detailedInGameLabel(BuildContext context) {
+    if (roomStatus == 'in_game') {
+      final display = resolveGameDisplayName(gameType);
+      if (display != null)
+        return context.l10n.friendsStatusPlayingGame(display);
+    }
+    if (roomStatus == 'lobby') return context.l10n.friendsStatusInRoomLobby;
+    return context.l10n.friendsPlayingNow;
   }
 }

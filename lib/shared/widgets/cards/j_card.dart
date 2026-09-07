@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:jma3a/core/theme/app_text_styles.dart';
 import 'package:shimmer/shimmer.dart';
 
+import '../../../core/extensions/context_ext.dart';
 import '../../../core/theme/app_colors.dart';
 
 /// ═══════════════════════════════════════════════════════════════
@@ -36,9 +37,12 @@ class JCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final effectiveColor =
-        color ?? (isDark ? AppColors.darkSurface : AppColors.white);
+    // Reads the already-theme/background-derived surface tone (see
+    // AppTheme.withPrimary's _deriveSurfaceFamily) instead of a hardcoded
+    // light/dark color — this is what makes every JCard consumer (Room
+    // Browser, profile, packs, friends, LAN host, ...) automatically follow
+    // the active theme and the premium custom background color.
+    final effectiveColor = color ?? cs.surfaceContainer;
     final effectiveBorder = borderColor ?? cs.outlineVariant;
     final effectiveRadius = radius ?? AppRadius.card;
 
@@ -492,7 +496,7 @@ class JPackCard extends StatelessWidget {
                               ),
                             ),
                             child: Text(
-                              'Owned',
+                              context.l10n.packOwnedBadge,
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
@@ -501,7 +505,9 @@ class JPackCard extends StatelessWidget {
                             ),
                           )
                         : Text(
-                            priceMru == 0 ? 'Free' : '$priceMru MRU',
+                            priceMru == 0
+                                ? context.l10n.packFreeLabel
+                                : context.l10n.packPriceMru(priceMru),
                             style: theme.textTheme.labelMedium?.copyWith(
                               color: priceMru == 0
                                   ? AppColors.successGreen
@@ -571,172 +577,6 @@ class ShimmerBox extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(radius),
-        ),
-      ),
-    );
-  }
-}
-
-/// ═══════════════════════════════════════════════════════════════
-/// JRoomTile — Room browser list item
-/// ═══════════════════════════════════════════════════════════════
-class JRoomTile extends StatelessWidget {
-  const JRoomTile({
-    super.key,
-    required this.roomName,
-    required this.ownerName,
-    required this.gameType,
-    required this.currentPlayers,
-    required this.maxPlayers,
-    required this.avatarUrls,
-    this.isLocked = false,
-    this.isPrivate = false,
-    this.onTap,
-    this.badge,
-  });
-
-  final String roomName;
-  final String ownerName;
-  final String gameType;
-  final int currentPlayers;
-  final int maxPlayers;
-  final List<String?> avatarUrls;
-  final bool isLocked;
-  final bool isPrivate;
-  final VoidCallback? onTap;
-  final String? badge; // e.g. 'LIVE' | 'FULL' | 'JOINING'
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isFull = currentPlayers >= maxPlayers;
-    final gameEmoji = switch (gameType) {
-      'truth_or_dare' => '🎯',
-      'never_have_i_ever' => '🍹',
-      'meme_game' => '😂',
-      _ => '🎮',
-    };
-
-    return JCard(
-      onTap: onTap,
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.md,
-        vertical: AppSpacing.sm + 4,
-      ),
-      child: Row(
-        children: [
-          // Game type emoji
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(AppRadius.md),
-            ),
-            child: Center(
-              child: Text(gameEmoji, style: const TextStyle(fontSize: 22)),
-            ),
-          ),
-          const SizedBox(width: AppSpacing.md),
-
-          // Room info
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        roomName,
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    if (isLocked) ...[
-                      const SizedBox(width: 4),
-                      Icon(
-                        Icons.lock_rounded,
-                        size: 13,
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ],
-                    if (badge != null) ...[
-                      const SizedBox(width: 6),
-                      _RoomBadge(label: badge!),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'by $ownerName',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(width: AppSpacing.sm),
-
-          // Player count
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                '$currentPlayers/$maxPlayers',
-                style: theme.textTheme.labelMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: isFull
-                      ? theme.colorScheme.error
-                      : theme.colorScheme.primary,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                'players',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _RoomBadge extends StatelessWidget {
-  const _RoomBadge({required this.label});
-  final String label;
-
-  Color _color(String l) => switch (l) {
-    'LIVE' => AppColors.errorRed,
-    'FULL' => AppColors.neutral500,
-    'JOINING' => AppColors.successGreen,
-    _ => AppColors.brandBlueElectric,
-  };
-
-  @override
-  Widget build(BuildContext context) {
-    final color = _color(label);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(AppRadius.badge),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.w800,
-          color: color,
-          letterSpacing: 0.5,
         ),
       ),
     );

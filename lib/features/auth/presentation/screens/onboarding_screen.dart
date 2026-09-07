@@ -4,7 +4,6 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/di/service_locator.dart';
 import '../../../../core/extensions/context_ext.dart';
-import '../../../../core/network/api_client.dart';
 import '../../../../core/providers/auth_provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/buttons/j_button.dart';
@@ -38,6 +37,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   int? _selectedAge;
   String? _selectedGender;
+  bool _genderError = false;
   String? _selectedCountry;
   String _selectedLanguage = 'en';
 
@@ -108,6 +108,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     if (_usernameError != null) return;
     if (_usernameStatus == _UsernameStatus.taken) return;
     if (_isCheckingUsername) return;
+
+    if (_selectedGender == null) {
+      setState(() => _genderError = true);
+      return;
+    }
 
     setState(() => _isSubmitting = true);
     final auth = context.read<AuthProvider>();
@@ -198,7 +203,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 const SizedBox(height: 36),
 
                 // Required section
-                _SectionLabel('Required'),
+                _SectionLabel(l10n.required),
 
                 const SizedBox(height: 12),
 
@@ -239,58 +244,105 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   ),
                   validator: (v) {
                     if ((v?.trim() ?? '').length < 2)
-                      return 'At least 2 characters';
+                      return l10n.onboardingDisplayNameTooShort;
                     if ((v?.trim() ?? '').length > 50)
-                      return 'Maximum 50 characters';
+                      return l10n.onboardingDisplayNameTooLong;
                     return null;
                   },
                 ).animate(delay: 120.ms).fadeIn(),
 
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
 
-                // Optional section
-                _SectionLabel('Optional'),
-                const SizedBox(height: 12),
-
-                // Language
-                DropdownButtonFormField<String>(
-                  value: _selectedLanguage,
-                  decoration: const InputDecoration(
-                    labelText: 'Preferred language',
-                    prefixIcon: Icon(Icons.language_outlined),
+                // Gender
+                Text(
+                  l10n.onboardingGenderLabel,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
                   ),
-                  items: const [
-                    DropdownMenuItem(value: 'en', child: Text('English')),
-                    DropdownMenuItem(value: 'ar', child: Text('العربية')),
-                    DropdownMenuItem(value: 'fr', child: Text('Français')),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _GenderOption(
+                        label: l10n.onboardingGenderMale,
+                        icon: Icons.male_rounded,
+                        selected: _selectedGender == 'male',
+                        onTap: () => setState(() {
+                          _selectedGender = 'male';
+                          _genderError = false;
+                        }),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _GenderOption(
+                        label: l10n.onboardingGenderFemale,
+                        icon: Icons.female_rounded,
+                        selected: _selectedGender == 'female',
+                        onTap: () => setState(() {
+                          _selectedGender = 'female';
+                          _genderError = false;
+                        }),
+                      ),
+                    ),
                   ],
-                  onChanged: (v) =>
-                      setState(() => _selectedLanguage = v ?? 'en'),
-                ).animate(delay: 160.ms).fadeIn(),
+                ),
+                if (_genderError) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    l10n.onboardingGenderRequired,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.error,
+                    ),
+                  ),
+                ],
 
                 const SizedBox(height: 16),
 
                 // Age
                 TextFormField(
                   keyboardType: TextInputType.number,
-                  textInputAction: TextInputAction.done,
-                  onFieldSubmitted: (_) => _submit(),
+                  textInputAction: TextInputAction.next,
                   decoration: InputDecoration(
-                    labelText: '${l10n.optional} Age',
-                    hintText: 'Your age (13+)',
+                    labelText: l10n.onboardingAgeLabel,
+                    hintText: l10n.onboardingAgeHint,
                     prefixIcon: const Icon(Icons.cake_outlined),
                   ),
                   validator: (v) {
-                    if (v == null || v.trim().isEmpty) return null;
-                    final age = int.tryParse(v.trim());
-                    if (age == null) return 'Enter a valid age';
-                    if (age < 13) return 'You must be at least 13 years old';
-                    if (age > 100) return 'Please enter a valid age';
+                    final trimmed = v?.trim() ?? '';
+                    if (trimmed.isEmpty) return l10n.onboardingAgeRequired;
+                    final age = int.tryParse(trimmed);
+                    if (age == null) return l10n.onboardingAgeInvalid;
+                    if (age < 13) return l10n.onboardingAgeTooYoung;
+                    if (age > 100) return l10n.onboardingAgeInvalid;
                     return null;
                   },
                   onChanged: (v) {
                     _selectedAge = int.tryParse(v.trim());
                   },
+                ).animate(delay: 160.ms).fadeIn(),
+
+                const SizedBox(height: 24),
+
+                // Optional section
+                _SectionLabel(l10n.optional),
+                const SizedBox(height: 12),
+
+                // Language
+                DropdownButtonFormField<String>(
+                  value: _selectedLanguage,
+                  decoration: InputDecoration(
+                    labelText: l10n.profileLanguageLabel,
+                    prefixIcon: const Icon(Icons.language_outlined),
+                  ),
+                  items: [
+                    DropdownMenuItem(value: 'en', child: Text(l10n.languageEnglish)),
+                    DropdownMenuItem(value: 'ar', child: Text(l10n.languageArabic)),
+                    DropdownMenuItem(value: 'fr', child: Text(l10n.languageFrench)),
+                  ],
+                  onChanged: (v) =>
+                      setState(() => _selectedLanguage = v ?? 'en'),
                 ).animate(delay: 200.ms).fadeIn(),
 
                 const SizedBox(height: 32),
@@ -344,6 +396,60 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 }
 
 enum _UsernameStatus { empty, checking, available, taken, invalid }
+
+class _GenderOption extends StatelessWidget {
+  const _GenderOption({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = context.theme;
+    final color = selected
+        ? theme.colorScheme.primary
+        : theme.colorScheme.onSurfaceVariant;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          color: selected
+              ? theme.colorScheme.primary.withOpacity(0.08)
+              : theme.colorScheme.surfaceContainerHighest,
+          border: Border.all(
+            color: selected ? theme.colorScheme.primary : Colors.transparent,
+            width: 1.5,
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: color,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 class _SectionLabel extends StatelessWidget {
   const _SectionLabel(this.label);

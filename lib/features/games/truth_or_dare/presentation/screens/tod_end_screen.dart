@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../../../../core/extensions/context_ext.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../shared/widgets/buttons/j_button.dart';
+import '../../../engine/game_scoring.dart';
 import '../../domain/tod_models.dart';
 
 /// End-of-game summary screen.
@@ -24,11 +25,19 @@ class TodEndScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme  = context.theme;
     final scores = state.sortedScores;
-    final reason = _endLabel(state.endReason);
-    final winner = scores.isNotEmpty ? scores.first : null;
+    final reason = _endLabel(context, state.endReason);
+    // Tie-aware winner: everyone sharing the top POSITIVE score. No winner when
+    // nobody scored, and never a player-order tie-break (the old
+    // `scores.first`/`i == 0` crowned whoever sat first — usually the host).
+    final winnerIds = topScorers({
+      for (final e in state.scores.entries) e.key: e.value.points,
+    });
+    final winner = winnerIds.length == 1
+        ? scores.firstWhere((s) => s.userId == winnerIds.single)
+        : null;
     final winnerName = winner != null
         ? (displayNames[winner.userId] ??
-            'Player ${winner.userId.substring(0, 4)}')
+            context.l10n.todDefaultPlayerNumbered(winner.userId.substring(0, 4)))
         : null;
 
     return Scaffold(
@@ -49,7 +58,7 @@ class TodEndScreen extends StatelessWidget {
 
               const SizedBox(height: 12),
 
-              Text('Game Over!',
+              Text(context.l10n.todGameOverBang,
                   style: theme.textTheme.displaySmall?.copyWith(
                       fontWeight: FontWeight.w800))
                   .animate(delay: 200.ms).fadeIn().slideY(begin: 0.15, end: 0),
@@ -82,12 +91,12 @@ class TodEndScreen extends StatelessWidget {
                     children: [
                       const Text('👑', style: TextStyle(fontSize: 24)),
                       const SizedBox(width: 10),
-                      Text('$winnerName wins!',
+                      Text(context.l10n.todWinnerWins(winnerName),
                           style: theme.textTheme.titleMedium?.copyWith(
                               fontWeight: FontWeight.w700,
                               color: AppColors.ownerBadge)),
                       const SizedBox(width: 8),
-                      Text('${winner!.points} pts',
+                      Text(context.l10n.todPointsAbbrev(winner!.points),
                           style: theme.textTheme.titleMedium?.copyWith(
                               fontWeight: FontWeight.w800,
                               color: AppColors.ownerBadge)),
@@ -100,12 +109,12 @@ class TodEndScreen extends StatelessWidget {
               // Stats row
               Row(
                 children: [
-                  _StatBox(label: 'Rounds', value: '${state.roundNumber}', icon: '🔄'),
+                  _StatBox(label: context.l10n.todStatRounds, value: '${state.roundNumber}', icon: '🔄'),
                   const SizedBox(width: 12),
-                  _StatBox(label: 'Players', value: '${state.playerOrder.length}', icon: '👥'),
+                  _StatBox(label: context.l10n.todStatPlayers, value: '${state.playerOrder.length}', icon: '👥'),
                   const SizedBox(width: 12),
                   _StatBox(
-                    label: 'Total Turns',
+                    label: context.l10n.todStatTotalTurns,
                     value: '${state.scores.values.fold(0, (s, e) => s + e.totalCompleted)}',
                     icon: '🎯',
                   ),
@@ -127,7 +136,7 @@ class TodEndScreen extends StatelessWidget {
                         padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
                         child: Row(
                           children: [
-                            Text('Leaderboard',
+                            Text(context.l10n.todLeaderboard,
                                 style: theme.textTheme.titleMedium?.copyWith(
                                     fontWeight: FontWeight.w700)),
                           ],
@@ -143,7 +152,7 @@ class TodEndScreen extends StatelessWidget {
                             score:       scores[i],
                             displayName: displayNames[scores[i].userId] ??
                                 'Player ${scores[i].userId.substring(0, 4)}',
-                            isWinner:    i == 0,
+                            isWinner:    winnerIds.contains(scores[i].userId),
                           ).animate(delay: (500 + i * 50).ms)
                               .fadeIn()
                               .slideX(begin: 0.06, end: 0),
@@ -157,9 +166,9 @@ class TodEndScreen extends StatelessWidget {
               const SizedBox(height: 20),
 
               JButton(
-                label:     'Go to Home',
+                label:     context.l10n.gameBackToRoom,
                 onPressed: onLeave,
-                icon:      Icons.home_rounded,
+                icon:      Icons.meeting_room_rounded,
               ).animate(delay: 700.ms).fadeIn(),
             ],
           ),
@@ -168,11 +177,12 @@ class TodEndScreen extends StatelessWidget {
     );
   }
 
-  String _endLabel(String? reason) => switch (reason) {
-    'round_limit' => 'All rounds completed',
-    'manual'      => 'Game ended by host',
-    'score_limit' => 'Score limit reached',
-    _             => 'Game finished',
+  String _endLabel(BuildContext context, String? reason) => switch (reason) {
+    'round_limit'      => context.l10n.todEndReasonRoundLimit,
+    'manual'           => context.l10n.todEndReasonManual,
+    'score_limit'      => context.l10n.todEndReasonScoreLimit,
+    'cards_exhausted'  => context.l10n.todEndReasonCardsExhausted,
+    _                  => context.l10n.todEndReasonDefault,
   };
 }
 
@@ -265,7 +275,7 @@ class _LeaderboardRow extends StatelessWidget {
           _MiniStat(icon: '⏭', value: score.skips),
           const SizedBox(width: 10),
 
-          Text('${score.points} pts',
+          Text(context.l10n.todPointsAbbrev(score.points),
               style: theme.textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w800,
                   color:      theme.colorScheme.primary)),

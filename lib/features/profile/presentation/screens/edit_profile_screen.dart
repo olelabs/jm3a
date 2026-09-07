@@ -9,8 +9,6 @@ import 'package:provider/provider.dart';
 
 import '../../../../core/extensions/context_ext.dart';
 import '../../../../core/providers/auth_provider.dart';
-import '../../../../core/services/image_cache_service.dart';
-import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/buttons/j_button.dart';
 import '../../../../shared/widgets/cards/user_avatar.dart';
 import '../../../../shared/widgets/overlays/loading_overlay.dart';
@@ -49,12 +47,24 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   File? _pendingAvatar; // Selected but not yet uploaded
   bool _hasPendingChanges = false;
 
-  static const _countries = [
-    ('MR', 'Mauritania'), ('MA', 'Morocco'), ('DZ', 'Algeria'),
-    ('TN', 'Tunisia'), ('EG', 'Egypt'), ('SA', 'Saudi Arabia'),
-    ('AE', 'UAE'), ('US', 'United States'), ('GB', 'United Kingdom'),
-    ('FR', 'France'), ('DE', 'Germany'), ('Other', 'Other'),
+  static const _countryCodes = [
+    'MR', 'MA', 'DZ', 'TN', 'EG', 'SA', 'AE', 'US', 'GB', 'FR', 'DE', 'Other',
   ];
+
+  String _countryLabel(BuildContext context, String code) => switch (code) {
+    'MR' => context.l10n.profileCountryMauritania,
+    'MA' => context.l10n.profileCountryMorocco,
+    'DZ' => context.l10n.profileCountryAlgeria,
+    'TN' => context.l10n.profileCountryTunisia,
+    'EG' => context.l10n.profileCountryEgypt,
+    'SA' => context.l10n.profileCountrySaudiArabia,
+    'AE' => context.l10n.profileCountryUae,
+    'US' => context.l10n.profileCountryUnitedStates,
+    'GB' => context.l10n.profileCountryUnitedKingdom,
+    'FR' => context.l10n.profileCountryFrance,
+    'DE' => context.l10n.profileCountryGermany,
+    _ => context.l10n.profileCountryOther,
+  };
 
   @override
   void initState() {
@@ -120,13 +130,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.camera_alt_outlined),
-              title: const Text('Take photo'),
+              title: Text(ctx.l10n.profileTakePhoto),
               onTap: () => Navigator.pop(ctx, ImageSource.camera),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
             ListTile(
               leading: const Icon(Icons.photo_library_outlined),
-              title: const Text('Choose from gallery'),
+              title: Text(ctx.l10n.profileChooseFromGallery),
               onTap: () => Navigator.pop(ctx, ImageSource.gallery),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
@@ -186,7 +196,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       builder: (context, profileProvider, _) {
         return LoadingOverlay(
           isLoading: profileProvider.isSaving || profileProvider.isUploadingAvatar,
-          message: profileProvider.isUploadingAvatar ? 'Uploading photo…' : null,
+          message: profileProvider.isUploadingAvatar ? l10n.profileUploadingPhoto : null,
           child: Scaffold(
             appBar: AppBar(
               title: Text(l10n.profileEditTitle),
@@ -259,7 +269,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     ),
 
                     const SizedBox(height: 24),
-                    _SectionHeader('Profile info'),
+                    _SectionHeader(l10n.profileInfoSection),
                     const SizedBox(height: 12),
 
                     // Display name
@@ -272,8 +282,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         prefixIcon: const Icon(Icons.badge_outlined),
                       ),
                       validator: (v) {
-                        if ((v?.trim() ?? '').length < 2) return 'At least 2 characters';
-                        if ((v?.trim() ?? '').length > 50) return 'Maximum 50 characters';
+                        if ((v?.trim() ?? '').length < 2) return l10n.onboardingDisplayNameTooShort;
+                        if ((v?.trim() ?? '').length > 50) return l10n.onboardingDisplayNameTooLong;
                         return null;
                       },
                     ).animate(delay: 60.ms).fadeIn(),
@@ -296,13 +306,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         alignLabelWithHint: true,
                       ),
                       validator: (v) {
-                        if ((v?.length ?? 0) > 280) return 'Maximum 280 characters';
+                        if ((v?.length ?? 0) > 280) return l10n.profileBioTooLong;
                         return null;
                       },
                     ).animate(delay: 80.ms).fadeIn(),
 
                     const SizedBox(height: 24),
-                    _SectionHeader('Personal details'),
+                    _SectionHeader(l10n.profilePersonalDetails),
                     const SizedBox(height: 12),
 
                     // Age
@@ -317,15 +327,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         });
                       },
                       decoration: InputDecoration(
-                        labelText: l10n.optional + ' Age',
+                        labelText: l10n.profileAgeOptionalLabel,
                         prefixIcon: const Icon(Icons.cake_outlined),
                       ),
                       validator: (v) {
                         if (v == null || v.trim().isEmpty) return null;
                         final age = int.tryParse(v.trim());
-                        if (age == null) return 'Enter a valid number';
-                        if (age < 13) return 'Must be at least 13';
-                        if (age > 100) return 'Enter a valid age';
+                        if (age == null) return l10n.onboardingAgeInvalid;
+                        if (age < 13) return l10n.onboardingAgeTooYoung;
+                        if (age > 100) return l10n.onboardingAgeInvalid;
                         return null;
                       },
                     ).animate(delay: 100.ms).fadeIn(),
@@ -337,13 +347,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       value: _selectedCountry,
                       hint: Text(l10n.profileCountryLabel),
                       decoration: InputDecoration(
-                        labelText: '${l10n.optional} Country',
+                        labelText: l10n.profileCountryOptionalLabel,
                         prefixIcon: const Icon(Icons.flag_outlined),
                       ),
-                      items: _countries
-                          .map((c) => DropdownMenuItem(
-                                value: c.$1,
-                                child: Text(c.$2),
+                      items: _countryCodes
+                          .map((code) => DropdownMenuItem(
+                                value: code,
+                                child: Text(_countryLabel(context, code)),
                               ))
                           .toList(),
                       onChanged: (v) => setState(() {
@@ -359,15 +369,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       controller: _phoneCtrl,
                       keyboardType: TextInputType.phone,
                       onChanged: (_) => setState(() => _hasPendingChanges = true),
-                      decoration: const InputDecoration(
-                        labelText: 'Phone number (optional)',
-                        prefixIcon: Icon(Icons.phone_outlined),
+                      decoration: InputDecoration(
+                        labelText: l10n.profilePhoneOptionalLabel,
+                        prefixIcon: const Icon(Icons.phone_outlined),
                         hintText: '+1 555 000 0000',
                       ),
                     ).animate(delay: 140.ms).fadeIn(),
 
                     const SizedBox(height: 24),
-                    _SectionHeader('Preferences'),
+                    _SectionHeader(l10n.profilePreferences),
                     const SizedBox(height: 12),
 
                     // Language
@@ -377,10 +387,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         labelText: l10n.profileLanguageLabel,
                         prefixIcon: const Icon(Icons.language_outlined),
                       ),
-                      items: const [
-                        DropdownMenuItem(value: 'en', child: Text('English')),
-                        DropdownMenuItem(value: 'ar', child: Text('العربية')),
-                        DropdownMenuItem(value: 'fr', child: Text('Français')),
+                      items: [
+                        DropdownMenuItem(value: 'en', child: Text(l10n.languageEnglish)),
+                        DropdownMenuItem(value: 'ar', child: Text(l10n.languageArabic)),
+                        DropdownMenuItem(value: 'fr', child: Text(l10n.languageFrench)),
                       ],
                       onChanged: (v) => setState(() {
                         _selectedLanguage = v ?? 'en';
@@ -402,7 +412,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     OutlinedButton.icon(
                       onPressed: () => context.push('/profile/change-username'),
                       icon: const Icon(Icons.alternate_email_rounded, size: 18),
-                      label: const Text('Change username'),
+                      label: Text(l10n.profileChangeUsername),
                       style: OutlinedButton.styleFrom(
                         minimumSize: const Size(double.infinity, 48),
                       ),

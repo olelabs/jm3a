@@ -65,10 +65,13 @@ class _TransactionDetailSheetState extends State<TransactionDetailSheet> {
     }
   }
 
-  String _formatDateTime(DateTime dt) {
+  String _formatDateTime(BuildContext context, DateTime dt) {
     final h = dt.hour.toString().padLeft(2, '0');
     final m = dt.minute.toString().padLeft(2, '0');
-    return '${dt.day}/${dt.month}/${dt.year} at $h:$m';
+    return context.l10n.walletDetailDateAtTime(
+      '${dt.day}/${dt.month}/${dt.year}',
+      '$h:$m',
+    );
   }
 
   @override
@@ -118,13 +121,13 @@ class _TransactionDetailSheetState extends State<TransactionDetailSheet> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      tx.type.displayLabel,
+                      tx.type.displayLabel(context.l10n),
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                     Text(
-                      tx.status.displayLabel,
+                      tx.status.displayLabel(context.l10n),
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
@@ -145,22 +148,41 @@ class _TransactionDetailSheetState extends State<TransactionDetailSheet> {
           const Divider(height: 1),
           const SizedBox(height: 8),
 
-          _DetailRow(label: 'Date & time', value: _formatDateTime(tx.createdAt)),
           _DetailRow(
-            label: 'Wallet affected',
-            value: tx.balanceType == 'earnings' ? 'Earnings' : 'Wallet Balance',
+            label: context.l10n.walletDetailDateTime,
+            value: _formatDateTime(context, tx.createdAt),
           ),
-          _DetailRow(label: 'Balance after', value: tx.formattedBalance),
+          _DetailRow(
+            label: context.l10n.walletDetailWalletAffected,
+            value: tx.balanceType == 'earnings'
+                ? context.l10n.walletDetailEarnings
+                : context.l10n.walletDetailWalletBalance,
+          ),
+          _DetailRow(
+            label: context.l10n.walletDetailBalanceAfter,
+            value: tx.formattedBalance,
+          ),
           if (_paymentMethod != null)
             _DetailRow(
-              label: 'Payment method',
+              label: context.l10n.walletDetailPaymentMethod,
               value: _paymentMethod!.toUpperCase(),
             ),
           if (tx.description != null && tx.description!.isNotEmpty)
-            _DetailRow(label: 'Description', value: tx.description!),
+            _DetailRow(
+              label: context.l10n.walletDetailDescription,
+              value: tx.description!,
+            ),
           if (tx.referenceId != null)
-            _DetailRow(label: 'Reference', value: tx.referenceId!, mono: true),
-          _DetailRow(label: 'Transaction ID', value: tx.id, mono: true),
+            _DetailRow(
+              label: context.l10n.walletDetailReference,
+              value: tx.referenceId!,
+              mono: true,
+            ),
+          _DetailRow(
+            label: context.l10n.walletDetailTransactionId,
+            value: tx.id,
+            mono: true,
+          ),
         ],
       ),
     );

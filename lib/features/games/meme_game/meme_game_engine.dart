@@ -1157,6 +1157,7 @@
 import 'dart:math';
 
 import '../engine/base_game_engine.dart';
+import '../engine/round_capacity.dart';
 
 // ── MemePrompt ────────────────────────────────────────────────────────────────
 
@@ -1294,8 +1295,11 @@ class MemeState extends GameEngineState {
     required this.maxRounds,
     required this.isOver,
     required this.roundWinnerId,
+    this.passes = const {},
     this.reactions = const [],
     this.history = const [],
+    this.usedStickersByPlayer = const {},
+    this.timerStartedAt,
   });
 
   final List<String> playerOrder;
@@ -1303,6 +1307,13 @@ class MemeState extends GameEngineState {
   final MemePhase phase;
   final Map<String, MemeSubmission> submissions;
   final Map<String, String> votes;
+
+  /// Players who explicitly PASSED this round (chose "Ready for next round"
+  /// instead of voting). A pass makes the player "done" for round-completion
+  /// without casting a vote, and awards nobody a point. Kept separate from
+  /// [votes] so the tally never counts a pass as a vote. Voting completes when
+  /// every player has either voted OR passed.
+  final Set<String> passes;
   final Map<String, int> scores;
   final int roundNumber;
   final int maxRounds;
@@ -1311,12 +1322,32 @@ class MemeState extends GameEngineState {
   final List<EmojiReaction> reactions; // reactions to current round submissions
   final List<MemeRoundRecord> history;
 
+  /// Per-PLAYER sticker history for the CURRENT game (item 5) — a sticker
+  /// once submitted by a player becomes unavailable to that SAME player for
+  /// every later round, but never affects any other player's own
+  /// availability. Deliberately not reset by advanceTurn() (unlike
+  /// submissions/votes/passes, which are per-round) — this persists for the
+  /// life of the game, exactly like scores. Reset only by init() (a
+  /// genuinely new game). Survives serialization/reconnect/host migration
+  /// for free: it's just part of this same MemeState, restored via the
+  /// existing toMap/fromMap + snapshot/broadcast machinery every other
+  /// field already relies on.
+  final Map<String, Set<String>> usedStickersByPlayer;
+
+  /// Item 1 — epoch ms the current round's submission timer started, or
+  /// null when no timer is running. Same lifecycle as TodState/NhieState's
+  /// timerStartedAt: set once per round (on init/advanceTurn into
+  /// `submitting`), cleared the moment `submitting` ends (every player
+  /// submitted, or the timer expired) — never touched by a mere rebuild.
+  final int? timerStartedAt;
+
   MemeState copyWith({
     int? snapshotAt,
     MemePrompt? Function()? currentPrompt,
     MemePhase? phase,
     Map<String, MemeSubmission>? submissions,
     Map<String, String>? votes,
+    Set<String>? passes,
     Map<String, int>? scores,
     int? roundNumber,
     int? maxRounds,
@@ -1324,6 +1355,8 @@ class MemeState extends GameEngineState {
     String? Function()? roundWinnerId,
     List<EmojiReaction>? reactions,
     List<MemeRoundRecord>? history,
+    Map<String, Set<String>>? usedStickersByPlayer,
+    int? Function()? timerStartedAt,
   }) => MemeState(
     snapshotAt: snapshotAt ?? this.snapshotAt,
     playerOrder: playerOrder,
@@ -1331,6 +1364,7 @@ class MemeState extends GameEngineState {
     phase: phase ?? this.phase,
     submissions: submissions ?? this.submissions,
     votes: votes ?? this.votes,
+    passes: passes ?? this.passes,
     scores: scores ?? this.scores,
     roundNumber: roundNumber ?? this.roundNumber,
     maxRounds: maxRounds ?? this.maxRounds,
@@ -1338,6 +1372,10 @@ class MemeState extends GameEngineState {
     roundWinnerId: roundWinnerId != null ? roundWinnerId() : this.roundWinnerId,
     reactions: reactions ?? this.reactions,
     history: history ?? this.history,
+    usedStickersByPlayer: usedStickersByPlayer ?? this.usedStickersByPlayer,
+    timerStartedAt: timerStartedAt != null
+        ? timerStartedAt()
+        : this.timerStartedAt,
   );
 
   Map<String, dynamic> toMap() => {
@@ -1347,6 +1385,7 @@ class MemeState extends GameEngineState {
     'phase': phase.name,
     'submissions': submissions.map((k, v) => MapEntry(k, v.toMap())),
     'votes': votes,
+    'passes': passes.toList(),
     'scores': scores,
     'round_number': roundNumber,
     'max_rounds': maxRounds,
@@ -1354,6 +1393,10 @@ class MemeState extends GameEngineState {
     'round_winner_id': roundWinnerId,
     'reactions': reactions.map((r) => r.toMap()).toList(),
     'history': history.map((r) => r.toMap()).toList(),
+    'used_stickers_by_player': usedStickersByPlayer.map(
+      (k, v) => MapEntry(k, v.toList()),
+    ),
+    'timer_started_at': timerStartedAt,
   };
 
   static MemeState fromMap(Map<String, dynamic> m) => MemeState(
@@ -1375,6 +1418,7 @@ class MemeState extends GameEngineState {
         ) ??
         {},
     votes: (m['votes'] as Map?)?.cast<String, String>() ?? {},
+    passes: (m['passes'] as List?)?.cast<String>().toSet() ?? <String>{},
     scores:
         (m['scores'] as Map?)?.map(
           (k, v) => MapEntry(k as String, (v as num).toInt()),
@@ -1394,6 +1438,14 @@ class MemeState extends GameEngineState {
             ?.map((r) => MemeRoundRecord.fromMap(r as Map<String, dynamic>))
             .toList() ??
         [],
+    // Absent on an older/pre-migration snapshot — every player simply
+    // starts with no used-sticker history, same as a fresh game.
+    usedStickersByPlayer:
+        (m['used_stickers_by_player'] as Map?)?.map(
+          (k, v) => MapEntry(k as String, (v as List).cast<String>().toSet()),
+        ) ??
+        {},
+    timerStartedAt: m['timer_started_at'] as int?,
   );
 }
 
@@ -1430,6 +1482,22 @@ class MemeReactEvent extends GameEngineEvent {
   final String emoji;
 }
 
+/// A player choosing NOT to vote this round ("Ready for next round" / Pass).
+/// Counts toward round completion without casting a vote or awarding points.
+class MemePassEvent extends GameEngineEvent {
+  const MemePassEvent({required super.userId, required super.ts});
+}
+
+/// Item 1 — dispatched ONCE by the owner's client when its local countdown
+/// (derived from state.timerStartedAt) reaches zero during the submitting
+/// phase. Handled authoritatively by this engine, not the UI — a stale/
+/// tampered client that somehow still tries to submit after this fires is
+/// rejected by the same `phase != submitting` guard `_handleSubmit`
+/// already has.
+class MemeTimerExpiredEvent extends GameEngineEvent {
+  const MemeTimerExpiredEvent({required super.userId, required super.ts});
+}
+
 // ── Engine ────────────────────────────────────────────────────────────────────
 
 class MemeGameEngine implements BaseGameEngine {
@@ -1454,6 +1522,7 @@ class MemeGameEngine implements BaseGameEngine {
       phase: MemePhase.submitting,
       submissions: {},
       votes: {},
+      passes: {},
       scores: {for (final id in playerOrder) id: 0},
       roundNumber: 1,
       maxRounds: _config.maxRounds,
@@ -1461,6 +1530,10 @@ class MemeGameEngine implements BaseGameEngine {
       roundWinnerId: null,
       reactions: [],
       history: [],
+      usedStickersByPlayer: {for (final id in playerOrder) id: <String>{}},
+      timerStartedAt: _config.timerEnabled
+          ? DateTime.now().millisecondsSinceEpoch
+          : null,
     );
   }
 
@@ -1478,10 +1551,27 @@ class MemeGameEngine implements BaseGameEngine {
     _state = switch (event) {
       MemeSubmitEvent e => _handleSubmit(e),
       MemeVoteEvent e => _handleVote(e),
+      MemePassEvent e => _handlePass(e),
       MemeReactEvent e => _handleReact(e),
+      MemeTimerExpiredEvent e => _onTimerExpired(e),
       _ => _state,
     };
     return _state;
+  }
+
+  /// Item 1 — force-closes submissions the same way `_handleSubmit` does
+  /// once everyone has submitted, except stragglers simply get no
+  /// submission (no sticker/caption recorded) rather than being made to
+  /// respond. Reuses the exact same `phase != submitting` guard every
+  /// submit/vote/pass handler already has to reject any late submission
+  /// arriving after this.
+  MemeState _onTimerExpired(MemeTimerExpiredEvent e) {
+    if (_state.phase != MemePhase.submitting) return _state;
+    return _state.copyWith(
+      snapshotAt: DateTime.now().millisecondsSinceEpoch,
+      phase: MemePhase.voting,
+      timerStartedAt: () => null,
+    );
   }
 
   @override
@@ -1508,11 +1598,18 @@ class MemeGameEngine implements BaseGameEngine {
       phase: MemePhase.submitting,
       submissions: {},
       votes: {},
+      passes: {},
       roundNumber: newRound,
       isOver: isOver,
       roundWinnerId: () => null,
       reactions: [],
       history: [..._state.history, if (record != null) record],
+      // Item 1 — a fresh round always gets a fresh timer, never inherits
+      // whatever remained (or had already expired) from the previous one.
+      timerStartedAt: () =>
+          !isOver && _config.timerEnabled
+              ? DateTime.now().millisecondsSinceEpoch
+              : null,
     );
     return _state;
   }
@@ -1532,12 +1629,18 @@ class MemeGameEngine implements BaseGameEngine {
   void injectCard(MemePrompt prompt) {
     final pos = _prompts.isNotEmpty ? _rng.nextInt(_prompts.length) : 0;
     _prompts.insert(pos, prompt);
-    final playerCount = _state.playerOrder.length;
-    if (playerCount > 0) {
-      final requiredRounds = (_prompts.length / playerCount).ceil();
-      if (requiredRounds > _state.maxRounds) {
-        _state = _state.copyWith(maxRounds: requiredRounds);
-      }
+    // Item 18.5 — reuses the ONE shared capacity formula (round_capacity
+    // .dart) instead of a second, duplicated (and previously incorrect —
+    // Meme draws one prompt per round regardless of player count, but
+    // this used to divide by playerCount) calculation.
+    final maxPossible = calculateMaxPossibleRounds(
+      gameType: GameType.memeGame,
+      availableCardCount: _prompts.length,
+      activePlayers: _state.playerOrder.length,
+      uniqueCards: true,
+    );
+    if (maxPossible != null && maxPossible > _state.maxRounds) {
+      _state = _state.copyWith(maxRounds: maxPossible);
     }
   }
 
@@ -1557,8 +1660,21 @@ class MemeGameEngine implements BaseGameEngine {
     if (!_state.playerOrder.contains(e.userId)) return _state;
     if (_state.phase != MemePhase.submitting) return _state;
     if (_state.submissions.containsKey(e.userId)) return _state;
-    if (e.caption.isEmpty && e.stickerChoice.isEmpty)
+    if (e.caption.isEmpty && e.stickerChoice.isEmpty) {
       return _state; // need at least one
+    }
+    // Item 5: authoritative (engine-side, not just UI-hidden) rejection of a
+    // sticker this SAME player already used earlier in the current game.
+    // Silent no-op return, matching every other invalid-action check above —
+    // a stale/duplicate/reconnected client resubmitting the same sticker
+    // just gets ignored rather than corrupting state or double-counting.
+    // Other players' own used-sticker sets are never consulted here, so this
+    // never affects anyone but the submitting player.
+    if (e.stickerChoice.isNotEmpty &&
+        (_state.usedStickersByPlayer[e.userId]?.contains(e.stickerChoice) ??
+            false)) {
+      return _state;
+    }
 
     final newSubs = {
       ..._state.submissions,
@@ -1570,10 +1686,23 @@ class MemeGameEngine implements BaseGameEngine {
       ),
     };
     final allIn = _state.playerOrder.every((id) => newSubs.containsKey(id));
+    final newUsedStickers = e.stickerChoice.isEmpty
+        ? _state.usedStickersByPlayer
+        : {
+            ..._state.usedStickersByPlayer,
+            e.userId: {
+              ...?_state.usedStickersByPlayer[e.userId],
+              e.stickerChoice,
+            },
+          };
     return _state.copyWith(
       snapshotAt: DateTime.now().millisecondsSinceEpoch,
       submissions: newSubs,
       phase: allIn ? MemePhase.voting : MemePhase.submitting,
+      usedStickersByPlayer: newUsedStickers,
+      // Item 1 — the timer only matters while submissions are still open;
+      // once everyone has submitted there's nothing left to time out.
+      timerStartedAt: allIn ? () => null : null,
     );
   }
 
@@ -1584,39 +1713,96 @@ class MemeGameEngine implements BaseGameEngine {
     // before every real player has actually voted.
     if (!_state.playerOrder.contains(e.userId)) return _state;
     if (_state.phase != MemePhase.voting) return _state;
-    if (_state.votes.containsKey(e.userId)) return _state;
+    // Reject a duplicate vote AND a vote from someone who already passed —
+    // one response per player per round, whichever kind they chose first.
+    if (_state.votes.containsKey(e.userId) ||
+        _state.passes.contains(e.userId)) {
+      return _state;
+    }
+    // A player can't vote for a target who didn't submit this round (also
+    // covers a self-target where the player made no submission).
+    if (!_state.submissions.containsKey(e.targetUserId)) return _state;
 
     final newVotes = {..._state.votes, e.userId: e.targetUserId};
-    final allVoted = _state.playerOrder.every(
-      (id) => newVotes.containsKey(id),
+    return _resolveVotingProgress(votes: newVotes, passes: _state.passes);
+  }
+
+  /// A player opting out of voting this round. Recorded as a pass (no vote, no
+  /// points) and still counts toward round completion.
+  MemeState _handlePass(MemePassEvent e) {
+    if (!_state.playerOrder.contains(e.userId)) return _state;
+    if (_state.phase != MemePhase.voting) return _state;
+    // One response per player: reject a pass from someone who already voted or
+    // already passed (duplicate-pass protection).
+    if (_state.votes.containsKey(e.userId) ||
+        _state.passes.contains(e.userId)) {
+      return _state;
+    }
+    final newPasses = {..._state.passes, e.userId};
+    return _resolveVotingProgress(votes: _state.votes, passes: newPasses);
+  }
+
+  /// Shared authoritative resolution for both vote and pass: if every player
+  /// has now either voted OR passed, close the round — tally ONLY real votes
+  /// (passes count for nobody), award the round point(s), and move to results.
+  /// Otherwise just record the new votes/passes and stay in voting.
+  MemeState _resolveVotingProgress({
+    required Map<String, String> votes,
+    required Set<String> passes,
+  }) {
+    final everyoneResponded = _state.playerOrder.every(
+      (id) => votes.containsKey(id) || passes.contains(id),
     );
-    if (!allVoted)
+    if (!everyoneResponded) {
       return _state.copyWith(
         snapshotAt: DateTime.now().millisecondsSinceEpoch,
-        votes: newVotes,
+        votes: votes,
+        passes: passes,
       );
+    }
 
+    // Tally the real votes. If NOBODY voted (everyone passed), there is no
+    // round winner and no point is awarded — never crown someone off zero
+    // votes, and never fall back to player order.
     final tally = <String, int>{};
-    for (final t in newVotes.values) tally[t] = (tally[t] ?? 0) + 1;
-    final winnerId =
-        (tally.entries.toList()..sort((a, b) => b.value.compareTo(a.value)))
-            .first
-            .key;
-
+    for (final t in votes.values) {
+      tally[t] = (tally[t] ?? 0) + 1;
+    }
     final newScores = Map<String, int>.from(_state.scores);
-    newScores[winnerId] = (newScores[winnerId] ?? 0) + 1;
+    String? roundWinnerId;
+    if (tally.isNotEmpty) {
+      final maxVotes = tally.values.reduce((a, b) => a > b ? a : b);
+      // Tied highest = tied winners: every top vote-getter gets the point.
+      final winners = tally.entries
+          .where((en) => en.value == maxVotes)
+          .map((en) => en.key)
+          .toList();
+      for (final w in winners) {
+        newScores[w] = (newScores[w] ?? 0) + 1;
+      }
+      // roundWinnerId names a single winner only when it's unambiguous.
+      roundWinnerId = winners.length == 1 ? winners.single : null;
+    }
 
     return _state.copyWith(
       snapshotAt: DateTime.now().millisecondsSinceEpoch,
-      votes: newVotes,
+      votes: votes,
+      passes: passes,
       scores: newScores,
       phase: MemePhase.results,
-      roundWinnerId: () => winnerId,
+      roundWinnerId: () => roundWinnerId,
     );
   }
 
   MemeState _handleReact(MemeReactEvent e) {
     if (!_state.playerOrder.contains(e.userId)) return _state;
+    // Real-device bug: a player who never submitted their own
+    // caption/sticker (e.g. left slow after a partial-submission timeout)
+    // could still react to other players' submissions once phase reaches
+    // voting/results. Reuses `submissions` — the SAME map _handleSubmit
+    // populates — as the authoritative "has this player responded yet"
+    // signal, rather than a second/parallel response-tracking field.
+    if (!_state.submissions.containsKey(e.userId)) return _state;
     // One reaction per (reactor, target) pair
     if (_state.reactions.any(
       (r) => r.reactorId == e.userId && r.targetUserId == e.targetUserId,

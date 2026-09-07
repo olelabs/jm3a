@@ -2032,11 +2032,25 @@ class RealtimeService {
   Future<void> broadcastGameState(
     String roomId,
     Map<String, dynamic> snapshot,
-    String senderId,
-  ) => _bcast(roomId, RoomEvent.gameState, {
+    String senderId, {
+    String? sessionId,
+    String? lifecycleState,
+  }) => _bcast(roomId, RoomEvent.gameState, {
     'sender_id': senderId,
     'snapshot': snapshot,
     'ts': _ts(),
+    // Lets a receiver tell apart a state snapshot belonging to a
+    // PREVIOUS game session in this room from the one currently running
+    // — a stale broadcast timestamp check alone doesn't catch this right
+    // at the start of a brand-new session, before the receiver has
+    // synced any state yet to compare against.
+    if (sessionId != null) 'session_id': sessionId,
+    // Session-lifecycle sub-phase ('starting'/'active'/'ended') — lets a
+    // follower stuck waiting for the ready barrier learn the session
+    // went active from the very next regular state broadcast, without a
+    // dedicated event type. Session-level, not game-state, so it rides
+    // alongside the snapshot rather than inside it.
+    if (lifecycleState != null) 'lifecycle_state': lifecycleState,
   });
   Future<void> broadcastPlayerAction(
     String roomId,

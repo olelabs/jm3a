@@ -1,0 +1,45 @@
+-- ============================================================================
+-- migration_2026_starting_state_and_tod_canonical_rpc.sql
+--
+-- Two independent changes:
+--
+--   1. room_status_enum already has a 'starting' value in this repo's
+--      schema.sql (and the Dart RoomStatus enum already has a matching,
+--      but entirely UNUSED, `starting` case — confirmed via a full grep of
+--      lib/ finding zero references outside room_entity.dart itself).
+--      This looks like groundwork from an earlier phase that was never
+--      wired up. ADD VALUE IF NOT EXISTS is used defensively in case the
+--      live database doesn't actually have it yet (per this whole
+--      engagement's standing rule: never assume a local schema dump
+--      matches live state). Postgres requires ADD VALUE to run outside an
+--      explicit multi-statement transaction block in older versions, but
+--      modern Postgres (12+, which Supabase runs) allows IF NOT EXISTS
+--      unconditionally, including inside a function-free script — this
+--      statement is safe to run standalone.
+--
+--   2. Drops the 10-param create_game_session(..., p_state_snapshot,
+--      p_config) overload. It's already gone from the live database
+--      (confirmed by the reported PGRST202 error, whose "available
+--      function" list is exactly the 9-param signature) — this is
+--      belt-and-suspenders cleanup in case it was partially recreated,
+--      using DROP FUNCTION IF EXISTS so it's a safe no-op either way.
+--      ToD no longer calls it (see the Dart changes in the same commit) —
+--      there is now exactly ONE canonical create_game_session signature,
+--      shared by all three games:
+--        create_game_session(p_room_id, p_pack_id, p_game_type,
+--          p_player_ids, p_max_rounds, p_turn_timer_secs, p_allow_skip,
+--          p_allow_spicy, p_state_snapshot)
+--      This function itself is NOT redefined here — the live 9-param
+--      version (from migration_2026_never_resume_and_game_type_safety.sql)
+--      is already correct and untouched.
+--
+-- No data is deleted or modified. Idempotent — safe to run twice.
+-- ============================================================================
+
+-- ADD VALUE IF NOT EXISTS is natively idempotent — no DO-block/exception
+-- wrapping needed (and ALTER TYPE ... ADD VALUE has historically had
+-- restrictions running inside PL/pgSQL bodies, so a bare top-level
+-- statement is the safer choice here).
+ALTER TYPE public.room_status_enum ADD VALUE IF NOT EXISTS 'starting';
+
+DROP FUNCTION IF EXISTS "public"."create_game_session"("p_room_id" "uuid", "p_pack_id" "uuid", "p_game_type" "text", "p_player_ids" "uuid"[], "p_max_rounds" smallint, "p_turn_timer_secs" smallint, "p_allow_skip" boolean, "p_allow_spicy" boolean, "p_state_snapshot" "jsonb", "p_config" "jsonb");

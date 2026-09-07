@@ -28,13 +28,39 @@
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize">
 
-            <!-- Deep link intent filter — add inside <activity> in AndroidManifest.xml -->
+            <!-- Custom-scheme deep link — internal-routing fallback only
+                 (QR codes, other in-app surfaces). Never shared externally:
+                 a jma3a:// link renders as plain, non-tappable text in
+                 WhatsApp/SMS/etc. autoVerify is meaningless for a non-http(s)
+                 scheme, so it's omitted here (see the App Links filter below
+                 for the one that actually needs it). -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <!-- jma3a://join?code=ABC123&invited_by=uuid -->
+                <data android:scheme="jma3a" />
+            </intent-filter>
+
+            <!-- Android App Links — what every SHARED invite link actually
+                 uses: https://jma3a.com/join?code=ABC123&invited_by=uuid.
+                 autoVerify="true" makes Android verify ownership of
+                 jma3a.com against /.well-known/assetlinks.json (must be
+                 hosted there — see assetlinks.json.template in this repo)
+                 before it'll open the app directly instead of a browser
+                 tab; until that file is live and verification succeeds,
+                 Android silently falls back to opening the URL in the
+                 browser, landing on the website instead — which is exactly
+                 the "app not installed" fallback requirement, so no
+                 further code needs to handle that case explicitly. -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <!-- Custom scheme: jma3a://join?code=ABC123&invited_by=uuid -->
-                <data android:scheme="jma3a" />
+                <data
+                    android:scheme="https"
+                    android:host="jma3a.com"
+                    android:pathPrefix="/join" />
             </intent-filter>
             <!-- Specifies an Android theme to apply to this Activity as soon as
                  the Android process has started. This theme is visible to the user

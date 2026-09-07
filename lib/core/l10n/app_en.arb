@@ -1,6 +1,20 @@
 {
   "@@locale": "en",
   "appName": "Jma3a",
+  "introSkip": "Skip",
+  "introNext": "Next",
+  "introGetStarted": "Get Started",
+  "introPage1Title": "Welcome to Jma3a",
+  "introPage1Body": "Multiplayer party games — play with friends and family, anytime, anywhere.",
+  "introPage2Title": "Discover Packs",
+  "introPage2Body": "Community-created packs, premium packs, and physical packs you can order and play with.",
+  "introPage3Title": "Create or Join Rooms",
+  "introPage3Body": "Public rooms, private rooms, invite codes — play with friends however you like.",
+  "introPage4Title": "Premium Features",
+  "introPage4Body": "Custom themes, backgrounds, exclusive features, and tools built for creators.",
+  "introPage5Title": "Ready to Play",
+  "introPage5Body": "Everything's set. Let's get the party started.",
+  "settingsReplayIntro": "Replay Introduction",
   "noInternetConnection": "No internet connection",
   "loading": "Loading…",
   "retry": "Retry",
@@ -8,32 +22,15 @@
   "confirm": "Confirm",
   "save": "Save",
   "done": "Done",
-  "next": "Next",
   "back": "Back",
   "skip": "Skip",
-  "edit": "Edit",
-  "delete": "Delete",
   "remove": "Remove",
-  "close": "Close",
-  "yes": "Yes",
   "no": "No",
   "or": "or",
   "optional": "Optional",
-  "characters": "{count} / {max}",
-  "@characters": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      },
-      "max": {
-        "type": "int"
-      }
-    }
-  },
   "error": "Something went wrong",
   "errorNetwork": "Network error. Please check your connection.",
   "errorUnexpected": "An unexpected error occurred. Please try again.",
-  "errorNotFound": "Not found",
   "errorForbidden": "You don't have permission to do that",
   "navRooms": "Rooms",
   "navFriends": "Friends",
@@ -45,19 +42,8 @@
   "authEmailHint": "Enter your email",
   "authEmailInvalid": "Please enter a valid email address",
   "authSendOtp": "Send code",
-  "authSendingOtp": "Sending…",
-  "authOtpSent": "Code sent to {email}",
-  "@authOtpSent": {
-    "placeholders": {
-      "email": {
-        "type": "String"
-      }
-    }
-  },
   "authOtpLabel": "Verification code",
-  "authOtpHint": "Enter 6-digit code",
   "authOtpVerify": "Verify",
-  "authOtpVerifying": "Verifying…",
   "authOtpResend": "Resend code",
   "authOtpResendIn": "Resend in {seconds}s",
   "@authOtpResendIn": {
@@ -67,9 +53,7 @@
       }
     }
   },
-  "authOtpExpired": "Code expired. Please request a new one.",
   "authOtpInvalid": "Invalid code. Please try again.",
-  "authOtpMaxAttempts": "Too many attempts. Please request a new code.",
   "onboardingTitle": "Set up your profile",
   "onboardingSubtitle": "Choose a username to get started",
   "onboardingUsernameLabel": "Username",
@@ -79,7 +63,6 @@
   "onboardingContinue": "Continue",
   "onboardingUsernameInvalid": "3–30 characters, letters, numbers, underscores only",
   "onboardingUsernameTaken": "This username is already taken",
-  "profileTitle": "Profile",
   "profileEditTitle": "Edit profile",
   "profileBioLabel": "Bio",
   "profileBioHint": "Tell others a bit about yourself",
@@ -93,16 +76,37 @@
   "settingsThemeDark": "Dark",
   "settingsThemeSystem": "System",
   "settingsLanguage": "Language",
+  "settingsOnlineStatus": "Online Status",
+  "settingsOnlineStatusPremiumHint": "Manual status is a Premium feature",
+  "presenceModeAuto": "Auto",
+  "presenceModeOnline": "Online",
+  "presenceModeOffline": "Offline",
   "settingsSignOut": "Sign out",
   "settingsSignOutConfirm": "Are you sure you want to sign out?",
+  "settingsSectionAppearance": "Appearance",
+  "settingsSectionAccount": "Account",
+  "settingsSectionAbout": "About",
+  "settingsVersionLabel": "Version",
+  "settingsSigningOut": "Signing out…",
+  "premiumBackgroundCustomSet": "Custom background set",
+  "premiumBackgroundChooseColor": "Choose a background color",
+  "premiumBackgroundUpgradeHint": "Premium feature — tap to upgrade",
+  "premiumBackgroundSaveFailed": "Could not save background color.",
+  "premiumBackgroundResetFailed": "Could not reset background color.",
   "roomsTitle": "Rooms",
-  "roomsBrowse": "Browse rooms",
   "roomsCreate": "Create room",
   "roomsJoinCode": "Join with code",
   "roomsEnterCode": "Enter invite code",
   "roomsCodeHint": "6-character code",
   "roomsJoin": "Join",
-  "roomsJoining": "Joining…",
+  "roomsInvitedByName": "Invited by {name}",
+  "@roomsInvitedByName": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "roomsPublic": "Public",
   "roomsPrivate": "Private",
   "roomsPlayers": "{current}/{max} players",
@@ -119,33 +123,15 @@
   "roomsEmpty": "No rooms right now",
   "roomsEmptySubtitle": "Create one and invite your friends!",
   "roomsFull": "Room is full",
-  "roomsBanned": "You are banned from this room",
   "lobbyTitle": "Lobby",
-  "lobbyWaiting": "Waiting for players…",
   "lobbyReady": "Ready",
   "lobbyNotReady": "Not ready",
   "lobbyStartGame": "Start game",
-  "lobbySelectGame": "Select game",
-  "lobbySelectPack": "Select pack",
+  "lobbyStartGameFailed": "Couldn't start the game — please try again.",
+  "lobbyGameStarting": "Preparing the game…",
+  "lobbyGameStartingBody": "Please wait while the game is being prepared.",
   "lobbyCopied": "Code copied!",
-  "lobbyLeave": "Leave room",
   "lobbyLeaveConfirm": "Are you sure you want to leave?",
-  "lobbyOwnerLeft": "{name} is now the room owner",
-  "@lobbyOwnerLeft": {
-    "placeholders": {
-      "name": {
-        "type": "String"
-      }
-    }
-  },
-  "lobbyPlayerJoined": "{name} joined",
-  "@lobbyPlayerJoined": {
-    "placeholders": {
-      "name": {
-        "type": "String"
-      }
-    }
-  },
   "lobbyPlayerLeft": "{name} left",
   "@lobbyPlayerLeft": {
     "placeholders": {
@@ -156,12 +142,16 @@
   },
   "chatPlaceholder": "Say something…",
   "chatMuted": "You are muted",
-  "chatSend": "Send",
   "gameSettings": "Game settings",
   "gameSettingsTurnTimer": "Turn timer",
   "gameSettingsAllowSkip": "Allow skip",
   "gameSettingsMaxRounds": "Max rounds",
-  "gameSettingsAllowSpicy": "Allow spicy content",
+  "gameSettingsMaxRoundsCapHint": "Maximum {cap} rounds — this pack has {cap} usable cards and every card is used at most once per game.",
+  "@gameSettingsMaxRoundsCapHint": {
+    "placeholders": {
+      "cap": {"type": "int"}
+    }
+  },
   "gameSettingsSeconds": "{n}s",
   "@gameSettingsSeconds": {
     "placeholders": {
@@ -171,10 +161,7 @@
     }
   },
   "gameReconnecting": "Reconnecting…",
-  "gameRecovering": "Catching up…",
   "gameConnectionLost": "Connection lost",
-  "gameConnectionLostBody": "Unable to reconnect after multiple attempts.",
-  "gameLeaveRoom": "Leave room",
   "gameTryAgain": "Try again",
   "moderationKick": "Kick player",
   "moderationMute": "Mute player",
@@ -188,56 +175,3163 @@
     }
   },
   "moderationYouWereKicked": "You were removed from the room",
-  "moderationYouWereMuted": "You have been muted",
-  "moderationGamePaused": "Game paused",
-  "moderationGameResumed": "Game resumed",
-  "roomsJoinRequestSent": "Join request sent! Waiting for host approval.",
-  "roomsRequiresApproval": "This room requires approval to join",
-  "roomsJoinApproved": "Your join request was approved!",
-  "roomsJoinRejected": "Your join request was declined.",
-  "roomsSpectators": "Spectators",
-  "roomsSpectatorCount": "{count} watching",
-  "@roomsSpectatorCount": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
+  "moderationYouWereKickedBy": "{name} removed you from the room",
+  "@moderationYouWereKickedBy": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "moderationYouWereBannedBy": "{name} banned you from the room",
+  "@moderationYouWereBannedBy": {
+    "placeholders": { "name": { "type": "String" } }
   },
   "settingsNotifications": "Notifications",
-  "settingsNotifFriendRequests": "Friend requests",
-  "settingsNotifRoomInvites": "Room invites",
-  "settingsNotifGameActions": "Game actions",
-  "settingsNotifWallet": "Wallet updates",
-  "settingsNotifPackSales": "Pack sales",
-  "walletEarnings": "Earnings",
   "walletEarningsTotal": "Total earned",
   "walletEarningsThisMonth": "This month",
   "walletEarningsTotalSales": "Total sales",
-  "walletEarningsAvailable": "Available",
-  "walletEarningsCommissionRate": "Your rate",
   "walletTransactionHistory": "Transaction history",
+  "walletFilterAll": "All",
+  "walletFilterDeposits": "Deposits",
+  "walletFilterWithdrawals": "Withdrawals",
+  "walletFilterPurchases": "Purchases",
+  "walletFilterEarnings": "Earnings",
+  "walletFilterRefunds": "Refunds",
+  "walletFilterPayouts": "Payouts",
+  "walletFilterBonuses": "Bonuses",
+  "walletFilterAdjustments": "Adjustments",
+  "walletFilterTransfers": "Transfers",
+  "walletTypeDeposit": "Deposit",
+  "walletTypeWithdrawal": "Withdrawal",
+  "walletTypePurchase": "Pack Purchase",
+  "walletTypeRefund": "Refund",
+  "walletTypeCommission": "Creator Earnings",
+  "walletTypePayout": "Payout",
+  "walletTypeAdjustment": "Adjustment",
+  "walletTypeBonus": "Bonus",
+  "walletTypeTransfer": "Balance Transfer",
+  "walletStatusPending": "Pending",
+  "walletStatusProcessing": "Processing",
+  "walletStatusCompleted": "Completed",
+  "walletStatusFailed": "Failed",
+  "walletStatusCancelled": "Cancelled",
+  "walletStatusReversed": "Reversed",
+  "walletDepositStatusPending": "Pending",
+  "walletDepositStatusUnderReview": "Under Review",
+  "walletDepositStatusApproved": "Approved",
+  "walletDepositStatusRejected": "Rejected",
   "profileGames": "Games",
-  "profileFriends": "Friends",
-  "profilePacks": "Packs",
-  "profileFollowers": "Followers",
-  "profileFollowing": "Following",
-  "profileNotFound": "Profile not found",
-  "profileGamesPlayed": "{count} games",
-  "@profileGamesPlayed": {
+  "profileScore": "Score",
+  "profileHonestyPoints": "Honesty Points",
+  "honestyVoteHonest": "Honest",
+  "honestyVoteNotHonest": "Not honest",
+  "honestyVoteRecorded": "Your vote was recorded",
+  "honestyVoteFailed": "Couldn't submit your vote — try again",
+  "profileStreakDays": "{count}-day streak",
+  "@profileStreakDays": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
+  "profileFriends": "Friends",
+  "profilePacks": "Packs",
+  "profileFollowers": "Followers",
+  "streakNewTitle": "New Streak!",
+  "streakNewBody": "You started a new streak! Keep playing every day to make it bigger.",
+  "streakNewCta": "Let's go!",
+  "streakExtendedTitle": "Streak extended! {count} days in a row!",
+  "@streakExtendedTitle": { "placeholders": { "count": { "type": "int" } } },
+  "streakExtendedBody": "{count} days in a row! You're on fire 🔥",
+  "@streakExtendedBody": { "placeholders": { "count": { "type": "int" } } },
+  "streakExtendedCta": "Continue",
+  "profileShareAction": "Share Profile",
+  "profileShareMessage": "🎮 Join me on Jma3a! Follow {name}\n\n{link}",
+  "@profileShareMessage": { "placeholders": { "name": { "type": "String" }, "link": { "type": "String" } } },
+  "profileShareSubject": "🎮 {name} on Jma3a",
+  "@profileShareSubject": { "placeholders": { "name": { "type": "String" } } },
+  "profileShareCardCta": "Tap to view my Jma3a profile",
   "gameSettingsSpicy": "Spicy cards",
   "gameSettingsRequireApproval": "Require approval to join",
   "gameSettingsAllowSpectators": "Allow spectators",
-  "lobbyJoinRequests": "Join requests",
   "lobbyApprove": "Approve",
   "lobbyReject": "Reject",
-  "packCategory": "Category",
-  "packCategoryHint": "Select a category",
-  "packCategoryNone": "No category"
+  "authUseEmailInstead": "Use email instead",
+  "authUsePhoneInstead": "Use phone instead",
+  "authContinueAsGuest": "Continue as Guest",
+  "authTermsPrivacyNotice": "By continuing you agree to our Terms & Privacy Policy",
+  "authOtpAttemptsRemaining": "{count, plural, one{{count} attempt remaining} other{{count} attempts remaining}}",
+  "@authOtpAttemptsRemaining": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "authTakingLonger": "Taking longer than usual…",
+  "authContinueWithoutSigningIn": "Continue without signing in",
+  "required": "Required",
+  "onboardingGenderLabel": "Gender",
+  "onboardingGenderMale": "Male",
+  "onboardingGenderFemale": "Female",
+  "onboardingGenderRequired": "Please select your gender",
+  "onboardingAgeLabel": "Age",
+  "onboardingAgeHint": "Your age (13+)",
+  "onboardingAgeRequired": "Age is required",
+  "onboardingAgeInvalid": "Enter a valid age",
+  "onboardingAgeTooYoung": "You must be at least 13 years old",
+  "onboardingDisplayNameTooShort": "At least 2 characters",
+  "onboardingDisplayNameTooLong": "Maximum 50 characters",
+  "languageEnglish": "English",
+  "languageArabic": "العربية",
+  "languageFrench": "Français",
+  "backToHome": "Back to Home",
+  "chatTabLabel": "Chat",
+  "checking": "Checking…",
+  "defaultPlayerName": "A player",
+  "deny": "Deny",
+  "errorConnectionFailed": "Connection failed",
+  "invited": "Invited",
+  "kick": "Kick",
+  "leave": "Leave",
+  "ok": "OK",
+  "muted": "Muted",
+  "sending": "Sending…",
+  "unban": "Unban",
+  "unmute": "Unmute",
+  "moderationYouWereBanned": "You were banned",
+  "lobbyAddAsFriend": "Add {name} as friend",
+  "@lobbyAddAsFriend": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "lobbyAllRequestsDecided": "All requests have been decided.",
+  "lobbyAreFriends": "You and {name} are friends ✓",
+  "@lobbyAreFriends": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "lobbyAutoLetInOnceApproved": "You'll be let in automatically once they approve.",
+  "lobbyBanReason": "Reason: {reason}",
+  "@lobbyBanReason": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "lobbyBannedSectionTitle": "🚫 Banned",
+  "lobbyCannotSendRequest": "Cannot send request to {name}",
+  "@lobbyCannotSendRequest": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "lobbyCloseRoomBody": "Closing the room will remove all players.",
+  "lobbyCloseRoomConfirm": "Close Room",
+  "lobbyCloseRoomTitle": "Close Room?",
+  "lobbyCloseKeepGameTitle": "Close this room?",
+  "lobbyCloseKeepGameBody": "The room will disappear from Browse and no new players can join. Anyone already playing keeps playing — the game isn't interrupted, and the room isn't deleted.",
+  "lobbyCloseKeepGameConfirm": "Close Room",
+  "lobbyCloseKeepGameCta": "Close Room",
+  "lobbyRoomClosedForNewPlayers": "The host closed the room to new players.",
+  "lobbyReopenTitle": "Reopen this room?",
+  "lobbyReopenBody": "The room will accept new players again and reappear in Browse. Nothing else changes — the room isn't recreated and no game is reset.",
+  "lobbyReopenConfirm": "Reopen Room",
+  "lobbyReopenCta": "Reopen Room",
+  "lobbySelectPackBeforeStart": "Please select a pack before starting the game.",
+  "lobbyRejoinDecisionFailed": "Failed: {error}",
+  "@lobbyRejoinDecisionFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "premiumErrorInsufficientBalance": "Not enough balance. Please top up your wallet first.",
+  "premiumErrorWalletNotFound": "Wallet not found. Please contact support.",
+  "premiumErrorWalletFrozen": "Your wallet is frozen. Please contact support.",
+  "premiumErrorInvalidPlan": "Invalid plan selected.",
+  "premiumErrorDowngradeBlocked": "You can switch plans once your current subscription expires.",
+  "premiumErrorPurchaseFailed": "Purchase failed: {error}",
+  "@premiumErrorPurchaseFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "lobbyRoomReopened": "Room reopened — new players can join again.",
+  "lobbyCouldNotSendRequest": "Could not send request — try again",
+  "lobbyDeselectAll": "Deselect all",
+  "lobbyFriendRequestPending": "Friend request pending",
+  "lobbyFriendRequestSent": "Friend request sent to {name} ✅",
+  "@lobbyFriendRequestSent": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "lobbyHiddenAnonymousCount": "+ {count} anonymous (visible to mods only)",
+  "@lobbyHiddenAnonymousCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "lobbyHowToJoin": "How do you want to join?",
+  "lobbyInviteCount": "Invite {count}",
+  "@lobbyInviteCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "lobbyInviteFriendsTitle": "👥 Invite Friends",
+  "lobbyJoinRequestSentTitle": "Join Request Sent",
+  "lobbyKickSpectatorBody": "Remove {name} from the room.",
+  "@lobbyKickSpectatorBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "lobbyKickSpectatorTitle": "Kick spectator?",
+  "lobbyLeaveRoomTitle": "Leave Room?",
+  "lobbyModerationTitle": "⚖️ Moderation",
+  "lobbyMutedSectionTitle": "🔇 Muted",
+  "lobbyNoFriendsMatchQuery": "No friends match \"{query}\"",
+  "@lobbyNoFriendsMatchQuery": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "lobbyNoFriendsToInvite": "No friends to invite yet.",
+  "lobbyNoMutedOrBanned": "No muted or banned players.",
+  "lobbyNoVisibleSpectators": "No visible spectators",
+  "lobbySpectatorsSection": "Spectators",
+  "lobbyPermissionsFor": "Permissions for {name}",
+  "@lobbyPermissionsFor": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "lobbyPermissionsHint": "Owners can adjust these at any time.",
+  "lobbyRejoinRequestsCount": "Rejoin Requests ({count})",
+  "@lobbyRejoinRequestsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "lobbyRoomClosedBody": "The host closed the room.",
+  "lobbyRoomClosedTitle": "Room Closed",
+  "lobbySearchFriendsHint": "Search friends…",
+  "lobbySelectAll": "Select all",
+  "lobbySelectPackToStart": "Select a pack in settings to start",
+  "lobbyShareInviteLink": "Share invite link",
+  "lobbyShareInviteMessage": "🎮 Join my Jma3a room!\n\nCode: {code}\n\n{link}",
+  "@lobbyShareInviteMessage": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      },
+      "link": {
+        "type": "String"
+      }
+    }
+  },
+  "lobbyShareInviteSubject": "🎮 Jma3a Code: {code}",
+  "@lobbyShareInviteSubject": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "lobbySpectateWatchHint": "These players want to watch the game as spectators.",
+  "lobbySpectatorRequestCount": "{count, plural, one{{count} spectator request} other{{count} spectator requests}}",
+  "@lobbySpectatorRequestCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "lobbySpectatorRequestsTitle": "Spectator Requests",
+  "lobbySpectatorsCount": "Spectators ({count})",
+  "@lobbySpectatorsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "lobbyWaitingForHostApproval": "Waiting for the host to approve your request to join.",
+  "lobbyWantsToRejoin": "Wants to rejoin the game",
+  "lobbyWantsToSpectate": "Wants to spectate",
+  "lobbyYouAreHost": "You are the host",
+  "lobbyYouAreNowOwner": "You're now the room owner 👑",
+  "defaultPackName": "Pack",
+  "gameNameAll": "All",
+  "gameNameMeme": "Meme Game",
+  "gameNameNeverHaveIEver": "Never Have I",
+  "gameNameTruthOrDare": "Truth or Dare",
+  "gameSettingsChooseProofViewers": "Choose exactly who can see proof",
+  "gameSettingsMemberLabelSpectator": "{name} (spec)",
+  "@gameSettingsMemberLabelSpectator": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "gameSettingsNoPacksDevMsg": "No packs available. Run the seed SQL in Supabase.",
+  "gameSettingsPackPunishments": "Pack punishments",
+  "gameSettingsPlayersSubmit": "Players submit",
+  "gameSettingsProofCustom": "Custom",
+  "gameSettingsProofEveryone": "Everyone",
+  "gameSettingsProofPlayers": "Players",
+  "gameSettingsProofSpectators": "Spectators",
+  "gameSettingsProofVisibility": "Proof visibility",
+  "gameSettingsPunishmentHintDefault": "When a player skips, every other player submits a punishment and the skipped player picks one to do.",
+  "gameSettingsPunishmentHintPackAvailable": "This pack includes its own punishments. Choose who provides them when a player skips.",
+  "gameSettingsPunishmentMode": "Punishment mode",
+  "gameSettingsSelectPack": "Select Pack",
+  "packSituationFilterTitle": "What are you looking for?",
+  "packSituationFilterSubtitle": "Optional — pick a mood and we'll surface the best-fitting packs first.",
+  "packBestMatchTitle": "BEST MATCH FOR YOU",
+  "packOtherPacksTitle": "OTHER PACKS",
+  "packMatchedLabel": "Matched",
+  "packTagRelationship": "Relationship",
+  "packTagBreakup": "Breakup",
+  "packTagFixingRelationship": "Fixing relationship",
+  "packTagDating": "Dating",
+  "packTagCouples": "Couples",
+  "packTagFriendship": "Friendship",
+  "packTagFamily": "Family",
+  "packTagParty": "Party",
+  "packTagIcebreaker": "Icebreaker",
+  "packTagWork": "Work",
+  "packTagTravel": "Travel",
+  "packTagLateNight": "Late night",
+  "packCreationTagsTitle": "Types (optional)",
+  "packCreationTagsSubtitle": "Help players find this pack for the right moment.",
+  "none": "None",
+  "roleLabelPlayer": "Player",
+  "roleLabelSpectator": "Spectator",
+  "roomsActiveRoomOpenBody": "Your room \"{name}\" is still open. Return to it, or close it to create a new one.",
+  "@roomsActiveRoomOpenBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "roomsActiveRoomPausedBody": "Your room \"{name}\" is paused. Return to it, or close it to create a new one.",
+  "@roomsActiveRoomPausedBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "roomsActiveRoomTitle": "You already have an active room",
+  "roomsAllowSpectators": "Allow Spectators",
+  "roomsAllowSpectatorsHint": "Others can watch without playing",
+  "roomsAlreadyInRoomBody": "You're still in \"{name}\". You can't be a player or spectator in two rooms at once — return to it, or leave it for good to join this one instead.",
+  "@roomsAlreadyInRoomBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "roomsAlreadyInRoomTitle": "You're already in a room",
+  "roomsBanConfirm": "Ban {name} from this room?",
+  "@roomsBanConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "roomsBrowsePacks": "Browse Packs",
+  "roomsCloseAndCreateNew": "Close Existing Room and Create New Room",
+  "roomsClosedSnackbar": "Room closed",
+  "roomsDailyLimitFreeBody": "Free plan allows {basicLimit} rooms per day. Try again tomorrow, or upgrade to Premium for {premiumLimit} rooms/day.",
+  "@roomsDailyLimitFreeBody": {
+    "placeholders": {
+      "basicLimit": {
+        "type": "int"
+      },
+      "premiumLimit": {
+        "type": "int"
+      }
+    }
+  },
+  "roomsDailyLimitPremiumBody": "Premium plan allows {premiumLimit} rooms per day. Try again tomorrow.",
+  "@roomsDailyLimitPremiumBody": {
+    "placeholders": {
+      "premiumLimit": {
+        "type": "int"
+      }
+    }
+  },
+  "roomsDailyLimitTitle": "Daily limit reached",
+  "roomsCreationTooSoonTitle": "Not yet",
+  "roomsCreationTooSoonBody": "You can create your next room in {hours}h {minutes}m.",
+  "@roomsCreationTooSoonBody": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      },
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "roomsDuration": "Duration",
+  "roomsDurationLabel": "Duration: {duration}",
+  "@roomsDurationLabel": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "roomsGameLabel": "Game: {game}",
+  "@roomsGameLabel": {
+    "placeholders": {
+      "game": {
+        "type": "String"
+      }
+    }
+  },
+  "roomsIconFree": "Free",
+  "roomsIconPremium": "Premium ✦",
+  "roomsLeaveForGood": "Leave for good",
+  "roomsLeftTheGame": "Left the game",
+  "roomsMutedInGame": "Muted — watching only",
+  "roomsWaitingForGameApproval": "Waiting for game approval",
+  "roomsMaxPlayers": "Max players",
+  "roomsMaxPlayersLabel": "Max players: {count}",
+  "@roomsMaxPlayersLabel": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "roomsModPermissionsCount": "MOD · {count}",
+  "@roomsModPermissionsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "roomsMyClosedRooms": "My Closed Rooms",
+  "roomsNameHint": "e.g. Friday Night Fun",
+  "roomsNameLabel": "Room name",
+  "roomsNameTooLong": "Maximum 60 characters",
+  "roomsNameTooShort": "At least 3 characters",
+  "roomsNoClosedRooms": "No rooms closed in the last 5 days.",
+  "roomsNoGameData": "No game data available.",
+  "roomsNoPacksBody": "You need at least one pack to create a room — get a free pack or purchase one from the marketplace first.",
+  "roomsNoPacksTitle": "No packs available",
+  "roomsParticipantsCount": "Participants ({count})",
+  "@roomsParticipantsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "roomsPlayedLabel": "Played: {date}",
+  "@roomsPlayedLabel": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "roomsPlayedPacksCount": "Played Packs ({count})",
+  "@roomsPlayedPacksCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "roomsRequestSentBody": "Your join request has been sent. You'll be notified once the host approves it.",
+  "roomsRequestSentTitle": "Request Sent!",
+  "roomsRequireJoinApproval": "Require Join Approval",
+  "roomsRequireJoinApprovalHint": "You approve each request to join",
+  "roomsRequireSpectatorApproval": "Require Spectator Approval",
+  "roomsRequireSpectatorApprovalHint": "You approve each request to spectate, separately from player join approval",
+  "roomsResults": "Results",
+  "roomsReturnToMyRoom": "Return to My Room",
+  "roomsRoomIcon": "Room Icon",
+  "roomsRoomInfo": "Room Info",
+  "roomsStillInRoomBody": "You're still in \"{name}\". Leave it before creating a new room.",
+  "@roomsStillInRoomBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "roomsSupportsUpToPlayers": "Your room supports up to {count} players",
+  "@roomsSupportsUpToPlayers": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "roomsTransferOwnership": "Transfer ownership",
+  "roomsUpgradeArrow": "Upgrade →",
+  "roomsVisibility": "Visibility",
+  "roomsWinnerLabel": "🏆 Winner: {name}",
+  "@roomsWinnerLabel": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "gameNameNeverHaveIEverFull": "Never Have I Ever",
+  "defaultGameName": "Game",
+  "chatDisabledForRoom": "Chat is disabled for this room",
+  "chatNoMessagesYet": "No messages yet",
+  "chatSayHint": "Say something…",
+  "chatSendFailed": "Message failed to send — tap send to try again",
+  "chatReplyingTo": "Replying to {name}",
+  "@chatReplyingTo": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "chatCancelReply": "Cancel reply",
+  "chatAudienceEveryone": "Everyone",
+  "chatAudienceOnly": "Only: {names}",
+  "@chatAudienceOnly": {
+    "placeholders": {
+      "names": {"type": "String"}
+    }
+  },
+  "chatAudiencePickerTitle": "Who can see this message?",
+  "chatAudienceSelectPeople": "Select people",
+  "chatAudienceNoOneAvailable": "No one else is available to select right now.",
+  "chatAudienceApply": "Done",
+  "chatTargetedIndicatorSender": "Only visible to {names}",
+  "@chatTargetedIndicatorSender": {
+    "placeholders": {
+      "names": {"type": "String"}
+    }
+  },
+  "chatTargetedIndicatorRecipient": "Sent only to you and select people",
+  "chatAudienceRequiresPremiumPlus": "Only Premium Plus members can target specific people.",
+  "chatAudienceRecipientUnavailable": "One of the selected people is no longer available.",
+  "chatAudienceNoLongerRoomMember": "You are no longer part of this room/game.",
+  "failed": "Failed",
+  "photo": "Photo",
+  "premiumBadge": "✨ Premium",
+  "preview": "Preview",
+  "todActivityAnswering": "{name} is answering…",
+  "@todActivityAnswering": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "todActivityChoosing": "{name} is choosing…",
+  "@todActivityChoosing": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "todActivityFinishingUp": "{name} is finishing up…",
+  "@todActivityFinishingUp": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "todActivityPerforming": "{name} is performing…",
+  "@todActivityPerforming": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "todActivityUploadingProof": "{name} is uploading proof…",
+  "@todActivityUploadingProof": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "todAddCardToDeck": "Add Card to Deck",
+  "todAddCustomCardButton": "Add custom card",
+  "todAddCustomCardTitle": "Add Custom Card",
+  "todAddDescriptionOptional": "Add a description (optional)…",
+  "todAnswerRequiredHint": "Your answer is required…",
+  "todChoosingTruthOrDare": "{name} is choosing Truth or Dare…",
+  "@todChoosingTruthOrDare": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "todCompleteTurn": "Complete Turn",
+  "todCompletedTurn": "completed their turn!",
+  "todCustomCardAdded": "✅ Custom card added to deck!",
+  "todCustomCardSessionOnly": "This card will be added to the deck for this session only.",
+  "todDare": "Dare",
+  "todDefaultPlayerNumbered": "Player {id}",
+  "@todDefaultPlayerNumbered": {
+    "placeholders": {
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "todDifficultyLabel": "Difficulty",
+  "todDoneButton": "Done! ✅",
+  "todEndGame": "End Game",
+  "todEndGameBody": "This will end the game for all players.",
+  "todEndGameTitle": "End Game?",
+  "todLikedResponseVotes": "{count, plural, one{👍 Liked this response ({count} vote)} other{👍 Liked this response ({count} votes)}}",
+  "@todLikedResponseVotes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "todNextTurn": "Next Turn →",
+  "todNoCardAvailable": "No card available — all cards used!",
+  "todPointsAbbrev": "{points} pts",
+  "@todPointsAbbrev": {
+    "placeholders": {
+      "points": {
+        "type": "int"
+      }
+    }
+  },
+  "todQuotedResponse": "\"{response}\"",
+  "@todQuotedResponse": {
+    "placeholders": {
+      "response": {
+        "type": "String"
+      }
+    }
+  },
+  "todProofTimerLabel": "Viewing duration",
+  "todProofTimerNoLimit": "No limit",
+  "todProofVisibilityLabel": "Who can see this?",
+  "todProofVisibilityEveryone": "Everyone",
+  "todProofVisibilityPlayersOnly": "Players only",
+  "todProofVisibilitySpectatorsOnly": "Spectators only",
+  "todProofVisibilityPersonalized": "Personalized",
+  "todProofVisibilityNoOneElse": "No one else is in the room yet.",
+  "todProofVisibilityPickAtLeastOne": "Pick at least one person.",
+  "todReactLabel": "React:",
+  "todReadyForNextTurn": "I'm Ready for Next Turn",
+  "todReadyWaitingHost": "✓ You're ready — waiting for the host to continue…",
+  "todRecording": "Recording…",
+  "todSkipTurnMod": "Skip turn (mod)",
+  "todSpectatingWaitingHost": "Spectating — waiting for the host to continue…",
+  "todSpicyBadge": "🌶 SPICY",
+  "todStopRecording": "Stop Recording",
+  "todSubmitCompleteTurn": "Submit & Complete Turn ✅",
+  "todTruth": "Truth",
+  "todChooseYourChallenge": "Choose your challenge",
+  "todPlayerIsChoosing": "{name} is choosing…",
+  "@todPlayerIsChoosing": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "todTruthChoiceDescription": "Answer a personal question honestly.",
+  "todDareChoiceDescription": "Complete a daring challenge.",
+  "todSkipCardConfirmTitle": "Skip this card?",
+  "todSkipCardConfirmBody": "Skipping may result in a group punishment vote.",
+  "todStatRounds": "Rounds",
+  "todStatPlayers": "Players",
+  "todStatTotalTurns": "Total Turns",
+  "todDareBadge": "DARE",
+  "todTruthBadge": "TRUTH",
+  "nhieBadgeAllCaps": "NEVER HAVE I EVER",
+  "memeBadgeAllCaps": "MEME PROMPT",
+  "memePickStickerFirst": "Pick a sticker first",
+  "memeSubmitResponseButton": "Submit Response",
+  "gameNotStartedYet": "Game not started yet",
+  "gameNotReady": "Game not ready",
+  "todTruthRequiresResponse": "Truth requires a response",
+  "todDareRequiresResponseOrProof": "Add a description or attach proof before continuing",
+  "todProofVoteRequiresVoice": "The group voted for voice proof — record one to continue",
+  "todProofVoteRequiresImage": "The group voted for photo proof — attach one to continue",
+  "todTypeDare": "🔥 Dare",
+  "todTypeTruth": "🤔 Truth",
+  "todVoiceMaxSeconds": "Voice (max {n}s)",
+  "@todVoiceMaxSeconds": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "todVoiceProofRecorded": "Voice proof recorded",
+  "todVoiceProofTitle": "Voice Proof",
+  "todVotedForResponseTotal": "✓ You voted for this response ({count} total)",
+  "@todVotedForResponseTotal": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "todWaitingForToFinishReading": "Waiting for {names} to finish reading…",
+  "@todWaitingForToFinishReading": {
+    "placeholders": {
+      "names": {
+        "type": "String"
+      }
+    }
+  },
+  "todWriteCardPromptHint": "Write your card prompt…",
+  "someone": "Someone",
+  "todAllPlayersLeftGameBody": "All players left the game.",
+  "todAllPlayersLeftGameEnded": "All players left — game ended",
+  "todChatTitle": "💬 Chat",
+  "todGameEnded": "Game Ended",
+  "todGameOver": "Game Over",
+  "todGamePausedTitle": "Game Paused",
+  "todGoToLobby": "Go to Lobby",
+  "todHistoryRoundsCount": "History ({count} rounds)",
+  "@todHistoryRoundsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "todHostEndedGame": "The host ended the game",
+  "todHostEndedGameBody": "The host ended the game.",
+  "todHostSteppedAway": "The host stepped away and will\nreturn shortly.",
+  "todLeaveForNow": "Leave for Now",
+  "todNoRoundsYet": "No rounds completed yet.",
+  "todPlayerLeftGame": "👋 {name} left the game",
+  "@todPlayerLeftGame": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "todForcePunishmentTooltip": "Force this punishment",
+  "todPunishmentModeOn": "Punishment mode ON",
+  "todQuitGame": "Quit Game",
+  "todQuitGameBody": "Leave the current game?",
+  "todQuitGameTitle": "Quit Game?",
+  "todRemovedFromGame": "You were removed from this game",
+  "todRoundTypeContent": "{type}: {content}",
+  "@todRoundTypeContent": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      },
+      "content": {
+        "type": "String"
+      }
+    }
+  },
+  "todScreenshotTaken": "📸 {name} took a screenshot",
+  "@todScreenshotTaken": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "todSkipped": "Skipped",
+  "todProofWatchedByCount": "{count, plural, =0{Proof sent — not watched yet} other{Proof watched by {count}}}",
+  "@todProofWatchedByCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "todReplayCount": "{count, plural, =0{No replays yet} one{{count} replay} other{{count} replays}}",
+  "@todReplayCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "todVoteCount": "{count, plural, one{👍 {count} vote} other{👍 {count} votes}}",
+  "@todVoteCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "todYouAreNowHost": "👑 You are now the game host!",
+  "secAbbrev": "sec",
+  "submit": "Submit",
+  "todConfigTitle": "Truth or Dare Setup",
+  "todConfigSubtitle": "Configure this game before it starts — you won't be able to change it once it begins.",
+  "todConfigForceDareTitle": "Force Dare Rules",
+  "todConfigForceDareUnlimited": "Unlimited",
+  "todConfigForceDarePerPlayer": "Per Player",
+  "todConfigForceDarePerTurn": "Per Turn",
+  "todConfigMaxTruths": "Max Truths",
+  "todConfigCardRepetitionTitle": "Card Repetition",
+  "todConfigCardRepetitionShuffle": "Shuffle Continuously",
+  "todConfigCardRepetitionUnique": "Unique Cards",
+  "todConfigUniqueCardsCapHint": "This pack has {count} cards — Max Rounds can't exceed what's available once each card is used at most once per player's turn.",
+  "@todConfigUniqueCardsCapHint": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "todConfigConfirmStart": "Confirm & Start",
+  "gameSettingsPackAlreadyPlayed": "This pack has already been played in this room. Choose a different pack.",
+  "todForcedDareHint": "You've used up your Truths for now — Dare only.",
+  "todEndReasonDefault": "Game finished",
+  "todEndReasonManual": "Game ended by host",
+  "todEndReasonRoundLimit": "All rounds completed",
+  "todEndReasonScoreLimit": "Score limit reached",
+  "todEndReasonCardsExhausted": "All unique cards have been used",
+  "todEveryoneElsePickingPunishment": "Everyone else is picking a punishment for you.",
+  "todGameOverBang": "Game Over!",
+  "todLeaderboard": "Leaderboard",
+  "todLoadingGame": "Loading game…",
+  "todWaitingForPlayers": "Waiting for other players to join… ({ready}/{total} ready)",
+  "@todWaitingForPlayers": {
+    "placeholders": {
+      "ready": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "hostReconnectWaitingTitle": "Waiting for host to reconnect…",
+  "hostReconnectWaitingBody": "The game is paused. It will end automatically in {seconds}s if the host doesn't come back.",
+  "@hostReconnectWaitingBody": {
+    "placeholders": {
+      "seconds": { "type": "int" }
+    }
+  },
+  "todOnlyPlayerCanPick": "Only {name} can pick — a moderator can force one if they're unresponsive.",
+  "@todOnlyPlayerCanPick": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "todPhaseChoosing": "Choosing",
+  "todPhaseCompleting": "Completing…",
+  "todPhaseInProgress": "In Progress",
+  "todPhaseVoting": "⚠️ Voting",
+  "todPlayerSkipped": "{name} skipped!",
+  "@todPlayerSkipped": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "todRoundBadge": "Round {round} / {maxRound}",
+  "@todRoundBadge": {
+    "placeholders": {
+      "round": {
+        "type": "int"
+      },
+      "maxRound": {
+        "type": "int"
+      }
+    }
+  },
+  "todSubmitPunishmentFor": "Submit one punishment for {name}:",
+  "@todSubmitPunishmentFor": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "todSubmittedCount": "{submitted} / {expected} submitted",
+  "@todSubmittedCount": {
+    "placeholders": {
+      "submitted": {
+        "type": "int"
+      },
+      "expected": {
+        "type": "int"
+      }
+    }
+  },
+  "todSubmittedWaitingForOthers": "Submitted — waiting for everyone else…",
+  "todTimeForPunishment": "Time for a punishment…",
+  "todWaitingChoosingQuestion": "Truth or Dare?",
+  "todWinnerWins": "{name} wins!",
+  "@todWinnerWins": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "todYouSkipped": "You skipped…",
+  "errorPrefix": "Error: {error}",
+  "@errorPrefix": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "nhieAddCommentOptional": "Add a comment (optional)…",
+  "nhieAnsweredCount": "{count}/{total} answered",
+  "@nhieAnsweredCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "nhieCardPromptHint": "Never have I ever…",
+  "nhieCardTitle": "Never Have I Ever…",
+  "nhieDrinksScore": "{count} 🍹",
+  "@nhieDrinksScore": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "nhieDrinksTotal": "🍹 {count}",
+  "@nhieDrinksTotal": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "nhieGameHistoryTitle": "Game History",
+  "nhieGoToHome": "Go to Home",
+  "gameBackToRoom": "Back to Room",
+  "nhieIHave": "I HAVE",
+  "nhieMostDrinksWins": "Most 🍹 drinks wins!",
+  "nhieNever": "NEVER",
+  "nhieTimedOut": "Time's up — you didn't respond in time",
+  "nhieNextCard": "Next Card →",
+  "nhiePlayAnotherHandOff": "Play Another & Hand Off",
+  "nhieReadyForNextRound": "I'm Ready for Next Round",
+  "nhieViewHistoryCount": "View History ({count} rounds)",
+  "@nhieViewHistoryCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "nhieWaitingCount": "Waiting… {count}/{total}",
+  "@nhieWaitingCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "nhieWaitingForPlayersReady": "Waiting for players to be ready…",
+  "nhieWhoTakesOver": "Who takes over?",
+  "memeAddCaptionOptional": "Add a caption (optional)…",
+  "memeCustomPromptSessionOnly": "This prompt will be added to the deck for this session only.",
+  "memeFunniestPlayerWins": "Funniest player wins!",
+  "memeNextRound": "Next Round →",
+  "memePassVote": "Skip — Ready for Next Round",
+  "memePickSticker": "Pick your sticker:",
+  "memePlayersVoted": "{count}/{total} players voted",
+  "@memePlayersVoted": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "memeResponseNumber": "Response #{n}",
+  "@memeResponseNumber": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "memeResponseSubmittedWaiting": "Response submitted! Waiting for others…",
+  "memeRoundBadgeAllCaps": "ROUND {round}",
+  "@memeRoundBadgeAllCaps": {
+    "placeholders": {
+      "round": {
+        "type": "int"
+      }
+    }
+  },
+  "memeRoundResultsTitle": "Round {round} Results 🏆",
+  "@memeRoundResultsTitle": {
+    "placeholders": {
+      "round": {
+        "type": "int"
+      }
+    }
+  },
+  "memeSpectatingWaitingSubmit": "Spectating — waiting for players to submit…",
+  "memeSubmittedCount": "{submitted} / {total} submitted",
+  "@memeSubmittedCount": {
+    "placeholders": {
+      "submitted": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "memeTapAnywhereToClose": "Tap anywhere to close",
+  "memeTapToExpand": "Tap to expand",
+  "memeTapToSeeReaction": "Tap to see their reaction",
+  "memeTie": "Tie",
+  "memeTrophyScore": "{count} 🏆",
+  "@memeTrophyScore": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "memeVoteForBest": "Vote for the best! 😂",
+  "memeVoteForThis": "Vote for this 👍",
+  "memeVotedWaiting": "Voted! Waiting for others…",
+  "memeVotesAbbrev": "{count} 👍",
+  "@memeVotesAbbrev": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "memeVotesCount": "{count} / {total} voted",
+  "@memeVotesCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "memeWinnerLabel": "Winner: {name}",
+  "@memeWinnerLabel": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "memeWinsThisRound": "wins this round!",
+  "memeWritePromptHint": "Write your meme prompt…",
+  "memeYourResponse": "Your response",
+  "memeYourVote": "✓ Your vote",
+  "exit": "Exit",
+  "offlineAcceptChallenge": "Accept the challenge",
+  "offlineAddCaptionOptional": "Add a caption (optional)…",
+  "offlineAddProofPhoto": "Add proof photo (view once)",
+  "offlineAnswerHonestly": "Answer honestly",
+  "offlineBackToMenu": "Back to Menu",
+  "offlineChooseYourFate": "Choose your fate",
+  "offlineCompleteTurnCheck": "Complete Turn ✅",
+  "offlineCompletedName": "{name} completed!",
+  "@offlineCompletedName": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "offlineCouldNotPickImage": "Could not pick image: {error}",
+  "@offlineCouldNotPickImage": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "offlineDareLabel": "DARE",
+  "offlineDoneCheck": "✓ Done",
+  "offlineFinalScores": "Final Scores",
+  "offlineGameHistoryTitle": "📖 Game History",
+  "offlineGameOverTrophy": "Game Over 🏆",
+  "offlineGameTypeAndPack": "{gameType} • {packName}",
+  "@offlineGameTypeAndPack": {
+    "placeholders": {
+      "gameType": {
+        "type": "String"
+      },
+      "packName": {
+        "type": "String"
+      }
+    }
+  },
+  "offlineGoodOneVotes": "👍 Good one! ({count})",
+  "@offlineGoodOneVotes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "offlineHistoryTab": "📖 History",
+  "offlineIsDeciding": "{name} is deciding…",
+  "@offlineIsDeciding": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "offlineKickConfirmBody": "They will be removed from the lobby.",
+  "offlineKickConfirmTitle": "Kick {name}?",
+  "@offlineKickConfirmTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "offlineMemeBadge": "😂  MEME",
+  "offlineMemeChampion": "Meme Champion!",
+  "offlineMyVoteCount": "{voteLabel} ({count}/{total})",
+  "@offlineMyVoteCount": {
+    "placeholders": {
+      "voteLabel": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "offlineNeverHaveIEverBadge": "NEVER HAVE I EVER…",
+  "offlineNextTurnShort": "Next Turn",
+  "offlineNoHistoryAvailable": "No history available",
+  "offlineNoRoundsCompleted": "No rounds completed yet",
+  "offlineNoTurnsCompleted": "No turns completed yet",
+  "offlinePackCover": "Pack cover",
+  "offlinePickFavourite": "Pick your favourite:",
+  "offlinePickReaction": "Pick a reaction:",
+  "offlinePickReactionColon": "Pick your reaction:",
+  "offlinePlayersCount": "{count} players",
+  "@offlinePlayersCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "offlinePlayersInLobby": "PLAYERS IN LOBBY",
+  "offlinePreviousCards": "Previous Cards",
+  "offlineProofViewed": "📷 Proof viewed",
+  "offlineRoundColonCaption": "Round {round}: {caption}",
+  "@offlineRoundColonCaption": {
+    "placeholders": {
+      "round": {
+        "type": "int"
+      },
+      "caption": {
+        "type": "String"
+      }
+    }
+  },
+  "offlineRoundOf": "Round {round} of {maxRounds}",
+  "@offlineRoundOf": {
+    "placeholders": {
+      "round": {
+        "type": "int"
+      },
+      "maxRounds": {
+        "type": "int"
+      }
+    }
+  },
+  "offlineSayHiToGroup": "Say hi to the group!",
+  "offlineScoresTab": "🏆 Scores",
+  "offlineSkippedCross": "✗ Skipped",
+  "offlineSubmissionTitle": "{name}'s submission",
+  "@offlineSubmissionTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "offlineSubmitCount": "Submit ({count}/{total})",
+  "@offlineSubmitCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "offlineSubmitExclaim": "Submit!",
+  "offlineSubmittedWaitingCheck": "✅ Submitted! Waiting for others…",
+  "offlineTapAgainToDismiss": "Tap again to dismiss",
+  "offlineTapToDismiss": "Tap to dismiss",
+  "offlineTapToRevealProof": "Tap to reveal proof photo",
+  "offlineTimerSeconds": "{seconds} s",
+  "@offlineTimerSeconds": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "offlineTruthLabel": "TRUTH",
+  "offlineVoteCountBallot": "{count} 🗳️",
+  "@offlineVoteCountBallot": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "offlineVoteForBestNoEmoji": "Vote for the best!",
+  "offlineVotesExclaim": "{name} votes!",
+  "@offlineVotesExclaim": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "offlineWaitingForHost": "Waiting for host…",
+  "offlineWaitingForHostToStart": "Waiting for host to start…",
+  "offlineWaitingForMore": "Waiting for {count} more…",
+  "@offlineWaitingForMore": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "offlineWaitingHostAdvance": "Waiting for host to advance…",
+  "ptsSuffix": " pts",
+  "gameLabel": "Game",
+  "offlineBulletDownloadedPacks": "Downloaded packs work fully offline — no internet needed.",
+  "offlineBulletLan": "LAN: each player on their own phone, same WiFi or hotspot.",
+  "offlineBulletPassPlay": "Pass & Play: one phone, pass between players each turn.",
+  "offlineChooseMode": "Choose mode",
+  "offlineCreateLanRoomHint": "Create a LAN room on your device",
+  "offlineDiscard": "Discard",
+  "offlineDownloadPackFirst": "Download a pack first to host",
+  "offlineEnable18Cards": "Enable 18+ cards",
+  "offlineEnterNameAboveToJoin": "Enter your name above to join",
+  "offlineEnterNameToJoin": "Enter your name to join",
+  "offlineFailedToStart": "Failed to start",
+  "offlineFindNearbyLanRooms": "Find nearby LAN rooms to join",
+  "offlineGoBack": "Go back",
+  "offlineHostBadge": "HOST",
+  "offlineHostRoom": "Host a room",
+  "offlineHostsRoom": "{name}'s Room",
+  "@offlineHostsRoom": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "offlineHowItWorks": "ℹ️  How offline works",
+  "offlineJoinLanRoomTitle": "Join LAN Room",
+  "offlineJoinRoom": "Join a room",
+  "offlineJoinRoomButton": "Join Room",
+  "offlineLanMultiplayer": "LAN Multiplayer",
+  "offlineLanRoom": "LAN Room",
+  "offlineLoadingCards": "Loading cards…",
+  "offlineNearbyRooms": "Nearby rooms",
+  "offlineNoPacksDownloaded": "No {gameType} packs downloaded. Go online to download packs.",
+  "@offlineNoPacksDownloaded": {
+    "placeholders": {
+      "gameType": {
+        "type": "String"
+      }
+    }
+  },
+  "offlineOtherPlayersJoinInstructions": "Other players: open Jma3a → Play → LAN → Join Room",
+  "offlinePackExpiry": "Exp: {day}/{month}",
+  "@offlinePackExpiry": {
+    "placeholders": {
+      "day": {
+        "type": "int"
+      },
+      "month": {
+        "type": "int"
+      }
+    }
+  },
+  "offlinePackMeta": "{count} cards · {lang} · {status}",
+  "@offlinePackMeta": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "lang": {
+        "type": "String"
+      },
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "offlinePackPlayersCount": "{packName} · {count} players",
+  "@offlinePackPlayersCount": {
+    "placeholders": {
+      "packName": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "offlinePlayTitle": "Offline Play",
+  "offlinePlayersCountDash": "Players — {count}",
+  "@offlinePlayersCountDash": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "offlineResume": "Resume",
+  "offlineResumeGame": "Resume game",
+  "offlineRoomBroadcasting": "Room is broadcasting",
+  "offlineRoomMeta": "{gameType} • {packName} • {count}/{max} players",
+  "@offlineRoomMeta": {
+    "placeholders": {
+      "gameType": {
+        "type": "String"
+      },
+      "packName": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "offlineRoundsSlider": "Rounds: {count}",
+  "@offlineRoundsSlider": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "offlineSameWifiHint": "Make sure host device is on the same WiFi.",
+  "offlineScanningForRooms": "Scanning for rooms…",
+  "offlineSetupFailed": "Setup failed.",
+  "offlineSignInToDownload": "Sign in to download packs and unlock all games.",
+  "offlineSpicyContent": "Spicy content",
+  "offlineTimerSecsLabel": "Timer: {secs}s",
+  "@offlineTimerSecsLabel": {
+    "placeholders": {
+      "secs": {
+        "type": "int"
+      }
+    }
+  },
+  "offlineYourName": "Your name",
+  "purchased": "Purchased",
+  "signIn": "Sign In",
+  "tryAgain": "Try again",
+  "accountLabel": "Account",
+  "amountLabel": "Amount",
+  "copiedNotice": "Copied!",
+  "labelColonSuffix": "{label}: ",
+  "@labelColonSuffix": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "nameLabel": "Name",
+  "pendingLabel": "Pending",
+  "phoneInvalid": "Phone number must be exactly 8 digits",
+  "refresh": "Refresh",
+  "seeAll": "See all",
+  "walletAmountToWithdraw": "Amount to withdraw",
+  "walletAmountValue": "Amount: {amount} MRU",
+  "@walletAmountValue": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "walletAvailableAmount": "Available: {amount}",
+  "@walletAvailableAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "walletAvailableEarnings": "Available earnings",
+  "walletAvailableForWithdrawal": "Available for withdrawal",
+  "walletBackToWallet": "Back to Wallet",
+  "walletBalanceAfter": "Balance after",
+  "walletBulletCreditedAfterConfirm": "Earnings are credited after purchase is confirmed.",
+  "walletBulletEarn85": "You earn 85% of every pack sale.",
+  "walletBulletMinWithdrawal": "Minimum withdrawal: 500 MRU.",
+  "walletBulletPlatformFee": "15% platform fee keeps Jma3a running.",
+  "walletChooseHowToAddFunds": "Choose how you want to add funds.",
+  "walletConfirmWithdrawal": "Confirm withdrawal",
+  "walletCreateSellPacksHint": "Create and sell packs to earn commissions.",
+  "walletCreatorEarningsRateLabel": "Creator earnings rate",
+  "walletCreatorEarningsTitle": "Creator Earnings",
+  "walletCurrencyName": "Mauritanian Ouguiya",
+  "walletDeposit": "Deposit",
+  "walletDepositAmount": "Deposit {amount}",
+  "@walletDepositAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "walletDepositWarningNotice": "Only submit after completing the transfer. Deposits are manually reviewed and may take 1–24 hours.",
+  "walletEarningsBalance": "Earnings Balance",
+  "walletEnterReference": "Enter the reference from your payment",
+  "walletHowEarningsWork": "How earnings work",
+  "walletInsufficientBalance": "Insufficient balance",
+  "walletMaxDeposit": "Maximum deposit: 1,000,000 MRU",
+  "walletMethodLabel": "Method",
+  "walletMinDeposit": "Minimum deposit: 100 MRU",
+  "walletMinWithdrawal": "Minimum withdrawal: {amount} MRU",
+  "@walletMinWithdrawal": {
+    "placeholders": {
+      "amount": {
+        "type": "int"
+      }
+    }
+  },
+  "walletNoEarningsYet": "No earnings yet",
+  "walletNoTransactions": "No transactions",
+  "walletNoTransactionsYet": "No transactions yet",
+  "walletOfEveryPackSale": "of every pack sale ({fee}% platform fee)",
+  "@walletOfEveryPackSale": {
+    "placeholders": {
+      "fee": {
+        "type": "int"
+      }
+    }
+  },
+  "walletPaymentReferenceLabel": "Payment reference / transaction ID",
+  "walletPhoneNumberHint": "8-digit phone number",
+  "walletPayoutPhoneNumber": "Payout phone number",
+  "walletPhoneLabel": "Phone",
+  "walletRecentTransactions": "Recent Transactions",
+  "walletReferenceHint": "e.g. TXN123456789",
+  "walletSelectPaymentMethod": "Select payment method",
+  "walletSelectPayoutMethod": "Select payout method",
+  "walletStatusPaymentMethod": "{status} • {method}",
+  "@walletStatusPaymentMethod": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      },
+      "method": {
+        "type": "String"
+      }
+    }
+  },
+  "walletTitle": "Wallet",
+  "walletDepositSubmittedTitle": "Deposit Submitted!",
+  "walletDepositSubmittedSubtitle": "Your deposit of {amount} is under review. Balance will update once approved.",
+  "@walletDepositSubmittedSubtitle": {
+    "placeholders": {
+      "amount": {"type": "String"}
+    }
+  },
+  "walletDepositRequestFailed": "Deposit request failed.",
+  "walletSubmitDeposit": "Submit Deposit",
+  "walletWithdrawalSubmittedTitle": "Withdrawal Submitted!",
+  "walletWithdrawalSubmittedSubtitle": "Your withdrawal of {amount} is being processed. Funds will arrive within 1–24 hours.",
+  "@walletWithdrawalSubmittedSubtitle": {
+    "placeholders": {
+      "amount": {"type": "String"}
+    }
+  },
+  "walletWithdrawalRequestFailed": "Withdrawal request failed.",
+  "walletContinueArrow": "Continue →",
+  "walletConfirmWithdrawal": "Confirm Withdrawal",
+  "walletActionDeposit": "Deposit",
+  "walletActionWithdraw": "Withdraw",
+  "walletActionEarnings": "Earnings",
+  "walletDetailDateTime": "Date & time",
+  "walletDetailWalletAffected": "Wallet affected",
+  "walletDetailEarnings": "Earnings",
+  "walletDetailWalletBalance": "Wallet Balance",
+  "walletDetailBalanceAfter": "Balance after",
+  "walletDetailPaymentMethod": "Payment method",
+  "walletDetailDescription": "Description",
+  "walletDetailReference": "Reference",
+  "walletDetailTransactionId": "Transaction ID",
+  "walletDetailDateAtTime": "{date} at {time}",
+  "@walletDetailDateAtTime": {
+    "placeholders": {
+      "date": {"type": "String"},
+      "time": {"type": "String"}
+    }
+  },
+  "walletTransferAmount": "Transfer amount",
+  "walletTransferButton": "Transfer",
+  "walletTransferFailed": "Transfer failed.",
+  "walletTransferSuccess": "Transferred to wallet balance.",
+  "walletTransferToWallet": "Transfer to Wallet",
+  "walletTransferToWalletBalance": "Transfer to Wallet Balance",
+  "walletWithdraw": "Withdraw",
+  "walletWithdrawalAmount": "Withdrawal {amount}",
+  "@walletWithdrawalAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "walletWithdrawalProcessingNotice": "Withdrawals are processed manually. Funds arrive in 1–24 hours once approved.",
+  "walletYourPhoneNumber": "Your phone number",
+  "actionLabel": "Action",
+  "activeLabel": "Active",
+  "darkMode": "Dark mode",
+  "getButton": "Get",
+  "lightMode": "Light mode",
+  "premiumAppThemeTitle": "App Theme",
+  "premiumAutoRenewNotice": "Subscriptions auto-renew unless cancelled 24h before renewal.",
+  "premiumBackgroundColorEmoji": "Background Color ✦",
+  "premiumBackgroundColorTitle": "Background Color",
+  "premiumBlendsIntoTheme": "Blends into your selected theme — text, cards, and icons adapt automatically.",
+  "premiumCannotDowngradeBody": "You have an active Premium Plus subscription. You can switch to a lower plan once it expires on {date}.",
+  "@premiumCannotDowngradeBody": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "premiumCannotDowngradeTitle": "Cannot Downgrade Yet",
+  "premiumCardTextReadable": "Card text stays readable",
+  "premiumChooseAvatar": "Choose Avatar",
+  "premiumChooseBackground": "Choose a background",
+  "premiumConfirmPurchase": "Confirm Purchase",
+  "premiumCurrentTermEnds": "your current term ends",
+  "premiumFeatureColumnHeader": "Feature",
+  "premiumFeatureListDescription": "Custom themes & avatars, 15 rooms/day, up to 12 players per room, 10 offline packs (1 free), anonymous chat, and more.",
+  "premiumLockedUntilExpires": "Locked until Premium Plus expires",
+  "premiumMonthly": "Monthly",
+  "premiumPageBackground": "Page background",
+  "premiumPlanActivated": "🎉 {plan} activated!",
+  "@premiumPlanActivated": {
+    "placeholders": {
+      "plan": {
+        "type": "String"
+      }
+    }
+  },
+  "premiumPlusLabel": "Premium Plus",
+  "premiumPlusShort": "Plus",
+  "premiumPremiumAvatars": "Premium Avatars",
+  "premiumPremiumThemes": "Premium Themes ✦",
+  "premiumPricePerPeriod": "{price} / {period}",
+  "@premiumPricePerPeriod": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      },
+      "period": {
+        "type": "String"
+      }
+    }
+  },
+  "premiumPurchaseConfirmBody": "This will deduct {planPrice} from your wallet balance.\n\nPlan: {plan} — {planPrice}/{period}",
+  "@premiumPurchaseConfirmBody": {
+    "placeholders": {
+      "plan": {
+        "type": "String"
+      },
+      "planPrice": {
+        "type": "String"
+      },
+      "period": {
+        "type": "String"
+      }
+    }
+  },
+  "premiumPurchasePlan": "Purchase {plan}",
+  "@premiumPurchasePlan": {
+    "placeholders": {
+      "plan": {
+        "type": "String"
+      }
+    }
+  },
+  "premiumSave33": "Save 33%",
+  "premiumTitle": "Premium",
+  "premiumUnlockTitle": "Unlock Premium",
+  "premiumUpgradeToUnlock": "Upgrade to unlock",
+  "premiumWhatYouGet": "What you get",
+  "premiumYearly": "Yearly",
+  "premiumYourAvatars": "Your Avatars",
+  "premiumYourThemes": "Your Themes",
+  "resetToDefault": "Reset to Default",
+  "continueArrow": "Continue →",
+  "continueLabel": "Continue",
+  "noneLabel": "None",
+  "packAddFirstCardHint": "Add your first card above!",
+  "packAddImages": "Add Images",
+  "packAddMoreMinimum": "Add {count} more (minimum 10) or remove them all.",
+  "@packAddMoreMinimum": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "packAdditionalFeeBody": "This pack has extra cards, which requires an additional fee of {fee} MRU to submit for review.",
+  "@packAdditionalFeeBody": {
+    "placeholders": {
+      "fee": {
+        "type": "int"
+      }
+    }
+  },
+  "packAdditionalFeeTitle": "Additional fee required",
+  "packAgeLabel": "Age",
+  "packAllowedLabel": "Allowed",
+  "packAudienceEveryone": "Everyone",
+  "packAudienceHint": "Restrict who this pack is meant for. Not enforced when joining a room yet — saved with the pack for later use.",
+  "packCardTypePrompt": "Prompt",
+  "packCardTypeStatement": "Statement",
+  "packCategoryHintExample": "e.g. Party games",
+  "packCategoryOptionalLabel": "Category (optional)",
+  "packCategoryRejectedNoReason": "Your suggested category \"{name}\" was rejected.",
+  "@packCategoryRejectedNoReason": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "packCategoryRejectedWithReason": "Your suggested category \"{name}\" was rejected: {reason}",
+  "@packCategoryRejectedWithReason": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "packCategorySubmittedForReview": "Category submitted for review",
+  "packCoverImageHint": "This appears on the pack card in the marketplace.",
+  "packCoverImageLabel": "Cover image",
+  "packLivePreviewLabel": "Live game-card preview",
+  "packLivePreviewHint": "This is approximately what players will see in the game.",
+  "packCardPreviewSampleText": "Your card text will appear here",
+  "packCardPreviewSectionLabel": "Card preview",
+  "packCardPreviewCountLabel": "Card {current} of {total}",
+  "packChooseSticker": "Choose sticker",
+  "packStickerSelected": "Sticker selected",
+  "packRemoveSticker": "Remove sticker",
+  "packNoStickersAvailable": "No stickers available yet",
+  "@packCardPreviewCountLabel": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "packCardPreviewEmptyTitle": "No cards yet",
+  "packCardPreviewEmptyBody": "Add your first card below and it will appear here.",
+  "packCreateTitle": "Create Pack — {step}",
+  "@packCreateTitle": {
+    "placeholders": {
+      "step": {
+        "type": "String"
+      }
+    }
+  },
+  "packDescriptionFieldLabel": "Description ({lang}, optional)",
+  "@packDescriptionFieldLabel": {
+    "placeholders": {
+      "lang": {
+        "type": "String"
+      }
+    }
+  },
+  "packDifficultyMedium": "Medium",
+  "packDifficultyMild": "Mild",
+  "packDifficultySpicy": "🌶 Spicy",
+  "packEditPunishment": "Edit punishment",
+  "packEnableSpicyHint": "Enable spicy content in pack settings to add spicy cards",
+  "packFailedSuggestCategory": "Failed to suggest category: {error}",
+  "@packFailedSuggestCategory": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "packFailedToSave": "Failed to save: {error}",
+  "@packFailedToSave": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "packFailedToSaveCards": "Failed to save cards: {error}",
+  "@packFailedToSaveCards": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "packFailedToSaveReactions": "Failed to save reactions: {error}",
+  "@packFailedToSaveReactions": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "packFillContentInLanguages": "Please fill content in: {languages}",
+  "@packFillContentInLanguages": {
+    "placeholders": {
+      "languages": {
+        "type": "String"
+      }
+    }
+  },
+  "packFreeLabel": "Free",
+  "packGameTypeLabel": "Game type",
+  "packGameTypeMeme": "😂 Meme Game",
+  "packGameTypeNhie": "🍹 Never Have I Ever",
+  "packGameTypeTod": "🎯 Truth or Dare",
+  "packGenderFemaleOnly": "Female only",
+  "packGenderLabel": "Gender",
+  "packGenderMaleOnly": "Male only",
+  "packImportantRulesBody": "• Packs cannot be edited after publishing.\n• You must purchase your own pack to use it in games.\n• Moderation review takes 1–3 business days.",
+  "packImportantRulesTitle": "📋 Important rules:",
+  "packInformationTitle": "Pack information",
+  "packLangArabic": "Arabic",
+  "packLangEnglish": "English",
+  "packLangFrench": "French",
+  "packLangGerman": "German",
+  "packLangPortuguese": "Portuguese",
+  "packLangRussian": "Russian",
+  "packLangSpanish": "Spanish",
+  "packLangTurkish": "Turkish",
+  "packMaxReactionImagesReached": "Maximum 30 reaction images reached",
+  "packMinPlayersLabel": "Minimum players: {count}",
+  "@packMinPlayersLabel": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "packMinimumReached": "✅ Minimum reached",
+  "packMoreNeeded": "{count} more needed",
+  "@packMoreNeeded": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "packNameFieldLabel": "Pack name ({lang})*",
+  "@packNameFieldLabel": {
+    "placeholders": {
+      "lang": {
+        "type": "String"
+      }
+    }
+  },
+  "packNameHint": "e.g. Wild Friday Night",
+  "packNoReactionImagesYet": "No reaction images yet",
+  "packNotLoggedIn": "Not logged in",
+  "packOneNamePerLanguage": "One name and description per language you selected.",
+  "packPayFeeAndSubmit": "Pay {fee} MRU & Submit",
+  "@packPayFeeAndSubmit": {
+    "placeholders": {
+      "fee": {
+        "type": "int"
+      }
+    }
+  },
+  "packPendingAdminReview": "\"{name}\" is pending admin review",
+  "@packPendingAdminReview": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "packPickExistingCategory": "Pick existing category",
+  "packPlayersSliderLabel": "{count} players",
+  "@packPlayersSliderLabel": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "packPriceFreeHint": "Leave as 0 for a free pack",
+  "packMinPriceError": "Paid packs must be priced at {min} MRU or more",
+  "@packMinPriceError": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      }
+    }
+  },
+  "packPriceLabel": "Price",
+  "packPriceMru": "{price} MRU",
+  "@packPriceMru": {
+    "placeholders": {
+      "price": {
+        "type": "int"
+      }
+    }
+  },
+  "packPunishmentCount": "{count, plural, one{{count} punishment} other{{count} punishments}}",
+  "@packPunishmentCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "packPunishmentInputHint": "e.g. Do 10 pushups",
+  "packPunishmentsEmptyHint": "Optional — add some, or skip straight to Publish.",
+  "packPunishmentsHint": "Shown to a player who skips or refuses a card, if the room owner chooses to use pack punishments instead of live player submissions.",
+  "packPunishmentsOptionalTitle": "Punishments (optional)",
+  "packReactionImageCount": "{count} / 30 reaction images",
+  "@packReactionImageCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "packReactionSlotsRemaining": "{count} slots remaining",
+  "@packReactionSlotsRemaining": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "packReactionsDescription": "Players will use these images as reactions during the game. Add up to 30. If none, default stickers are used.",
+  "packReactionsOptionalHint": "Optional — skip to use defaults",
+  "packReadyToPublish": "Ready to publish?",
+  "packReviewBeforeSubmitting": "Review your pack before submitting for moderation.",
+  "packSelectLanguagesHint": "Choose every language you'll write this pack's names, descriptions, and cards in.",
+  "packSpicyLabel": "Spicy content",
+  "packSpicyContentDisabled": "Spicy content is not available right now.",
+  "packStepAudience": "Audience",
+  "packStepCards": "Cards",
+  "packStepGeneralInfo": "General Info",
+  "packStepLanguages": "Languages",
+  "packStepNamesDescriptions": "Names & descriptions",
+  "packStepPublish": "Publish",
+  "packStepPunishments": "Punishments",
+  "packStepReactions": "Reactions",
+  "packSubmissionFailed": "Submission failed: {error}",
+  "@packSubmissionFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "packSubmitForReview": "Submit for Review",
+  "packEligibilityChecking": "Checking your submission eligibility…",
+  "packFreeSubmissionAvailable": "Your free submission is available",
+  "packFreeSubmissionUnavailable": "Free submission not available yet",
+  "packNextFreeSubmissionAt": "Next free submission: {date}",
+  "@packNextFreeSubmissionAt": {
+    "placeholders": {
+      "date": {"type": "String"}
+    }
+  },
+  "packPaidExtraPackHint": "You can create an extra pack now for {price} MRU.",
+  "@packPaidExtraPackHint": {
+    "placeholders": {
+      "price": {"type": "int"}
+    }
+  },
+  "packCreateExtraPackPriced": "Create Extra Pack — {price} MRU",
+  "@packCreateExtraPackPriced": {
+    "placeholders": {
+      "price": {"type": "int"}
+    }
+  },
+  "packCreatorNotVerified": "Only verified creators can submit packs for review.",
+  "packAlreadyHasDraft": "You already have a draft pack. Finish, publish, or delete it before creating another draft.",
+  "packDraftLimitReachedTitle": "Draft Limit Reached",
+  "packDeleteDraft": "Delete Draft",
+  "packDeleteDraftConfirmTitle": "Delete this draft?",
+  "packDeleteDraftConfirmBody": "\"{title}\" will be permanently deleted. This can't be undone.",
+  "@packDeleteDraftConfirmBody": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "packDraftDeletedNotice": "Draft deleted.",
+  "packDeleteDraftFailed": "Failed to delete draft: {error}",
+  "@packDeleteDraftFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "packSubmittedForReviewNotice": "Pack submitted for review! You'll be notified when approved.",
+  "packSuggestAgain": "Suggest again",
+  "packSuggestNew": "Suggest new",
+  "packSuggestNewCategory": "Suggest a new category",
+  "packSummaryCards": "Cards",
+  "packSummaryCardsValue": "{count} ({truthCount}T + {dareCount}D)",
+  "@packSummaryCardsValue": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "truthCount": {
+        "type": "int"
+      },
+      "dareCount": {
+        "type": "int"
+      }
+    }
+  },
+  "packSummaryGameType": "Game type",
+  "packSummaryPrice": "Price",
+  "packSummarySpicyContent": "Spicy content",
+  "packSummaryTitle": "Title",
+  "packTapToAddCover": "Tap to add cover",
+  "packTypeDare": "Dare 🔥",
+  "packTypePrompt": "Prompt 😂",
+  "packTypeStatement": "Statement 🍹",
+  "packTypeTruth": "Truth 🤔",
+  "packUploadFailed": "Upload failed: {error}",
+  "@packUploadFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "packUploadingEllipsis": "Uploading...",
+  "packWhoCanPlay": "Who can play with this pack",
+  "packAdditionalDetailsOptional": "Additional details (optional)",
+  "packAvailableOffline": "Available offline",
+  "packBrowseMarketplaceHint": "Browse the marketplace to find packs.",
+  "packBuyForPrice": "Buy for {price} MRU",
+  "@packBuyForPrice": {
+    "placeholders": {
+      "price": {
+        "type": "int"
+      }
+    }
+  },
+  "packCancelled": "Cancelled",
+  "packCancelledOn": "Cancelled on {date}",
+  "@packCancelledOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "packCardCount": "{count, plural, one{{count} card} other{{count} cards}}",
+  "@packCardCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "packCardsAndSales": "{cards} cards • {sales} sales",
+  "@packCardsAndSales": {
+    "placeholders": {
+      "cards": {
+        "type": "int"
+      },
+      "sales": {
+        "type": "int"
+      }
+    }
+  },
+  "packCardsAvailableOffline": "{count} cards • Available offline",
+  "@packCardsAvailableOffline": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "packCity": "City",
+  "packCountLabel": "{count} packs",
+  "@packCountLabel": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "packCreateFirstHint": "Create your first pack and share it with the world.",
+  "packCreatePack": "Create Pack",
+  "packCreator": "Creator",
+  "packCreatorLabel": "Pack creator",
+  "packCreatorStudio": "Creator Studio",
+  "packDownload": "Download",
+  "packDownloadFailed": "Download failed",
+  "packDownloadToPlayOfflineHint": "Download packs to play without internet.",
+  "packDownloadingPercent": "Downloading… {percent}%",
+  "@packDownloadingPercent": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "packExpired": "Expired",
+  "packExpiresInDays": "Expires in {days} days",
+  "@packExpiresInDays": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "packExpiresInDaysShort": "Expires in {days}d",
+  "@packExpiresInDaysShort": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "packFailedToLoadYourPacks": "Failed to load your packs.",
+  "packFailedToRequest": "Failed to request: {error}",
+  "@packFailedToRequest": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "packFallbackTitle": "Pack",
+  "packFeaturedHeading": "⭐ Featured",
+  "packFreeOfflineLimitNotice": "Free plan allows 1 offline pack. Upgrade to Premium for 10.",
+  "packFullName": "Full name",
+  "packGetFreePack": "Get Free Pack",
+  "packInsufficientBalance": "Insufficient Balance",
+  "packInsufficientBalanceBody": "You need {price} MRU to purchase this pack. Your current balance is too low.",
+  "@packInsufficientBalanceBody": {
+    "placeholders": {
+      "price": {
+        "type": "int"
+      }
+    }
+  },
+  "packLoadingPrice": "Loading price…",
+  "packMinReviewLength": "Please write at least 10 characters.",
+  "packMyPhysicalRequests": "My Physical Pack Requests",
+  "packNewPack": "New Pack",
+  "packNoFeaturedPacksYet": "No featured packs yet",
+  "packNoOfflinePacks": "No offline packs",
+  "packNoPacksFound": "No packs found",
+  "packNoPacksYet": "No packs yet",
+  "packSearchHint": "Search by pack name, creator, or category…",
+  "packSearchForPacks": "Search for packs",
+  "packSearchMinChars": "Enter at least 2 characters.",
+  "packSearchNoResultsHint": "Try a different name or category.",
+  "packNoPurchasedPacks": "No purchased packs",
+  "packNoRequestsYet": "No requests yet.",
+  "packNoReviewsYet": "No reviews yet. Be the first!",
+  "packNotFound": "Pack not found.",
+  "packNotesOptional": "Notes (optional)",
+  "packOfflineLimitReached": "Offline limit reached ({limit} packs). Delete a pack to download another.",
+  "@packOfflineLimitReached": {
+    "placeholders": {
+      "limit": {
+        "type": "int"
+      }
+    }
+  },
+  "packOfflineLimitReachedDelete": "Offline limit reached ({limit} packs). Delete one to download another.",
+  "@packOfflineLimitReachedDelete": {
+    "placeholders": {
+      "limit": {
+        "type": "int"
+      }
+    }
+  },
+  "packOwnedBadge": "Owned",
+  "packPhoneNumber": "Phone number",
+  "packPhysicalCopyRequested": "Physical copy requested!",
+  "packPhysicalFeeNotice": "Fee: {total} MRU ({price} × {quantity}), charged to your wallet balance.",
+  "@packPhysicalFeeNotice": {
+    "placeholders": {
+      "total": {
+        "type": "int"
+      },
+      "price": {
+        "type": "int"
+      },
+      "quantity": {
+        "type": "int"
+      }
+    }
+  },
+  "packPlayer": "Player",
+  "packProBadge": "★ PRO",
+  "packOfficialBadge": "Jma3a",
+  "packProcessingEllipsis": "Processing…",
+  "packPromotedBadge": "PROMOTED",
+  "packPurchaseFailed": "Purchase failed: {error}",
+  "@packPurchaseFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "packPurchasedNotice": "Pack purchased! You can now download it.",
+  "packQuantity": "Quantity",
+  "packRedownload": "Re-download",
+  "packRejectionReason": "Rejection reason: {reason}",
+  "@packRejectionReason": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "packRemoveDownload": "Remove download",
+  "packRemoveDownloadBody": "This will remove the offline copy of \"{title}\". You can re-download it later.",
+  "@packRemoveDownloadBody": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "packRemoveDownloadTitle": "Remove download?",
+  "packReport": "Report",
+  "packReportHint": "Help us keep the marketplace safe.",
+  "packReportPack": "Report pack",
+  "packReportReasonCheating": "Cheating or gaming the system",
+  "packReportReasonHateSpeech": "Hate speech",
+  "packReportReasonInappropriate": "Inappropriate content",
+  "packReportReasonOther": "Other",
+  "packReportReasonSpam": "Spam",
+  "packReportSubmitted": "Report submitted.",
+  "packPromoteYourPack": "Promote your pack",
+  "packPromotionDuration24h": "24 Hours",
+  "packPromotionDuration7d": "1 Week",
+  "packPromotionSubtitle": "Feature this pack in the promoted carousel to reach more players.",
+  "packPromotionSubmit": "Promote",
+  "packPromotionSuccess": "Pack promoted successfully!",
+  "packPromotionActiveLabel": "Promotion active",
+  "packPromotionEndsAt": "Ends {date}",
+  "@packPromotionEndsAt": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "packPromotionAlreadyActive": "This pack already has an active promotion.",
+  "packRequestPhysicalCopy": "Request Physical Copy",
+  "packRetryDownload": "Retry download",
+  "packReviewSubmitted": "Review submitted!",
+  "packReviewSubmitFailed": "Couldn't submit your review. Please try again.",
+  "packReviews": "Reviews",
+  "packShareThoughtsHint": "Share your thoughts about this pack…",
+  "packStageCompleted": "Completed",
+  "packStageDelivered": "Delivered",
+  "packStageOutForDelivery": "Out for Delivery",
+  "packStagePackaging": "Packaging",
+  "packStagePaymentConfirmed": "Payment Confirmed",
+  "packStagePrinting": "Printing",
+  "packStageRequestSubmitted": "Request Submitted",
+  "packStageUnderReview": "Under Review",
+  "packStatAvgRating": "Avg Rating",
+  "packStatPublished": "Published",
+  "packStatSales": "Sales",
+  "packStatusArchived": "Archived",
+  "packStatusDraft": "Draft",
+  "packStatusInReview": "In Review",
+  "packStatusPublished": "Published",
+  "packStatusRejected": "Rejected",
+  "packStatusSuspended": "Suspended",
+  "packPlatformManaged": "Managed by Jma3a",
+  "packSubmitReport": "Submit Report",
+  "packSubmitRequest": "Submit Request",
+  "packSubmitReview": "Submit Review",
+  "packTabBrowse": "Browse",
+  "packTabDownloaded": "Downloaded",
+  "packTabFeatured": "Featured",
+  "packTabMyPacks": "My Packs",
+  "packTabPurchased": "Purchased",
+  "packTopUpWallet": "Top Up Wallet",
+  "packWriteReview": "Write a review",
+  "packWriteReviewShort": "Write review",
+  "packYouOwnThisPack": "You own this pack",
+  "packYouRatedThis": "You rated this {rating}/5",
+  "packRemoveRating": "Remove",
+  "packRatingRemoved": "Your rating has been removed.",
+  "packRatingFailed": "Couldn't save your rating. Please try again.",
+  "@packYouRatedThis": {
+    "placeholders": {
+      "rating": {
+        "type": "int"
+      }
+    }
+  },
+  "packYourPacks": "Your Packs",
+  "packYourRating": "Your rating:",
+  "packZoneDistrict": "Zone / District",
+  "packZoneHint": "e.g. Tevragh Zeina",
+  "searchLabel": "Search",
+  "avatarAlreadyUpdatedNotice": "You already updated your avatar. Try again in {hours}h {mins}m.",
+  "@avatarAlreadyUpdatedNotice": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      },
+      "mins": {
+        "type": "int"
+      }
+    }
+  },
+  "avatarCustomAvatarsHint": "Create your own Bitmoji-style avatar and show it across the app with Premium.",
+  "avatarCustomAvatarsTitle": "Custom Avatars",
+  "avatarFeelingLucky": "Feeling lucky?",
+  "avatarGenerateRandomHint": "Generate a random avatar instantly.",
+  "avatarOnCooldown": "On Cooldown",
+  "avatarOptAccessories": "Accessories",
+  "avatarOptEyebrows": "Eyebrows",
+  "avatarOptEyes": "Eyes",
+  "avatarOptFacialHair": "Facial Hair",
+  "avatarOptFacialHairColor": "Facial Hair Color",
+  "avatarOptHairColor": "Hair Color",
+  "avatarOptHairStyle": "Hair Style",
+  "avatarOptMouth": "Mouth",
+  "avatarOptOutfit": "Outfit",
+  "avatarOptOutfitColor": "Outfit Color",
+  "avatarOptSkinTone": "Skin Tone",
+  "avatarRandomizeAvatar": "Randomize Avatar",
+  "avatarReactionsDescription": "Your avatar reactions (happy, laugh, cry & more) are available alongside emoji reactions in Truth or Dare and Never Have I Ever.",
+  "avatarSaveAvatar": "Save Avatar",
+  "avatarSaveFailed": "Could not save right now.",
+  "avatarSaved": "Avatar saved! ✦",
+  "avatarSavingEllipsis": "Saving…",
+  "avatarDeleteAction": "Delete Avatar",
+  "avatarDeleteDialogTitle": "Delete your avatar?",
+  "avatarDeleteDialogMessage": "This removes your custom avatar. You'll go back to your uploaded photo or the default look until you create a new one.",
+  "avatarDeleted": "Avatar deleted.",
+  "avatarDeleteFailed": "Could not delete right now.",
+  "avatarTabExtras": "Extras",
+  "avatarTabEyes": "Eyes",
+  "avatarTabFace": "Face",
+  "avatarTabHair": "Hair",
+  "avatarTabMouth": "Mouth",
+  "avatarTabOutfit": "Outfit",
+  "avatarUpdateCooldownNotice": "You can update your avatar again in {hours}h {mins}m.",
+  "@avatarUpdateCooldownNotice": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      },
+      "mins": {
+        "type": "int"
+      }
+    }
+  },
+  "avatarUpgradeToPremium": "Upgrade to Premium ✦",
+  "profileAbout": "About",
+  "profileAgeOptionalLabel": "Age (optional)",
+  "profileBalanceAndTransactions": "Balance & transactions",
+  "profileBioTooLong": "Maximum 280 characters",
+  "profileChangeUsername": "Change username",
+  "profileChooseColourTheme": "Choose your colour theme",
+  "profileChooseFromGallery": "Choose from gallery",
+  "profileCooldownActive": "Cooldown active",
+  "profileCooldownBody": "You can change your username again in {days, plural, one{{days} day} other{{days} days}}.\n\nUsernames can only be changed once every 30 days.",
+  "@profileCooldownBody": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "profileCountryAlgeria": "Algeria",
+  "profileCountryEgypt": "Egypt",
+  "profileCountryFrance": "France",
+  "profileCountryGermany": "Germany",
+  "profileCountryMauritania": "Mauritania",
+  "profileCountryMorocco": "Morocco",
+  "profileCountryOptionalLabel": "Country (optional)",
+  "profileCountryOther": "Other",
+  "profileCountrySaudiArabia": "Saudi Arabia",
+  "profileCountryTunisia": "Tunisia",
+  "profileCountryUae": "UAE",
+  "profileCountryUnitedKingdom": "United Kingdom",
+  "profileCountryUnitedStates": "United States",
+  "profileCreateAvatarHint": "Create your Bitmoji-style avatar",
+  "profileCurrentUsername": "Current username",
+  "profileInfoSection": "Profile info",
+  "profileMostPlayedPacks": "🔥 Most Played Packs",
+  "profileMyAvatar": "My Avatar",
+  "profileMyCreatedPacks": "✏️ My Created Packs",
+  "profileNewUsername": "New username",
+  "profilePersonalDetails": "Personal details",
+  "profilePhoneOptionalLabel": "Phone number (optional)",
+  "profilePreferences": "Preferences",
+  "profilePremiumActiveExpires": "Active · expires {day}/{month}/{year}",
+  "@profilePremiumActiveExpires": {
+    "placeholders": {
+      "day": {
+        "type": "int"
+      },
+      "month": {
+        "type": "int"
+      },
+      "year": {
+        "type": "int"
+      }
+    }
+  },
+  "profileSaveUsername": "Save username",
+  "profileTakePhoto": "Take photo",
+  "profileUnlockPremiumHint": "Unlock themes, avatars, anonymous chat & more",
+  "profileUploadingPhoto": "Uploading photo…",
+  "profileUsernameCooldownNotice": "Username change available in {days, plural, one{{days} day} other{{days} days}}.\nChanges are limited to once every 30 days.",
+  "@profileUsernameCooldownNotice": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "profileUsernameHint": "lowercase_letters_123",
+  "profileUsernamePermanentNotice": "Username changes are permanent for 30 days.",
+  "profileUsernameRequirements": "3–30 characters · letters, numbers, underscores",
+  "profileUsernameTaken": "This username is already taken.",
+  "profileUsernameUpdated": "Username updated!",
+  "profileUsernameValidation": "3–30 chars, only a–z, 0–9, _",
+  "profileVerifiedCreator": "Verified Creator",
+  "notifARoom": "a room",
+  "notifAllCaughtUp": "You're all caught up!",
+  "notifDecline": "Decline",
+  "notifDeclineFailed": "Failed: {error}",
+  "@notifDeclineFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "notifInApp": "In-App",
+  "notifInvitedYouToJoin": "Invited you to join",
+  "notifMarkAllRead": "Mark all read",
+  "notifNoNotifications": "No notifications",
+  "notifPreferences": "Preferences",
+  "notifPreferencesTitle": "Notification Preferences",
+  "notifPush": "Push",
+  "notifRoomInvitesCount": "Room Invites ({count})",
+  "@notifRoomInvitesCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notifTitle": "Notifications",
+  "notifTypeAchievement": "Achievement",
+  "notifTypeFollow": "New Follower",
+  "notifTypeFriendAccepted": "Friend Accepted",
+  "notifTypeFriendRequest": "Friend Request",
+  "notifTypeGameStarted": "Game Started",
+  "notifTypeModeration": "Moderation",
+  "notifTypePackApproved": "Pack Approved",
+  "notifTypePackExpired": "Pack Expired",
+  "notifTypePackRejected": "Pack Rejected",
+  "notifTypePackReview": "Pack Review",
+  "notifTypePackSale": "Pack Sale",
+  "notifTypePhysicalPackStatus": "Order Update",
+  "notifTypeRoomInvite": "Room Invite",
+  "notifTypeRoomJoinRequest": "Room Join Request",
+  "notifTypeRoomJoinRequestAccepted": "Join Request Accepted",
+  "notifTypeRoomJoinRequestRejected": "Join Request Rejected",
+  "notifTypeRoomKicked": "Removed from Room",
+  "notifTypeChatMessage": "Chat Message",
+  "notifTypeStreakIncreased": "Streak",
+  "notifTypeCreatorPacksTransferred": "Packs Jma3a-Managed",
+  "notifTypeCreatorPrivilegesRemoved": "Creator Status Removed",
+  "notifTypeCreatorRecoveryApproved": "Recovery Request Approved",
+  "notifTypeCreatorRecoveryRejected": "Recovery Request Rejected",
+  "notifTypeSubscriptionExpired": "Subscription Expired",
+  "notifTypeSubscriptionExpiring1d": "Subscription Expiring (1 Day)",
+  "notifTypeSubscriptionExpiring2d": "Subscription Expiring (2 Days)",
+  "notifTypeSubscriptionStarted": "Subscription Started",
+  "notifTypeSystem": "System",
+  "notifTypeWalletCredit": "Wallet Credit",
+  "notifTypeWalletDebit": "Wallet Debit",
+  "viewLabel": "View",
+  "chatTitle": "Chat",
+  "gameSettingsAllowOneReplay": "Allow one replay",
+  "gameSettingsProofViewDuration": "Proof view duration (auto-closes after this)",
+  "gameSettingsProofUnlimitedDuration": "Unlimited duration (until next round)",
+  "gameSettingsProofReplayHint": "Premium viewers get one extra replay beyond this.",
+  "gameSettingsProofAutoCloseHint": "Proof auto-closes after {seconds}s — no replay while a duration is set.",
+  "@gameSettingsProofAutoCloseHint": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "gameSettingsRequireApprovalToSpectate": "Require approval to spectate",
+  "moderationBanPlayer": "Ban player",
+  "moderationDuration1Hour": "1 hour",
+  "moderationDuration24Hours": "24 hours",
+  "moderationDuration30Min": "30 minutes",
+  "moderationDuration7Days": "7 days",
+  "moderationDurationPermanent": "Permanent",
+  "moderationReasonOptional": "Reason (optional)",
+  "roomsAnonymousModeOn": "Anonymous mode on",
+  "roomsAnonymousSender": "Anonymous",
+  "roomsChatDisabled": "Chat disabled",
+  "roomsChooseYourRole": "Choose your role in this room.",
+  "roomsClosed": "Closed",
+  "roomsAgoMinutes": "{count}m ago",
+  "@roomsAgoMinutes": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "roomsAgoHours": "{count}h ago",
+  "@roomsAgoHours": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "roomsAgoDays": "{count}d ago",
+  "@roomsAgoDays": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "roomsClosedAgo": "Closed {ago}",
+  "@roomsClosedAgo": {
+    "placeholders": {
+      "ago": {
+        "type": "String"
+      }
+    }
+  },
+  "roomsClosedRoomFallback": "Closed Room",
+  "roomsConnConnecting": "Connecting…",
+  "roomsConnDisconnected": "Disconnected",
+  "roomsConnLive": "Live",
+  "roomsConnReconnecting": "Reconnecting…",
+  "roomsConnSyncing": "Syncing…",
+  "roomsFailedToSendRequest": "Failed to send request: {error}",
+  "@roomsFailedToSendRequest": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "roomsFallbackRoom": "Room",
+  "roomsGameAlreadyInProgress": "This game is already in progress.",
+  "roomsGameInProgress": "Game in progress",
+  "roomsHiddenFromPlayersList": "Hidden from players and spectator list",
+  "roomsInvalidCodeOrNotFound": "Invalid code or room not found",
+  "roomsInvite": "Invite",
+  "roomsJoinAsPlayer": "Join as Player",
+  "roomsMakeModerator": "Make moderator",
+  "roomsManagePermissionsCount": "Manage permissions ({count})",
+  "@roomsManagePermissionsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "roomsMessageAsAnonymous": "Message as Anonymous…",
+  "roomsModeration": "Moderation",
+  "roomsObserveWithoutPlaying": "Observe without playing",
+  "roomsPackRequiresMinPlayers": "This pack requires at least {count} players.",
+  "@roomsPackRequiresMinPlayers": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "roomsPendingEllipsis": "Pending…",
+  "roomsPermAcceptJoins": "Accept join requests",
+  "roomsPermAcceptRejoins": "Accept rejoin requests",
+  "roomsPermAcceptSpectators": "Accept spectator requests",
+  "roomsPermAdvanceTurn": "Start next turn",
+  "roomsPermEndGame": "End the game",
+  "roomsPermKickPlayers": "Remove players",
+  "roomsPermManageSettings": "Manage room settings",
+  "roomsPermMuteChat": "Mute chat",
+  "roomsPermMutePlayers": "Mute players in game",
+  "roomsPermSkipTurn": "Skip a turn",
+  "roomsPermStartGame": "Start the game",
+  "roomsRejoin": "Rejoin",
+  "roomsRejoinRequestDeclined": "Your rejoin request was declined",
+  "roomsRequestAgain": "Request Again",
+  "roomsRequestSentWaiting": "Request sent — waiting for the host",
+  "roomsRequestToRejoin": "Request to Rejoin",
+  "roomsSendAnonymouslyPremium": "Send anonymously (Premium)",
+  "roomsStatusClosed": "Closed",
+  "roomsStatusInGame": "In Game",
+  "roomsStatusPaused": "Paused",
+  "roomsStatusWaiting": "Waiting",
+  "roomsTakePartInGame": "Take part in the game",
+  "roomsTransferOwnershipConfirm": "Transfer room ownership to {name}? You will become a regular player.",
+  "@roomsTransferOwnershipConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "roomsWaitingForReconnecting": "Waiting for reconnecting player(s)...",
+  "roomsWatchAnonymously": "Watch Anonymously ✦",
+  "roomsWatchAsSpectator": "Watch as Spectator",
+  "sharedApprove": "Approve",
+  "sharedBan": "Ban",
+  "sharedBanPlayerBody": "Are you sure you want to ban this player from this room?",
+  "sharedBanPlayerTitle": "Ban Player",
+  "sharedEndGame": "End Game",
+  "sharedEveryoneLeftNotice": "Every other player has left. The game cannot continue — end it when you're ready.",
+  "sharedGameRulesTitle": "{gameName} — Rules",
+  "@sharedGameRulesTitle": {
+    "placeholders": {
+      "gameName": {
+        "type": "String"
+      }
+    }
+  },
+  "sharedGoHome": "Go Home",
+  "sharedHistoryTooltip": "History",
+  "sharedReactionAvatarsTab": "Avatars",
+  "sharedReactionIconsTab": "Icons",
+  "sharedJoinRequestFailed": "Failed: {error}",
+  "@sharedJoinRequestFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "sharedJoinRequestsCount": "Join Requests ({count})",
+  "@sharedJoinRequestsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sharedKick": "Kick",
+  "sharedKickPlayerBody": "Are you sure you want to remove this player from the current game?",
+  "sharedKickPlayerTitle": "Kick Player",
+  "sharedMemeRuleObjective": "Submit the funniest caption or sticker for the round's prompt, then vote for your favorite from everyone else's.",
+  "sharedMemeRuleScoring": "Whoever gets the most votes on a round wins that round's point. Most points at the end wins the game.",
+  "sharedMemeRuleTurnFlow": "Submission phase → voting phase → results, every round, until the pack's prompts run out or the round limit is hit.",
+  "sharedMute": "Mute",
+  "sharedNhieRuleObjective": "Each round shows a \"Never have I ever…\" statement. Everyone answers honestly whether they have or haven't.",
+  "sharedNhieRuleScoring": "Your history of honest answers builds your profile across the game — there's no winner/loser, just revealing.",
+  "sharedNhieRuleTurnFlow": "A new statement appears each round; every player votes, then the round advances once everyone has answered.",
+  "sharedNoPendingJoinRequests": "No pending join requests",
+  "sharedPageNotFound": "Page Not Found",
+  "sharedPageNotFoundHint": "The page you're looking for doesn't exist.",
+  "sharedReject": "Reject",
+  "sharedRoomMembers": "Room members",
+  "sharedRoomMembersCount": "👥 Room Members ({count})",
+  "@sharedRoomMembersCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sharedRoomSettingsTitle": "This room's settings",
+  "sharedRuleNoTurnTimer": "No turn timer",
+  "sharedRuleObjective": "Objective",
+  "sharedRulePolicyEveryone": "everyone in the game",
+  "sharedRulePolicyPlayersOnly": "players only",
+  "sharedRulePolicySpectatorsOnly": "spectators only",
+  "sharedRuleProofViewOnce": "Proof can be viewed once (Premium: twice).",
+  "sharedRuleProofViewTwice": "Proof can be viewed twice (Premium: three times).",
+  "sharedRuleProofVisibleTo": "Proof is visible to: {policy}.",
+  "@sharedRuleProofVisibleTo": {
+    "placeholders": {
+      "policy": {
+        "type": "String"
+      }
+    }
+  },
+  "sharedRulePunishmentOff": "Punishment mode is OFF — skipping isn't offered as an option.",
+  "sharedRulePunishmentOn": "Punishment mode is ON — skipping means every other player submits one punishment and you pick which you'll do.",
+  "sharedRuleScoring": "Scoring",
+  "sharedRuleSpectatorsApprovalRequired": "Spectators are allowed, subject to host approval.",
+  "sharedRuleSpectatorsFreelyAllowed": "Spectators are allowed to watch freely.",
+  "sharedRuleSpectatorsNotAllowed": "Spectators are not allowed in this room.",
+  "sharedRuleSpicyEnabled": "Spicy content is enabled for this room.",
+  "sharedRuleTurnFlow": "Turn flow",
+  "sharedRuleTurnTimer": "Turn timer: {seconds}s",
+  "@sharedRuleTurnTimer": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "sharedRules": "Rules",
+  "sharedStatusDisconnected": "Disconnected",
+  "sharedStatusMuted": "Muted",
+  "sharedStatusPlaying": "Playing",
+  "sharedStatusSpectator": "Spectator",
+  "sharedTodRuleObjective": "Take turns choosing Truth or Dare. Answer honestly or complete the dare — there's no \"safe\" option once you've picked.",
+  "sharedTodRuleScoring": "Completed truths and dares add to your score. Skips are tracked too — they may trigger a punishment (see below).",
+  "sharedTodRuleTurnFlow": "The current player picks Truth or Dare, gets a card, and either answers/performs it or (if allowed) skips. Then play passes to the next player in order.",
+  "sharedUnmute": "Unmute",
+  "sharedWantsToJoinCurrentGame": "{name} wants to join the current game.",
+  "@sharedWantsToJoinCurrentGame": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "friendsAccept": "Accept",
+  "friendsReject": "Reject",
+  "friendsDecline": "Decline",
+  "friendsPendingRequestsHeader": "Pending Friendship Requests",
+  "friendsYourFriendsHeader": "Your Friends",
+  "friendsAdd": "Add",
+  "friendsAddFriend": "Add friend",
+  "friendsBlock": "Block",
+  "friendsBlocked": "Blocked",
+  "friendsCancelRequest": "Cancel request",
+  "friendsCannotInteract": "You cannot interact with this user.",
+  "friendsCreatedBy": "Created by {name}",
+  "friendsOfficialAccount": "Official Jma3a Account",
+  "friendsFollowersCount": "{count} Followers",
+  "@friendsFollowersCount": { "placeholders": { "count": { "type": "int" } } },
+  "@friendsCreatedBy": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "friendsFollow": "Follow",
+  "friendsFollowersTitle": "Followers",
+  "friendsNoFollowersYet": "No followers yet.",
+  "friendsMostPlayedBy": "Most Played by {name}",
+  "@friendsMostPlayedBy": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "friendsNoBlockedUsers": "No blocked users",
+  "friendsNoBlockedUsersHint": "Users you block will appear here.",
+  "friendsNoFriendsHint": "Explore people and find players to connect with.",
+  "friendsNoFriendsYet": "No friends yet",
+  "friendsNoPendingRequests": "No pending requests",
+  "friendsNoPendingRequestsHint": "Friend requests you receive will appear here.",
+  "friendsNoResults": "No results",
+  "friendsNoResultsHint": "Try a different name or username.",
+  "friendsOfflineCount": "Offline — {count}",
+  "@friendsOfflineCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "friendsOnlineCount": "Online — {count}",
+  "@friendsOnlineCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "creatorVerificationTitle": "Become a Verified Creator",
+  "creatorVerificationSubtitle": "Meet all of these requirements to apply for creator verification.",
+  "creatorReqPremiumPlus": "Premium Plus subscriber",
+  "creatorReqGamesPlayed": "Play at least {count} games",
+  "@creatorReqGamesPlayed": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "creatorReqPacksUsed": "Use at least {count} packs",
+  "@creatorReqPacksUsed": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "creatorReqFollowers": "Have at least {count} followers",
+  "@creatorReqFollowers": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "creatorReqLoginStreak": "Enter the app {count} days in a row",
+  "@creatorReqLoginStreak": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "creatorReqRoomStreak": "Create a room every day for {count} days in a row",
+  "@creatorReqRoomStreak": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "creatorReqPackGamesStreak": "Finish at least {count} pack games every day for {days} days in a row",
+  "@creatorReqPackGamesStreak": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "creatorReqPlayedWithOthers": "Play a game with other users",
+  "creatorApplyNow": "Apply Now",
+  "creatorKeepGoing": "Keep going — you'll be able to apply once every requirement above is met.",
+  "creatorRecoveryBannerTitle": "Your verified creator status was removed",
+  "creatorRecoveryBannerBody": "Your Premium Plus subscription lapsed and your verified creator status/privileges were automatically removed. You can submit a recovery request for admin review.",
+  "creatorRecoveryBannerAction": "Submit a Recovery Request",
+  "creatorRecoveryTitle": "Recovery Request",
+  "creatorRecoveryIntro": "Tell us what happened. An admin will review your request and, if approved, your verified creator status, privileges, and packs will be fully restored.",
+  "creatorRecoveryReasonLabel": "Reason",
+  "creatorRecoveryReasonResubscribedLate": "I resubscribed but missed the grace period",
+  "creatorRecoveryReasonPaymentIssue": "A payment/billing issue caused the lapse",
+  "creatorRecoveryReasonUnawareOfExpiry": "I wasn't notified my subscription expired",
+  "creatorRecoveryReasonExtenuatingCircumstances": "Extenuating circumstances prevented renewal",
+  "creatorRecoveryReasonOther": "Other",
+  "creatorRecoveryExplanationLabel": "Explanation",
+  "creatorRecoveryExplanationHint": "Explain what happened in at least 20 characters",
+  "creatorRecoveryExplanationTooShort": "Please write at least 20 characters explaining what happened.",
+  "creatorRecoveryEvidenceLabel": "Evidence (optional)",
+  "creatorRecoveryEvidenceUploadFailed": "Couldn't upload that image. Please try again.",
+  "creatorRecoverySubmit": "Submit Request",
+  "creatorRecoverySubmitted": "Your recovery request has been submitted for review.",
+  "creatorRecoveryFailed": "Couldn't submit your recovery request. Please try again.",
+  "creatorRecoveryPendingTitle": "Recovery Request Pending",
+  "creatorRecoveryPendingBody": "Your recovery request is being reviewed by an admin. You'll be notified once a decision is made.",
+  "creatorRecoveryRejectedTitle": "Your previous recovery request was rejected",
+  "creatorApplyDialogTitle": "Apply for Verification",
+  "creatorApplyDialogRealName": "Full legal name",
+  "creatorApplyDialogBio": "Short bio (optional)",
+  "creatorApplySubmitted": "Application submitted! We'll review it soon.",
+  "creatorApplyFailed": "Failed to submit application. Please try again.",
+  "profileBecomeCreator": "Become a Verified Creator",
+  "profileBecomeCreatorHint": "Unlock creator tools and earnings",
+  "friendsPlayingNow": "Playing now",
+  "friendsProfileNotFound": "Profile not found.",
+  "friendsReceived": "Received",
+  "friendsRemoveFriend": "Remove friend",
+  "friendsRequests": "Requests",
+  "friendsSearchForFriends": "Search for friends",
+  "friendsSearchHint": "Search by username or name…",
+  "friendsSearchMinChars": "Enter at least 2 characters.",
+  "friendsSentCount": "Sent — {count}",
+  "@friendsSentCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "friendsStatusInGame": "In Game",
+  "friendsStatusOffline": "Offline",
+  "friendsStatusOnline": "Online",
+  "presenceUserIsAway": "Away",
+  "presenceUserIsAwayFull": "User is away",
+  "presenceUserAwaySnackbar": "{name} is away",
+  "@presenceUserAwaySnackbar": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "friendsStatusInRoomLobby": "In room lobby",
+  "friendsStatusPlayingGame": "Playing {game}",
+  "@friendsStatusPlayingGame": {
+    "placeholders": {
+      "game": {
+        "type": "String"
+      }
+    }
+  },
+  "friendsUnblock": "Unblock",
+  "friendsUnblockedNotice": "{name} unblocked",
+  "@friendsUnblockedNotice": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "friendsUnfollow": "Unfollow",
+  "friendsUserFallback": "User",
+  "friendsYouHaveBlocked": "You have blocked this user.",
+  "notifJustNow": "Just now",
+  "notifMinutesAgo": "{count, plural, one{{count}m ago} other{{count}m ago}}",
+  "@notifMinutesAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsAboutUs": "About Us",
+  "settingsPrivacyPolicy": "Privacy Policy",
+  "settingsTermsConditions": "Terms & Conditions",
+  "settingsRequestAccountDeletion": "Request Account Deletion",
+  "settingsRequestAccountDeletionPending": "Deletion request pending review",
+  "deleteAccountDialogTitle": "Delete your account?",
+  "deleteAccountDialogMessage": "This submits a request for our team to review — your account is not deleted immediately. Once approved, your profile, packs, wallet balance, and game history are permanently removed and this cannot be undone.",
+  "deleteAccountDialogConfirm": "Submit Request",
+  "deleteAccountSubmitted": "Your deletion request has been submitted for review.",
+  "deleteAccountAlreadyPending": "You already have a pending deletion request.",
+  "aboutUsTitle": "About Us",
+  "aboutUsVersionLabel": "Version",
+  "aboutUsDescription": "Jma3a is a multiplayer party game app — play Truth or Dare, Never Have I Ever, and meme games with friends and family, anytime, anywhere.",
+  "aboutUsCompanySectionTitle": "Company",
+  "aboutUsCompanyInfo": "Jma3a is developed and operated by the Jma3a team.",
+  "aboutUsContactTitle": "Contact",
+  "aboutUsContactEmail": "support@jma3a.app",
+  "aboutUsWebsiteTitle": "Website",
+  "aboutUsWebsite": "www.jma3a.app",
+  "aboutUsFollowUsTitle": "Follow us",
+  "aboutUsSocialTiktok": "TikTok",
+  "aboutUsSocialSnapchat": "Snapchat",
+  "aboutUsSocialFacebook": "Facebook",
+  "privacyPolicyTitle": "Privacy Policy",
+  "privacyPolicyIntro": "This Privacy Policy explains what information Jma3a collects and how it's used. This is placeholder content — it will be replaced with the full legal policy.",
+  "privacySectionInfoCollected": "Information We Collect",
+  "privacySectionInfoCollectedBody": "Placeholder — describes account details, usage data, and content you create within the app.",
+  "privacySectionHowUsed": "How We Use Your Information",
+  "privacySectionHowUsedBody": "Placeholder — describes how collected information is used to provide and improve the app.",
+  "privacySectionNotifications": "Notifications",
+  "privacySectionNotificationsBody": "Placeholder — describes push notifications and how to manage your preferences.",
+  "privacySectionPurchases": "Purchases",
+  "privacySectionPurchasesBody": "Placeholder — describes how in-app purchases and subscriptions are handled.",
+  "privacySectionUserContent": "User-Generated Content",
+  "privacySectionUserContentBody": "Placeholder — describes ownership and handling of packs, cards, and other content you create.",
+  "privacySectionAccountDeletion": "Account Deletion",
+  "privacySectionAccountDeletionBody": "Placeholder — describes how to request account deletion and what happens to your data.",
+  "privacySectionContact": "Contact Us",
+  "privacySectionContactBody": "Placeholder — contact details for privacy-related questions.",
+  "termsConditionsTitle": "Terms & Conditions",
+  "termsConditionsIntro": "These Terms & Conditions govern your use of Jma3a, a social multiplayer game app. By creating an account or using the app, you agree to these Terms.",
+  "termsSectionAccount": "Accounts",
+  "termsSectionAccountBody": "You must be at least 13 years old to create a Jma3a account. You can sign up using a phone number or email address, which is verified with a one-time code. You are responsible for keeping your account credentials secure and for all activity on your account.",
+  "termsSectionAcceptableUse": "Acceptable Use",
+  "termsSectionAcceptableUseBody": "You agree to use Jma3a respectfully and not to harass, threaten, or abuse other users, impersonate others, or use the app for any unlawful purpose. Violations may result in content removal, feature restrictions, or account suspension.",
+  "termsSectionContent": "Your Content",
+  "termsSectionContentBody": "You retain ownership of the content you create, such as your profile and any packs or cards you make. By posting content in Jma3a, you grant us the right to display and distribute it within the app so other users can see and interact with it. You are responsible for the content you create or share.",
+  "termsSectionCreators": "Creators & Official Accounts",
+  "termsSectionCreatorsBody": "Jma3a offers Verified Creator status to eligible content creators, shown on their profile. Verified status may be granted or removed based on your account's standing and compliance with these Terms. An official Jma3a account may also appear in the app to share announcements and responses.",
+  "termsSectionRoomsGames": "Rooms & Games",
+  "termsSectionRoomsGamesBody": "Jma3a lets you create or join rooms to play multiplayer games with friends and other players, using packs of content provided by Jma3a or created by users. Room hosts and members are expected to follow these Terms while playing.",
+  "termsSectionPremium": "Premium & Premium Plus",
+  "termsSectionPremiumBody": "Jma3a offers optional Premium and Premium Plus subscriptions that unlock additional features and benefits within the app. What each tier includes may change over time; you will be shown what a subscription includes before you purchase it.",
+  "termsSectionWallet": "Wallet & Payments",
+  "termsSectionWalletBody": "Jma3a includes an in-app wallet that can be topped up using supported local payment methods. Creators may earn wallet balance from their content and request withdrawals, subject to Jma3a's review. Payments are also subject to the terms of the payment method provider you use.",
+  "termsSectionModeration": "Reporting & Moderation",
+  "termsSectionModerationBody": "You can report or block other users and content that violates these Terms. Jma3a may review reports and take action, including removing content, restricting features, or suspending or terminating accounts that violate these Terms.",
+  "termsSectionTermination": "Suspension & Termination",
+  "termsSectionTerminationBody": "We may suspend or terminate your account if you violate these Terms, misuse the app, or engage in fraudulent or harmful behavior. You may also request deletion of your account and data at any time.",
+  "termsSectionAvailability": "Service Availability",
+  "termsSectionAvailabilityBody": "Jma3a is provided on an \"as available\" basis. We may modify, suspend, or discontinue parts of the app at any time, and we do not guarantee uninterrupted or error-free service.",
+  "termsSectionChanges": "Changes to These Terms",
+  "termsSectionChangesBody": "We may update these Terms from time to time. Continuing to use Jma3a after changes are published means you accept the updated Terms.",
+  "termsSectionContact": "Contact Us",
+  "termsSectionContactBody": "If you have questions about these Terms, contact us at {email}.",
+  "@termsSectionContactBody": { "placeholders": { "email": { "type": "String" } } },
+  "accountSuspendedDialogTitle": "Account Suspended",
+  "accountSuspendedUntil": "Your account has been suspended until {until}.",
+  "@accountSuspendedUntil": {
+    "placeholders": {
+      "until": {
+        "type": "String"
+      }
+    }
+  },
+  "accountBannedPermanently": "Your account has been suspended from using Jma3a.",
+  "appUpdateAvailableTitle": "Update Available",
+  "appUpdateDefaultTitle": "A new version is available",
+  "appUpdateDefaultMessage": "Please update the app to continue enjoying the latest features.",
+  "appUpdateNowButton": "Update",
+  "appUpdateLaterButton": "Later",
+  "appUpdateBannerMessage": "A new version of Jma3a is available.",
+  "deleteAccountReasonPrompt": "Why are you leaving?",
+  "deleteAccountReasonNoLongerUse": "I no longer use the app",
+  "deleteAccountReasonPrivacy": "Privacy concerns",
+  "deleteAccountReasonFoundAnother": "Found another app",
+  "deleteAccountReasonTooManyNotifications": "Too many notifications",
+  "deleteAccountReasonTechnicalProblems": "Technical problems",
+  "deleteAccountReasonTemporaryBreak": "Temporary break",
+  "deleteAccountReasonOther": "Other",
+  "deleteAccountReasonOtherHint": "Please tell us more (required)",
+  "deleteAccountReasonValidation": "Please select a reason",
+  "deleteAccountOtherDescriptionValidation": "Please describe your reason",
+  "deleteAccountContinueButton": "Continue",
+
+  "tutHomeNavTitle": "Get around",
+  "tutHomeNavBody": "Switch between Rooms, Friends, the Marketplace and your Profile from here.",
+  "tutBrowserCreateTitle": "Create a room",
+  "tutBrowserCreateBody": "Host your own room, pick a game and invite friends to play.",
+  "tutBrowserJoinCodeTitle": "Join with a code",
+  "tutBrowserJoinCodeBody": "Got an invite code? Enter it here to jump into a private room.",
+  "tutBrowserFilterTitle": "Find a game",
+  "tutBrowserFilterBody": "Filter public rooms by game type to find one that's open to join.",
+  "tutCreateNameTitle": "Name your room",
+  "tutCreateNameBody": "Give your room a name so friends can recognise it.",
+  "tutCreateVisibilityTitle": "Public or private",
+  "tutCreateVisibilityBody": "Public rooms show in Browse for everyone. Private rooms are invite-only.",
+  "tutCreateSpectatorsTitle": "Spectators",
+  "tutCreateSpectatorsBody": "Let people watch without playing. Spectators never affect the game.",
+  "tutCreateButtonTitle": "Create & host",
+  "tutCreateButtonBody": "You become the host — you control the room and start the game.",
+  "tutLobbyManageTitle": "Manage your room",
+  "tutLobbyManageBody": "As host you can close the room to new players, then reopen it later — without ending the game.",
+  "tutLobbyStartTitle": "Start the game",
+  "tutLobbyStartBody": "Only the host starts the game. Make sure everyone is ready first.",
+  "tutLobbyReadyTitle": "Ready up",
+  "tutLobbyReadyBody": "Tap to tell the host you're ready. The game starts once everyone is.",
+  "tutMembersTitle": "Manage players",
+  "tutMembersBody": "As host, tap a player to mute, kick or ban them. Muting stops them acting; kicking removes them; banning blocks their return.",
+  "tutTodTitle": "Truth or Dare",
+  "tutTodBody": "The current player is shown here. They pick Truth or Dare and complete it, then play passes on.",
+  "tutNhieTitle": "Your turn to answer",
+  "tutNhieBody": "Read the statement, then cast your answer below. Results show once everyone has answered.",
+  "tutNhieSpectatorBody": "Read along and watch how everyone answers — spectators don't vote.",
+  "tutMemeTitle": "React to the meme",
+  "tutMemeBody": "Pick a reaction or sticker for this meme and submit. The funniest picks win the round.",
+  "tutReplayTitle": "Replay tutorials",
+  "tutReplaySubtitle": "Show the in-app guides again",
+  "tutReplayDone": "Tutorials reset — you'll see them again as you go.",
+
+  "lobbyAnonymousSpectator": "Anonymous spectator",
+  "packIssuesHeader": "Fix these before submitting:",
+  "packIssueTitle": "Add a name for every selected language",
+  "packIssueCards": "Add at least 20 cards",
+  "packIssueLanguage": "Every card needs content in all selected languages",
+  "packIssuePrice": "Set a price of at least {min} MRU",
+  "@packIssuePrice": { "placeholders": { "min": { "type": "int" } } },
+  "packIssueBalance": "Truth or Dare packs need an equal number of Truth and Dare cards",
+  "packIssuePunishments": "Add at least 10 punishments, or remove them all",
+  "packIssueTerms": "Accept the Pack Creation Terms",
+  "packTermsAgreePrefix": "I agree to the ",
+  "packTermsAgreeLink": "Pack Creation Terms",
+  "packTermsTitle": "Pack Creation Terms",
+  "packTermsBody": "By submitting a pack you confirm that: you own or have the right to share all content; the content does not infringe anyone's rights or contain illegal, hateful, or harassing material; you accept Jma3a's content review and may have the pack rejected or removed; and paid packs are subject to the platform's revenue and refund policies. Packs must meet the minimum price and, for Truth or Dare, contain an equal number of Truth and Dare cards.",
+  "packMinPriceLabel": "Minimum price is {min} MRU",
+  "@packMinPriceLabel": { "placeholders": { "min": { "type": "int" } } },
+  "packTruthDareBalanceHint": "Truth or Dare packs need equal Truth and Dare cards. You have {truth} Truth and {dare} Dare.",
+  "@packTruthDareBalanceHint": { "placeholders": { "truth": { "type": "int" }, "dare": { "type": "int" } } },
+
+  "exploreAddFriend": "Add Friend",
+  "exploreEmptyHint": "Check back soon — new people join the discovery pool as the community grows.",
+  "exploreEmptyTitle": "No one to discover yet",
+  "exploreLoadFailed": "Couldn't load people to discover.",
+  "exploreRequestSent": "Request Sent",
+  "exploreSearchHint": "Search by username or name…",
+  "exploreSubtitle": "Discover players ranked by reputation",
+  "exploreTabLabel": "Explore",
+  "honestyReasonHint": "What made this feel dishonest? (minimum 3 characters)",
+  "honestyReasonSheetTitle": "Why wasn't this honest?",
+  "honestyReasonsCount": "{count, plural, =1{1 player marked this dishonest} other{{count} players marked this dishonest}}",
+  "@honestyReasonsCount": { "placeholders": { "count": { "type": "int" } } },
+
+  "profileStreakActive": "Streak active",
+  "profileStreakInactive": "Streak inactive — play today to keep it going",
+
+  "officialResponsesTitle": "Official Responses",
+  "officialResponsesReviews": "Reviews",
+  "officialResponsesWarnings": "Warnings",
+  "officialResponsesBansAndSuspensions": "Bans & Suspensions",
+  "officialResponsesRequestsAndDecisions": "Requests & Decisions",
+  "officialResponsesEmpty": "Nothing here yet",
+  "officialResponseExpiresOn": "Expires {date}",
+  "@officialResponseExpiresOn": { "placeholders": { "date": { "type": "String" } } },
+  "walletDepositsUnavailable": "Deposits are temporarily unavailable.",
+  "walletWithdrawalsUnavailable": "Withdrawals are temporarily unavailable.",
+  "walletFinanceServiceUnavailable": "Finance service temporarily unavailable",
+
+  "authIdentifierLabel": "Email or phone number",
+  "authIdentifierHint": "you@example.com or 12345678",
+  "authIdentifierRequired": "Enter your email or phone number",
+  "authPasswordLabel": "Password",
+  "authPasswordHint": "Enter your password",
+  "authPasswordRequired": "Password is required",
+  "authPasswordTooShort": "Password must be at least 8 characters",
+  "authPasswordTooLong": "Password must be at most 72 characters",
+  "authPasswordNeedsLetterAndDigit": "Password must contain at least one letter and one digit",
+  "authPasswordConfirmationLabel": "Confirm password",
+  "authPasswordConfirmationHint": "Re-enter your password",
+  "authPasswordMismatch": "Passwords don't match",
+  "authShowPassword": "Show password",
+  "authHidePassword": "Hide password",
+  "authLogIn": "Log in",
+  "authForgotPassword": "Forgot password?",
+  "authInvalidCredentials": "Incorrect email/phone or password.",
+  "authSetPasswordTitle": "Set a password",
+  "authSetPasswordSubtitle": "Create a password so you can log in without a code next time",
+  "authSetPasswordSubmit": "Start playing",
+  "authResetPasswordTitle": "Reset your password",
+  "authResetPasswordSubtitle": "Choose a new password for your account",
+  "authResetPasswordSubmit": "Reset password",
+  "authPasswordSetSuccess": "Password set successfully",
+  "authPasswordResetSuccess": "Password reset successfully",
+  "authForgotPasswordTitle": "Forgot password",
+  "authForgotPasswordSubtitle": "Enter your email or phone number and we'll send you a code",
+  "authForgotPasswordSendCode": "Send code",
+  "authBackToLogin": "Back to login",
+
+  "authMethodPhone": "Phone",
+  "authMethodPhoneHint": "+222 ...",
+  "authMethodEmail": "Email",
+  "authMethodEmailHint": "name@email.com",
+  "authSignupTitle": "Join Jma3a 🎉",
+  "authSignupSubtitle": "How would you like to sign up?",
+  "authContinue": "Continue",
+  "authAlreadyHaveAccount": "Already have an account?",
+  "authPhoneInvalid": "Enter your 8-digit Mauritanian number",
+  "authWelcomeBack": "Welcome back 👋",
+  "authReadyToPlay": "Ready to play?",
+  "authLegacyNoPasswordTitle": "No password yet",
+  "authLegacyNoPasswordBody": "This account doesn't have a password yet. Verify with a one-time code to create one.",
+  "authVerifyWithOtp": "Verify with OTP",
+  "authDontHaveAccount": "Don't have an account?",
+  "authCreateAccount": "Create account",
+
+  "passwordSettingsTitle": "Password & Security",
+  "passwordSettingsUpdateTitle": "Update Password",
+  "passwordSettingsUpdateSubtitle": "Change your password securely.",
+  "passwordSettingsVerifyButton": "Verify Current Password",
+  "passwordSettingsChangeButton": "Change Password",
+  "passwordSettingsOtpNotice": "We'll send a verification code to confirm it's you before applying this change.",
+  "passwordSettingsCurrentLabel": "Current password",
+  "passwordSettingsNewLabel": "New password",
+  "passwordSettingsConfirmLabel": "Confirm new password",
+  "passwordSettingsNoPasswordTitle": "Password",
+  "passwordSettingsNoPasswordBody": "You haven't set a password yet.",
+  "passwordSettingsHasPasswordBody": "Your password is set.",
+  "passwordSettingsSetButton": "Set password with OTP",
+  "passwordSettingsChangeSuccess": "Password changed successfully",
+
+  "settingsPassword": "Password & Security",
+  "settingsPasswordSubtitleReady": "Tap to change your password",
+  "settingsPasswordSubtitleNotSet": "You haven't set a password yet",
+
+  "authAccountAlreadyExists": "An account with this phone/email already exists. Please log in."
 }

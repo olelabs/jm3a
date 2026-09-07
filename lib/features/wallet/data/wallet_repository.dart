@@ -697,6 +697,7 @@ import 'package:uuid/uuid.dart';
 import '../../../core/data/base_repository.dart';
 import '../../../core/errors/failures.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/utils/app_logger.dart';
 import '../domain/wallet_entity.dart';
 
 export '../domain/wallet_entity.dart';
@@ -809,26 +810,24 @@ class WalletRepository extends BaseRepository {
     },
   );
 
-  // ── Payment methods (admin-managed, fetched dynamically) ──────────────────
+  // ── Payment methods (currently active finance employee's own numbers) ─────
+  // Only the shift-active employee's configured methods are ever shown —
+  // get_active_finance_methods() returns an empty list when nobody is on
+  // shift, which the deposit/withdrawal screens render as a "temporarily
+  // unavailable" state rather than any stale/previous employee's numbers.
 
   Future<List<PaymentMethodEntity>> getPaymentMethods({
     bool forDeposit = true,
   }) => guardedCall(
     operationName: 'getPaymentMethods',
     operation: () async {
-      var q = _supabase
-          .from('payment_methods_config')
-          .select()
-          .eq('is_active', true);
-
-      if (forDeposit) {
-        q = q.eq('supports_deposit', true);
-      } else {
-        q = q.eq('supports_withdrawal', true);
-      }
-
-      final rows = await q.order('sort_order');
-      return rows.map(_rowToPaymentMethod).toList();
+      final rows = await _supabase.rpc(
+        'get_active_finance_methods',
+        params: {'p_for_deposit': forDeposit},
+      );
+      return (rows as List)
+          .map((r) => _rowToPaymentMethod(Map<String, dynamic>.from(r as Map)))
+          .toList();
     },
   );
 
@@ -866,16 +865,23 @@ class WalletRepository extends BaseRepository {
         );
       }
 
+      final payload = {
+        'amount_mru': amountMru,
+        'payment_method_id': paymentMethodId,
+        'phone_number': phoneNumber.trim(),
+        'payment_reference': paymentReference.trim(),
+        'notes': notes,
+        'idempotency_key': _uuid.v4(),
+      };
+      // No auth token, no PII beyond what the user just typed into this
+      // form (the destination phone/reference are non-secret by design —
+      // an admin already sees them on approval) — safe to log unmasked
+      // when tracing a deposit-request failure end-to-end.
+      AppLogger.debug('requestDeposit payload: $payload');
+
       final resp = await _api.post<Map<String, dynamic>>(
         '/v1/wallet/deposit-request',
-        data: {
-          'amount_mru': amountMru,
-          'payment_method_id': paymentMethodId,
-          'phone_number': phoneNumber.trim(),
-          'payment_reference': paymentReference.trim(),
-          'notes': notes,
-          'idempotency_key': _uuid.v4(),
-        },
+        data: payload,
       );
 
       final data = resp.data!['data'] as Map<String, dynamic>;
@@ -1097,5 +1103,6 @@ class WalletRepository extends BaseRepository {
         minAmountMru: r['min_amount_mru'] as int?,
         maxAmountMru: r['max_amount_mru'] as int?,
         sortOrder: r['sort_order'] as int? ?? 0,
+        paymentReferenceMaxLength: r['payment_reference_max_length'] as int?,
       );
 }

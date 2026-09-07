@@ -1,2611 +1,3 @@
-// // // // // import 'package:flutter/material.dart';
-// // // // // import 'package:provider/provider.dart';
-
-// // // // // import '../../../../core/extensions/context_ext.dart';
-// // // // // import '../../../../core/providers/auth_provider.dart';
-// // // // // import '../../../../core/services/subscription_service.dart';
-
-// // // // // class PremiumScreen extends StatefulWidget {
-// // // // //   const PremiumScreen({super.key});
-
-// // // // //   @override
-// // // // //   State<PremiumScreen> createState() => _PremiumScreenState();
-// // // // // }
-
-// // // // // class _PremiumScreenState extends State<PremiumScreen> {
-// // // // //   bool _loading = false;
-// // // // //   String? _activeSubscriptionId;
-
-// // // // //   static const Color _gold = Color(0xFFF5A623);
-// // // // //   static const Color _platinum = Color(0xFF7B68EE);
-
-// // // // //   @override
-// // // // //   void initState() {
-// // // // //     super.initState();
-// // // // //     _loadStatus();
-// // // // //   }
-
-// // // // //   Future<void> _loadStatus() async {
-// // // // //     final uid = context.read<AuthProvider>().currentUser?.id;
-// // // // //     if (uid == null) return;
-// // // // //     final sub = await SubscriptionService.instance.getActiveSubscription(uid);
-// // // // //     if (mounted) setState(() => _activeSubscriptionId = sub?['id'] as String?);
-// // // // //   }
-
-// // // // //   Future<void> _purchase(_PremiumPlan plan) async {
-// // // // //     if (_loading) return;
-// // // // //     setState(() => _loading = true);
-// // // // //     try {
-// // // // //       ScaffoldMessenger.of(context).showSnackBar(
-// // // // //         const SnackBar(content: Text('In-app purchase coming soon!')),
-// // // // //       );
-// // // // //     } finally {
-// // // // //       if (mounted) setState(() => _loading = false);
-// // // // //     }
-// // // // //   }
-
-// // // // //   @override
-// // // // //   Widget build(BuildContext context) {
-// // // // //     final user = context.watch<AuthProvider>().currentUser;
-// // // // //     final isPremium = user?.isPremiumActive ?? false;
-// // // // //     final theme = context.theme;
-
-// // // // //     return Scaffold(
-// // // // //       appBar: AppBar(
-// // // // //         title: Row(
-// // // // //           mainAxisSize: MainAxisSize.min,
-// // // // //           children: [
-// // // // //             Text(
-// // // // //               'Premium',
-// // // // //               style: theme.textTheme.titleLarge?.copyWith(
-// // // // //                 fontWeight: FontWeight.w800,
-// // // // //               ),
-// // // // //             ),
-// // // // //             const SizedBox(width: 6),
-// // // // //             Container(
-// // // // //               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-// // // // //               decoration: BoxDecoration(
-// // // // //                 gradient: const LinearGradient(
-// // // // //                   colors: [_gold, Color(0xFFFF8C00)],
-// // // // //                 ),
-// // // // //                 borderRadius: BorderRadius.circular(12),
-// // // // //               ),
-// // // // //               child: const Text(
-// // // // //                 '✦',
-// // // // //                 style: TextStyle(color: Colors.white, fontSize: 14),
-// // // // //               ),
-// // // // //             ),
-// // // // //           ],
-// // // // //         ),
-// // // // //         centerTitle: true,
-// // // // //       ),
-// // // // //       body: SingleChildScrollView(
-// // // // //         padding: const EdgeInsets.all(20),
-// // // // //         child: Column(
-// // // // //           crossAxisAlignment: CrossAxisAlignment.stretch,
-// // // // //           children: [
-// // // // //             if (isPremium) _ActiveBanner(user: user!) else _HeroBanner(),
-// // // // //             const SizedBox(height: 24),
-// // // // //             ...const [
-// // // // //               _PremiumPlan(
-// // // // //                 id: 'premium_monthly',
-// // // // //                 label: 'Monthly',
-// // // // //                 tier: 'premium',
-// // // // //                 price: '9.99 MRU',
-// // // // //                 period: 'month',
-// // // // //                 isPopular: false,
-// // // // //               ),
-// // // // //               _PremiumPlan(
-// // // // //                 id: 'premium_yearly',
-// // // // //                 label: 'Yearly',
-// // // // //                 tier: 'premium',
-// // // // //                 price: '79.99 MRU',
-// // // // //                 period: 'year',
-// // // // //                 isPopular: true,
-// // // // //                 savings: 'Save 33%',
-// // // // //               ),
-// // // // //               _PremiumPlan(
-// // // // //                 id: 'premium_plus_monthly',
-// // // // //                 label: 'Premium Plus',
-// // // // //                 tier: 'premium_plus',
-// // // // //                 price: '19.99 MRU',
-// // // // //                 period: 'month',
-// // // // //                 isPopular: false,
-// // // // //               ),
-// // // // //             ].map(
-// // // // //               (plan) => _PlanCard(
-// // // // //                 plan: plan,
-// // // // //                 isActive: isPremium && user?.premiumTier == plan.tier,
-// // // // //                 onTap: () => _purchase(plan),
-// // // // //                 loading: _loading,
-// // // // //               ),
-// // // // //             ),
-// // // // //             const SizedBox(height: 24),
-// // // // //             _FeatureTable(),
-// // // // //             const SizedBox(height: 20),
-// // // // //             Text(
-// // // // //               'Subscriptions auto-renew unless cancelled 24h before renewal. '
-// // // // //               'Manage in your account settings.',
-// // // // //               style: theme.textTheme.bodySmall?.copyWith(
-// // // // //                 color: theme.colorScheme.onSurfaceVariant,
-// // // // //               ),
-// // // // //               textAlign: TextAlign.center,
-// // // // //             ),
-// // // // //           ],
-// // // // //         ),
-// // // // //       ),
-// // // // //     );
-// // // // //   }
-// // // // // }
-
-// // // // // class _HeroBanner extends StatelessWidget {
-// // // // //   const _HeroBanner();
-// // // // //   @override
-// // // // //   Widget build(BuildContext context) {
-// // // // //     return Container(
-// // // // //       padding: const EdgeInsets.all(24),
-// // // // //       decoration: BoxDecoration(
-// // // // //         gradient: const LinearGradient(
-// // // // //           colors: [Color(0xFFF5A623), Color(0xFFFF6B35)],
-// // // // //           begin: Alignment.topLeft,
-// // // // //           end: Alignment.bottomRight,
-// // // // //         ),
-// // // // //         borderRadius: BorderRadius.circular(20),
-// // // // //       ),
-// // // // //       child: Column(
-// // // // //         children: [
-// // // // //           const Text('✦', style: TextStyle(color: Colors.white, fontSize: 48)),
-// // // // //           const SizedBox(height: 12),
-// // // // //           const Text(
-// // // // //             'Unlock Premium',
-// // // // //             style: TextStyle(
-// // // // //               color: Colors.white,
-// // // // //               fontSize: 24,
-// // // // //               fontWeight: FontWeight.w900,
-// // // // //             ),
-// // // // //           ),
-// // // // //           const SizedBox(height: 8),
-// // // // //           Text(
-// // // // //             'Get hidden spectator mode, anonymous chat, proof replays, premium badge, and more.',
-// // // // //             style: TextStyle(
-// // // // //               color: Colors.white.withOpacity(0.9),
-// // // // //               fontSize: 14,
-// // // // //               height: 1.4,
-// // // // //             ),
-// // // // //             textAlign: TextAlign.center,
-// // // // //           ),
-// // // // //         ],
-// // // // //       ),
-// // // // //     );
-// // // // //   }
-// // // // // }
-
-// // // // // class _ActiveBanner extends StatelessWidget {
-// // // // //   const _ActiveBanner({required this.user});
-// // // // //   final dynamic user;
-// // // // //   @override
-// // // // //   Widget build(BuildContext context) {
-// // // // //     final exp = user.premiumExpiresAt;
-// // // // //     final label = exp != null
-// // // // //         ? 'Expires ${exp.day}/${exp.month}/${exp.year}'
-// // // // //         : 'Active — no expiry';
-// // // // //     return Container(
-// // // // //       padding: const EdgeInsets.all(20),
-// // // // //       decoration: BoxDecoration(
-// // // // //         color: Colors.green.shade50,
-// // // // //         borderRadius: BorderRadius.circular(16),
-// // // // //         border: Border.all(color: Colors.green.shade300),
-// // // // //       ),
-// // // // //       child: Row(
-// // // // //         children: [
-// // // // //           const Icon(Icons.verified_rounded, color: Colors.green, size: 36),
-// // // // //           const SizedBox(width: 12),
-// // // // //           Column(
-// // // // //             crossAxisAlignment: CrossAxisAlignment.start,
-// // // // //             children: [
-// // // // //               Text(
-// // // // //                 'Premium Active ✦',
-// // // // //                 style: TextStyle(
-// // // // //                   fontWeight: FontWeight.w700,
-// // // // //                   color: Colors.green.shade800,
-// // // // //                   fontSize: 16,
-// // // // //                 ),
-// // // // //               ),
-// // // // //               Text(
-// // // // //                 label,
-// // // // //                 style: TextStyle(color: Colors.green.shade600, fontSize: 13),
-// // // // //               ),
-// // // // //             ],
-// // // // //           ),
-// // // // //         ],
-// // // // //       ),
-// // // // //     );
-// // // // //   }
-// // // // // }
-
-// // // // // class _PremiumPlan {
-// // // // //   const _PremiumPlan({
-// // // // //     required this.id,
-// // // // //     required this.label,
-// // // // //     required this.tier,
-// // // // //     required this.price,
-// // // // //     required this.period,
-// // // // //     required this.isPopular,
-// // // // //     this.savings,
-// // // // //   });
-// // // // //   final String id, label, tier, price, period;
-// // // // //   final bool isPopular;
-// // // // //   final String? savings;
-// // // // // }
-
-// // // // // class _PlanCard extends StatelessWidget {
-// // // // //   const _PlanCard({
-// // // // //     required this.plan,
-// // // // //     required this.isActive,
-// // // // //     required this.onTap,
-// // // // //     required this.loading,
-// // // // //   });
-// // // // //   final _PremiumPlan plan;
-// // // // //   final bool isActive;
-// // // // //   final VoidCallback onTap;
-// // // // //   final bool loading;
-
-// // // // //   Color get _accent => plan.tier == 'premium_plus'
-// // // // //       ? const Color(0xFF7B68EE)
-// // // // //       : const Color(0xFFF5A623);
-
-// // // // //   @override
-// // // // //   Widget build(BuildContext context) {
-// // // // //     final theme = context.theme;
-// // // // //     return Padding(
-// // // // //       padding: const EdgeInsets.only(bottom: 12),
-// // // // //       child: Stack(
-// // // // //         children: [
-// // // // //           Container(
-// // // // //             decoration: BoxDecoration(
-// // // // //               color: isActive
-// // // // //                   ? _accent.withOpacity(0.08)
-// // // // //                   : theme.colorScheme.surface,
-// // // // //               borderRadius: BorderRadius.circular(16),
-// // // // //               border: Border.all(
-// // // // //                 color: isActive ? _accent : theme.colorScheme.outlineVariant,
-// // // // //                 width: isActive ? 2 : 1,
-// // // // //               ),
-// // // // //             ),
-// // // // //             child: ListTile(
-// // // // //               contentPadding: const EdgeInsets.symmetric(
-// // // // //                 horizontal: 16,
-// // // // //                 vertical: 8,
-// // // // //               ),
-// // // // //               title: Text(
-// // // // //                 plan.label,
-// // // // //                 style: theme.textTheme.titleMedium?.copyWith(
-// // // // //                   fontWeight: FontWeight.w700,
-// // // // //                 ),
-// // // // //               ),
-// // // // //               subtitle: Text(
-// // // // //                 '${plan.price} / ${plan.period}',
-// // // // //                 style: theme.textTheme.bodyMedium,
-// // // // //               ),
-// // // // //               trailing: isActive
-// // // // //                   ? Chip(
-// // // // //                       label: const Text('Active'),
-// // // // //                       backgroundColor: Colors.green.shade100,
-// // // // //                       labelStyle: TextStyle(
-// // // // //                         color: Colors.green.shade700,
-// // // // //                         fontWeight: FontWeight.w700,
-// // // // //                       ),
-// // // // //                     )
-// // // // //                   : FilledButton(
-// // // // //                       style: FilledButton.styleFrom(backgroundColor: _accent),
-// // // // //                       onPressed: loading ? null : onTap,
-// // // // //                       child: const Text('Get'),
-// // // // //                     ),
-// // // // //             ),
-// // // // //           ),
-// // // // //           if (plan.isPopular)
-// // // // //             Positioned(
-// // // // //               top: 0,
-// // // // //               right: 16,
-// // // // //               child: Container(
-// // // // //                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-// // // // //                 decoration: BoxDecoration(
-// // // // //                   color: _accent,
-// // // // //                   borderRadius: const BorderRadius.vertical(
-// // // // //                     bottom: Radius.circular(8),
-// // // // //                   ),
-// // // // //                 ),
-// // // // //                 child: Text(
-// // // // //                   plan.savings ?? 'Popular',
-// // // // //                   style: const TextStyle(
-// // // // //                     color: Colors.white,
-// // // // //                     fontSize: 11,
-// // // // //                     fontWeight: FontWeight.w700,
-// // // // //                   ),
-// // // // //                 ),
-// // // // //               ),
-// // // // //             ),
-// // // // //         ],
-// // // // //       ),
-// // // // //     );
-// // // // //   }
-// // // // // }
-
-// // // // // class _FeatureTable extends StatelessWidget {
-// // // // //   const _FeatureTable();
-
-// // // // //   static const _rows = [
-// // // // //     ('Hidden spectator mode', true, true),
-// // // // //     ('Anonymous chat', true, true),
-// // // // //     ('3× proof replays', true, true),
-// // // // //     ('Premium badge ✦', true, true),
-// // // // //     ('30-day proof history', true, true),
-// // // // //     ('Priority support', false, true),
-// // // // //     ('Exclusive packs', false, true),
-// // // // //   ];
-
-// // // // //   @override
-// // // // //   Widget build(BuildContext context) {
-// // // // //     final theme = context.theme;
-// // // // //     return Column(
-// // // // //       crossAxisAlignment: CrossAxisAlignment.stretch,
-// // // // //       children: [
-// // // // //         Text(
-// // // // //           'What you get',
-// // // // //           style: theme.textTheme.titleMedium?.copyWith(
-// // // // //             fontWeight: FontWeight.w700,
-// // // // //           ),
-// // // // //         ),
-// // // // //         const SizedBox(height: 12),
-// // // // //         Table(
-// // // // //           columnWidths: const {
-// // // // //             0: FlexColumnWidth(),
-// // // // //             1: FixedColumnWidth(64),
-// // // // //             2: FixedColumnWidth(84),
-// // // // //           },
-// // // // //           children: [
-// // // // //             TableRow(
-// // // // //               decoration: BoxDecoration(
-// // // // //                 color: theme.colorScheme.surfaceContainerHighest,
-// // // // //                 borderRadius: BorderRadius.circular(8),
-// // // // //               ),
-// // // // //               children: [
-// // // // //                 const Padding(
-// // // // //                   padding: EdgeInsets.all(10),
-// // // // //                   child: Text(
-// // // // //                     'Feature',
-// // // // //                     style: TextStyle(fontWeight: FontWeight.w700),
-// // // // //                   ),
-// // // // //                 ),
-// // // // //                 const Padding(
-// // // // //                   padding: EdgeInsets.all(10),
-// // // // //                   child: Text(
-// // // // //                     'Premium',
-// // // // //                     style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
-// // // // //                     textAlign: TextAlign.center,
-// // // // //                   ),
-// // // // //                 ),
-// // // // //                 const Padding(
-// // // // //                   padding: EdgeInsets.all(10),
-// // // // //                   child: Text(
-// // // // //                     'Plus',
-// // // // //                     style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
-// // // // //                     textAlign: TextAlign.center,
-// // // // //                   ),
-// // // // //                 ),
-// // // // //               ],
-// // // // //             ),
-// // // // //             ..._rows.map(
-// // // // //               (r) => TableRow(
-// // // // //                 children: [
-// // // // //                   Padding(
-// // // // //                     padding: const EdgeInsets.symmetric(
-// // // // //                       horizontal: 10,
-// // // // //                       vertical: 8,
-// // // // //                     ),
-// // // // //                     child: Text(r.$1, style: theme.textTheme.bodySmall),
-// // // // //                   ),
-// // // // //                   Center(
-// // // // //                     child: Padding(
-// // // // //                       padding: const EdgeInsets.symmetric(vertical: 8),
-// // // // //                       child: r.$2
-// // // // //                           ? const Icon(
-// // // // //                               Icons.check_circle_rounded,
-// // // // //                               color: Color(0xFFF5A623),
-// // // // //                               size: 18,
-// // // // //                             )
-// // // // //                           : const Icon(
-// // // // //                               Icons.remove,
-// // // // //                               size: 14,
-// // // // //                               color: Colors.grey,
-// // // // //                             ),
-// // // // //                     ),
-// // // // //                   ),
-// // // // //                   Center(
-// // // // //                     child: Padding(
-// // // // //                       padding: const EdgeInsets.symmetric(vertical: 8),
-// // // // //                       child: r.$3
-// // // // //                           ? const Icon(
-// // // // //                               Icons.check_circle_rounded,
-// // // // //                               color: Color(0xFF7B68EE),
-// // // // //                               size: 18,
-// // // // //                             )
-// // // // //                           : const Icon(
-// // // // //                               Icons.remove,
-// // // // //                               size: 14,
-// // // // //                               color: Colors.grey,
-// // // // //                             ),
-// // // // //                     ),
-// // // // //                   ),
-// // // // //                 ],
-// // // // //               ),
-// // // // //             ),
-// // // // //           ],
-// // // // //         ),
-// // // // //       ],
-// // // // //     );
-// // // // //   }
-// // // // // }
-
-// // // // import 'package:flutter/material.dart';
-// // // // import 'package:provider/provider.dart';
-
-// // // // import '../../../../core/extensions/context_ext.dart';
-// // // // import '../../../../core/providers/auth_provider.dart';
-// // // // import '../../../../core/services/subscription_service.dart';
-
-// // // // class PremiumScreen extends StatefulWidget {
-// // // //   const PremiumScreen({super.key});
-
-// // // //   @override
-// // // //   State<PremiumScreen> createState() => _PremiumScreenState();
-// // // // }
-
-// // // // class _PremiumScreenState extends State<PremiumScreen> {
-// // // //   bool _loading = false;
-// // // //   String? _activeSubscriptionId;
-
-// // // //   static const Color _gold = Color(0xFFF5A623);
-// // // //   static const Color _platinum = Color(0xFF7B68EE);
-
-// // // //   @override
-// // // //   void initState() {
-// // // //     super.initState();
-// // // //     _loadStatus();
-// // // //   }
-
-// // // //   Future<void> _loadStatus() async {
-// // // //     final uid = context.read<AuthProvider>().currentUser?.id;
-// // // //     if (uid == null) return;
-// // // //     final sub = await SubscriptionService.instance.getActiveSubscription(uid);
-// // // //     if (mounted) setState(() => _activeSubscriptionId = sub?['id'] as String?);
-// // // //   }
-
-// // // //   Future<void> _purchase(_PremiumPlan plan) async {
-// // // //     if (_loading) return;
-// // // //     setState(() => _loading = true);
-// // // //     try {
-// // // //       ScaffoldMessenger.of(context).showSnackBar(
-// // // //         const SnackBar(content: Text('In-app purchase coming soon!')),
-// // // //       );
-// // // //     } finally {
-// // // //       if (mounted) setState(() => _loading = false);
-// // // //     }
-// // // //   }
-
-// // // //   @override
-// // // //   Widget build(BuildContext context) {
-// // // //     final user = context.watch<AuthProvider>().currentUser;
-// // // //     final isPremium = user?.isPremiumActive ?? false;
-// // // //     final theme = context.theme;
-
-// // // //     return Scaffold(
-// // // //       appBar: AppBar(
-// // // //         title: Row(
-// // // //           mainAxisSize: MainAxisSize.min,
-// // // //           children: [
-// // // //             Text(
-// // // //               'Premium',
-// // // //               style: theme.textTheme.titleLarge?.copyWith(
-// // // //                 fontWeight: FontWeight.w800,
-// // // //               ),
-// // // //             ),
-// // // //             const SizedBox(width: 6),
-// // // //             Container(
-// // // //               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-// // // //               decoration: BoxDecoration(
-// // // //                 gradient: const LinearGradient(
-// // // //                   colors: [_gold, Color(0xFFFF8C00)],
-// // // //                 ),
-// // // //                 borderRadius: BorderRadius.circular(12),
-// // // //               ),
-// // // //               child: const Text(
-// // // //                 '✦',
-// // // //                 style: TextStyle(color: Colors.white, fontSize: 14),
-// // // //               ),
-// // // //             ),
-// // // //           ],
-// // // //         ),
-// // // //         centerTitle: true,
-// // // //       ),
-// // // //       body: SingleChildScrollView(
-// // // //         padding: const EdgeInsets.all(20),
-// // // //         child: Column(
-// // // //           crossAxisAlignment: CrossAxisAlignment.stretch,
-// // // //           children: [
-// // // //             if (isPremium) _ActiveBanner(user: user!) else _HeroBanner(),
-// // // //             const SizedBox(height: 24),
-// // // //             ...const [
-// // // //               _PremiumPlan(
-// // // //                 id: 'premium_monthly',
-// // // //                 label: 'Monthly',
-// // // //                 tier: 'premium',
-// // // //                 price: '9.99 MRU',
-// // // //                 period: 'month',
-// // // //                 isPopular: false,
-// // // //               ),
-// // // //               _PremiumPlan(
-// // // //                 id: 'premium_yearly',
-// // // //                 label: 'Yearly',
-// // // //                 tier: 'premium',
-// // // //                 price: '79.99 MRU',
-// // // //                 period: 'year',
-// // // //                 isPopular: true,
-// // // //                 savings: 'Save 33%',
-// // // //               ),
-// // // //               _PremiumPlan(
-// // // //                 id: 'premium_plus_monthly',
-// // // //                 label: 'Premium Plus',
-// // // //                 tier: 'premium_plus',
-// // // //                 price: '19.99 MRU',
-// // // //                 period: 'month',
-// // // //                 isPopular: false,
-// // // //               ),
-// // // //             ].map(
-// // // //               (plan) => _PlanCard(
-// // // //                 plan: plan,
-// // // //                 isActive: isPremium && user?.premiumTier == plan.tier,
-// // // //                 onTap: () => _purchase(plan),
-// // // //                 loading: _loading,
-// // // //               ),
-// // // //             ),
-// // // //             const SizedBox(height: 24),
-// // // //             _FeatureTable(),
-// // // //             const SizedBox(height: 20),
-// // // //             Text(
-// // // //               'Subscriptions auto-renew unless cancelled 24h before renewal. '
-// // // //               'Manage in your account settings.',
-// // // //               style: theme.textTheme.bodySmall?.copyWith(
-// // // //                 color: theme.colorScheme.onSurfaceVariant,
-// // // //               ),
-// // // //               textAlign: TextAlign.center,
-// // // //             ),
-// // // //           ],
-// // // //         ),
-// // // //       ),
-// // // //     );
-// // // //   }
-// // // // }
-
-// // // // class _HeroBanner extends StatelessWidget {
-// // // //   const _HeroBanner();
-// // // //   @override
-// // // //   Widget build(BuildContext context) {
-// // // //     return Container(
-// // // //       padding: const EdgeInsets.all(24),
-// // // //       decoration: BoxDecoration(
-// // // //         gradient: const LinearGradient(
-// // // //           colors: [Color(0xFFF5A623), Color(0xFFFF6B35)],
-// // // //           begin: Alignment.topLeft,
-// // // //           end: Alignment.bottomRight,
-// // // //         ),
-// // // //         borderRadius: BorderRadius.circular(20),
-// // // //       ),
-// // // //       child: Column(
-// // // //         children: [
-// // // //           const Text('✦', style: TextStyle(color: Colors.white, fontSize: 48)),
-// // // //           const SizedBox(height: 12),
-// // // //           const Text(
-// // // //             'Unlock Premium',
-// // // //             style: TextStyle(
-// // // //               color: Colors.white,
-// // // //               fontSize: 24,
-// // // //               fontWeight: FontWeight.w900,
-// // // //             ),
-// // // //           ),
-// // // //           const SizedBox(height: 8),
-// // // //           Text(
-// // // //             'Get hidden spectator mode, anonymous chat, proof replays, premium badge, and more.',
-// // // //             style: TextStyle(
-// // // //               color: Colors.white.withOpacity(0.9),
-// // // //               fontSize: 14,
-// // // //               height: 1.4,
-// // // //             ),
-// // // //             textAlign: TextAlign.center,
-// // // //           ),
-// // // //         ],
-// // // //       ),
-// // // //     );
-// // // //   }
-// // // // }
-
-// // // // class _ActiveBanner extends StatelessWidget {
-// // // //   const _ActiveBanner({required this.user});
-// // // //   final dynamic user;
-// // // //   @override
-// // // //   Widget build(BuildContext context) {
-// // // //     final exp = user.premiumExpiresAt;
-// // // //     final label = exp != null
-// // // //         ? 'Expires ${exp.day}/${exp.month}/${exp.year}'
-// // // //         : 'Active — no expiry';
-// // // //     return Container(
-// // // //       padding: const EdgeInsets.all(20),
-// // // //       decoration: BoxDecoration(
-// // // //         color: Colors.green.shade50,
-// // // //         borderRadius: BorderRadius.circular(16),
-// // // //         border: Border.all(color: Colors.green.shade300),
-// // // //       ),
-// // // //       child: Row(
-// // // //         children: [
-// // // //           const Icon(Icons.verified_rounded, color: Colors.green, size: 36),
-// // // //           const SizedBox(width: 12),
-// // // //           Column(
-// // // //             crossAxisAlignment: CrossAxisAlignment.start,
-// // // //             children: [
-// // // //               Text(
-// // // //                 'Premium Active ✦',
-// // // //                 style: TextStyle(
-// // // //                   fontWeight: FontWeight.w700,
-// // // //                   color: Colors.green.shade800,
-// // // //                   fontSize: 16,
-// // // //                 ),
-// // // //               ),
-// // // //               Text(
-// // // //                 label,
-// // // //                 style: TextStyle(color: Colors.green.shade600, fontSize: 13),
-// // // //               ),
-// // // //             ],
-// // // //           ),
-// // // //         ],
-// // // //       ),
-// // // //     );
-// // // //   }
-// // // // }
-
-// // // // class _PremiumPlan {
-// // // //   const _PremiumPlan({
-// // // //     required this.id,
-// // // //     required this.label,
-// // // //     required this.tier,
-// // // //     required this.price,
-// // // //     required this.period,
-// // // //     required this.isPopular,
-// // // //     this.savings,
-// // // //   });
-// // // //   final String id, label, tier, price, period;
-// // // //   final bool isPopular;
-// // // //   final String? savings;
-// // // // }
-
-// // // // class _PlanCard extends StatelessWidget {
-// // // //   const _PlanCard({
-// // // //     required this.plan,
-// // // //     required this.isActive,
-// // // //     required this.onTap,
-// // // //     required this.loading,
-// // // //   });
-// // // //   final _PremiumPlan plan;
-// // // //   final bool isActive;
-// // // //   final VoidCallback onTap;
-// // // //   final bool loading;
-
-// // // //   Color get _accent => plan.tier == 'premium_plus'
-// // // //       ? const Color(0xFF7B68EE)
-// // // //       : const Color(0xFFF5A623);
-
-// // // //   @override
-// // // //   Widget build(BuildContext context) {
-// // // //     final theme = context.theme;
-// // // //     return Padding(
-// // // //       padding: const EdgeInsets.only(bottom: 12),
-// // // //       child: Stack(
-// // // //         children: [
-// // // //           Container(
-// // // //             decoration: BoxDecoration(
-// // // //               color: isActive
-// // // //                   ? _accent.withOpacity(0.08)
-// // // //                   : theme.colorScheme.surface,
-// // // //               borderRadius: BorderRadius.circular(16),
-// // // //               border: Border.all(
-// // // //                 color: isActive ? _accent : theme.colorScheme.outlineVariant,
-// // // //                 width: isActive ? 2 : 1,
-// // // //               ),
-// // // //             ),
-// // // //             child: ListTile(
-// // // //               contentPadding: const EdgeInsets.symmetric(
-// // // //                 horizontal: 16,
-// // // //                 vertical: 8,
-// // // //               ),
-// // // //               title: Text(
-// // // //                 plan.label,
-// // // //                 style: theme.textTheme.titleMedium?.copyWith(
-// // // //                   fontWeight: FontWeight.w700,
-// // // //                 ),
-// // // //               ),
-// // // //               subtitle: Text(
-// // // //                 '${plan.price} / ${plan.period}',
-// // // //                 style: theme.textTheme.bodyMedium,
-// // // //               ),
-// // // //               trailing: SizedBox(
-// // // //                 width: 80,
-// // // //                 child: isActive
-// // // //                     ? Chip(
-// // // //                         label: const Text('Active'),
-// // // //                         backgroundColor: Colors.green.shade100,
-// // // //                         labelStyle: TextStyle(
-// // // //                           color: Colors.green.shade700,
-// // // //                           fontWeight: FontWeight.w700,
-// // // //                         ),
-// // // //                       )
-// // // //                     : FilledButton(
-// // // //                         style: FilledButton.styleFrom(
-// // // //                           backgroundColor: _accent,
-// // // //                           padding: EdgeInsets.zero,
-// // // //                         ),
-// // // //                         onPressed: loading ? null : onTap,
-// // // //                         child: const Text('Get'),
-// // // //                       ),
-// // // //               ),
-// // // //             ),
-// // // //           ),
-// // // //           if (plan.isPopular)
-// // // //             Positioned(
-// // // //               top: 0,
-// // // //               right: 16,
-// // // //               child: Container(
-// // // //                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-// // // //                 decoration: BoxDecoration(
-// // // //                   color: _accent,
-// // // //                   borderRadius: const BorderRadius.vertical(
-// // // //                     bottom: Radius.circular(8),
-// // // //                   ),
-// // // //                 ),
-// // // //                 child: Text(
-// // // //                   plan.savings ?? 'Popular',
-// // // //                   style: const TextStyle(
-// // // //                     color: Colors.white,
-// // // //                     fontSize: 11,
-// // // //                     fontWeight: FontWeight.w700,
-// // // //                   ),
-// // // //                 ),
-// // // //               ),
-// // // //             ),
-// // // //         ],
-// // // //       ),
-// // // //     );
-// // // //   }
-// // // // }
-
-// // // // class _FeatureTable extends StatelessWidget {
-// // // //   const _FeatureTable();
-
-// // // //   static const _rows = [
-// // // //     ('Hidden spectator mode', true, true),
-// // // //     ('Anonymous chat', true, true),
-// // // //     ('3× proof replays', true, true),
-// // // //     ('Premium badge ✦', true, true),
-// // // //     ('30-day proof history', true, true),
-// // // //     ('Priority support', false, true),
-// // // //     ('Exclusive packs', false, true),
-// // // //   ];
-
-// // // //   @override
-// // // //   Widget build(BuildContext context) {
-// // // //     final theme = context.theme;
-// // // //     return Column(
-// // // //       crossAxisAlignment: CrossAxisAlignment.stretch,
-// // // //       children: [
-// // // //         Text(
-// // // //           'What you get',
-// // // //           style: theme.textTheme.titleMedium?.copyWith(
-// // // //             fontWeight: FontWeight.w700,
-// // // //           ),
-// // // //         ),
-// // // //         const SizedBox(height: 12),
-// // // //         Table(
-// // // //           columnWidths: const {
-// // // //             0: FlexColumnWidth(),
-// // // //             1: FixedColumnWidth(64),
-// // // //             2: FixedColumnWidth(84),
-// // // //           },
-// // // //           children: [
-// // // //             TableRow(
-// // // //               decoration: BoxDecoration(
-// // // //                 color: theme.colorScheme.surfaceContainerHighest,
-// // // //                 borderRadius: BorderRadius.circular(8),
-// // // //               ),
-// // // //               children: [
-// // // //                 const Padding(
-// // // //                   padding: EdgeInsets.all(10),
-// // // //                   child: Text(
-// // // //                     'Feature',
-// // // //                     style: TextStyle(fontWeight: FontWeight.w700),
-// // // //                   ),
-// // // //                 ),
-// // // //                 const Padding(
-// // // //                   padding: EdgeInsets.all(10),
-// // // //                   child: Text(
-// // // //                     'Premium',
-// // // //                     style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
-// // // //                     textAlign: TextAlign.center,
-// // // //                   ),
-// // // //                 ),
-// // // //                 const Padding(
-// // // //                   padding: EdgeInsets.all(10),
-// // // //                   child: Text(
-// // // //                     'Plus',
-// // // //                     style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
-// // // //                     textAlign: TextAlign.center,
-// // // //                   ),
-// // // //                 ),
-// // // //               ],
-// // // //             ),
-// // // //             ..._rows.map(
-// // // //               (r) => TableRow(
-// // // //                 children: [
-// // // //                   Padding(
-// // // //                     padding: const EdgeInsets.symmetric(
-// // // //                       horizontal: 10,
-// // // //                       vertical: 8,
-// // // //                     ),
-// // // //                     child: Text(r.$1, style: theme.textTheme.bodySmall),
-// // // //                   ),
-// // // //                   Center(
-// // // //                     child: Padding(
-// // // //                       padding: const EdgeInsets.symmetric(vertical: 8),
-// // // //                       child: r.$2
-// // // //                           ? const Icon(
-// // // //                               Icons.check_circle_rounded,
-// // // //                               color: Color(0xFFF5A623),
-// // // //                               size: 18,
-// // // //                             )
-// // // //                           : const Icon(
-// // // //                               Icons.remove,
-// // // //                               size: 14,
-// // // //                               color: Colors.grey,
-// // // //                             ),
-// // // //                     ),
-// // // //                   ),
-// // // //                   Center(
-// // // //                     child: Padding(
-// // // //                       padding: const EdgeInsets.symmetric(vertical: 8),
-// // // //                       child: r.$3
-// // // //                           ? const Icon(
-// // // //                               Icons.check_circle_rounded,
-// // // //                               color: Color(0xFF7B68EE),
-// // // //                               size: 18,
-// // // //                             )
-// // // //                           : const Icon(
-// // // //                               Icons.remove,
-// // // //                               size: 14,
-// // // //                               color: Colors.grey,
-// // // //                             ),
-// // // //                     ),
-// // // //                   ),
-// // // //                 ],
-// // // //               ),
-// // // //             ),
-// // // //           ],
-// // // //         ),
-// // // //       ],
-// // // //     );
-// // // //   }
-// // // // }
-
-// // // import 'package:flutter/material.dart';
-// // // import 'package:provider/provider.dart';
-
-// // // import '../../../../core/extensions/context_ext.dart';
-// // // import '../../../../core/network/api_client.dart';
-// // // import '../../../../core/providers/auth_provider.dart';
-// // // import '../../../../core/services/subscription_service.dart';
-
-// // // const _planPrices = {'monthly': 999, 'yearly': 7999, 'plus_monthly': 1999};
-
-// // // const _planLabels = {
-// // //   'monthly': 'Premium Monthly',
-// // //   'yearly': 'Premium Yearly',
-// // //   'plus_monthly': 'Premium Plus Monthly',
-// // // };
-
-// // // class PremiumScreen extends StatefulWidget {
-// // //   const PremiumScreen({super.key});
-
-// // //   @override
-// // //   State<PremiumScreen> createState() => _PremiumScreenState();
-// // // }
-
-// // // class _PremiumScreenState extends State<PremiumScreen> {
-// // //   bool _loading = false;
-// // //   String? _selectedPlanId;
-
-// // //   static const Color _gold = Color(0xFFF5A623);
-// // //   static const Color _platinum = Color(0xFF7B68EE);
-
-// // //   @override
-// // //   void initState() {
-// // //     super.initState();
-// // //     _loadStatus();
-// // //   }
-
-// // //   Future<void> _loadStatus() async {
-// // //     final uid = context.read<AuthProvider>().currentUser?.id;
-// // //     if (uid == null) return;
-// // //     await SubscriptionService.instance.getActiveSubscription(uid);
-// // //     if (mounted) setState(() {});
-// // //   }
-
-// // //   Future<void> _purchase(_PremiumPlan plan) async {
-// // //     if (_loading) return;
-// // //     final user = context.read<AuthProvider>().currentUser;
-// // //     if (user == null) return;
-
-// // //     final priceMru = _planPrices[plan.id] ?? 0;
-
-// // //     // Confirm with user before deducting
-// // //     final confirmed = await showDialog<bool>(
-// // //       context: context,
-// // //       builder: (dCtx) => AlertDialog(
-// // //         title: Text('Purchase ${_planLabels[plan.id] ?? plan.label}'),
-// // //         content: Text(
-// // //           'This will deduct $priceMru MRU from your wallet balance.\n\n'
-// // //           'Plan: ${plan.label} — ${plan.price}/${plan.period}',
-// // //         ),
-// // //         actions: [
-// // //           TextButton(
-// // //             onPressed: () => Navigator.of(dCtx).pop(false),
-// // //             child: const Text('Cancel'),
-// // //           ),
-// // //           FilledButton(
-// // //             onPressed: () => Navigator.of(dCtx).pop(true),
-// // //             child: const Text('Confirm Purchase'),
-// // //           ),
-// // //         ],
-// // //       ),
-// // //     );
-// // //     if (confirmed != true || !mounted) return;
-
-// // //     setState(() {
-// // //       _loading = true;
-// // //       _selectedPlanId = plan.id;
-// // //     });
-// // //     try {
-// // //       final api = context.read<ApiClient>();
-// // //       await api.post('/v1/wallet/subscribe', data: {'planId': plan.id});
-// // //       if (!mounted) return;
-// // //       // Reload user profile to pick up new premium status
-// // //       await context.read<AuthProvider>().refreshCurrentUser();
-// // //       await _loadStatus();
-// // //       if (mounted) {
-// // //         ScaffoldMessenger.of(context).showSnackBar(
-// // //           SnackBar(
-// // //             content: Text('🎉 ${_planLabels[plan.id]} activated!'),
-// // //             backgroundColor: Colors.green.shade700,
-// // //           ),
-// // //         );
-// // //       }
-// // //     } catch (e) {
-// // //       if (!mounted) return;
-// // //       final raw = e.toString();
-// // //       final msg = raw.contains('insufficient_balance')
-// // //           ? 'Not enough balance. Please top up your wallet first.'
-// // //           : raw.contains('wallet_not_found')
-// // //           ? 'Wallet not found. Please contact support.'
-// // //           : raw.contains('wallet_frozen')
-// // //           ? 'Your wallet is frozen. Please contact support.'
-// // //           : raw.contains('invalid_plan')
-// // //           ? 'Invalid plan selected.'
-// // //           : 'Purchase failed: $raw';
-// // //       ScaffoldMessenger.of(context).showSnackBar(
-// // //         SnackBar(
-// // //           content: Text(msg),
-// // //           backgroundColor: Colors.red.shade700,
-// // //           duration: const Duration(seconds: 6),
-// // //         ),
-// // //       );
-// // //     } finally {
-// // //       if (mounted)
-// // //         setState(() {
-// // //           _loading = false;
-// // //           _selectedPlanId = null;
-// // //         });
-// // //     }
-// // //   }
-
-// // //   @override
-// // //   Widget build(BuildContext context) {
-// // //     final user = context.watch<AuthProvider>().currentUser;
-// // //     final isPremium = user?.isPremiumActive ?? false;
-// // //     final tier = user?.premiumTier;
-// // //     final theme = context.theme;
-
-// // //     return Scaffold(
-// // //       appBar: AppBar(
-// // //         title: Row(
-// // //           mainAxisSize: MainAxisSize.min,
-// // //           children: [
-// // //             const Text(
-// // //               'Premium',
-// // //               style: TextStyle(fontWeight: FontWeight.w800),
-// // //             ),
-// // //             const SizedBox(width: 6),
-// // //             Container(
-// // //               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-// // //               decoration: BoxDecoration(
-// // //                 gradient: const LinearGradient(
-// // //                   colors: [_gold, Color(0xFFFF8C00)],
-// // //                 ),
-// // //                 borderRadius: BorderRadius.circular(12),
-// // //               ),
-// // //               child: const Text(
-// // //                 '✦',
-// // //                 style: TextStyle(color: Colors.white, fontSize: 14),
-// // //               ),
-// // //             ),
-// // //           ],
-// // //         ),
-// // //         centerTitle: true,
-// // //       ),
-// // //       body: SingleChildScrollView(
-// // //         padding: const EdgeInsets.all(20),
-// // //         child: Column(
-// // //           crossAxisAlignment: CrossAxisAlignment.stretch,
-// // //           children: [
-// // //             if (isPremium)
-// // //               _ActiveBanner(user: user!, tier: tier)
-// // //             else
-// // //               const _HeroBanner(),
-// // //             const SizedBox(height: 24),
-// // //             ...[
-// // //               _PremiumPlan(
-// // //                 id: 'monthly',
-// // //                 label: 'Monthly',
-// // //                 tier: 'premium',
-// // //                 price: '9.99 MRU',
-// // //                 period: 'month',
-// // //                 isPopular: false,
-// // //               ),
-// // //               _PremiumPlan(
-// // //                 id: 'yearly',
-// // //                 label: 'Yearly',
-// // //                 tier: 'premium',
-// // //                 price: '79.99 MRU',
-// // //                 period: 'year',
-// // //                 isPopular: true,
-// // //                 savings: 'Save 33%',
-// // //               ),
-// // //               _PremiumPlan(
-// // //                 id: 'plus_monthly',
-// // //                 label: 'Premium Plus',
-// // //                 tier: 'premium_plus',
-// // //                 price: '19.99 MRU',
-// // //                 period: 'month',
-// // //                 isPopular: false,
-// // //               ),
-// // //             ].map(
-// // //               (plan) => _PlanCard(
-// // //                 plan: plan,
-// // //                 isActive: isPremium && tier == plan.tier,
-// // //                 isLoading: _loading && _selectedPlanId == plan.id,
-// // //                 onTap: () => _purchase(plan),
-// // //               ),
-// // //             ),
-// // //             const SizedBox(height: 24),
-// // //             const _FeatureTable(),
-// // //             const SizedBox(height: 20),
-// // //             Text(
-// // //               'Subscriptions auto-renew unless cancelled 24h before renewal.',
-// // //               style: theme.textTheme.bodySmall?.copyWith(
-// // //                 color: theme.colorScheme.onSurfaceVariant,
-// // //               ),
-// // //               textAlign: TextAlign.center,
-// // //             ),
-// // //           ],
-// // //         ),
-// // //       ),
-// // //     );
-// // //   }
-// // // }
-
-// // // class _HeroBanner extends StatelessWidget {
-// // //   const _HeroBanner();
-// // //   @override
-// // //   Widget build(BuildContext context) => Container(
-// // //     padding: const EdgeInsets.all(24),
-// // //     decoration: BoxDecoration(
-// // //       gradient: const LinearGradient(
-// // //         colors: [Color(0xFFF5A623), Color(0xFFFF6B35)],
-// // //         begin: Alignment.topLeft,
-// // //         end: Alignment.bottomRight,
-// // //       ),
-// // //       borderRadius: BorderRadius.circular(20),
-// // //     ),
-// // //     child: const Column(
-// // //       children: [
-// // //         Text('✦', style: TextStyle(color: Colors.white, fontSize: 48)),
-// // //         SizedBox(height: 12),
-// // //         Text(
-// // //           'Unlock Premium',
-// // //           style: TextStyle(
-// // //             color: Colors.white,
-// // //             fontSize: 24,
-// // //             fontWeight: FontWeight.w900,
-// // //           ),
-// // //         ),
-// // //         SizedBox(height: 8),
-// // //         Text(
-// // //           'Custom themes & avatars, 15 rooms/day, 10 offline packs, anonymous chat, and more.',
-// // //           style: TextStyle(color: Colors.white, fontSize: 14, height: 1.4),
-// // //           textAlign: TextAlign.center,
-// // //         ),
-// // //       ],
-// // //     ),
-// // //   );
-// // // }
-
-// // // class _ActiveBanner extends StatelessWidget {
-// // //   const _ActiveBanner({required this.user, this.tier});
-// // //   final dynamic user;
-// // //   final String? tier;
-// // //   @override
-// // //   Widget build(BuildContext context) {
-// // //     final exp = user.premiumExpiresAt;
-// // //     final label = exp != null
-// // //         ? 'Expires ${exp.day}/${exp.month}/${exp.year}'
-// // //         : 'Active — no expiry';
-// // //     return Container(
-// // //       padding: const EdgeInsets.all(20),
-// // //       decoration: BoxDecoration(
-// // //         color: Colors.green.shade50,
-// // //         borderRadius: BorderRadius.circular(16),
-// // //         border: Border.all(color: Colors.green.shade300),
-// // //       ),
-// // //       child: Row(
-// // //         children: [
-// // //           const Icon(Icons.verified_rounded, color: Colors.green, size: 36),
-// // //           const SizedBox(width: 12),
-// // //           Column(
-// // //             crossAxisAlignment: CrossAxisAlignment.start,
-// // //             children: [
-// // //               Text(
-// // //                 tier == 'premium_plus'
-// // //                     ? 'Premium Plus Active ✦'
-// // //                     : 'Premium Active ✦',
-// // //                 style: TextStyle(
-// // //                   fontWeight: FontWeight.w700,
-// // //                   color: Colors.green.shade800,
-// // //                   fontSize: 16,
-// // //                 ),
-// // //               ),
-// // //               Text(
-// // //                 label,
-// // //                 style: TextStyle(color: Colors.green.shade600, fontSize: 13),
-// // //               ),
-// // //             ],
-// // //           ),
-// // //         ],
-// // //       ),
-// // //     );
-// // //   }
-// // // }
-
-// // // class _PremiumPlan {
-// // //   const _PremiumPlan({
-// // //     required this.id,
-// // //     required this.label,
-// // //     required this.tier,
-// // //     required this.price,
-// // //     required this.period,
-// // //     required this.isPopular,
-// // //     this.savings,
-// // //   });
-// // //   final String id, label, tier, price, period;
-// // //   final bool isPopular;
-// // //   final String? savings;
-// // // }
-
-// // // class _PlanCard extends StatelessWidget {
-// // //   const _PlanCard({
-// // //     required this.plan,
-// // //     required this.isActive,
-// // //     required this.isLoading,
-// // //     required this.onTap,
-// // //   });
-// // //   final _PremiumPlan plan;
-// // //   final bool isActive;
-// // //   final bool isLoading;
-// // //   final VoidCallback onTap;
-
-// // //   Color get _accent => plan.tier == 'premium_plus'
-// // //       ? const Color(0xFF7B68EE)
-// // //       : const Color(0xFFF5A623);
-
-// // //   @override
-// // //   Widget build(BuildContext context) {
-// // //     final theme = context.theme;
-// // //     return Padding(
-// // //       padding: const EdgeInsets.only(bottom: 12),
-// // //       child: Stack(
-// // //         children: [
-// // //           Container(
-// // //             decoration: BoxDecoration(
-// // //               color: isActive
-// // //                   ? _accent.withOpacity(0.08)
-// // //                   : theme.colorScheme.surface,
-// // //               borderRadius: BorderRadius.circular(16),
-// // //               border: Border.all(
-// // //                 color: isActive ? _accent : theme.colorScheme.outlineVariant,
-// // //                 width: isActive ? 2 : 1,
-// // //               ),
-// // //             ),
-// // //             child: Padding(
-// // //               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-// // //               child: Row(
-// // //                 children: [
-// // //                   Expanded(
-// // //                     child: Column(
-// // //                       crossAxisAlignment: CrossAxisAlignment.start,
-// // //                       children: [
-// // //                         Text(
-// // //                           plan.label,
-// // //                           style: theme.textTheme.titleMedium?.copyWith(
-// // //                             fontWeight: FontWeight.w700,
-// // //                           ),
-// // //                         ),
-// // //                         const SizedBox(height: 2),
-// // //                         Text(
-// // //                           '${plan.price} / ${plan.period}',
-// // //                           style: theme.textTheme.bodyMedium,
-// // //                         ),
-// // //                       ],
-// // //                     ),
-// // //                   ),
-// // //                   if (isActive)
-// // //                     Container(
-// // //                       padding: const EdgeInsets.symmetric(
-// // //                         horizontal: 10,
-// // //                         vertical: 4,
-// // //                       ),
-// // //                       decoration: BoxDecoration(
-// // //                         color: Colors.green.shade100,
-// // //                         borderRadius: BorderRadius.circular(12),
-// // //                       ),
-// // //                       child: Text(
-// // //                         'Active',
-// // //                         style: TextStyle(
-// // //                           color: Colors.green.shade700,
-// // //                           fontWeight: FontWeight.w700,
-// // //                           fontSize: 13,
-// // //                         ),
-// // //                       ),
-// // //                     )
-// // //                   else
-// // //                     SizedBox(
-// // //                       width: 72,
-// // //                       height: 36,
-// // //                       child: FilledButton(
-// // //                         style: FilledButton.styleFrom(
-// // //                           backgroundColor: _accent,
-// // //                           padding: EdgeInsets.zero,
-// // //                           shape: RoundedRectangleBorder(
-// // //                             borderRadius: BorderRadius.circular(10),
-// // //                           ),
-// // //                         ),
-// // //                         onPressed: isLoading ? null : onTap,
-// // //                         child: isLoading
-// // //                             ? const SizedBox(
-// // //                                 width: 18,
-// // //                                 height: 18,
-// // //                                 child: CircularProgressIndicator(
-// // //                                   strokeWidth: 2,
-// // //                                   color: Colors.white,
-// // //                                 ),
-// // //                               )
-// // //                             : const Text('Get'),
-// // //                       ),
-// // //                     ),
-// // //                 ],
-// // //               ),
-// // //             ),
-// // //           ),
-// // //           if (plan.isPopular)
-// // //             Positioned(
-// // //               top: 0,
-// // //               right: 16,
-// // //               child: Container(
-// // //                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-// // //                 decoration: BoxDecoration(
-// // //                   color: _accent,
-// // //                   borderRadius: const BorderRadius.vertical(
-// // //                     bottom: Radius.circular(8),
-// // //                   ),
-// // //                 ),
-// // //                 child: Text(
-// // //                   plan.savings ?? 'Popular',
-// // //                   style: const TextStyle(
-// // //                     color: Colors.white,
-// // //                     fontSize: 11,
-// // //                     fontWeight: FontWeight.w700,
-// // //                   ),
-// // //                 ),
-// // //               ),
-// // //             ),
-// // //         ],
-// // //       ),
-// // //     );
-// // //   }
-// // // }
-
-// // // class _FeatureTable extends StatelessWidget {
-// // //   const _FeatureTable();
-
-// // //   static const _rows = [
-// // //     ('Rooms per day', '5', '15', '15'),
-// // //     ('Offline packs', '0', '10', '10'),
-// // //     ('Custom themes', '✗', '✓', '✓'),
-// // //     ('Premium avatars', '✗', '✓', '✓'),
-// // //     ('Anonymous chat', '✗', '✓', '✓'),
-// // //     ('3× proof replays', '✗', '✓', '✓'),
-// // //     ('Premium badge ✦', '✗', '✓', '✓'),
-// // //     ('Hidden spectator', '✗', '✓', '✓'),
-// // //     ('Priority support', '✗', '✗', '✓'),
-// // //     ('Exclusive packs', '✗', '✗', '✓'),
-// // //   ];
-
-// // //   @override
-// // //   Widget build(BuildContext context) {
-// // //     final theme = context.theme;
-// // //     return Column(
-// // //       crossAxisAlignment: CrossAxisAlignment.stretch,
-// // //       children: [
-// // //         Text(
-// // //           'What you get',
-// // //           style: theme.textTheme.titleMedium?.copyWith(
-// // //             fontWeight: FontWeight.w700,
-// // //           ),
-// // //         ),
-// // //         const SizedBox(height: 12),
-// // //         Table(
-// // //           columnWidths: const {
-// // //             0: FlexColumnWidth(),
-// // //             1: FixedColumnWidth(52),
-// // //             2: FixedColumnWidth(64),
-// // //             3: FixedColumnWidth(52),
-// // //           },
-// // //           children: [_headerRow(theme), ..._rows.map(_dataRow)],
-// // //         ),
-// // //       ],
-// // //     );
-// // //   }
-
-// // //   TableRow _headerRow(ThemeData theme) => TableRow(
-// // //     decoration: BoxDecoration(
-// // //       color: theme.colorScheme.surfaceContainerHighest,
-// // //       borderRadius: BorderRadius.circular(8),
-// // //     ),
-// // //     children: const [
-// // //       Padding(
-// // //         padding: EdgeInsets.all(10),
-// // //         child: Text(
-// // //           'Feature',
-// // //           style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
-// // //         ),
-// // //       ),
-// // //       Padding(
-// // //         padding: EdgeInsets.all(10),
-// // //         child: Text(
-// // //           'Free',
-// // //           style: TextStyle(fontWeight: FontWeight.w700, fontSize: 11),
-// // //           textAlign: TextAlign.center,
-// // //         ),
-// // //       ),
-// // //       Padding(
-// // //         padding: EdgeInsets.all(10),
-// // //         child: Text(
-// // //           'Premium',
-// // //           style: TextStyle(
-// // //             fontWeight: FontWeight.w700,
-// // //             fontSize: 11,
-// // //             color: Color(0xFFF5A623),
-// // //           ),
-// // //           textAlign: TextAlign.center,
-// // //         ),
-// // //       ),
-// // //       Padding(
-// // //         padding: EdgeInsets.all(10),
-// // //         child: Text(
-// // //           'Plus',
-// // //           style: TextStyle(
-// // //             fontWeight: FontWeight.w700,
-// // //             fontSize: 11,
-// // //             color: Color(0xFF7B68EE),
-// // //           ),
-// // //           textAlign: TextAlign.center,
-// // //         ),
-// // //       ),
-// // //     ],
-// // //   );
-
-// // //   TableRow _dataRow((String, String, String, String) r) => TableRow(
-// // //     children: [
-// // //       Padding(
-// // //         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-// // //         child: Text(r.$1, style: const TextStyle(fontSize: 12)),
-// // //       ),
-// // //       _cell(r.$2),
-// // //       _cell(r.$3),
-// // //       _cell(r.$4),
-// // //     ],
-// // //   );
-
-// // //   Widget _cell(String val) => Padding(
-// // //     padding: const EdgeInsets.symmetric(vertical: 8),
-// // //     child: Center(
-// // //       child: val == '✓'
-// // //           ? const Icon(
-// // //               Icons.check_circle_rounded,
-// // //               color: Color(0xFFF5A623),
-// // //               size: 16,
-// // //             )
-// // //           : val == '✗'
-// // //           ? const Icon(Icons.remove, size: 14, color: Colors.grey)
-// // //           : Text(
-// // //               val,
-// // //               style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-// // //               textAlign: TextAlign.center,
-// // //             ),
-// // //     ),
-// // //   );
-// // // }
-
-// // import 'package:flutter/material.dart';
-// // import 'package:provider/provider.dart';
-
-// // import '../../../../core/extensions/context_ext.dart';
-// // import '../../../../core/network/api_client.dart';
-// // import '../../../../core/providers/auth_provider.dart';
-// // import '../../../../core/services/subscription_service.dart';
-
-// // const _planPrices = {'monthly': 999, 'yearly': 7999, 'plus_monthly': 1999};
-
-// // const _planLabels = {
-// //   'monthly': 'Premium Monthly',
-// //   'yearly': 'Premium Yearly',
-// //   'plus_monthly': 'Premium Plus Monthly',
-// // };
-
-// // class PremiumScreen extends StatefulWidget {
-// //   const PremiumScreen({super.key});
-
-// //   @override
-// //   State<PremiumScreen> createState() => _PremiumScreenState();
-// // }
-
-// // class _PremiumScreenState extends State<PremiumScreen> {
-// //   bool _loading = false;
-// //   String? _selectedPlanId;
-
-// //   static const Color _gold = Color(0xFFF5A623);
-// //   static const Color _platinum = Color(0xFF7B68EE);
-
-// //   @override
-// //   void initState() {
-// //     super.initState();
-// //     _loadStatus();
-// //   }
-
-// //   Future<void> _loadStatus() async {
-// //     final uid = context.read<AuthProvider>().currentUser?.id;
-// //     if (uid == null) return;
-// //     await SubscriptionService.instance.getActiveSubscription(uid);
-// //     if (mounted) setState(() {});
-// //   }
-
-// //   Future<void> _purchase(_PremiumPlan plan) async {
-// //     if (_loading) return;
-// //     final user = context.read<AuthProvider>().currentUser;
-// //     if (user == null) return;
-
-// //     final priceMru = _planPrices[plan.id] ?? 0;
-
-// //     // Confirm with user before deducting
-// //     final confirmed = await showDialog<bool>(
-// //       context: context,
-// //       builder: (dCtx) => AlertDialog(
-// //         title: Text('Purchase ${_planLabels[plan.id] ?? plan.label}'),
-// //         content: Text(
-// //           'This will deduct $priceMru MRU from your wallet balance.\n\n'
-// //           'Plan: ${plan.label} — ${plan.price}/${plan.period}',
-// //         ),
-// //         actions: [
-// //           TextButton(
-// //             onPressed: () => Navigator.of(dCtx).pop(false),
-// //             child: const Text('Cancel'),
-// //           ),
-// //           FilledButton(
-// //             onPressed: () => Navigator.of(dCtx).pop(true),
-// //             child: const Text('Confirm Purchase'),
-// //           ),
-// //         ],
-// //       ),
-// //     );
-// //     if (confirmed != true || !mounted) return;
-
-// //     setState(() {
-// //       _loading = true;
-// //       _selectedPlanId = plan.id;
-// //     });
-// //     try {
-// //       final api = context.read<ApiClient>();
-// //       await api.post('/v1/wallet/subscribe', data: {'planId': plan.id});
-// //       if (!mounted) return;
-// //       print('PUUUUUm , $mounted');
-// //       // Reload user profile to pick up new premium status
-// //       await context.read<AuthProvider>().refreshCurrentUser();
-// //       await _loadStatus();
-// //       if (mounted) {
-// //         ScaffoldMessenger.of(context).showSnackBar(
-// //           SnackBar(
-// //             content: Text('🎉 ${_planLabels[plan.id]} activated!'),
-// //             backgroundColor: Colors.green.shade700,
-// //             behavior: SnackBarBehavior.fixed,
-// //           ),
-// //         );
-// //       }
-// //     } catch (e) {
-// //       if (!mounted) return;
-// //       final raw = e.toString();
-// //       final msg = raw.contains('insufficient_balance')
-// //           ? 'Not enough balance. Please top up your wallet first.'
-// //           : raw.contains('wallet_not_found')
-// //           ? 'Wallet not found. Please contact support.'
-// //           : raw.contains('wallet_frozen')
-// //           ? 'Your wallet is frozen. Please contact support.'
-// //           : raw.contains('invalid_plan')
-// //           ? 'Invalid plan selected.'
-// //           : 'Purchase failed: $raw';
-// //       print(msg);
-// //       ScaffoldMessenger.of(context).showSnackBar(
-// //         SnackBar(
-// //           content: Text(msg),
-// //           backgroundColor: Colors.red.shade700,
-// //           behavior: SnackBarBehavior.fixed,
-// //           duration: const Duration(seconds: 6),
-// //         ),
-// //       );
-// //     } finally {
-// //       if (mounted)
-// //         setState(() {
-// //           _loading = false;
-// //           _selectedPlanId = null;
-// //         });
-// //     }
-// //   }
-
-// //   @override
-// //   Widget build(BuildContext context) {
-// //     final user = context.watch<AuthProvider>().currentUser;
-// //     final isPremium = user?.isPremiumActive ?? false;
-// //     final tier = user?.premiumTier;
-// //     final theme = context.theme;
-
-// //     return Scaffold(
-// //       appBar: AppBar(
-// //         title: Row(
-// //           mainAxisSize: MainAxisSize.min,
-// //           children: [
-// //             const Text(
-// //               'Premium',
-// //               style: TextStyle(fontWeight: FontWeight.w800),
-// //             ),
-// //             const SizedBox(width: 6),
-// //             Container(
-// //               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-// //               decoration: BoxDecoration(
-// //                 gradient: const LinearGradient(
-// //                   colors: [_gold, Color(0xFFFF8C00)],
-// //                 ),
-// //                 borderRadius: BorderRadius.circular(12),
-// //               ),
-// //               child: const Text(
-// //                 '✦',
-// //                 style: TextStyle(color: Colors.white, fontSize: 14),
-// //               ),
-// //             ),
-// //           ],
-// //         ),
-// //         centerTitle: true,
-// //       ),
-// //       body: SingleChildScrollView(
-// //         padding: const EdgeInsets.all(20),
-// //         child: Column(
-// //           crossAxisAlignment: CrossAxisAlignment.stretch,
-// //           children: [
-// //             if (isPremium)
-// //               _ActiveBanner(user: user!, tier: tier)
-// //             else
-// //               const _HeroBanner(),
-// //             const SizedBox(height: 24),
-// //             ...[
-// //               _PremiumPlan(
-// //                 id: 'monthly',
-// //                 label: 'Monthly',
-// //                 tier: 'premium',
-// //                 price: '9.99 MRU',
-// //                 period: 'month',
-// //                 isPopular: false,
-// //               ),
-// //               _PremiumPlan(
-// //                 id: 'yearly',
-// //                 label: 'Yearly',
-// //                 tier: 'premium',
-// //                 price: '79.99 MRU',
-// //                 period: 'year',
-// //                 isPopular: true,
-// //                 savings: 'Save 33%',
-// //               ),
-// //               _PremiumPlan(
-// //                 id: 'plus_monthly',
-// //                 label: 'Premium Plus',
-// //                 tier: 'premium_plus',
-// //                 price: '19.99 MRU',
-// //                 period: 'month',
-// //                 isPopular: false,
-// //               ),
-// //             ].map(
-// //               (plan) => _PlanCard(
-// //                 plan: plan,
-// //                 isActive: isPremium && tier == plan.tier,
-// //                 isLoading: _loading && _selectedPlanId == plan.id,
-// //                 onTap: () => _purchase(plan),
-// //               ),
-// //             ),
-// //             const SizedBox(height: 24),
-// //             const _FeatureTable(),
-// //             const SizedBox(height: 20),
-// //             Text(
-// //               'Subscriptions auto-renew unless cancelled 24h before renewal.',
-// //               style: theme.textTheme.bodySmall?.copyWith(
-// //                 color: theme.colorScheme.onSurfaceVariant,
-// //               ),
-// //               textAlign: TextAlign.center,
-// //             ),
-// //           ],
-// //         ),
-// //       ),
-// //     );
-// //   }
-// // }
-
-// // class _HeroBanner extends StatelessWidget {
-// //   const _HeroBanner();
-// //   @override
-// //   Widget build(BuildContext context) => Container(
-// //     padding: const EdgeInsets.all(24),
-// //     decoration: BoxDecoration(
-// //       gradient: const LinearGradient(
-// //         colors: [Color(0xFFF5A623), Color(0xFFFF6B35)],
-// //         begin: Alignment.topLeft,
-// //         end: Alignment.bottomRight,
-// //       ),
-// //       borderRadius: BorderRadius.circular(20),
-// //     ),
-// //     child: const Column(
-// //       children: [
-// //         Text('✦', style: TextStyle(color: Colors.white, fontSize: 48)),
-// //         SizedBox(height: 12),
-// //         Text(
-// //           'Unlock Premium',
-// //           style: TextStyle(
-// //             color: Colors.white,
-// //             fontSize: 24,
-// //             fontWeight: FontWeight.w900,
-// //           ),
-// //         ),
-// //         SizedBox(height: 8),
-// //         Text(
-// //           'Custom themes & avatars, 15 rooms/day, 10 offline packs (1 free), anonymous chat, and more.',
-// //           style: TextStyle(color: Colors.white, fontSize: 14, height: 1.4),
-// //           textAlign: TextAlign.center,
-// //         ),
-// //       ],
-// //     ),
-// //   );
-// // }
-
-// // class _ActiveBanner extends StatelessWidget {
-// //   const _ActiveBanner({required this.user, this.tier});
-// //   final dynamic user;
-// //   final String? tier;
-// //   @override
-// //   Widget build(BuildContext context) {
-// //     final exp = user.premiumExpiresAt;
-// //     final label = exp != null
-// //         ? 'Expires ${exp.day}/${exp.month}/${exp.year}'
-// //         : 'Active — no expiry';
-// //     return Container(
-// //       padding: const EdgeInsets.all(20),
-// //       decoration: BoxDecoration(
-// //         color: Colors.green.shade50,
-// //         borderRadius: BorderRadius.circular(16),
-// //         border: Border.all(color: Colors.green.shade300),
-// //       ),
-// //       child: Row(
-// //         children: [
-// //           const Icon(Icons.verified_rounded, color: Colors.green, size: 36),
-// //           const SizedBox(width: 12),
-// //           Column(
-// //             crossAxisAlignment: CrossAxisAlignment.start,
-// //             children: [
-// //               Text(
-// //                 tier == 'premium_plus'
-// //                     ? 'Premium Plus Active ✦'
-// //                     : 'Premium Active ✦',
-// //                 style: TextStyle(
-// //                   fontWeight: FontWeight.w700,
-// //                   color: Colors.green.shade800,
-// //                   fontSize: 16,
-// //                 ),
-// //               ),
-// //               Text(
-// //                 label,
-// //                 style: TextStyle(color: Colors.green.shade600, fontSize: 13),
-// //               ),
-// //             ],
-// //           ),
-// //         ],
-// //       ),
-// //     );
-// //   }
-// // }
-
-// // class _PremiumPlan {
-// //   const _PremiumPlan({
-// //     required this.id,
-// //     required this.label,
-// //     required this.tier,
-// //     required this.price,
-// //     required this.period,
-// //     required this.isPopular,
-// //     this.savings,
-// //   });
-// //   final String id, label, tier, price, period;
-// //   final bool isPopular;
-// //   final String? savings;
-// // }
-
-// // class _PlanCard extends StatelessWidget {
-// //   const _PlanCard({
-// //     required this.plan,
-// //     required this.isActive,
-// //     required this.isLoading,
-// //     required this.onTap,
-// //   });
-// //   final _PremiumPlan plan;
-// //   final bool isActive;
-// //   final bool isLoading;
-// //   final VoidCallback onTap;
-
-// //   Color get _accent => plan.tier == 'premium_plus'
-// //       ? const Color(0xFF7B68EE)
-// //       : const Color(0xFFF5A623);
-
-// //   @override
-// //   Widget build(BuildContext context) {
-// //     final theme = context.theme;
-// //     return Padding(
-// //       padding: const EdgeInsets.only(bottom: 12),
-// //       child: Stack(
-// //         children: [
-// //           Container(
-// //             decoration: BoxDecoration(
-// //               color: isActive
-// //                   ? _accent.withOpacity(0.08)
-// //                   : theme.colorScheme.surface,
-// //               borderRadius: BorderRadius.circular(16),
-// //               border: Border.all(
-// //                 color: isActive ? _accent : theme.colorScheme.outlineVariant,
-// //                 width: isActive ? 2 : 1,
-// //               ),
-// //             ),
-// //             child: Padding(
-// //               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-// //               child: Row(
-// //                 children: [
-// //                   Expanded(
-// //                     child: Column(
-// //                       crossAxisAlignment: CrossAxisAlignment.start,
-// //                       children: [
-// //                         Text(
-// //                           plan.label,
-// //                           style: theme.textTheme.titleMedium?.copyWith(
-// //                             fontWeight: FontWeight.w700,
-// //                           ),
-// //                         ),
-// //                         const SizedBox(height: 2),
-// //                         Text(
-// //                           '${plan.price} / ${plan.period}',
-// //                           style: theme.textTheme.bodyMedium,
-// //                         ),
-// //                       ],
-// //                     ),
-// //                   ),
-// //                   if (isActive)
-// //                     Container(
-// //                       padding: const EdgeInsets.symmetric(
-// //                         horizontal: 10,
-// //                         vertical: 4,
-// //                       ),
-// //                       decoration: BoxDecoration(
-// //                         color: Colors.green.shade100,
-// //                         borderRadius: BorderRadius.circular(12),
-// //                       ),
-// //                       child: Text(
-// //                         'Active',
-// //                         style: TextStyle(
-// //                           color: Colors.green.shade700,
-// //                           fontWeight: FontWeight.w700,
-// //                           fontSize: 13,
-// //                         ),
-// //                       ),
-// //                     )
-// //                   else
-// //                     SizedBox(
-// //                       width: 72,
-// //                       height: 36,
-// //                       child: FilledButton(
-// //                         style: FilledButton.styleFrom(
-// //                           backgroundColor: _accent,
-// //                           padding: EdgeInsets.zero,
-// //                           shape: RoundedRectangleBorder(
-// //                             borderRadius: BorderRadius.circular(10),
-// //                           ),
-// //                         ),
-// //                         onPressed: isLoading ? null : onTap,
-// //                         child: isLoading
-// //                             ? const SizedBox(
-// //                                 width: 18,
-// //                                 height: 18,
-// //                                 child: CircularProgressIndicator(
-// //                                   strokeWidth: 2,
-// //                                   color: Colors.white,
-// //                                 ),
-// //                               )
-// //                             : const Text('Get'),
-// //                       ),
-// //                     ),
-// //                 ],
-// //               ),
-// //             ),
-// //           ),
-// //           if (plan.isPopular)
-// //             Positioned(
-// //               top: 0,
-// //               right: 16,
-// //               child: Container(
-// //                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-// //                 decoration: BoxDecoration(
-// //                   color: _accent,
-// //                   borderRadius: const BorderRadius.vertical(
-// //                     bottom: Radius.circular(8),
-// //                   ),
-// //                 ),
-// //                 child: Text(
-// //                   plan.savings ?? 'Popular',
-// //                   style: const TextStyle(
-// //                     color: Colors.white,
-// //                     fontSize: 11,
-// //                     fontWeight: FontWeight.w700,
-// //                   ),
-// //                 ),
-// //               ),
-// //             ),
-// //         ],
-// //       ),
-// //     );
-// //   }
-// // }
-
-// // class _FeatureTable extends StatelessWidget {
-// //   const _FeatureTable();
-
-// //   static const _rows = [
-// //     ('Rooms per day', '5', '15', '15'),
-// //     ('Offline packs', '1', '10', '10'),
-// //     ('Custom themes', '✗', '✓', '✓'),
-// //     ('Premium avatars', '✗', '✓', '✓'),
-// //     ('Anonymous chat', '✗', '✓', '✓'),
-// //     ('3× proof replays', '✗', '✓', '✓'),
-// //     ('Premium badge ✦', '✗', '✓', '✓'),
-// //     ('Hidden spectator', '✗', '✓', '✓'),
-// //     ('Priority support', '✗', '✗', '✓'),
-// //     ('Exclusive packs', '✗', '✗', '✓'),
-// //   ];
-
-// //   @override
-// //   Widget build(BuildContext context) {
-// //     final theme = context.theme;
-// //     return Column(
-// //       crossAxisAlignment: CrossAxisAlignment.stretch,
-// //       children: [
-// //         Text(
-// //           'What you get',
-// //           style: theme.textTheme.titleMedium?.copyWith(
-// //             fontWeight: FontWeight.w700,
-// //           ),
-// //         ),
-// //         const SizedBox(height: 12),
-// //         Table(
-// //           columnWidths: const {
-// //             0: FlexColumnWidth(),
-// //             1: FixedColumnWidth(52),
-// //             2: FixedColumnWidth(64),
-// //             3: FixedColumnWidth(52),
-// //           },
-// //           children: [_headerRow(theme), ..._rows.map(_dataRow)],
-// //         ),
-// //       ],
-// //     );
-// //   }
-
-// //   TableRow _headerRow(ThemeData theme) => TableRow(
-// //     decoration: BoxDecoration(
-// //       color: theme.colorScheme.surfaceContainerHighest,
-// //       borderRadius: BorderRadius.circular(8),
-// //     ),
-// //     children: const [
-// //       Padding(
-// //         padding: EdgeInsets.all(10),
-// //         child: Text(
-// //           'Feature',
-// //           style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
-// //         ),
-// //       ),
-// //       Padding(
-// //         padding: EdgeInsets.all(10),
-// //         child: Text(
-// //           'Free',
-// //           style: TextStyle(fontWeight: FontWeight.w700, fontSize: 11),
-// //           textAlign: TextAlign.center,
-// //         ),
-// //       ),
-// //       Padding(
-// //         padding: EdgeInsets.all(10),
-// //         child: Text(
-// //           'Premium',
-// //           style: TextStyle(
-// //             fontWeight: FontWeight.w700,
-// //             fontSize: 11,
-// //             color: Color(0xFFF5A623),
-// //           ),
-// //           textAlign: TextAlign.center,
-// //         ),
-// //       ),
-// //       Padding(
-// //         padding: EdgeInsets.all(10),
-// //         child: Text(
-// //           'Plus',
-// //           style: TextStyle(
-// //             fontWeight: FontWeight.w700,
-// //             fontSize: 11,
-// //             color: Color(0xFF7B68EE),
-// //           ),
-// //           textAlign: TextAlign.center,
-// //         ),
-// //       ),
-// //     ],
-// //   );
-
-// //   TableRow _dataRow((String, String, String, String) r) => TableRow(
-// //     children: [
-// //       Padding(
-// //         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-// //         child: Text(r.$1, style: const TextStyle(fontSize: 12)),
-// //       ),
-// //       _cell(r.$2),
-// //       _cell(r.$3),
-// //       _cell(r.$4),
-// //     ],
-// //   );
-
-// //   Widget _cell(String val) => Padding(
-// //     padding: const EdgeInsets.symmetric(vertical: 8),
-// //     child: Center(
-// //       child: val == '✓'
-// //           ? const Icon(
-// //               Icons.check_circle_rounded,
-// //               color: Color(0xFFF5A623),
-// //               size: 16,
-// //             )
-// //           : val == '✗'
-// //           ? const Icon(Icons.remove, size: 14, color: Colors.grey)
-// //           : Text(
-// //               val,
-// //               style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-// //               textAlign: TextAlign.center,
-// //             ),
-// //     ),
-// //   );
-// // }
-
-// import 'package:flutter/material.dart';
-// import 'package:jma3a/core/services/subscription_service.dart';
-// import 'package:provider/provider.dart';
-
-// import '../../../../core/extensions/context_ext.dart';
-// import '../../../../core/network/api_client.dart';
-// import '../../../../core/providers/auth_provider.dart';
-
-// const _planPrices = {'monthly': 999, 'yearly': 7999, 'plus_monthly': 1999};
-
-// const _planLabels = {
-//   'monthly': 'Premium Monthly',
-//   'yearly': 'Premium Yearly',
-//   'plus_monthly': 'Premium Plus Monthly',
-// };
-
-// class PremiumScreen extends StatefulWidget {
-//   const PremiumScreen({super.key});
-
-//   @override
-//   State<PremiumScreen> createState() => _PremiumScreenState();
-// }
-
-// class _PremiumScreenState extends State<PremiumScreen> {
-//   bool _loading = false;
-//   String? _selectedPlanId;
-
-//   static const Color _gold = Color(0xFFF5A623);
-//   static const Color _platinum = Color(0xFF7B68EE);
-
-//   @override
-//   void initState() {
-//     super.initState();
-//     _loadStatus();
-//   }
-
-//   Future<void> _loadStatus() async {
-//     final uid = context.read<AuthProvider>().currentUser?.id;
-//     if (uid == null) return;
-//     await SubscriptionService.instance.getActiveSubscription(uid);
-//     if (mounted) setState(() {});
-//   }
-
-//   Future<void> _purchase(_PremiumPlan plan) async {
-//     if (_loading) return;
-//     final user = context.read<AuthProvider>().currentUser;
-//     if (user == null) return;
-
-//     final priceMru = _planPrices[plan.id] ?? 0;
-
-//     // Confirm with user before deducting
-//     final confirmed = await showDialog<bool>(
-//       context: context,
-//       builder: (dCtx) => AlertDialog(
-//         title: Text('Purchase ${_planLabels[plan.id] ?? plan.label}'),
-//         content: Text(
-//           'This will deduct $priceMru MRU from your wallet balance.\n\n'
-//           'Plan: ${plan.label} — ${plan.price}/${plan.period}',
-//         ),
-//         actions: [
-//           TextButton(
-//             onPressed: () => Navigator.of(dCtx).pop(false),
-//             child: const Text('Cancel'),
-//           ),
-//           FilledButton(
-//             onPressed: () => Navigator.of(dCtx).pop(true),
-//             child: const Text('Confirm Purchase'),
-//           ),
-//         ],
-//       ),
-//     );
-//     if (confirmed != true || !mounted) return;
-
-//     setState(() {
-//       _loading = true;
-//       _selectedPlanId = plan.id;
-//     });
-//     try {
-//       final api = ApiClient.instance;
-//       await api.post('/v1/wallet/subscribe', data: {'planId': plan.id});
-//       if (!mounted) return;
-//       print(api);
-//       // Reload user profile to pick up new premium status
-//       await context.read<AuthProvider>().refreshCurrentUser();
-//       await _loadStatus();
-//       if (mounted) {
-//         ScaffoldMessenger.of(context).showSnackBar(
-//           SnackBar(
-//             content: Text('🎉 ${_planLabels[plan.id]} activated!'),
-//             backgroundColor: Colors.green.shade700,
-//             behavior: SnackBarBehavior.fixed,
-//           ),
-//         );
-//       }
-//     } catch (e) {
-//       if (!mounted) return;
-//       final raw = e.toString();
-//       final msg = raw.contains('insufficient_balance')
-//           ? 'Not enough balance. Please top up your wallet first.'
-//           : raw.contains('wallet_not_found')
-//           ? 'Wallet not found. Please contact support.'
-//           : raw.contains('wallet_frozen')
-//           ? 'Your wallet is frozen. Please contact support.'
-//           : raw.contains('invalid_plan')
-//           ? 'Invalid plan selected.'
-//           : 'Purchase failed: $raw';
-//       ScaffoldMessenger.of(context).showSnackBar(
-//         SnackBar(
-//           content: Text(msg),
-//           backgroundColor: Colors.red.shade700,
-//           behavior: SnackBarBehavior.fixed,
-//           duration: const Duration(seconds: 6),
-//         ),
-//       );
-//     } finally {
-//       if (mounted)
-//         setState(() {
-//           _loading = false;
-//           _selectedPlanId = null;
-//         });
-//     }
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     final user = context.watch<AuthProvider>().currentUser;
-//     final isPremium = user?.isPremiumActive ?? false;
-//     final tier = user?.premiumTier;
-//     final theme = context.theme;
-
-//     return Scaffold(
-//       appBar: AppBar(
-//         title: Row(
-//           mainAxisSize: MainAxisSize.min,
-//           children: [
-//             const Text(
-//               'Premium',
-//               style: TextStyle(fontWeight: FontWeight.w800),
-//             ),
-//             const SizedBox(width: 6),
-//             Container(
-//               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-//               decoration: BoxDecoration(
-//                 gradient: const LinearGradient(
-//                   colors: [_gold, Color(0xFFFF8C00)],
-//                 ),
-//                 borderRadius: BorderRadius.circular(12),
-//               ),
-//               child: const Text(
-//                 '✦',
-//                 style: TextStyle(color: Colors.white, fontSize: 14),
-//               ),
-//             ),
-//           ],
-//         ),
-//         centerTitle: true,
-//       ),
-//       body: SingleChildScrollView(
-//         padding: const EdgeInsets.all(20),
-//         child: Column(
-//           crossAxisAlignment: CrossAxisAlignment.stretch,
-//           children: [
-//             if (isPremium)
-//               _ActiveBanner(user: user!, tier: tier)
-//             else
-//               const _HeroBanner(),
-//             const SizedBox(height: 24),
-//             ...[
-//               _PremiumPlan(
-//                 id: 'monthly',
-//                 label: 'Monthly',
-//                 tier: 'premium',
-//                 price: '9.99 MRU',
-//                 period: 'month',
-//                 isPopular: false,
-//               ),
-//               _PremiumPlan(
-//                 id: 'yearly',
-//                 label: 'Yearly',
-//                 tier: 'premium',
-//                 price: '79.99 MRU',
-//                 period: 'year',
-//                 isPopular: true,
-//                 savings: 'Save 33%',
-//               ),
-//               _PremiumPlan(
-//                 id: 'plus_monthly',
-//                 label: 'Premium Plus',
-//                 tier: 'premium_plus',
-//                 price: '19.99 MRU',
-//                 period: 'month',
-//                 isPopular: false,
-//               ),
-//             ].map(
-//               (plan) => _PlanCard(
-//                 plan: plan,
-//                 isActive: isPremium && tier == plan.tier,
-//                 isLoading: _loading && _selectedPlanId == plan.id,
-//                 onTap: () => _purchase(plan),
-//               ),
-//             ),
-//             const SizedBox(height: 24),
-//             const _FeatureTable(),
-//             const SizedBox(height: 20),
-//             Text(
-//               'Subscriptions auto-renew unless cancelled 24h before renewal.',
-//               style: theme.textTheme.bodySmall?.copyWith(
-//                 color: theme.colorScheme.onSurfaceVariant,
-//               ),
-//               textAlign: TextAlign.center,
-//             ),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-// }
-
-// class _HeroBanner extends StatelessWidget {
-//   const _HeroBanner();
-//   @override
-//   Widget build(BuildContext context) => Container(
-//     padding: const EdgeInsets.all(24),
-//     decoration: BoxDecoration(
-//       gradient: const LinearGradient(
-//         colors: [Color(0xFFF5A623), Color(0xFFFF6B35)],
-//         begin: Alignment.topLeft,
-//         end: Alignment.bottomRight,
-//       ),
-//       borderRadius: BorderRadius.circular(20),
-//     ),
-//     child: const Column(
-//       children: [
-//         Text('✦', style: TextStyle(color: Colors.white, fontSize: 48)),
-//         SizedBox(height: 12),
-//         Text(
-//           'Unlock Premium',
-//           style: TextStyle(
-//             color: Colors.white,
-//             fontSize: 24,
-//             fontWeight: FontWeight.w900,
-//           ),
-//         ),
-//         SizedBox(height: 8),
-//         Text(
-//           'Custom themes & avatars, 15 rooms/day, 10 offline packs (1 free), anonymous chat, and more.',
-//           style: TextStyle(color: Colors.white, fontSize: 14, height: 1.4),
-//           textAlign: TextAlign.center,
-//         ),
-//       ],
-//     ),
-//   );
-// }
-
-// class _ActiveBanner extends StatelessWidget {
-//   const _ActiveBanner({required this.user, this.tier});
-//   final dynamic user;
-//   final String? tier;
-//   @override
-//   Widget build(BuildContext context) {
-//     final exp = user.premiumExpiresAt;
-//     final label = exp != null
-//         ? 'Expires ${exp.day}/${exp.month}/${exp.year}'
-//         : 'Active — no expiry';
-//     return Container(
-//       padding: const EdgeInsets.all(20),
-//       decoration: BoxDecoration(
-//         color: Colors.green.shade50,
-//         borderRadius: BorderRadius.circular(16),
-//         border: Border.all(color: Colors.green.shade300),
-//       ),
-//       child: Row(
-//         children: [
-//           const Icon(Icons.verified_rounded, color: Colors.green, size: 36),
-//           const SizedBox(width: 12),
-//           Column(
-//             crossAxisAlignment: CrossAxisAlignment.start,
-//             children: [
-//               Text(
-//                 tier == 'premium_plus'
-//                     ? 'Premium Plus Active ✦'
-//                     : 'Premium Active ✦',
-//                 style: TextStyle(
-//                   fontWeight: FontWeight.w700,
-//                   color: Colors.green.shade800,
-//                   fontSize: 16,
-//                 ),
-//               ),
-//               Text(
-//                 label,
-//                 style: TextStyle(color: Colors.green.shade600, fontSize: 13),
-//               ),
-//             ],
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-// }
-
-// class _PremiumPlan {
-//   const _PremiumPlan({
-//     required this.id,
-//     required this.label,
-//     required this.tier,
-//     required this.price,
-//     required this.period,
-//     required this.isPopular,
-//     this.savings,
-//   });
-//   final String id, label, tier, price, period;
-//   final bool isPopular;
-//   final String? savings;
-// }
-
-// class _PlanCard extends StatelessWidget {
-//   const _PlanCard({
-//     required this.plan,
-//     required this.isActive,
-//     required this.isLoading,
-//     required this.onTap,
-//   });
-//   final _PremiumPlan plan;
-//   final bool isActive;
-//   final bool isLoading;
-//   final VoidCallback onTap;
-
-//   Color get _accent => plan.tier == 'premium_plus'
-//       ? const Color(0xFF7B68EE)
-//       : const Color(0xFFF5A623);
-
-//   @override
-//   Widget build(BuildContext context) {
-//     final theme = context.theme;
-//     return Padding(
-//       padding: const EdgeInsets.only(bottom: 12),
-//       child: Stack(
-//         children: [
-//           Container(
-//             decoration: BoxDecoration(
-//               color: isActive
-//                   ? _accent.withOpacity(0.08)
-//                   : theme.colorScheme.surface,
-//               borderRadius: BorderRadius.circular(16),
-//               border: Border.all(
-//                 color: isActive ? _accent : theme.colorScheme.outlineVariant,
-//                 width: isActive ? 2 : 1,
-//               ),
-//             ),
-//             child: Padding(
-//               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-//               child: Row(
-//                 children: [
-//                   Expanded(
-//                     child: Column(
-//                       crossAxisAlignment: CrossAxisAlignment.start,
-//                       children: [
-//                         Text(
-//                           plan.label,
-//                           style: theme.textTheme.titleMedium?.copyWith(
-//                             fontWeight: FontWeight.w700,
-//                           ),
-//                         ),
-//                         const SizedBox(height: 2),
-//                         Text(
-//                           '${plan.price} / ${plan.period}',
-//                           style: theme.textTheme.bodyMedium,
-//                         ),
-//                       ],
-//                     ),
-//                   ),
-//                   if (isActive)
-//                     Container(
-//                       padding: const EdgeInsets.symmetric(
-//                         horizontal: 10,
-//                         vertical: 4,
-//                       ),
-//                       decoration: BoxDecoration(
-//                         color: Colors.green.shade100,
-//                         borderRadius: BorderRadius.circular(12),
-//                       ),
-//                       child: Text(
-//                         'Active',
-//                         style: TextStyle(
-//                           color: Colors.green.shade700,
-//                           fontWeight: FontWeight.w700,
-//                           fontSize: 13,
-//                         ),
-//                       ),
-//                     )
-//                   else
-//                     SizedBox(
-//                       width: 72,
-//                       height: 36,
-//                       child: FilledButton(
-//                         style: FilledButton.styleFrom(
-//                           backgroundColor: _accent,
-//                           padding: EdgeInsets.zero,
-//                           shape: RoundedRectangleBorder(
-//                             borderRadius: BorderRadius.circular(10),
-//                           ),
-//                         ),
-//                         onPressed: isLoading ? null : onTap,
-//                         child: isLoading
-//                             ? const SizedBox(
-//                                 width: 18,
-//                                 height: 18,
-//                                 child: CircularProgressIndicator(
-//                                   strokeWidth: 2,
-//                                   color: Colors.white,
-//                                 ),
-//                               )
-//                             : const Text('Get'),
-//                       ),
-//                     ),
-//                 ],
-//               ),
-//             ),
-//           ),
-//           if (plan.isPopular)
-//             Positioned(
-//               top: 0,
-//               right: 16,
-//               child: Container(
-//                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-//                 decoration: BoxDecoration(
-//                   color: _accent,
-//                   borderRadius: const BorderRadius.vertical(
-//                     bottom: Radius.circular(8),
-//                   ),
-//                 ),
-//                 child: Text(
-//                   plan.savings ?? 'Popular',
-//                   style: const TextStyle(
-//                     color: Colors.white,
-//                     fontSize: 11,
-//                     fontWeight: FontWeight.w700,
-//                   ),
-//                 ),
-//               ),
-//             ),
-//         ],
-//       ),
-//     );
-//   }
-// }
-
-// class _FeatureTable extends StatelessWidget {
-//   const _FeatureTable();
-
-//   static const _rows = [
-//     ('Rooms per day', '5', '15', '15'),
-//     ('Offline packs', '1', '10', '10'),
-//     ('Custom themes', '✗', '✓', '✓'),
-//     ('Premium avatars', '✗', '✓', '✓'),
-//     ('Anonymous chat', '✗', '✓', '✓'),
-//     ('3× proof replays', '✗', '✓', '✓'),
-//     ('Premium badge ✦', '✗', '✓', '✓'),
-//     ('Hidden spectator', '✗', '✓', '✓'),
-//     ('Priority support', '✗', '✗', '✓'),
-//     ('Exclusive packs', '✗', '✗', '✓'),
-//   ];
-
-//   @override
-//   Widget build(BuildContext context) {
-//     final theme = context.theme;
-//     return Column(
-//       crossAxisAlignment: CrossAxisAlignment.stretch,
-//       children: [
-//         Text(
-//           'What you get',
-//           style: theme.textTheme.titleMedium?.copyWith(
-//             fontWeight: FontWeight.w700,
-//           ),
-//         ),
-//         const SizedBox(height: 12),
-//         Table(
-//           columnWidths: const {
-//             0: FlexColumnWidth(),
-//             1: FixedColumnWidth(52),
-//             2: FixedColumnWidth(64),
-//             3: FixedColumnWidth(52),
-//           },
-//           children: [_headerRow(theme), ..._rows.map(_dataRow)],
-//         ),
-//       ],
-//     );
-//   }
-
-//   TableRow _headerRow(ThemeData theme) => TableRow(
-//     decoration: BoxDecoration(
-//       color: theme.colorScheme.surfaceContainerHighest,
-//       borderRadius: BorderRadius.circular(8),
-//     ),
-//     children: const [
-//       Padding(
-//         padding: EdgeInsets.all(10),
-//         child: Text(
-//           'Feature',
-//           style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
-//         ),
-//       ),
-//       Padding(
-//         padding: EdgeInsets.all(10),
-//         child: Text(
-//           'Free',
-//           style: TextStyle(fontWeight: FontWeight.w700, fontSize: 11),
-//           textAlign: TextAlign.center,
-//         ),
-//       ),
-//       Padding(
-//         padding: EdgeInsets.all(10),
-//         child: Text(
-//           'Premium',
-//           style: TextStyle(
-//             fontWeight: FontWeight.w700,
-//             fontSize: 11,
-//             color: Color(0xFFF5A623),
-//           ),
-//           textAlign: TextAlign.center,
-//         ),
-//       ),
-//       Padding(
-//         padding: EdgeInsets.all(10),
-//         child: Text(
-//           'Plus',
-//           style: TextStyle(
-//             fontWeight: FontWeight.w700,
-//             fontSize: 11,
-//             color: Color(0xFF7B68EE),
-//           ),
-//           textAlign: TextAlign.center,
-//         ),
-//       ),
-//     ],
-//   );
-
-//   TableRow _dataRow((String, String, String, String) r) => TableRow(
-//     children: [
-//       Padding(
-//         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-//         child: Text(r.$1, style: const TextStyle(fontSize: 12)),
-//       ),
-//       _cell(r.$2),
-//       _cell(r.$3),
-//       _cell(r.$4),
-//     ],
-//   );
-
-//   Widget _cell(String val) => Padding(
-//     padding: const EdgeInsets.symmetric(vertical: 8),
-//     child: Center(
-//       child: val == '✓'
-//           ? const Icon(
-//               Icons.check_circle_rounded,
-//               color: Color(0xFFF5A623),
-//               size: 16,
-//             )
-//           : val == '✗'
-//           ? const Icon(Icons.remove, size: 14, color: Colors.grey)
-//           : Text(
-//               val,
-//               style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-//               textAlign: TextAlign.center,
-//             ),
-//     ),
-//   );
-// }
 
 import 'package:flutter/material.dart';
 import 'package:jma3a/core/services/subscription_service.dart';
@@ -2614,14 +6,6 @@ import 'package:provider/provider.dart';
 import '../../../../core/extensions/context_ext.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/providers/auth_provider.dart';
-
-const _planPrices = {'monthly': 999, 'yearly': 7999, 'plus_monthly': 1999};
-
-const _planLabels = {
-  'monthly': 'Premium Monthly',
-  'yearly': 'Premium Yearly',
-  'plus_monthly': 'Premium Plus Monthly',
-};
 
 class PremiumScreen extends StatefulWidget {
   const PremiumScreen({super.key});
@@ -2632,15 +16,17 @@ class PremiumScreen extends StatefulWidget {
 
 class _PremiumScreenState extends State<PremiumScreen> {
   bool _loading = false;
+  bool _plansLoading = true;
   String? _selectedPlanId;
+  List<_PremiumPlan> _plans = [];
 
   static const Color _gold = Color(0xFFF5A623);
-  static const Color _platinum = Color(0xFF7B68EE);
 
   @override
   void initState() {
     super.initState();
     _loadStatus();
+    _loadPlans();
   }
 
   Future<void> _loadStatus() async {
@@ -2648,6 +34,47 @@ class _PremiumScreenState extends State<PremiumScreen> {
     if (uid == null) return;
     await SubscriptionService.instance.getActiveSubscription(uid);
     if (mounted) setState(() {});
+  }
+
+  /// Loaded from subscription_plans (DB) via GET /v1/wallet/plans instead
+  /// of a hardcoded constant — pricing/plan set updates automatically when
+  /// the table changes, no client release needed.
+  Future<void> _loadPlans() async {
+    try {
+      final api = ApiClient.instance;
+      final resp = await api.get<Map<String, dynamic>>('/v1/wallet/plans');
+      final rows = (resp.data?['plans'] as List?) ?? const [];
+      final locale = context.mounted
+          ? Localizations.localeOf(context).languageCode
+          : 'en';
+      final plans = rows.map((r) {
+        final row = r as Map<String, dynamic>;
+        final nameJson = (row['name_json'] as Map?)?.cast<String, dynamic>() ?? {};
+        final descriptionJson =
+            (row['description_json'] as Map?)?.cast<String, dynamic>() ?? {};
+        final featuresJson = (row['features_json'] as Map?)?.cast<String, dynamic>() ?? {};
+        final priceMru = (row['price_mru'] as num?)?.toInt() ?? 0;
+        final features =
+            (featuresJson[locale] as List?) ?? (featuresJson['en'] as List?) ?? const [];
+        return _PremiumPlan(
+          id: row['id'] as String,
+          label: nameJson[locale] as String? ?? nameJson['en'] as String? ?? row['id'] as String,
+          description:
+              descriptionJson[locale] as String? ?? descriptionJson['en'] as String?,
+          tier: row['tier'] as String,
+          priceMru: priceMru,
+          durationDays: (row['duration_days'] as num?)?.toInt() ?? 30,
+          features: features.cast<String>(),
+        );
+      }).toList();
+      if (mounted) setState(() => _plans = plans);
+    } catch (_) {
+      // Leave _plans empty — the screen shows an empty plan list rather
+      // than falling back to stale hardcoded prices a user could be
+      // charged incorrectly against.
+    } finally {
+      if (mounted) setState(() => _plansLoading = false);
+    }
   }
 
   Future<void> _purchase(_PremiumPlan plan) async {
@@ -2663,20 +90,19 @@ class _PremiumScreenState extends State<PremiumScreen> {
       final expiresAt = user.premiumExpiresAt;
       final dateStr = expiresAt != null
           ? '${expiresAt.day}/${expiresAt.month}/${expiresAt.year}'
-          : 'your current term ends';
+          : context.l10n.premiumCurrentTermEnds;
       if (mounted) {
         await showDialog<void>(
           context: context,
           builder: (dCtx) => AlertDialog(
-            title: const Text('Cannot Downgrade Yet'),
+            title: Text(dCtx.l10n.premiumCannotDowngradeTitle),
             content: Text(
-              'You have an active Premium Plus subscription. You can switch '
-              'to a lower plan once it expires on $dateStr.',
+              dCtx.l10n.premiumCannotDowngradeBody(dateStr),
             ),
             actions: [
               FilledButton(
                 onPressed: () => Navigator.of(dCtx).pop(),
-                child: const Text('OK'),
+                child: Text(dCtx.l10n.ok),
               ),
             ],
           ),
@@ -2685,24 +111,25 @@ class _PremiumScreenState extends State<PremiumScreen> {
       return;
     }
 
-    final priceMru = _planPrices[plan.id] ?? 0;
-
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dCtx) => AlertDialog(
-        title: Text('Purchase ${_planLabels[plan.id] ?? plan.label}'),
+        title: Text(dCtx.l10n.premiumPurchasePlan(plan.label)),
         content: Text(
-          'This will deduct $priceMru MRU from your wallet balance.\n\n'
-          'Plan: ${plan.label} — ${plan.price}/${plan.period}',
+          dCtx.l10n.premiumPurchaseConfirmBody(
+            plan.label,
+            plan.priceLabel,
+            plan.periodLabel,
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dCtx).pop(false),
-            child: const Text('Cancel'),
+            child: Text(dCtx.l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dCtx).pop(true),
-            child: const Text('Confirm Purchase'),
+            child: Text(dCtx.l10n.premiumConfirmPurchase),
           ),
         ],
       ),
@@ -2722,7 +149,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('🎉 ${_planLabels[plan.id]} activated!'),
+            content: Text(context.l10n.premiumPlanActivated(plan.label)),
             backgroundColor: Colors.green.shade700,
             behavior: SnackBarBehavior.fixed,
           ),
@@ -2731,17 +158,18 @@ class _PremiumScreenState extends State<PremiumScreen> {
     } catch (e) {
       if (!mounted) return;
       final raw = e.toString();
+      final l10n = context.l10n;
       final msg = raw.contains('insufficient_balance')
-          ? 'Not enough balance. Please top up your wallet first.'
+          ? l10n.premiumErrorInsufficientBalance
           : raw.contains('wallet_not_found')
-          ? 'Wallet not found. Please contact support.'
+          ? l10n.premiumErrorWalletNotFound
           : raw.contains('wallet_frozen')
-          ? 'Your wallet is frozen. Please contact support.'
+          ? l10n.premiumErrorWalletFrozen
           : raw.contains('invalid_plan')
-          ? 'Invalid plan selected.'
+          ? l10n.premiumErrorInvalidPlan
           : raw.contains('downgrade_blocked')
-          ? 'You can switch plans once your current subscription expires.'
-          : 'Purchase failed: $raw';
+          ? l10n.premiumErrorDowngradeBlocked
+          : l10n.premiumErrorPurchaseFailed(raw);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(msg),
@@ -2764,16 +192,15 @@ class _PremiumScreenState extends State<PremiumScreen> {
     final user = context.watch<AuthProvider>().currentUser;
     final isPremium = user?.isPremiumActive ?? false;
     final tier = user?.premiumTier;
-    final theme = context.theme;
 
     return Scaffold(
       appBar: AppBar(
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-              'Premium',
-              style: TextStyle(fontWeight: FontWeight.w800),
+            Text(
+              context.l10n.premiumTitle,
+              style: const TextStyle(fontWeight: FontWeight.w800),
             ),
             const SizedBox(width: 6),
             Container(
@@ -2803,53 +230,25 @@ class _PremiumScreenState extends State<PremiumScreen> {
             else
               const _HeroBanner(),
             const SizedBox(height: 24),
-            ...[
-              _PremiumPlan(
-                id: 'monthly',
-                label: 'Monthly',
-                tier: 'premium',
-                price: '9.99 MRU',
-                period: 'month',
-                isPopular: false,
-              ),
-              _PremiumPlan(
-                id: 'yearly',
-                label: 'Yearly',
-                tier: 'premium',
-                price: '79.99 MRU',
-                period: 'year',
-                isPopular: true,
-                savings: 'Save 33%',
-              ),
-              _PremiumPlan(
-                id: 'plus_monthly',
-                label: 'Premium Plus',
-                tier: 'premium_plus',
-                price: '19.99 MRU',
-                period: 'month',
-                isPopular: false,
-              ),
-            ].map((plan) {
-              final isDowngradeOption =
-                  isPremium && tier == 'premium_plus' && plan.tier == 'premium';
-              return _PlanCard(
-                plan: plan,
-                isActive: isPremium && tier == plan.tier,
-                isLoading: _loading && _selectedPlanId == plan.id,
-                isLocked: isDowngradeOption,
-                onTap: () => _purchase(plan),
-              );
-            }),
+            if (_plansLoading)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 24),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else
+              ..._plans.map((plan) {
+                final isDowngradeOption =
+                    isPremium && tier == 'premium_plus' && plan.tier == 'premium';
+                return _PlanCard(
+                  plan: plan,
+                  isActive: isPremium && tier == plan.tier,
+                  isLoading: _loading && _selectedPlanId == plan.id,
+                  isLocked: isDowngradeOption,
+                  onTap: () => _purchase(plan),
+                );
+              }),
             const SizedBox(height: 24),
-            const _FeatureTable(),
-            const SizedBox(height: 20),
-            Text(
-              'Subscriptions auto-renew unless cancelled 24h before renewal.',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-              textAlign: TextAlign.center,
-            ),
+            if (_plans.isNotEmpty) _FeatureLists(plans: _plans),
           ],
         ),
       ),
@@ -2870,22 +269,22 @@ class _HeroBanner extends StatelessWidget {
       ),
       borderRadius: BorderRadius.circular(20),
     ),
-    child: const Column(
+    child: Column(
       children: [
-        Text('✦', style: TextStyle(color: Colors.white, fontSize: 48)),
-        SizedBox(height: 12),
+        const Text('✦', style: TextStyle(color: Colors.white, fontSize: 48)),
+        const SizedBox(height: 12),
         Text(
-          'Unlock Premium',
-          style: TextStyle(
+          context.l10n.premiumUnlockTitle,
+          style: const TextStyle(
             color: Colors.white,
             fontSize: 24,
             fontWeight: FontWeight.w900,
           ),
         ),
-        SizedBox(height: 8),
+        const SizedBox(height: 8),
         Text(
-          'Custom themes & avatars, 15 rooms/day, up to 12 players per room, 10 offline packs (1 free), anonymous chat, and more.',
-          style: TextStyle(color: Colors.white, fontSize: 14, height: 1.4),
+          context.l10n.premiumFeatureListDescription,
+          style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.4),
           textAlign: TextAlign.center,
         ),
       ],
@@ -2943,15 +342,33 @@ class _PremiumPlan {
   const _PremiumPlan({
     required this.id,
     required this.label,
+    required this.description,
     required this.tier,
-    required this.price,
-    required this.period,
-    required this.isPopular,
-    this.savings,
+    required this.priceMru,
+    required this.durationDays,
+    required this.features,
   });
-  final String id, label, tier, price, period;
-  final bool isPopular;
-  final String? savings;
+  final String id, label, tier;
+  final String? description;
+  final int priceMru;
+  final int durationDays;
+  final List<String> features;
+
+  /// price_mru is a literal whole-MRU amount — matches every other price
+  /// column in this schema (physical packs, deposits, withdrawals) and,
+  /// critically, matches what purchaseSubscription() in walletService.js
+  /// actually debits from the wallet (`-plan.price_mru`, unscaled). An
+  /// earlier migration's comment wrongly assumed a "hundredths of MRU"
+  /// convention here, which made this label show a fabricated decimal
+  /// value that never matched the real deduction.
+  String get priceLabel => '$priceMru MRU';
+
+  /// Only monthly plans exist today, but this stays duration-driven
+  /// rather than hardcoded so a differently-timed plan added later
+  /// (e.g. a future promo) displays correctly without a client change.
+  String get periodLabel => durationDays >= 28 && durationDays <= 31
+      ? 'month'
+      : '$durationDays days';
 }
 
 class _PlanCard extends StatelessWidget {
@@ -2979,155 +396,131 @@ class _PlanCard extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 12),
       child: Opacity(
         opacity: isLocked ? 0.5 : 1,
-        child: Stack(
-          children: [
-            Container(
-              decoration: BoxDecoration(
-                color: isActive
-                    ? _accent.withOpacity(0.08)
-                    : theme.colorScheme.surface,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: isActive ? _accent : theme.colorScheme.outlineVariant,
-                  width: isActive ? 2 : 1,
-                ),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 14,
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            plan.label,
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${plan.price} / ${plan.period}',
-                            style: theme.textTheme.bodyMedium,
-                          ),
-                          if (isLocked) ...[
-                            const SizedBox(height: 4),
-                            Text(
-                              'Locked until Premium Plus expires',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.error,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                    if (isActive)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.green.shade100,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          'Active',
-                          style: TextStyle(
-                            color: Colors.green.shade700,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 13,
-                          ),
-                        ),
-                      )
-                    else if (isLocked)
-                      Icon(
-                        Icons.lock_rounded,
-                        color: theme.colorScheme.onSurfaceVariant,
-                        size: 24,
-                      )
-                    else
-                      SizedBox(
-                        width: 72,
-                        height: 36,
-                        child: FilledButton(
-                          style: FilledButton.styleFrom(
-                            backgroundColor: _accent,
-                            padding: EdgeInsets.zero,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                          onPressed: isLoading ? null : onTap,
-                          child: isLoading
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : const Text('Get'),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
+        child: Container(
+          decoration: BoxDecoration(
+            color: isActive
+                ? _accent.withOpacity(0.08)
+                : theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isActive ? _accent : theme.colorScheme.outlineVariant,
+              width: isActive ? 2 : 1,
             ),
-            if (plan.isPopular)
-              Positioned(
-                top: 0,
-                right: 16,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _accent,
-                    borderRadius: const BorderRadius.vertical(
-                      bottom: Radius.circular(8),
-                    ),
-                  ),
-                  child: Text(
-                    plan.savings ?? 'Popular',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                    ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        plan.label,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      if (plan.description != null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          plan.description!,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 2),
+                      Text(
+                        context.l10n.premiumPricePerPeriod(
+                          plan.priceLabel,
+                          plan.periodLabel,
+                        ),
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                      if (isLocked) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          context.l10n.premiumLockedUntilExpires,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.error,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
-              ),
-          ],
+                if (isActive)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade100,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      context.l10n.activeLabel,
+                      style: TextStyle(
+                        color: Colors.green.shade700,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
+                    ),
+                  )
+                else if (isLocked)
+                  Icon(
+                    Icons.lock_rounded,
+                    color: theme.colorScheme.onSurfaceVariant,
+                    size: 24,
+                  )
+                else
+                  SizedBox(
+                    width: 72,
+                    height: 36,
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: _accent,
+                        padding: EdgeInsets.zero,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      onPressed: isLoading ? null : onTap,
+                      child: isLoading
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : Text(context.l10n.getButton),
+                    ),
+                  ),
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
 }
 
-class _FeatureTable extends StatelessWidget {
-  const _FeatureTable();
+/// Renders each plan's own feature list, sourced from
+/// subscription_plans.features_json (per-locale) instead of the previous
+/// static English-only 3-column comparison table hardcoded into this file.
+class _FeatureLists extends StatelessWidget {
+  const _FeatureLists({required this.plans});
+  final List<_PremiumPlan> plans;
 
-  static const _rows = [
-    ('Rooms per day', '5', '15', '15'),
-    ('Max players per room', '3', '8', '12'),
-    ('Offline packs', '1', '10', '10'),
-    ('Custom themes', '✗', '✓', '✓'),
-    ('Premium avatars', '✗', '✓', '✓'),
-    ('Anonymous chat', '✗', '✓', '✓'),
-    ('3× proof replays', '✗', '✓', '✓'),
-    ('Premium badge ✦', '✗', '✓', '✓'),
-    ('Hidden spectator', '✗', '✓', '✓'),
-    ('Priority support', '✗', '✗', '✓'),
-    ('Exclusive packs', '✗', '✗', '✓'),
-  ];
+  Color _accentFor(String tier) =>
+      tier == 'premium_plus' ? const Color(0xFF7B68EE) : const Color(0xFFF5A623);
 
   @override
   Widget build(BuildContext context) {
@@ -3136,101 +529,60 @@ class _FeatureTable extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          'What you get',
+          context.l10n.premiumWhatYouGet,
           style: theme.textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.w700,
           ),
         ),
         const SizedBox(height: 12),
-        Table(
-          columnWidths: const {
-            0: FlexColumnWidth(),
-            1: FixedColumnWidth(52),
-            2: FixedColumnWidth(64),
-            3: FixedColumnWidth(52),
-          },
-          children: [_headerRow(theme), ..._rows.map(_dataRow)],
-        ),
+        for (final plan in plans)
+          if (plan.features.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      plan.label,
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: _accentFor(plan.tier),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    for (final feature in plan.features)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 3),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(
+                              Icons.check_circle_rounded,
+                              color: _accentFor(plan.tier),
+                              size: 16,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                feature,
+                                style: const TextStyle(fontSize: 13),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
       ],
     );
   }
-
-  TableRow _headerRow(ThemeData theme) => TableRow(
-    decoration: BoxDecoration(
-      color: theme.colorScheme.surfaceContainerHighest,
-      borderRadius: BorderRadius.circular(8),
-    ),
-    children: const [
-      Padding(
-        padding: EdgeInsets.all(10),
-        child: Text(
-          'Feature',
-          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
-        ),
-      ),
-      Padding(
-        padding: EdgeInsets.all(10),
-        child: Text(
-          'Free',
-          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 11),
-          textAlign: TextAlign.center,
-        ),
-      ),
-      Padding(
-        padding: EdgeInsets.all(10),
-        child: Text(
-          'Premium',
-          style: TextStyle(
-            fontWeight: FontWeight.w700,
-            fontSize: 11,
-            color: Color(0xFFF5A623),
-          ),
-          textAlign: TextAlign.center,
-        ),
-      ),
-      Padding(
-        padding: EdgeInsets.all(10),
-        child: Text(
-          'Plus',
-          style: TextStyle(
-            fontWeight: FontWeight.w700,
-            fontSize: 11,
-            color: Color(0xFF7B68EE),
-          ),
-          textAlign: TextAlign.center,
-        ),
-      ),
-    ],
-  );
-
-  TableRow _dataRow((String, String, String, String) r) => TableRow(
-    children: [
-      Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        child: Text(r.$1, style: const TextStyle(fontSize: 12)),
-      ),
-      _cell(r.$2),
-      _cell(r.$3),
-      _cell(r.$4),
-    ],
-  );
-
-  Widget _cell(String val) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 8),
-    child: Center(
-      child: val == '✓'
-          ? const Icon(
-              Icons.check_circle_rounded,
-              color: Color(0xFFF5A623),
-              size: 16,
-            )
-          : val == '✗'
-          ? const Icon(Icons.remove, size: 14, color: Colors.grey)
-          : Text(
-              val,
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-              textAlign: TextAlign.center,
-            ),
-    ),
-  );
 }

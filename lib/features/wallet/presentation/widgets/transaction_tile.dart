@@ -46,7 +46,7 @@ class TransactionTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(tx.type.displayLabel,
+                Text(tx.type.displayLabel(context.l10n),
                     style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w600)),
                 Row(
@@ -59,13 +59,13 @@ class TransactionTile extends StatelessWidget {
                     if (isPending) ...[
                       const SizedBox(width: 6),
                       _StatusBadge(
-                          label: tx.status.displayLabel,
+                          label: tx.status.displayLabel(context.l10n),
                           color: AppColors.warningAmber),
                     ] else if (tx.status == TransactionStatus.failed ||
                         tx.status == TransactionStatus.cancelled) ...[
                       const SizedBox(width: 6),
                       _StatusBadge(
-                          label: tx.status.displayLabel,
+                          label: tx.status.displayLabel(context.l10n),
                           color: AppColors.errorRed),
                     ],
                   ],

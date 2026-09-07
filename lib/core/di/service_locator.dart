@@ -341,6 +341,7 @@ import '../network/api_client.dart';
 import '../storage/local_storage_service.dart';
 import '../storage/secure_storage_service.dart';
 import '../storage/database/app_database.dart';
+import '../services/app_tutorial_service.dart';
 import '../services/connectivity_service.dart';
 import '../services/notification_service.dart';
 import '../services/local_notification_service.dart';
@@ -348,6 +349,7 @@ import '../services/image_cache_service.dart';
 import '../services/pack_sync_service.dart';
 import '../services/realtime_service.dart';
 import '../services/presence_service.dart';
+import '../config/platform_config_repository.dart';
 import '../../features/auth/data/auth_repository.dart';
 import '../../features/profile/data/profile_repository.dart';
 import '../../features/friends/data/friends_repository.dart';
@@ -452,6 +454,7 @@ class ServiceLocator {
 
   ConnectivityService get connectivityService => ConnectivityService.instance;
   LocalStorageService get localStorageService => LocalStorageService.instance;
+  AppTutorialService get tutorialService => AppTutorialService.instance;
   SecureStorageService get secureStorageService =>
       SecureStorageService.instance;
   NotificationService get notificationService => NotificationService.instance;
@@ -472,6 +475,8 @@ class ServiceLocator {
       NotificationRepository.instance;
   WalletRepository get walletRepository => WalletRepository.instance;
   PackRepository get packRepository => PackRepository.instance;
+  PlatformConfigRepository get platformConfigRepository =>
+      PlatformConfigRepository.instance;
   RoomRepository get roomRepository => RoomRepository.instance;
 }
 

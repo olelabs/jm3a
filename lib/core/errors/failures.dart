@@ -110,3 +110,28 @@ final class PendingApprovalFailure extends Failure {
     super.code = 'pending_approval',
   });
 }
+
+/// Account is banned/suspended (profiles.is_banned) — thrown by
+/// AuthRepository at login and session-restore, and raised by
+/// AuthProvider when a live moderation event bans the current user
+/// mid-session. [message] is a plain-English fallback for logs only —
+/// the UI never displays it directly; it builds the properly localized,
+/// date-formatted string from [isPermanent]/[bannedUntil] instead (see
+/// _AppShell's suspension dialog), the same reason RateLimitFailure
+/// carries retryAfterSeconds instead of baking a message string here.
+final class SuspendedFailure extends Failure {
+  const SuspendedFailure({
+    required this.isPermanent,
+    this.bannedUntil,
+    this.banReason,
+    super.message = 'This account has been suspended.',
+    super.code = 'account_suspended',
+  });
+
+  final bool isPermanent;
+  final DateTime? bannedUntil;
+  final String? banReason;
+
+  @override
+  List<Object?> get props => [...super.props, isPermanent, bannedUntil, banReason];
+}

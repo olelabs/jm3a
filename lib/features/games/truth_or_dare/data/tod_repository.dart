@@ -3698,6 +3698,31 @@ import '../../engine/base_game_engine.dart';
 
 const _uuid = Uuid();
 
+/// Resolves a card's/pack's localized text for [lang]: the requested
+/// language first, then 'en' (legacy default), then — critically — the
+/// first non-empty value present under ANY key. Packs authored in a
+/// single non-en/ar/fr language (e.g. 'hs' Hassaniya, or any future
+/// language code from pack_languages) only ever populate ONE key in this
+/// map, which is neither [lang] nor 'en' whenever the room/viewer isn't
+/// using that exact language — without this last resort, such packs
+/// render every card blank instead of showing the content that actually
+/// exists. Never returns a raw id; callers substitute a localized "no
+/// content" string when this returns ''.
+String _pickLocalized(Map<String, dynamic> json, String lang) {
+  String? nonEmpty(String? key) {
+    if (key == null) return null;
+    final v = json[key];
+    return (v is String && v.trim().isNotEmpty) ? v : null;
+  }
+
+  final direct = nonEmpty(lang) ?? nonEmpty('en');
+  if (direct != null) return direct;
+  for (final v in json.values) {
+    if (v is String && v.trim().isNotEmpty) return v;
+  }
+  return '';
+}
+
 /// Truth or Dare DB persistence layer.
 ///
 /// Priority order for card loading:
@@ -3737,10 +3762,7 @@ class TodRepository extends BaseRepository {
 
       return rows.map((r) {
         final contentJson = r['content'] as Map<String, dynamic>? ?? {};
-        final content =
-            contentJson[language] as String? ??
-            contentJson['en'] as String? ??
-            '';
+        final content = _pickLocalized(contentJson, language);
         return TodCard(
           id: r['id'] as String,
           content: content,
@@ -3780,16 +3802,9 @@ class TodRepository extends BaseRepository {
 
       final rows = await db.rawQuery(sql, params);
 
-      // Debug: log how many cards were found
       AppLogger.debug(
         'TodRepository: found ${rows.length} cards for pack $packId, language=$language',
       );
-      if (rows.isNotEmpty) {
-        // ignore: avoid_print
-        print(
-          '=== RAW first row content_json: ${rows.first["content_json"]?.runtimeType} = ${rows.first["content_json"]}',
-        );
-      }
 
       // Also check if pack exists at all
       if (rows.isEmpty) {
@@ -3821,10 +3836,7 @@ class TodRepository extends BaseRepository {
             } catch (_) {
               contentJson = {'en': contentStr};
             }
-            final content =
-                contentJson[language] as String? ??
-                contentJson['en'] as String? ??
-                '';
+            final content = _pickLocalized(contentJson, language);
             return TodCard(
               id: r['id'] as String,
               content: content,
@@ -3862,10 +3874,7 @@ class TodRepository extends BaseRepository {
         final contentJson = decoded is Map
             ? Map<String, dynamic>.from(decoded)
             : <String, dynamic>{};
-        final content =
-            contentJson[language] as String? ??
-            contentJson['en'] as String? ??
-            '';
+        final content = _pickLocalized(contentJson, language);
         return TodCard(
           id: r['id'] as String,
           content: content,
@@ -3892,11 +3901,6 @@ class TodRepository extends BaseRepository {
           .eq('pack_id', packId)
           .order('sort_order');
 
-      // ignore: avoid_print
-      print(
-        '=== Supabase fallback: ${rows.length} rows, first content: ${rows.isNotEmpty ? rows.first['content'] : 'none'}',
-      );
-
       if (rows.isEmpty) return [];
 
       return rows.map((r) {
@@ -3916,12 +3920,7 @@ class TodRepository extends BaseRepository {
         } catch (_) {
           contentJson = {};
         }
-        final content =
-            contentJson[language] as String? ??
-            contentJson['en'] as String? ??
-            '';
-        // ignore: avoid_print
-        print('=== card content: $content');
+        final content = _pickLocalized(contentJson, language);
         return TodCard(
           id: r['id'] as String,
           content: content,
@@ -3937,8 +3936,6 @@ class TodRepository extends BaseRepository {
       }).toList();
     } catch (e) {
       AppLogger.error('TodRepository: Supabase fallback failed', error: e);
-      // ignore: avoid_print
-      print('=== Supabase fallback ERROR: $e');
       return [];
     }
   }
@@ -4024,15 +4021,90 @@ class TodRepository extends BaseRepository {
   Future<Map<String, dynamic>?> findActiveSession(String roomId) => guardedCall(
     operationName: 'findActiveTodSession',
     operation: () async {
+      // Scoped to game_type='truth_or_dare' — never treat a stale
+      // active/paused session from a different game type in the same
+      // room as ToD's own existing session. Same class of bug as
+      // NHIE/Meme's equivalent lookup (fixed identically there) — a
+      // room-only filter here could latch onto an NHIE/Meme session
+      // that hasn't yet transitioned out of 'active'.
       final row = await _supabase
           .from('game_sessions')
-          .select('id, state_snapshot, status')
+          .select('id, state_snapshot, status, config, lifecycle_state')
           .eq('room_id', roomId)
+          .eq('game_type', 'truth_or_dare')
           .eq('status', 'active')
           .order('started_at', ascending: false)
           .limit(1)
           .maybeSingle();
       return row;
+    },
+  );
+
+  /// Records "I loaded this exact game session" durably (survives a
+  /// reconnect that missed the ephemeral broadcast) — the owner
+  /// activates the session once every player_id has confirmed or its own
+  /// timeout elapses; see TodGameProvider._confirmReadyAndMaybeActivate.
+  Future<void> confirmSessionReady(String sessionId) => guardedCall(
+    operationName: 'confirmTodSessionReady',
+    operation: () async {
+      await _supabase.rpc(
+        'confirm_game_session_ready',
+        params: {'p_session_id': sessionId},
+      );
+    },
+  );
+
+  /// Owner-only: transitions the session from 'starting' to 'active',
+  /// unblocking gameplay actions for every client (see
+  /// TodGameProvider._handleAction/onPlayerAction's lifecycle gate).
+  Future<void> activateSession(String sessionId) => guardedCall(
+    operationName: 'activateTodSession',
+    operation: () async {
+      await _supabase.rpc(
+        'activate_game_session',
+        params: {'p_session_id': sessionId},
+      );
+    },
+  );
+
+  /// Weak-connection fallback for a follower stuck on 'starting' with no
+  /// session_active broadcast having arrived yet — polls the DB directly
+  /// instead of waiting indefinitely.
+  Future<String?> getSessionLifecycleState(String sessionId) => guardedCall(
+    operationName: 'getTodSessionLifecycleState',
+    operation: () async {
+      final row = await _supabase
+          .from('game_sessions')
+          .select('lifecycle_state')
+          .eq('id', sessionId)
+          .maybeSingle();
+      return row?['lifecycle_state'] as String?;
+    },
+  );
+
+  /// The single source of truth for "who is actually in this room right
+  /// now" at the exact moment a NEW session is about to be created —
+  /// deliberately a fresh query, not RoomProvider.members. The Start Game
+  /// button's own flow has several awaits between the tap (a pack lookup,
+  /// the server-side pack-already-played check, Truth or Dare's pre-game
+  /// config sheet, which is a full modal the owner can sit on indefinitely)
+  /// before actually reaching createSession — a player leaving at any
+  /// point in that window left the session created with a stale
+  /// player_ids entry for someone no longer there, which the ready
+  /// barrier (waiting on every one of them to confirm) or the engine's
+  /// own turn order would then wait on forever. See
+  /// TodGameProvider.initAsOwner, which calls this instead of trusting
+  /// its own playerIds parameter for a genuinely new game.
+  Future<List<String>> fetchActiveMemberIds(String roomId) => guardedCall(
+    operationName: 'fetchActiveMemberIds',
+    operation: () async {
+      final rows = await _supabase
+          .from('room_members')
+          .select('user_id')
+          .eq('room_id', roomId)
+          .isFilter('left_at', null)
+          .neq('role', 'spectator');
+      return rows.map((r) => r['user_id'] as String).toList();
     },
   );
 
@@ -4042,27 +4114,54 @@ class TodRepository extends BaseRepository {
     required GameConfig config,
     required List<String> playerIds,
     required String ownerId,
+    required Map<String, dynamic> stateSnapshot,
   }) => guardedCall(
     operationName: 'createTodSession',
     operation: () async {
       // game_sessions has no permissive INSERT policy — creation only ever
       // happens through this SECURITY DEFINER RPC, which also enforces that
       // the caller is the room owner or an explicitly-permitted moderator.
+      // This is now the SAME canonical 9-param signature NHIE/Meme already
+      // call — the old 10-param overload (p_config, ToD-only, not
+      // race-safe) is retired; see
+      // migration_2026_starting_state_and_tod_canonical_rpc.sql.
       try {
-        final id = await _supabase.rpc(
-          'create_game_session',
-          params: {
-            'p_room_id': roomId,
-            'p_pack_id': packId,
-            'p_game_type': GameType.truthOrDare.toDbString(),
-            'p_player_ids': playerIds,
-            'p_max_rounds': config.maxRounds,
-            'p_turn_timer_secs': config.turnTimerSeconds,
-            'p_allow_skip': config.allowSkip,
-            'p_allow_spicy': config.allowSpicy,
-          },
-        );
-        return id as String;
+        final id =
+            await _supabase.rpc(
+                  'create_game_session',
+                  params: {
+                    'p_room_id': roomId,
+                    'p_pack_id': packId,
+                    'p_game_type': GameType.truthOrDare.toDbString(),
+                    'p_player_ids': playerIds,
+                    'p_max_rounds': config.maxRounds,
+                    'p_turn_timer_secs': config.turnTimerSeconds,
+                    'p_allow_skip': config.allowSkip,
+                    'p_allow_spicy': config.allowSpicy,
+                    'p_state_snapshot': stateSnapshot,
+                    // Items 2/3/8 — ToD's own 'unique' cardRepetitionMode
+                    // (see TruthOrDareEngine._draw) is what the server
+                    // needs to know to enforce Max Rounds <= actual card
+                    // supply; 'shuffle' (the default) has no ceiling,
+                    // matching this same false default.
+                    'p_unique_cards': config.cardRepetitionMode == 'unique',
+                  },
+                )
+                as String;
+        // The canonical RPC has no p_config parameter of its own to
+        // populate this in the same INSERT — game_sessions.config is a
+        // real, existing column (see findActiveSession/findLatestSession,
+        // which already read it back), just no longer written inline by
+        // create_game_session itself. Written here as a plain follow-up
+        // update instead, identically to how saveSnapshot/completeSession
+        // already write state_snapshot post-creation — so a resumed game
+        // still never silently reconstructs a different config than the
+        // one it actually started with.
+        await _supabase
+            .from('game_sessions')
+            .update({'config': config.toMap()})
+            .eq('id', id);
+        return id;
       } on PostgrestException catch (e) {
         if (e.message.contains('permission_denied')) {
           throw const ForbiddenFailure(
@@ -4096,15 +4195,28 @@ class TodRepository extends BaseRepository {
   /// Returns the snapshot regardless of session status — a finished session's
   /// snapshot already has `is_over: true` embedded, so callers can render the
   /// results screen instead of treating a completed game as unrecoverable.
-  Future<Map<String, dynamic>?> loadSnapshot(String sessionId) => guardedCall(
+  /// Also returns lifecycle_state alongside the snapshot — a caller that
+  /// only checked the snapshot content (ignoring whether the session had
+  /// actually reached 'active') was a real gap: it let a weak-connection
+  /// client's 8s no-broadcast-received fallback silently unlock the full
+  /// interactive game UI for a session still stuck in 'starting', since
+  /// this was the one snapshot-loading path that predated (and knew
+  /// nothing about) the ready barrier.
+  Future<(Map<String, dynamic>?, String?, String?)> loadSnapshot(
+    String sessionId,
+  ) => guardedCall(
     operationName: 'loadTodSnapshot',
     operation: () async {
       final row = await _supabase
           .from('game_sessions')
-          .select('state_snapshot')
+          .select('state_snapshot, lifecycle_state, status')
           .eq('id', sessionId)
           .single();
-      return row['state_snapshot'] as Map<String, dynamic>?;
+      return (
+        row['state_snapshot'] as Map<String, dynamic>?,
+        row['lifecycle_state'] as String?,
+        row['status'] as String?,
+      );
     },
   );
 
@@ -4132,6 +4244,85 @@ class TodRepository extends BaseRepository {
     },
   );
 
+  /// Durable, synchronous record of one turn's proof visibility + viewing
+  /// rules — see TodGameProvider.saveProofMetadata's doc comment for why
+  /// this exists separately from the periodic (every-10s) state snapshot.
+  /// record_proof_view reads this row (falling back to the room's own
+  /// proof_visibility_policy settings when absent — an older client, or a
+  /// session predating this) to authorize/gate each view server-side.
+  Future<void> saveTurnProofMetadata({
+    required String sessionId,
+    required int turnStartedAt,
+    required TodProofVisibilitySettings visibility,
+    required TodProofViewMode viewMode,
+    required int viewSeconds,
+  }) => guardedCall(
+    operationName: 'saveTurnProofMetadata',
+    operation: () async {
+      // Snake_case wire vocabulary, matching room_settings.
+      // proof_visibility_policy's existing values — NOT
+      // TodProofVisibility.name (camelCase, used only for the client-side
+      // broadcast/state round-trip) — so record_proof_view's existing
+      // room-settings comparisons can be reused verbatim for this new
+      // per-turn source too.
+      final wirePolicy = switch (visibility.visibility) {
+        TodProofVisibility.playersOnly => 'players_only',
+        TodProofVisibility.spectatorsOnly => 'spectators_only',
+        TodProofVisibility.selectedPlayers => 'selected',
+        TodProofVisibility.everyone => 'everyone',
+      };
+      await _supabase.rpc(
+        'save_tod_proof_metadata',
+        params: {
+          'p_session_id': sessionId,
+          'p_turn_started_at': turnStartedAt,
+          'p_visibility': wirePolicy,
+          'p_visible_to_ids': visibility.visibleToIds,
+          'p_view_mode': viewMode == TodProofViewMode.timed
+              ? 'timed'
+              : viewMode == TodProofViewMode.replayOnce
+                  ? 'replay_once'
+                  : 'once',
+          'p_view_seconds': viewSeconds,
+        },
+      );
+    },
+  );
+
+  /// Server-authoritative "watched by N" (distinct viewers) + "replays"
+  /// (extra opens beyond each viewer's first) counts for a batch of
+  /// rounds, keyed by turnStartedAt — for the in-game history panel.
+  /// Backed entirely by the existing tod_proof_views rows record_proof_view
+  /// already writes; get_tod_proof_view_stats only aggregates them
+  /// (RLS on the table itself only allows a client to see their own view
+  /// rows, so the cross-player aggregate must go through this RPC).
+  /// Returns turnStartedAt → (distinctViewers, totalViews); a turn with no
+  /// rows in tod_proof_views (nobody watched, or a round predating this
+  /// field) is simply absent from the map.
+  Future<Map<int, ({int distinctViewers, int totalViews})>> getProofViewStats({
+    required String sessionId,
+    required List<int> turnStartedAts,
+  }) => guardedCall(
+    operationName: 'getProofViewStats',
+    operation: () async {
+      if (turnStartedAts.isEmpty) return {};
+      final rows = await _supabase.rpc(
+        'get_tod_proof_view_stats',
+        params: {
+          'p_session_id': sessionId,
+          'p_turn_started_ats': turnStartedAts,
+        },
+      ) as List<dynamic>;
+      return {
+        for (final r in rows.cast<Map<String, dynamic>>())
+          (r['turn_started_at'] as num).toInt(): (
+            distinctViewers: (r['distinct_viewers'] as num).toInt(),
+            totalViews: (r['total_views'] as num).toInt(),
+          ),
+      };
+    },
+  );
+
   /// Find the most recent session for a room regardless of status — used as
   /// a fallback when [findActiveSession] finds nothing, so a reconnecting
   /// owner whose game already ended lands on the results snapshot instead of
@@ -4140,10 +4331,14 @@ class TodRepository extends BaseRepository {
       guardedCall(
         operationName: 'findLatestTodSession',
         operation: () async {
+          // Same game_type scoping as findActiveSession above — a
+          // completed/aborted session from a DIFFERENT game must never be
+          // picked up as ToD's own "latest session" fallback.
           final row = await _supabase
               .from('game_sessions')
-              .select('id, state_snapshot, status')
+              .select('id, state_snapshot, status, config, lifecycle_state')
               .eq('room_id', roomId)
+              .eq('game_type', 'truth_or_dare')
               .order('started_at', ascending: false)
               .limit(1)
               .maybeSingle();

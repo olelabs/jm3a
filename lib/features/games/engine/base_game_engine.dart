@@ -15,6 +15,17 @@ enum GameType {
     GameType.neverHaveIEver => 'never_have_i_ever',
     GameType.memeGame => 'meme_game',
   };
+
+  /// Emoji-as-icon for this game — the app's existing convention for a
+  /// compact per-game glyph (same emoji already used by the animated
+  /// loading badges in branded_status_view.dart/kAnimatedEmojiMap). Not a
+  /// second icon system: just the one glyph-per-game mapping, now a single
+  /// named source instead of being re-declared inline wherever it's needed.
+  String get icon => switch (this) {
+    GameType.truthOrDare => '🎯',
+    GameType.neverHaveIEver => '🙊',
+    GameType.memeGame => '😹',
+  };
 }
 
 // ── TurnOrder ─────────────────────────────────────────────────────────────────
@@ -90,6 +101,9 @@ class GameConfig {
     this.proofVisibilityPolicy = 'everyone',
     this.proofViewSeconds = 5,
     this.proofReplayMode = 'once',
+    this.forceDareMode = 'unlimited',
+    this.maxTruths = 2,
+    this.cardRepetitionMode = 'shuffle',
   }) : suggestedPunishments = suggestedPunishments ?? const [];
 
   bool get timerEnabled => turnTimerSeconds > 0;
@@ -128,6 +142,24 @@ class GameConfig {
   /// 'once' | 'replay_once'
   final String proofReplayMode;
 
+  // ── Truth or Dare — force-dare / card-repetition rules ─────────────────
+  // Immutable once the game starts (see TruthOrDareEngine._onChoice/_draw) —
+  // set once via the pre-start ToD configuration sheet, never editable
+  // mid-game by host or players, same as every other GameConfig field.
+  /// 'unlimited' (default, no limit) | 'per_player' (each player has their
+  /// own independent truth counter) | 'per_turn' (one shared counter
+  /// across all players, resets whenever a dare — forced or chosen —
+  /// happens).
+  final String forceDareMode;
+  /// Truth choices allowed before a dare is forced. Only consulted when
+  /// [forceDareMode] isn't 'unlimited'.
+  final int maxTruths;
+  /// 'shuffle' (default — the original behavior: a card pool resets and
+  /// can repeat once exhausted) | 'unique' (each card appears at most
+  /// once per game; the game ends normally once a requested type's pool
+  /// is exhausted instead of resetting it).
+  final String cardRepetitionMode;
+
   Map<String, dynamic> toMap() => {
     'max_rounds': maxRounds,
     'turn_timer_secs': turnTimerSeconds,
@@ -142,6 +174,9 @@ class GameConfig {
     'proof_visibility_policy': proofVisibilityPolicy,
     'proof_view_seconds': proofViewSeconds,
     'proof_replay_mode': proofReplayMode,
+    'force_dare_mode': forceDareMode,
+    'max_truths': maxTruths,
+    'card_repetition_mode': cardRepetitionMode,
   };
 
   static GameConfig fromMap(Map<String, dynamic> m) => GameConfig(
@@ -160,6 +195,9 @@ class GameConfig {
         m['proof_visibility_policy'] as String? ?? 'everyone',
     proofViewSeconds: m['proof_view_seconds'] as int? ?? 5,
     proofReplayMode: m['proof_replay_mode'] as String? ?? 'once',
+    forceDareMode: m['force_dare_mode'] as String? ?? 'unlimited',
+    maxTruths: m['max_truths'] as int? ?? 2,
+    cardRepetitionMode: m['card_repetition_mode'] as String? ?? 'shuffle',
     turnOrderMode: TurnOrderMode.values.firstWhere(
       (t) => t.name == m['turn_order_mode'],
       orElse: () => TurnOrderMode.circular,

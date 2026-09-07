@@ -64,7 +64,7 @@ class _ReviewSheetState extends State<ReviewSheet> {
           ),
           const SizedBox(height: 20),
 
-          Text('Write a review',
+          Text(context.l10n.packWriteReview,
               style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w700)),
           const SizedBox(height: 20),
@@ -89,21 +89,21 @@ class _ReviewSheetState extends State<ReviewSheet> {
             controller: _ctrl,
             maxLength: 500,
             maxLines: 4,
-            decoration: const InputDecoration(
-              hintText: 'Share your thoughts about this pack…',
+            decoration: InputDecoration(
+              hintText: context.l10n.packShareThoughtsHint,
               counterText: '',
             ),
           ),
           const SizedBox(height: 20),
 
           JButton(
-            label:     'Submit Review',
+            label:     context.l10n.packSubmitReview,
             isLoading: _isSubmitting,
             onPressed: () async {
               final text = _ctrl.text.trim();
               if (text.length < 10) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Please write at least 10 characters.')),
+                  SnackBar(content: Text(context.l10n.packMinReviewLength)),
                 );
                 return;
               }
@@ -139,12 +139,12 @@ class _ReportPackSheetState extends State<ReportPackSheet> {
   final _detailsCtrl = TextEditingController();
   bool _isSubmitting = false;
 
-  static const _reasons = [
-    ('spam',                 'Spam'),
-    ('inappropriate_content', 'Inappropriate content'),
-    ('hate_speech',          'Hate speech'),
-    ('cheating',             'Cheating or gaming the system'),
-    ('other',                'Other'),
+  List<(String, String)> _reasons(BuildContext context) => [
+    ('spam', context.l10n.packReportReasonSpam),
+    ('inappropriate_content', context.l10n.packReportReasonInappropriate),
+    ('hate_speech', context.l10n.packReportReasonHateSpeech),
+    ('cheating', context.l10n.packReportReasonCheating),
+    ('other', context.l10n.packReportReasonOther),
   ];
 
   @override
@@ -178,16 +178,16 @@ class _ReportPackSheetState extends State<ReportPackSheet> {
           ),
           const SizedBox(height: 20),
 
-          Text('Report pack',
+          Text(context.l10n.packReportPack,
               style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w700, color: AppColors.errorRed)),
           const SizedBox(height: 8),
-          Text('Help us keep the marketplace safe.',
+          Text(context.l10n.packReportHint,
               style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant)),
           const SizedBox(height: 16),
 
-          ..._reasons.map((r) => RadioListTile<String>(
+          ..._reasons(context).map((r) => RadioListTile<String>(
             title: Text(r.$2),
             value: r.$1,
             groupValue: _reason,
@@ -202,15 +202,15 @@ class _ReportPackSheetState extends State<ReportPackSheet> {
             controller: _detailsCtrl,
             maxLength: 500,
             maxLines: 3,
-            decoration: const InputDecoration(
-              hintText: 'Additional details (optional)',
+            decoration: InputDecoration(
+              hintText: context.l10n.packAdditionalDetailsOptional,
               counterText: '',
             ),
           ),
           const SizedBox(height: 16),
 
           JButton(
-            label:      'Submit Report',
+            label:      context.l10n.packSubmitReport,
             isLoading:  _isSubmitting,
             isDestructive: true,
             onPressed: _reason == null ? null : () async {
@@ -235,11 +235,20 @@ class PackRatingWidget extends StatefulWidget {
     required this.packId,
     required this.myRating,
     required this.onRated,
+    this.onUnrated,
   });
 
   final String packId;
   final int    myRating;
-  final Future<void> Function(int rating) onRated;
+
+  /// Returns whether the write actually succeeded — the widget rolls its
+  /// optimistic star selection back to the previous value on false rather
+  /// than leaving a star count on screen that was never actually saved.
+  final Future<bool> Function(int rating) onRated;
+
+  /// Null hides the "Remove rating" action entirely (e.g. no rating to
+  /// remove yet). Same success/failure contract as [onRated].
+  final Future<bool> Function()? onUnrated;
 
   @override
   State<PackRatingWidget> createState() => _PackRatingWidgetState();
@@ -248,6 +257,7 @@ class PackRatingWidget extends StatefulWidget {
 class _PackRatingWidgetState extends State<PackRatingWidget> {
   late int _hover;
   late int _selected;
+  bool _isSubmitting = false;
 
   @override
   void initState() {
@@ -257,11 +267,57 @@ class _PackRatingWidgetState extends State<PackRatingWidget> {
   }
 
   @override
+  void didUpdateWidget(covariant PackRatingWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // The parent screen reloads the pack/rating after every write (success
+    // or failure) — resyncing here instead of only in initState means a
+    // rating changed elsewhere (or a failed write this widget already
+    // rolled back locally) never drifts from what the server actually has.
+    if (oldWidget.myRating != widget.myRating) {
+      _selected = widget.myRating;
+      _hover    = widget.myRating;
+    }
+  }
+
+  Future<void> _rate(int rating) async {
+    final previous = _selected;
+    setState(() {
+      _selected = rating;
+      _hover = rating;
+      _isSubmitting = true;
+    });
+    final ok = await widget.onRated(rating);
+    if (!mounted) return;
+    setState(() {
+      _isSubmitting = false;
+      if (!ok) {
+        _selected = previous;
+        _hover = previous;
+      }
+    });
+  }
+
+  Future<void> _unrate() async {
+    final onUnrated = widget.onUnrated;
+    if (onUnrated == null) return;
+    setState(() => _isSubmitting = true);
+    final ok = await onUnrated();
+    if (!mounted) return;
+    setState(() {
+      _isSubmitting = false;
+      if (ok) {
+        _selected = 0;
+        _hover = 0;
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Your rating:',
+        Text(context.l10n.packYourRating,
             style: context.textTheme.labelLarge?.copyWith(
                 color: context.colorScheme.onSurfaceVariant)),
         const SizedBox(height: 6),
@@ -269,10 +325,7 @@ class _PackRatingWidgetState extends State<PackRatingWidget> {
           children: List.generate(5, (i) {
             final filled = i < _hover;
             return GestureDetector(
-              onTap: () async {
-                setState(() => _selected = i + 1);
-                await widget.onRated(i + 1);
-              },
+              onTap: _isSubmitting ? null : () => _rate(i + 1),
               child: MouseRegion(
                 onEnter: (_) => setState(() => _hover = i + 1),
                 onExit:  (_) => setState(() => _hover = _selected),
@@ -291,9 +344,23 @@ class _PackRatingWidgetState extends State<PackRatingWidget> {
         if (_selected > 0)
           Padding(
             padding: const EdgeInsets.only(top: 4),
-            child: Text('You rated this $_selected/5',
-                style: context.textTheme.bodySmall?.copyWith(
-                    color: context.colorScheme.onSurfaceVariant)),
+            child: Row(
+              children: [
+                Text(context.l10n.packYouRatedThis(_selected),
+                    style: context.textTheme.bodySmall?.copyWith(
+                        color: context.colorScheme.onSurfaceVariant)),
+                if (widget.onUnrated != null) ...[
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: _isSubmitting ? null : _unrate,
+                    child: Text(context.l10n.packRemoveRating,
+                        style: context.textTheme.bodySmall?.copyWith(
+                            color: AppColors.errorRed,
+                            fontWeight: FontWeight.w600)),
+                  ),
+                ],
+              ],
+            ),
           ),
       ],
     );

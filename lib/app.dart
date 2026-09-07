@@ -5644,24 +5644,34 @@
 // //   }
 // // }
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:jma3a/deep_links.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import 'core/errors/failures.dart';
 import 'core/l10n/generated/app_localizations.dart';
 import 'core/providers/app_provider.dart';
 import 'core/providers/auth_provider.dart';
 import 'core/providers/connectivity_provider.dart';
+import 'core/services/app_update_service.dart';
+import 'core/theme/app_colors.dart';
 // import 'core/services/deep_link_service.dart';
 import 'core/router/app_router.dart';
-import 'core/theme/app_theme.dart';
+import 'core/router/route_names.dart';
 import 'core/di/service_locator.dart';
 import 'core/services/app_theme_service.dart';
+import 'core/utils/app_logger.dart';
+import 'core/config/platform_config_provider.dart';
 import 'features/avatar/presentation/avatar_creator_screen.dart';
 import 'features/friends/presentation/friends_provider.dart';
 import 'features/notifications/presentation/notification_provider.dart';
+import 'features/notifications/presentation/widgets/in_app_toast_overlay.dart';
 import 'features/packs/presentation/pack_provider.dart';
 import 'features/profile/presentation/profile_provider.dart';
 import 'features/offline/data/offline_game_provider.dart';
@@ -5916,6 +5926,11 @@ class _Jma3aAppState extends State<Jma3aApp> {
           create: (_) =>
               ConnectivityProvider(connectivityService: sl.connectivityService),
         ),
+        // One check per app launch, independent of login state (a forced
+        // update must be able to block the app before/without a session)
+        // — see AppUpdateService's own doc comment for why this isn't a
+        // polling service.
+        ChangeNotifierProvider(create: (_) => AppUpdateService()..checkForUpdate()),
         ChangeNotifierProvider(
           create: (_) =>
               AppProvider(localStorageService: sl.localStorageService)
@@ -5982,6 +5997,12 @@ class _Jma3aAppState extends State<Jma3aApp> {
         ChangeNotifierProvider(
           create: (_) =>
               OfflineGameProvider(repository: OfflineRepository.instance),
+        ),
+        // Global, not user-scoped — loaded once regardless of login state.
+        ChangeNotifierProvider(
+          create: (_) =>
+              PlatformConfigProvider(repository: sl.platformConfigRepository)
+                ..load(),
         ),
         ChangeNotifierProvider(create: (_) => AppThemeService.instance..load()),
         ChangeNotifierProvider(create: (_) => AvatarService.instance..load()),
@@ -6075,14 +6096,152 @@ class _AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<_AppShell> {
+  // Guards against re-showing the dialog on every rebuild — only a new
+  // notice *instance* (a fresh ban/suspension event, or the previous one
+  // cleared and a new one set) should trigger showDialog again.
+  SuspendedFailure? _shownSuspensionNotice;
+
+  // A forced update, unlike the suspension dialog, is never dismissed by
+  // this app instance's own doing — the only way out is actually
+  // updating (which means relaunching, re-running checkForUpdate). So
+  // this is a one-way latch, not an identity comparison.
+  bool _forceUpdateDialogShown = false;
+
+  StreamSubscription<RoomInvitePayload>? _inviteSub;
+  StreamSubscription<ProfileLinkPayload>? _profileSub;
+
   @override
   void initState() {
     super.initState();
     DeepLinkService.instance.init();
+    // Room-invite deep links (https://jma3a.com/join or jma3a://join) —
+    // pushed to the /join route the moment the router is ready. If the
+    // user isn't logged in yet, AppRouter's own redirect chain takes over
+    // from there (stashes it, sends them to login, resumes it once
+    // they're actually authenticated) — see app_router.dart. This only
+    // has to handle the "can act on it right now" half; DeepLinkService.
+    // pendingInvite covers the deferred half even if this listener never
+    // fires (e.g. the link arrived before this widget existed).
+    _inviteSub = DeepLinkService.instance.inviteStream.listen(_onInvite);
+    // Profile sharing correction pass — same shape: pushed to the raw
+    // /profile/:userId link path (never straight to /user/:userId), so
+    // AppRouter's own redirect logic is what actually decides whether to
+    // resolve it immediately (already authenticated) or stash it for
+    // after login — the same single normalization point a cold-start
+    // native App Link URI parse goes through too, rather than
+    // duplicating that decision here.
+    _profileSub = DeepLinkService.instance.profileStream.listen(_onProfileLink);
+  }
+
+  Future<void> _onProfileLink(ProfileLinkPayload payload) async {
+    await AppRouter.ready;
+    if (!mounted) return;
+    AppRouter.router.push('/profile/${payload.userId}');
+  }
+
+  Future<void> _onInvite(RoomInvitePayload payload) async {
+    await AppRouter.ready;
+    if (!mounted) return;
+    AppRouter.router.push(
+      Uri(
+        path: RouteNames.join,
+        queryParameters: {
+          'code': payload.code,
+          if (payload.invitedBy != null) 'invited_by': payload.invitedBy!,
+        },
+      ).toString(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _inviteSub?.cancel();
+    _profileSub?.cancel();
+    super.dispose();
+  }
+
+  void _maybeShowSuspensionDialog(SuspendedFailure? notice) {
+    if (notice == null || identical(notice, _shownSuspensionNotice)) return;
+    _shownSuspensionNotice = notice;
+    unawaited(_showSuspensionDialog(notice));
+  }
+
+  Future<void> _showSuspensionDialog(SuspendedFailure notice) async {
+    final navigatorContext = await _waitForRootNavigator();
+    if (navigatorContext == null || !navigatorContext.mounted || !mounted) {
+      return;
+    }
+    AppLogger.debug('AppShell: Showing suspension dialog...');
+    await showDialog<void>(
+      context: navigatorContext,
+      barrierDismissible: false,
+      builder: (_) => _SuspensionDialog(notice: notice),
+    );
+    if (mounted) context.read<AuthProvider>().clearSuspensionNotice();
+  }
+
+  void _maybeShowForceUpdateDialog(AppUpdateService updateService) {
+    if (!updateService.isForceUpdateRequired || _forceUpdateDialogShown) return;
+    _forceUpdateDialogShown = true;
+    unawaited(_showForceUpdateDialog(updateService.updateInfo!));
+  }
+
+  Future<void> _showForceUpdateDialog(AppUpdateInfo info) async {
+    final navigatorContext = await _waitForRootNavigator();
+    if (navigatorContext == null || !navigatorContext.mounted) return;
+    AppLogger.debug('AppShell: Showing update dialog...');
+    await showDialog<void>(
+      context: navigatorContext,
+      barrierDismissible: false,
+      builder: (_) => _ForceUpdateDialog(info: info),
+    );
+  }
+
+  /// _AppShellState's own [context] is NOT usable for showDialog(): it's
+  /// the BuildContext MaterialApp.router's `builder` callback receives,
+  /// which sits ABOVE the Router/Navigator (widget.child, rendered
+  /// *inside* this state's build method, is where the Navigator actually
+  /// lives) — so Navigator.of(context) can never resolve from here no
+  /// matter how long we wait. That's the exact "context does not include
+  /// a Navigator" error this was throwing. AppRouter.rootKey is the
+  /// GlobalKey passed as GoRouter's own `navigatorKey`, so it's attached
+  /// directly to the real root Navigator — its currentContext IS a
+  /// Navigator descendant once that Navigator has completed its first
+  /// build. This polls one frame at a time (instead of a single
+  /// post-frame callback) because that first build may not have happened
+  /// yet the first time this runs — reliable across cold start, session
+  /// restore, and already-logged-in/out, since the root Navigator exists
+  /// from GoRouter's construction in main() regardless of auth state.
+  Future<BuildContext?> _waitForRootNavigator() async {
+    const maxAttempts = 300; // ~5s at 60fps — safety cap, not expected to hit
+    for (var attempt = 0; attempt < maxAttempts; attempt++) {
+      final navigatorContext = AppRouter.rootKey.currentContext;
+      final ready =
+          navigatorContext != null && AppRouter.rootKey.currentState != null;
+      AppLogger.debug('AppShell: Navigator ready: $ready');
+      if (ready) return navigatorContext;
+      if (!mounted) return null;
+      await WidgetsBinding.instance.endOfFrame;
+    }
+    AppLogger.warning('AppShell: gave up waiting for root Navigator');
+    return null;
   }
 
   @override
   Widget build(BuildContext context) {
+    // Mounted for the entire app lifetime, above the Navigator — this is
+    // what lets a single dialog here cover both "suspended while already
+    // inside the app" (any screen) and "suspended at cold start" (splash
+    // runs under this same shell) without separate wiring in either
+    // place. Requirement: "if user is currently inside the app" /
+    // "if the app is reopened" both funnel through AuthProvider setting
+    // the same suspensionNotice — see AuthProvider.handleAccountSuspended
+    // and initialize().
+    _maybeShowSuspensionDialog(context.watch<AuthProvider>().suspensionNotice);
+
+    final updateService = context.watch<AppUpdateService>();
+    _maybeShowForceUpdateDialog(updateService);
+
     return Consumer<ConnectivityProvider>(
       builder: (context, connectivity, _) => Stack(
         children: [
@@ -6094,6 +6253,162 @@ class _AppShellState extends State<_AppShell> {
               right: 0,
               child: _OfflineBanner(),
             ),
+          if (updateService.showOptionalBanner)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: _UpdateBanner(
+                info: updateService.updateInfo!,
+                onDismiss: updateService.dismissOptionalBanner,
+              ),
+            ),
+          const InAppToastOverlay(),
+        ],
+      ),
+    );
+  }
+}
+
+Future<void> _openAppStore(String? url) async {
+  if (url == null) return;
+  final uri = Uri.tryParse(url);
+  if (uri == null) return;
+  if (await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication);
+}
+
+class _ForceUpdateDialog extends StatelessWidget {
+  const _ForceUpdateDialog({required this.info});
+  final AppUpdateInfo info;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    // canPop: false + no cancel/close action anywhere in this dialog —
+    // "cannot dismiss, cannot use the app, only action: Update".
+    return PopScope(
+      canPop: false,
+      child: AlertDialog(
+        icon: const Icon(
+          Icons.system_update_rounded,
+          color: AppColors.brandOrangeLight,
+        ),
+        title: Text(info.title ?? l10n.appUpdateDefaultTitle),
+        content: Text(info.message ?? l10n.appUpdateDefaultMessage),
+        actions: [
+          FilledButton(
+            onPressed: () => _openAppStore(info.storeUrl),
+            child: Text(l10n.appUpdateNowButton),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _UpdateBanner extends StatelessWidget {
+  const _UpdateBanner({required this.info, required this.onDismiss});
+  final AppUpdateInfo info;
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return SafeArea(
+      bottom: false,
+      child: Material(
+        color: Colors.transparent,
+        child: Container(
+          margin: const EdgeInsets.all(8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: AppColors.brandOrangeLight,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.system_update_rounded,
+                size: 18,
+                color: Colors.white,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  info.title ?? l10n.appUpdateBannerMessage,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: () => _openAppStore(info.storeUrl),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  minimumSize: Size.zero,
+                ),
+                child: Text(
+                  l10n.appUpdateNowButton,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+              InkWell(
+                onTap: onDismiss,
+                borderRadius: BorderRadius.circular(12),
+                child: const Padding(
+                  padding: EdgeInsets.all(4),
+                  child: Icon(
+                    Icons.close_rounded,
+                    size: 16,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SuspensionDialog extends StatelessWidget {
+  const _SuspensionDialog({required this.notice});
+  final SuspendedFailure notice;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final message = notice.isPermanent
+        ? l10n.accountBannedPermanently
+        : l10n.accountSuspendedUntil(
+            notice.bannedUntil != null
+                ? DateFormat.yMMMd(
+                    Localizations.localeOf(context).toString(),
+                  ).add_jm().format(notice.bannedUntil!.toLocal())
+                : '',
+          );
+    // canPop: false — "prevent any further interaction" applies to the
+    // back gesture too, not just the tap-outside barrier above.
+    return PopScope(
+      canPop: false,
+      child: AlertDialog(
+        icon: const Icon(Icons.block_rounded, color: AppColors.errorRed),
+        title: Text(l10n.accountSuspendedDialogTitle),
+        content: Text(message),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(l10n.ok),
+          ),
         ],
       ),
     );

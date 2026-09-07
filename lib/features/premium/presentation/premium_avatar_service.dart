@@ -127,12 +127,12 @@ class AvatarPickerScreen extends StatelessWidget {
     final theme = context.theme;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Choose Avatar')),
+      appBar: AppBar(title: Text(context.l10n.premiumChooseAvatar)),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           Text(
-            'Your Avatars',
+            context.l10n.premiumYourAvatars,
             style: theme.textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.w700,
             ),
@@ -155,14 +155,14 @@ class AvatarPickerScreen extends StatelessWidget {
           if (locked.isNotEmpty) ...[
             const SizedBox(height: 24),
             Text(
-              'Premium Avatars',
+              context.l10n.premiumPremiumAvatars,
               style: theme.textTheme.titleSmall?.copyWith(
                 fontWeight: FontWeight.w700,
               ),
             ),
             const SizedBox(height: 4),
             Text(
-              'Upgrade to unlock',
+              context.l10n.premiumUpgradeToUnlock,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
+import '../../../core/extensions/context_ext.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/j_theme_extension.dart';
 
 /// ═══════════════════════════════════════════════════════════════
 /// JChatBubble — Room chat message bubble
@@ -361,7 +361,7 @@ class JReconnectBanner extends StatelessWidget {
                 visualDensity:   VisualDensity.compact,
                 padding:         const EdgeInsets.symmetric(horizontal: 8),
               ),
-              child: const Text('Retry'),
+              child: Text(context.l10n.retry),
             ),
         ],
       ),

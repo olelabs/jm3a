@@ -1269,6 +1269,36 @@
 
 import 'package:equatable/equatable.dart';
 
+import '../../../core/constants/app_constants.dart';
+
+/// Resolves localized text for [lang]: the requested language first, then
+/// (if given) the entity's own declared language, then 'en' (legacy
+/// default), then — critically — the first non-empty value under ANY key.
+/// A pack authored in only one non-en/ar/fr language (e.g. 'hs'
+/// Hassaniya, or any future pack_languages code) only ever populates ONE
+/// key here; without the final resort, viewing it in a different app
+/// language returns '' even though the pack's own content exists. Never
+/// returns a raw id — callers substitute a localized fallback string when
+/// this returns ''.
+String pickLocalized(
+  Map<String, dynamic> json,
+  String lang, {
+  String? declaredLanguage,
+}) {
+  String? nonEmpty(String? key) {
+    if (key == null) return null;
+    final v = json[key];
+    return (v is String && v.trim().isNotEmpty) ? v : null;
+  }
+
+  final direct = nonEmpty(lang) ?? nonEmpty(declaredLanguage) ?? nonEmpty('en');
+  if (direct != null) return direct;
+  for (final v in json.values) {
+    if (v is String && v.trim().isNotEmpty) return v;
+  }
+  return '';
+}
+
 enum PackStatus {
   draft,
   pendingReview,
@@ -1322,12 +1352,14 @@ class PackEntity extends Equatable {
     this.creatorName,
     this.creatorAvatarUrl,
     this.isVerifiedCreator = false,
+    this.isOfficialCreator = false,
     this.rejectionReason,
     this.minAge,
     this.maxAge,
     this.genderRestriction = 'everyone',
     this.minPlayers = 2,
     List<String>? suggestedPunishments,
+    this.platformManaged = false,
   }) : availableLanguages = availableLanguages ?? const [],
        suggestedPunishments = suggestedPunishments ?? const [];
 
@@ -1362,6 +1394,14 @@ class PackEntity extends Equatable {
   final String? creatorName;
   final String? creatorAvatarUrl;
   final bool isVerifiedCreator;
+
+  /// True when this pack's creator (creator_id — the CURRENT owner, e.g.
+  /// after an item-7 ownership transfer, not necessarily who originally
+  /// made it) is the official Jma3a system account
+  /// (profiles.is_official_account). Every "created by" UI must key off
+  /// this, not off creatorName == 'Jma3a' — see profiles.is_official_account
+  /// for why a name check isn't a reliable identifier.
+  final bool isOfficialCreator;
   final String? rejectionReason;
 
   /// Audience restrictions — null age bounds mean "no restriction."
@@ -1376,16 +1416,26 @@ class PackEntity extends Equatable {
   /// Creator-authored Truth-or-Dare punishment options, empty or >=10.
   final List<String> suggestedPunishments;
 
+  /// True once Jma3a has taken over management of this pack (its
+  /// creator's Premium Plus lapsed — see item 7). creatorId still points
+  /// at the original creator for provenance; this is the flag that
+  /// actually gates whether they can still edit/submit/manage it.
+  final bool platformManaged;
+
   bool get isFree => priceMru == 0;
   bool get isPublished => status.isPublished;
 
+  /// Whether the ORIGINAL creator can still edit this pack — status alone
+  /// isn't enough once Jma3a has taken over management.
+  bool get isEditableByCreator => status.isEditable && !platformManaged;
+
   String titleFor(String lang) =>
-      titleJson[lang] as String? ?? titleJson['en'] as String? ?? '';
+      pickLocalized(titleJson, lang, declaredLanguage: language);
 
   String descriptionFor(String lang) {
     final d = descriptionJson;
     if (d == null) return '';
-    return d[lang] as String? ?? d['en'] as String? ?? '';
+    return pickLocalized(d, lang, declaredLanguage: language);
   }
 
   PackEntity copyWith({
@@ -1430,12 +1480,14 @@ class PackEntity extends Equatable {
     creatorName: creatorName ?? this.creatorName,
     creatorAvatarUrl: creatorAvatarUrl ?? this.creatorAvatarUrl,
     isVerifiedCreator: isVerifiedCreator ?? this.isVerifiedCreator,
+    isOfficialCreator: isOfficialCreator,
     rejectionReason: rejectionReason ?? this.rejectionReason,
     minAge: minAge,
     maxAge: maxAge,
     genderRestriction: genderRestriction,
     minPlayers: minPlayers,
     suggestedPunishments: suggestedPunishments,
+    platformManaged: platformManaged,
   );
 
   @override
@@ -1454,6 +1506,8 @@ class PackCardEntity extends Equatable {
     required this.type,
     required this.difficulty,
     this.imageUrl,
+    this.stickerId,
+    this.stickerUrl,
     this.sortOrder = 0,
     this.isActive = true,
   });
@@ -1464,16 +1518,49 @@ class PackCardEntity extends Equatable {
   final CardType type;
   final CardDifficulty difficulty;
   final String? imageUrl;
+
+  /// References sticker_library.id — see CardDraft.stickerId.
+  final String? stickerId;
+
+  /// sticker_library.public_url, resolved by a join at read time when
+  /// [stickerId] is set (null if the referenced sticker was disabled —
+  /// RLS hides inactive rows — or if this card has no sticker at all).
+  final String? stickerUrl;
   final int sortOrder;
   final bool isActive;
 
-  String contentFor(String lang) =>
-      contentJson[lang] as String? ?? contentJson['en'] as String? ?? '';
+  /// The image to actually display for this card — its own upload if any,
+  /// else the resolved library sticker, else nothing.
+  String? get effectiveImageUrl => imageUrl ?? stickerUrl;
+
+  String contentFor(String lang) => pickLocalized(contentJson, lang);
 
   bool get isSpicy => difficulty == CardDifficulty.spicy;
 
   @override
   List<Object?> get props => [id, packId, type, difficulty];
+}
+
+/// One row from the centralized, admin-managed sticker library (task item
+/// 3) — a pack creator browses/picks these for a meme card's [CardDraft.
+/// stickerId] instead of always uploading a new image.
+class StickerEntity extends Equatable {
+  const StickerEntity({
+    required this.id,
+    required this.name,
+    required this.publicUrl,
+    this.category,
+    this.sortOrder = 0,
+  });
+
+  final String id;
+  final String name;
+  final String publicUrl;
+  final String? category;
+  final int sortOrder;
+
+  @override
+  List<Object?> get props => [id];
 }
 
 class PackCategory extends Equatable {
@@ -1491,8 +1578,10 @@ class PackCategory extends Equatable {
   final String icon;
   final int sortOrder;
 
-  String nameFor(String lang) =>
-      nameJson[lang] as String? ?? nameJson['en'] as String? ?? slug;
+  String nameFor(String lang) {
+    final picked = pickLocalized(nameJson, lang);
+    return picked.isNotEmpty ? picked : slug;
+  }
 
   @override
   List<Object?> get props => [id, slug];
@@ -1615,6 +1704,19 @@ class PackDownloadState extends Equatable {
   List<Object?> get props => [packId, status, progress, localVersion];
 }
 
+/// A single blocking reason a draft can't yet be submitted for review. The UI
+/// maps each to a localized, human-readable explanation so the Submit button is
+/// never silently disabled without telling the creator why.
+enum PackDraftIssue {
+  title,
+  cards,
+  language,
+  price,
+  truthDareBalance,
+  punishments,
+  terms,
+}
+
 class PackDraft {
   PackDraft({
     this.id,
@@ -1637,10 +1739,16 @@ class PackDraft {
     this.maxAge,
     this.genderRestriction = 'everyone',
     List<String>? suggestedPunishments,
+    this.termsAccepted = false,
   }) : titles = titles ?? {},
        descriptions = descriptions ?? {},
        tags = tags ?? [],
-       selectedLanguages = selectedLanguages ?? ['en'],
+       // Deliberately NOT defaulted to ['en']: a brand-new draft has no
+       // language until the creator explicitly picks one, so English is never
+       // silently forced/required (the old ['en'] default was the root cause of
+       // "Please fill content in en" after choosing another language). The
+       // Language step requires at least one selection before advancing.
+       selectedLanguages = selectedLanguages ?? [],
        cards = cards ?? [],
        reactionImageUrls = reactionImageUrls ?? [],
        suggestedPunishments = suggestedPunishments ?? [];
@@ -1683,16 +1791,59 @@ class PackDraft {
   /// [hasValidPunishments] and server-side via a CHECK constraint).
   List<String> suggestedPunishments;
 
+  /// Explicit acceptance of the Pack Creation Terms — required before a pack
+  /// can be submitted for review. Never inferred from merely opening the
+  /// terms; only a real checkbox toggle sets this.
+  bool termsAccepted;
+
+  bool get isTruthOrDare => gameType == 'truth_or_dare';
+
   bool get hasTitle =>
       selectedLanguages.isNotEmpty &&
-      selectedLanguages.every((lang) => (titles[lang]?.trim().isNotEmpty ?? false));
+      selectedLanguages.every(
+        (lang) => (titles[lang]?.trim().isNotEmpty ?? false),
+      );
+
+  /// Every card must carry content for EVERY selected language (the language
+  /// the creator actually chose — never a hardcoded 'en'). An empty card list
+  /// is handled by [hasSufficientCards]; this only checks filled cards.
+  bool get hasContentForSelectedLanguages =>
+      selectedLanguages.isNotEmpty &&
+      cards.every((c) => selectedLanguages.every(c.hasContentFor));
+
   bool get hasSufficientCards => cards.length >= 20;
   bool get hasValidPunishments =>
       suggestedPunishments.isEmpty || suggestedPunishments.length >= 10;
-  bool get canPublish => hasTitle && hasSufficientCards && hasValidPunishments;
+
+  /// Minimum pack price is [AppConstants.minPaidPackPriceMru] (300 MRU). Free
+  /// packs (0) and anything 1–299 are invalid.
+  bool get hasValidPrice => priceMru >= AppConstants.minPaidPackPriceMru;
 
   int get truthCount => cards.where((c) => c.type == CardType.truth).length;
   int get dareCount => cards.where((c) => c.type == CardType.dare).length;
+
+  /// Truth or Dare packs must have an EQUAL number of Truth and Dare cards
+  /// (e.g. 10/10). Only enforced for truth_or_dare; other game types have no
+  /// such constraint.
+  bool get hasBalancedTruthDare => !isTruthOrDare || truthCount == dareCount;
+
+  /// THE single authoritative validation. Returns the list of blocking issues
+  /// (empty = ready to submit). UI, canPublish, and any submit-time re-check
+  /// all consult this so no two layers can disagree. [requireTerms] lets the
+  /// earlier steps reuse it without demanding terms acceptance yet.
+  List<PackDraftIssue> validationIssues({bool requireTerms = true}) {
+    final issues = <PackDraftIssue>[];
+    if (!hasTitle) issues.add(PackDraftIssue.title);
+    if (!hasSufficientCards) issues.add(PackDraftIssue.cards);
+    if (!hasContentForSelectedLanguages) issues.add(PackDraftIssue.language);
+    if (!hasValidPrice) issues.add(PackDraftIssue.price);
+    if (!hasBalancedTruthDare) issues.add(PackDraftIssue.truthDareBalance);
+    if (!hasValidPunishments) issues.add(PackDraftIssue.punishments);
+    if (requireTerms && !termsAccepted) issues.add(PackDraftIssue.terms);
+    return issues;
+  }
+
+  bool get canPublish => validationIssues().isEmpty;
 
   Map<String, dynamic> get titleJson => {
     for (final entry in titles.entries)
@@ -1708,34 +1859,111 @@ class PackDraft {
 class CardDraft {
   CardDraft({
     this.id,
-    this.contentEn = '',
-    this.contentAr = '',
-    this.contentFr = '',
+    Map<String, String>? content,
+    String contentEn = '',
+    String contentAr = '',
+    String contentFr = '',
     this.type = CardType.truth,
     this.difficulty = CardDifficulty.mild,
     this.localImagePath,
     this.imageUrl,
-  });
+    this.stickerId,
+  }) : content = {
+         if (content != null)
+           for (final e in content.entries)
+             if (e.value.trim().isNotEmpty) e.key: e.value,
+         if (contentEn.trim().isNotEmpty) 'en': contentEn,
+         if (contentAr.trim().isNotEmpty) 'ar': contentAr,
+         if (contentFr.trim().isNotEmpty) 'fr': contentFr,
+       };
 
   String? id;
-  String contentEn;
-  String contentAr;
-  String contentFr;
+
+  /// Card content keyed by language CODE (dynamic — supports any code the
+  /// server offers, e.g. 'hs' for Hassaniya, not just en/ar/fr). Empty-valued
+  /// entries are never stored. This is the single source of truth; the
+  /// contentEn/Ar/Fr accessors below are backward-compatible views onto it.
+  final Map<String, String> content;
   CardType type;
   CardDifficulty difficulty;
   String? localImagePath;
   String? imageUrl;
 
-  bool get hasContent => contentEn.trim().isNotEmpty;
-  bool hasContentFor(String lang) => switch (lang) {
-    'ar' => contentAr.trim().isNotEmpty,
-    'fr' => contentFr.trim().isNotEmpty,
-    _ => contentEn.trim().isNotEmpty,
-  };
+  /// References sticker_library.id — set when this card's image comes from
+  /// the centralized library instead of a pack-owned upload. Mutually
+  /// exclusive with [imageUrl] in practice: picking a library sticker
+  /// clears [imageUrl] and vice versa (see create_pack_screen.dart's
+  /// sticker-picker entry point).
+  String? stickerId;
+
+  /// Set/clear the content for one language code. Empty clears the entry so it
+  /// never counts as present.
+  void setContent(String lang, String value) {
+    final v = value.trim();
+    if (v.isEmpty) {
+      content.remove(lang);
+    } else {
+      content[lang] = v;
+    }
+  }
+
+  // ── Backward-compatible fixed-language accessors ─────────────────────────
+  String get contentEn => content['en'] ?? '';
+  set contentEn(String v) => setContent('en', v);
+  String get contentAr => content['ar'] ?? '';
+  set contentAr(String v) => setContent('ar', v);
+  String get contentFr => content['fr'] ?? '';
+  set contentFr(String v) => setContent('fr', v);
+
+  bool get hasContent => content.values.any((v) => v.trim().isNotEmpty);
+
+  /// Dynamic per-language check — uses the actual selected code with NO
+  /// hardcoded 'en' fallback, so a Hassaniya-only (or any single-language)
+  /// pack validates on its own selected language.
+  bool hasContentFor(String lang) => (content[lang] ?? '').trim().isNotEmpty;
 
   Map<String, dynamic> get contentJson => {
-    if (contentEn.isNotEmpty) 'en': contentEn,
-    if (contentAr.isNotEmpty) 'ar': contentAr,
-    if (contentFr.isNotEmpty) 'fr': contentFr,
+    for (final e in content.entries)
+      if (e.value.trim().isNotEmpty) e.key: e.value.trim(),
   };
+}
+
+/// One authoritative pack-creation preflight round trip
+/// (get_pack_creation_status RPC) — mirrors RoomCreationStatus's exact
+/// shape/convention (rooms/domain/room_entity.dart). UX-only: the server
+/// independently re-verifies every one of these conditions inside
+/// submit_pack_for_review() regardless of what this says, so a stale or
+/// unavailable status here can only ever produce a friendlier error
+/// message, never a security gap.
+class PackCreationStatus {
+  const PackCreationStatus({
+    required this.isVerifiedCreator,
+    required this.hasActiveDraft,
+    required this.canSubmitFree,
+    required this.minGapDays,
+    required this.extraPackPriceMru,
+    this.nextFreeAt,
+  });
+
+  final bool isVerifiedCreator;
+  final bool hasActiveDraft;
+  final bool canSubmitFree;
+
+  /// Null once free submission is available again (or on a brand-new
+  /// creator with no submission history yet).
+  final DateTime? nextFreeAt;
+  final int minGapDays;
+  final int extraPackPriceMru;
+
+  static PackCreationStatus fromMap(Map<String, dynamic> m) =>
+      PackCreationStatus(
+        isVerifiedCreator: m['is_verified_creator'] as bool? ?? false,
+        hasActiveDraft: m['has_active_draft'] as bool? ?? false,
+        canSubmitFree: m['can_submit_free'] as bool? ?? false,
+        nextFreeAt: m['next_free_at'] != null
+            ? DateTime.tryParse(m['next_free_at'] as String)
+            : null,
+        minGapDays: (m['min_gap_days'] as num?)?.toInt() ?? 15,
+        extraPackPriceMru: (m['extra_pack_price_mru'] as num?)?.toInt() ?? 0,
+      );
 }

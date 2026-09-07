@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../../../../core/extensions/context_ext.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/cards/j_card.dart';
-import '../../../../shared/widgets/cards/user_avatar.dart';
 import '../../domain/room_entity.dart';
 
 class RoomCard extends StatelessWidget {
@@ -16,10 +15,15 @@ class RoomCard extends StatelessWidget {
     final l10n   = context.l10n;
     final isFull = room.isFull;
 
+    // A keep-game-closed room only ever appears here for its OWNER (Browse
+    // filters closed_at for everyone else — see RoomRepository.getPublicRooms).
+    // Keep it tappable even when "full" so the owner can always re-enter/manage
+    // it; re-entry adds no player (they are already the owner-member).
+    final isClosed = room.isClosed;
     return Opacity(
-      opacity: isFull ? 0.55 : 1.0,
+      opacity: (isFull && !isClosed) ? 0.55 : 1.0,
       child: JCard(
-        onTap: isFull ? null : onTap,
+        onTap: (isFull && !isClosed) ? null : onTap,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         child: Row(
           children: [
@@ -65,7 +69,7 @@ class RoomCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      _StatusBadge(status: room.status),
+                      _StatusBadge(status: room.status, isClosed: isClosed),
                       const SizedBox(width: 8),
                       Icon(Icons.people_outline_rounded,
                           size: 13,
@@ -121,16 +125,22 @@ class RoomCard extends StatelessWidget {
 }
 
 class _StatusBadge extends StatelessWidget {
-  const _StatusBadge({required this.status});
+  const _StatusBadge({required this.status, this.isClosed = false});
   final RoomStatus status;
+  // Keep-game closed (closed_at set) is orthogonal to status — a closed room
+  // keeps its live status (e.g. in_game). Surface "Closed" explicitly so the
+  // owner can tell their closed room apart from an open one at a glance.
+  final bool isClosed;
 
   @override
   Widget build(BuildContext context) {
-    final (label, color) = switch (status) {
-      RoomStatus.waiting  => ('Waiting', AppColors.successGreen),
-      RoomStatus.inGame   => ('In Game', AppColors.amberOrangeLight),
-      RoomStatus.paused   => ('Paused',  AppColors.warningAmber),
-      _                   => ('Closed',  AppColors.textTertiaryLight),
+    final (label, color) = isClosed
+        ? (context.l10n.roomsStatusClosed, AppColors.textTertiaryLight)
+        : switch (status) {
+      RoomStatus.waiting  => (context.l10n.roomsStatusWaiting, AppColors.successGreen),
+      RoomStatus.inGame   => (context.l10n.roomsStatusInGame, AppColors.amberOrangeLight),
+      RoomStatus.paused   => (context.l10n.roomsStatusPaused, AppColors.warningAmber),
+      _                   => (context.l10n.roomsStatusClosed, AppColors.textTertiaryLight),
     };
 
     return Container(

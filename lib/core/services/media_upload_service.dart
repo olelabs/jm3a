@@ -19,9 +19,29 @@ class MediaUploadService {
     required Uint8List bytes,
     required bool isVideo,
     required String contentType,
+  }) => _upload(
+    fileType: isVideo ? 'proof_video' : 'proof_image',
+    bytes: bytes,
+    contentType: contentType,
+  );
+
+  /// Optional supporting evidence attached to an item-8 creator-recovery
+  /// complaint (e.g. a screenshot of a failed renewal payment).
+  Future<String?> uploadCreatorRecoveryEvidence({
+    required Uint8List bytes,
+    required String contentType,
+  }) => _upload(
+    fileType: 'creator_recovery_evidence',
+    bytes: bytes,
+    contentType: contentType,
+  );
+
+  Future<String?> _upload({
+    required String fileType,
+    required Uint8List bytes,
+    required String contentType,
   }) async {
     try {
-      final fileType = isVideo ? 'proof_video' : 'proof_image';
       final res = await sl.apiClient.post<Map<String, dynamic>>(
         '/v1/storage/upload-url',
         data: {'file_type': fileType, 'content_type': contentType},

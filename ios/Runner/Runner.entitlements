@@ -4,20 +4,25 @@
 <dict>
 	<key>aps-environment</key>
 	<string>development</string>
-	<!-- iOS Universal Links for room invites (https://jma3a.com/join?code=...).
-	     Requires apple-app-site-association hosted at
-	     https://jma3a.com/.well-known/apple-app-site-association (no file
+	<!-- iOS Universal Links for room invites (https://jma3a.com/join?code=...)
+	     and profile shares (https://www.moujgroup.jma3a.com/u/<username> —
+	     AppConstants.publicProfileUrl/profileWebHost; a separate host from
+	     jma3a.com per product decision). Each host requires its OWN
+	     apple-app-site-association hosted at
+	     https://<host>/.well-known/apple-app-site-association (no file
 	     extension, served with a JSON content-type) — see
-	     apple-app-site-association.template in this repo. Without that file
-	     live and correct, iOS silently falls back to opening the link in
-	     Safari instead of the app, landing on the website — which is the
-	     "app not installed" fallback requirement, so no extra app-side
-	     handling is needed for that case either. jma3a:// (CFBundleURLTypes,
-	     Info.plist) is unaffected and keeps working as the internal-routing
-	     fallback. -->
+	     apple-app-site-association.template in this repo; this repo cannot
+	     verify www.moujgroup.jma3a.com actually has one deployed. Without
+	     that file live and correct for a given host, iOS silently falls
+	     back to opening the link in Safari instead of the app, landing on
+	     the website — which is the "app not installed" fallback
+	     requirement, so no extra app-side handling is needed for that case
+	     either. jma3a:// (CFBundleURLTypes, Info.plist) is unaffected and
+	     keeps working as the internal-routing fallback. -->
 	<key>com.apple.developer.associated-domains</key>
 	<array>
 		<string>applinks:jma3a.com</string>
+		<string>applinks:www.moujgroup.jma3a.com</string>
 	</array>
 </dict>
 </plist>

@@ -233,22 +233,45 @@ class NotificationService {
       'NotificationService: routing notification type=$type roomId=$roomId',
     );
 
+    // Item 4 (real-device report) — a notification with no meaningful
+    // screen to open (the type's own text already told the whole story —
+    // a join request was rejected, you were kicked — or it's a generic/
+    // unrecognized category with no specific target) must be a true
+    // no-op, never a forced trip to the Notifications Center (which
+    // either does nothing when tapped FROM that screen, or reads as an
+    // odd, unrelated navigation from anywhere else — the exact loop this
+    // fix removes). See [hasNavigableDestination]'s own doc comment for
+    // the single place this decision lives.
+    if (!hasNavigableDestination(type)) {
+      AppLogger.info(
+        'NotificationService: type=$type has no navigable destination — '
+        'tap is a no-op',
+      );
+      return;
+    }
+
     switch (type) {
       case 'room_invite':
       case 'room_join_request':
       case 'room_join_request_accepted':
-        await _handleRoomInviteTap(router, roomId);
+      // Item 4 (real-device report) — 'room_started'/'game_ended'/
+      // 'room_chat_message' used to navigate straight to
+      // `/home/room/$roomId` unconditionally, with no check that the
+      // room still exists/is still open — a closed-room chat
+      // notification, or one about a room the user is no longer in,
+      // would either dead-end or crash the room screen on open.
+      // Routed through the exact same validated entry point
+      // room_invite already uses (_handleRoomDeepLinkTap →
+      // RoomRepository.getInviteInfo, the single validator this file's
+      // own doc comment already calls out as reused everywhere) rather
+      // than adding a second, slightly-different validation path — a
+      // stale/closed target now behaves identically for every
+      // room-targeted notification type: friendly snackbar + Home, not
+      // a broken destination.
       case 'room_started':
       case 'game_ended':
-        // Unlike room_invite, the recipient is already a member of this
-        // room (they were playing) — no need for the
-        // already-own-a-room conflict check _handleRoomInviteTap does
-        // for a genuinely new room.
-        if (roomId != null) {
-          _pushDetail(router, '${RouteNames.home}/room/$roomId');
-        } else {
-          _pushDetail(router, RouteNames.notifications);
-        }
+      case 'room_chat_message':
+        await _handleRoomDeepLinkTap(router, roomId);
       case 'friend_request':
         // Pending incoming requests are content at the TOP of the Friends
         // tab itself now (no separate Requests tab) — see FriendsScreen's
@@ -309,11 +332,6 @@ class NotificationService {
         // Home is a primary bottom-nav root, not a drill-down — same
         // reasoning as the Friends-tab cases above.
         router.go(RouteNames.home);
-      case 'room_join_request_rejected':
-      case 'room_kicked':
-        _pushDetail(router, RouteNames.notifications);
-      default:
-        _pushDetail(router, RouteNames.notifications);
     }
   }
 
@@ -347,13 +365,18 @@ class NotificationService {
     router.push(location);
   }
 
-  /// Single source of truth for a room-invite notification tap — reached
-  /// identically from the OneSignal click listener, a foreground local
-  /// notification, an in-app toast tap, and a Notification Center row tap
-  /// (all four funnel through _routeFromPayload above into this one
-  /// method) — also reused directly by PendingInvitesSection's "View"
-  /// button (via routeFromPayload), so every room-invite entry point in
-  /// the app shares this exact logic.
+  /// Single source of truth for a room-targeted notification tap —
+  /// reached identically from the OneSignal click listener, a foreground
+  /// local notification, an in-app toast tap, and a Notification Center
+  /// row tap (all four funnel through _routeFromPayload above into this
+  /// one method) — also reused directly by PendingInvitesSection's "View"
+  /// button (via routeFromPayload). Item 4 (real-device report) widened
+  /// this from room_invite-only to every notification type whose target
+  /// is a specific room (room_started, game_ended, room_chat_message
+  /// too) — a closed-room chat notification, or one about a room the
+  /// user is no longer in, now fails the exact same validation an invite
+  /// tap always has, instead of navigating straight into a broken room
+  /// screen or crashing it.
   ///
   /// No intermediate screen: validates the invite/room first
   /// (RoomRepository.getInviteInfo, the same single validator used
@@ -371,11 +394,11 @@ class NotificationService {
   /// check). Previously this method skipped straight to the join pipeline,
   /// silently dropping a user into a second room while their first stayed
   /// open server-side.
-  Future<void> _handleRoomInviteTap(GoRouter router, String? roomId) async {
+  Future<void> _handleRoomDeepLinkTap(GoRouter router, String? roomId) async {
     if (roomId == null) {
       AppLogger.info(
-        'NotificationService: room_invite tap had no room_id in payload — '
-        'routing Home',
+        'NotificationService: room-targeted notification tap had no '
+        'room_id in payload — routing Home',
       );
       router.go(RouteNames.home);
       return;
@@ -384,9 +407,7 @@ class NotificationService {
     final userId = Supabase.instance.client.auth.currentUser?.id;
 
     if (userId != null) {
-      final active = await RoomRepository.instance.getActiveMembership(
-        userId,
-      );
+      final active = await RoomRepository.instance.getActiveMembership(userId);
       if (active != null && active['room_id'] != roomId) {
         final conflictContext = AppRouter.rootKey.currentContext;
         if (conflictContext != null) {
@@ -412,20 +433,65 @@ class NotificationService {
 
     if (info == null) {
       AppLogger.info(
-        'NotificationService: room_invite tap for room $roomId — invite/'
-        'room no longer available, routing Home',
+        'NotificationService: room-targeted tap for room $roomId — room/'
+        'invite no longer available, routing Home',
       );
       router.go(RouteNames.home);
       AppRouter.rootKey.currentContext?.showErrorSnackBar(
-        'This invitation is no longer available.',
+        'This room is no longer available.',
       );
       return;
     }
 
     AppLogger.info(
-      'NotificationService: room_invite tap for room $roomId — entering '
+      'NotificationService: room-targeted tap for room $roomId — entering '
       'room directly',
     );
     _pushDetail(router, '${RouteNames.home}/room/$roomId');
   }
 }
+
+/// Item 4 (real-device report) — the exact set of notification types
+/// [NotificationService._routeFromPayload]'s switch has a real,
+/// deliberate destination for. An ALLOWLIST (not a blocklist of "known
+/// bad" types) so this fails closed by construction: a genuinely new/
+/// not-yet-wired type is "no destination" by default, never accidentally
+/// treated as navigable just because nobody remembered to add it to an
+/// exclusion list. Types deliberately left out — room_join_request_
+/// rejected, room_kicked (the notification's own text already told the
+/// whole story), achievement, streak_increased, system (generic/no
+/// specific target) — read as "nothing to open" rather than looping
+/// back into the Notifications Center, which is exactly this item's bug
+/// report. A single, testable source of truth — not a scattered special
+/// case per call site.
+const Set<String> _navigableNotificationTypes = {
+  'room_invite',
+  'room_join_request',
+  'room_join_request_accepted',
+  'room_started',
+  'game_ended',
+  'room_chat_message',
+  'friend_request',
+  'friend_accepted',
+  'follow',
+  'wallet_credit',
+  'wallet_debit',
+  'pack_sale',
+  'pack_expired',
+  'physical_pack_status',
+  'pack_approved',
+  'pack_rejected',
+  'pack_review',
+  'subscription_started',
+  'subscription_expiring_2d',
+  'subscription_expiring_1d',
+  'subscription_expired',
+  'creator_packs_transferred',
+  'creator_privileges_removed',
+  'creator_recovery_approved',
+  'creator_recovery_rejected',
+  'moderation',
+};
+
+bool hasNavigableDestination(String? type) =>
+    type != null && _navigableNotificationTypes.contains(type);

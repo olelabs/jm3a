@@ -85,7 +85,7 @@ class TransactionTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                tx.formattedAmount,
+                tx.formattedAmount(context.l10n.walletCurrencyShort),
                 style: TextStyle(
                   color:      isTerminal && tx.status != TransactionStatus.completed
                       ? theme.colorScheme.onSurfaceVariant
@@ -96,7 +96,7 @@ class TransactionTile extends StatelessWidget {
                       ? TextDecoration.lineThrough : null,
                 ),
               ),
-              Text(tx.formattedBalance,
+              Text(tx.formattedBalance(context.l10n.walletCurrencyShort),
                   style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant)),
             ],

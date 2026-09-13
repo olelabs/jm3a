@@ -136,7 +136,7 @@ class _TransactionDetailSheetState extends State<TransactionDetailSheet> {
                 ),
               ),
               Text(
-                tx.formattedAmount,
+                tx.formattedAmount(context.l10n.walletCurrencyShort),
                 style: theme.textTheme.titleLarge?.copyWith(
                   color: color,
                   fontWeight: FontWeight.w800,
@@ -160,7 +160,7 @@ class _TransactionDetailSheetState extends State<TransactionDetailSheet> {
           ),
           _DetailRow(
             label: context.l10n.walletDetailBalanceAfter,
-            value: tx.formattedBalance,
+            value: tx.formattedBalance(context.l10n.walletCurrencyShort),
           ),
           if (_paymentMethod != null)
             _DetailRow(

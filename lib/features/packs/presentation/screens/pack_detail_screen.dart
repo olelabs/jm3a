@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
@@ -84,7 +83,9 @@ class _PackDetailScreenState extends State<PackDetailScreen> {
         _myRating = results.length > 2 ? results[2] as PackRating? : null;
         _isLoading = false;
       });
-      if (pack.creatorId == userId && pack.isVerifiedCreator && pack.isPublished) {
+      if (pack.creatorId == userId &&
+          pack.isVerifiedCreator &&
+          pack.isPublished) {
         _loadPromotionStatus();
       }
     } catch (e) {
@@ -96,9 +97,47 @@ class _PackDetailScreenState extends State<PackDetailScreen> {
     }
   }
 
+  // Item 10 — guards against a rapid double-tap opening two confirmation
+  // dialogs before the first one's awaited Future resolves (isPurchasing
+  // alone only covers the window AFTER confirmation, once the actual API
+  // call is in flight).
+  bool _isConfirmingPurchase = false;
+
   Future<void> _purchase() async {
     final pack = _pack;
-    if (pack == null) return;
+    if (pack == null || _isPurchasing || _isConfirmingPurchase) return;
+
+    // Item 10 — show what's being purchased (name, price/currency) and
+    // require an explicit confirmation before ever calling the purchase
+    // API. Cancelling performs no purchase at all — this only gates the
+    // EXISTING purchasePack flow below, it doesn't duplicate it.
+    _isConfirmingPurchase = true;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dCtx) => AlertDialog(
+        title: Text(dCtx.l10n.packConfirmPurchaseTitle),
+        content: Text(
+          dCtx.l10n.packConfirmPurchaseBody(
+            _displayTitle(dCtx, pack),
+            pack.isFree
+                ? dCtx.l10n.packFreeLabel
+                : dCtx.l10n.packPriceMru(pack.priceMru),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dCtx, false),
+            child: Text(dCtx.l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dCtx, true),
+            child: Text(dCtx.l10n.packConfirmPurchaseAction),
+          ),
+        ],
+      ),
+    );
+    _isConfirmingPurchase = false;
+    if (confirmed != true || !mounted) return;
 
     setState(() => _isPurchasing = true);
     final error = await context.read<PackProvider>().purchasePack(pack);
@@ -200,6 +239,13 @@ class _PackDetailScreenState extends State<PackDetailScreen> {
   }
 
   Future<void> _showReportSheet() async {
+    // Item 11 — never even offer the report flow again for a pack this
+    // user already reported (persisted — see PackProvider._reportedPackIds'
+    // own doc comment), rather than relying solely on the in-sheet guard.
+    if (context.read<PackProvider>().hasReportedPack(_pack!.id)) {
+      context.showSnackBar(context.l10n.packReportAlreadySubmitted);
+      return;
+    }
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -212,7 +258,9 @@ class _PackDetailScreenState extends State<PackDetailScreen> {
             reason: reason,
             details: details,
           );
-          if (ok && mounted) context.showSnackBar(context.l10n.packReportSubmitted);
+          if (ok && mounted)
+            context.showSnackBar(context.l10n.packReportSubmitted);
+          return ok;
         },
       ),
     );
@@ -233,7 +281,8 @@ class _PackDetailScreenState extends State<PackDetailScreen> {
     final pack = _pack!;
     final packs = context.watch<PackProvider>();
     final isOwned = packs.isOwned(pack);
-    final canPromote = pack.creatorId == packs.currentUserId &&
+    final canPromote =
+        pack.creatorId == packs.currentUserId &&
         pack.isVerifiedCreator &&
         pack.isPublished;
     final dlState = packs.downloadStateFor(pack.id);
@@ -250,10 +299,25 @@ class _PackDetailScreenState extends State<PackDetailScreen> {
               expandedHeight: 260,
               pinned: true,
               actions: [
-                IconButton(
-                  icon: const Icon(Icons.flag_outlined),
-                  onPressed: _showReportSheet,
-                  tooltip: context.l10n.packReport,
+                Builder(
+                  builder: (context) {
+                    final alreadyReported = context
+                        .watch<PackProvider>()
+                        .hasReportedPack(pack.id);
+                    return IconButton(
+                      icon: Icon(
+                        alreadyReported ? Icons.flag : Icons.flag_outlined,
+                      ),
+                      // Item 11 — disabled once already reported, not just
+                      // re-showing the sheet with a snackbar every time;
+                      // this is the visible half of the same guard
+                      // PackProvider.reportPack/hasReportedPack enforce.
+                      onPressed: alreadyReported ? null : _showReportSheet,
+                      tooltip: alreadyReported
+                          ? context.l10n.packReportAlreadySubmitted
+                          : context.l10n.packReport,
+                    );
+                  },
                 ),
               ],
               flexibleSpace: FlexibleSpaceBar(
@@ -321,9 +385,15 @@ class _PackDetailScreenState extends State<PackDetailScreen> {
 
                   const SizedBox(height: 16),
 
-                  if (pack.descriptionFor(Localizations.localeOf(context).languageCode).isNotEmpty) ...[
+                  if (pack
+                      .descriptionFor(
+                        Localizations.localeOf(context).languageCode,
+                      )
+                      .isNotEmpty) ...[
                     Text(
-                      pack.descriptionFor(Localizations.localeOf(context).languageCode),
+                      pack.descriptionFor(
+                        Localizations.localeOf(context).languageCode,
+                      ),
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                         height: 1.55,
@@ -470,7 +540,9 @@ class _PackDetailScreenState extends State<PackDetailScreen> {
                         if (ok) {
                           await _load();
                         } else if (mounted) {
-                          context.showErrorSnackBar(context.l10n.packRatingFailed);
+                          context.showErrorSnackBar(
+                            context.l10n.packRatingFailed,
+                          );
                         }
                         return ok;
                       },

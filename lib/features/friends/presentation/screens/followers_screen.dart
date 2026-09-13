@@ -5,10 +5,27 @@ import 'package:provider/provider.dart';
 
 import '../../../../core/extensions/context_ext.dart';
 import '../../../../core/providers/auth_provider.dart';
+import '../../../../core/utils/app_logger.dart';
 import '../../../../shared/widgets/cards/user_avatar.dart';
 import '../../../../shared/widgets/feedback/error_view.dart';
 import '../friends_provider.dart';
 import 'user_profile_screen.dart';
+
+/// Item 4 (this pass) — a follow-back-status lookup failure must never
+/// discard an already-successfully-fetched followers list. Before this,
+/// [_FollowersScreenState._load] wrapped both [FriendsRepository.
+/// getFollowers] and [FriendsRepository.getFollowStatuses] in the SAME
+/// try/catch, so if the second (purely cosmetic "are you already
+/// following them back") call failed for any reason — a transient
+/// network blip, for instance — the whole screen fell into the error
+/// state and the followers list that had already loaded correctly was
+/// thrown away. This is exactly the "I have followers but the screen
+/// shows nothing" symptom, with a real, verifiable cause independent of
+/// any server-side RLS policy. A top-level pure function (not inlined in
+/// the widget) so the fallback shape is independently unit-testable.
+Map<String, bool> defaultFollowStatuses(List<FollowEntity> followers) => {
+  for (final f in followers) f.userId: false,
+};
 
 /// The current user's own followers list — reuses FriendsRepository/
 /// FriendsProvider's existing follow methods (followUser/unfollowUser)
@@ -68,10 +85,23 @@ class _FollowersScreenState extends State<FollowersScreen> {
     try {
       final repo = FriendsRepository.instance;
       final followers = await repo.getFollowers(userId, limit: 200);
-      final statuses = await repo.getFollowStatuses(
-        viewerId: userId,
-        otherIds: followers.map((f) => f.userId).toList(),
-      );
+      Map<String, bool> statuses;
+      try {
+        statuses = await repo.getFollowStatuses(
+          viewerId: userId,
+          otherIds: followers.map((f) => f.userId).toList(),
+        );
+      } catch (e) {
+        // Item 4 (this pass) — getFollowers already succeeded above; a
+        // failure here is only the secondary "are you already following
+        // them back" lookup, not the followers list itself. Degrade to
+        // "not following back" for every row (the same as a brand-new
+        // viewer with no follows of their own) rather than discarding a
+        // followers list that already loaded correctly — see
+        // defaultFollowStatuses' doc comment for the full reasoning.
+        AppLogger.warning('FollowersScreen: getFollowStatuses failed: $e');
+        statuses = defaultFollowStatuses(followers);
+      }
       if (mounted) {
         setState(() {
           _followers = followers;
@@ -147,7 +177,14 @@ class _FollowersScreenState extends State<FollowersScreen> {
                       MaterialPageRoute(
                         builder: (_) => ChangeNotifierProvider.value(
                           value: context.read<FriendsProvider>(),
-                          child: UserProfileScreen(userId: f.userId),
+                          child: UserProfileScreen(
+                            userId: f.userId,
+                            knownDisplayName: f.displayName,
+                            knownUsername: f.username,
+                            knownAvatarUrl: f.avatarUrl,
+                            knownAvatarConfig: f.avatarConfig,
+                            knownIsPremium: f.isPremium,
+                          ),
                         ),
                       ),
                     ),

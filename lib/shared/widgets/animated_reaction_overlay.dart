@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:math';
 
 import 'package:animated_emoji/animated_emoji.dart';
@@ -6,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../../features/avatar/presentation/avatar_creator_screen.dart';
 import '../../features/rooms/domain/room_entity.dart';
+import 'cards/player_profile_card.dart';
 import 'cards/user_avatar.dart';
 
 /// A single reaction event, deliberately minimal — each game's own
@@ -76,21 +76,55 @@ const Map<String, AnimatedEmojiData> kAnimatedEmojiMap = {
   // glyph exactly.
   '❌': AnimatedEmojis.crossMark,
   '✋': AnimatedEmojis.raisedHand,
+  // Item 6 (reaction-expansion pass) — real animated_emoji matches for
+  // the new reactions appended to kEmojiReactions (Sticker.dart). '😍'
+  // and '👍' already existed above; every other new reaction that
+  // doesn't have a real match here (e.g. '😔', '🥺') simply falls back
+  // to its plain glyph, exactly like the pre-existing '👑' already does.
+  '🤩': AnimatedEmojis.starStruck,
+  '🥳': AnimatedEmojis.partyingFace,
+  '😘': AnimatedEmojis.kissingHeart,
+  '💖': AnimatedEmojis.sparklingHeart,
+  '✨': AnimatedEmojis.sparkles,
+  '🌟': AnimatedEmojis.glowingStar,
+  '🌈': AnimatedEmojis.rainbow,
+  '🏆': AnimatedEmojis.trophy,
+  '🤝': AnimatedEmojis.handshake,
+  '🤞': AnimatedEmojis.crossedFingers,
+  '👀': AnimatedEmojis.eyes,
+  '😆': AnimatedEmojis.laughing,
+  '😉': AnimatedEmojis.wink,
+  '😏': AnimatedEmojis.smirk,
+  '🫠': AnimatedEmojis.melting,
+  '🤠': AnimatedEmojis.cowboy,
+  '😲': AnimatedEmojis.astonished,
+  '😳': AnimatedEmojis.flushed,
+  '🙄': AnimatedEmojis.rollingEyes,
+  '😠': AnimatedEmojis.angry,
 };
 
-/// Max flights rendered at once. A burst spawns several staggered copies
-/// per reaction event (see `_spawnBurst`), and with several players
-/// reacting in quick succession that can queue up fast — this caps actual
-/// concurrent Lottie/animation work so a heavy burst degrades by simply
-/// not spawning more (older flights still finish/fade normally) rather
-/// than ever dropping frames.
+/// Max flights rendered at once. With several players reacting in quick
+/// succession, spawns can queue up fast — this caps actual concurrent
+/// Lottie/animation work so a heavy burst degrades by simply not spawning
+/// more (older flights still finish/fade normally) rather than ever
+/// dropping frames.
 const int _kMaxConcurrentFlights = 15;
 
-/// Floats emoji reactions up across the screen as they arrive, instead of
-/// only ever showing a static tally of counts. Drop into a `Stack` inside
-/// any game screen — non-blocking (`IgnorePointer`), lightweight (each
-/// flight owns exactly one `AnimationController`, self-removing when
-/// done).
+/// Floats a reaction (icon/emoji/custom reaction graphic + the reacting
+/// player's NAME — deliberately no profile-picture avatar, see
+/// _ReactionContent's own doc comment) from the bottom-right of the
+/// screen diagonally up toward the center/upper-center, fading out as it
+/// travels. Drop into a `Stack` inside any game screen (as
+/// `Positioned.fill` — see each call site's own comment on why) —
+/// lightweight (each flight owns exactly one `AnimationController`,
+/// self-removing when done) and never rebuilds the surrounding game
+/// screen for its own animation frames.
+///
+/// Every event gets its OWN flight with its OWN independent lifecycle —
+/// new reactions are appended to [_flights], never replacing an existing
+/// one, and multiple flights (including repeats from the same user, and
+/// bursts from different users) animate fully independently and
+/// concurrently, each fading and self-removing on its own schedule.
 ///
 /// [onNewReaction] fires once per newly-observed event, at the same point
 /// the flight animation is spawned — the intended hook point for a future
@@ -107,12 +141,14 @@ class AnimatedReactionOverlay extends StatefulWidget {
   final List<ReactionEvent> reactions;
   final void Function(String emoji)? onNewReaction;
 
-  /// Resolves an avatar-reaction's sender to their live room member data
-  /// (avatarUrl/avatarConfig/isPremium). Only consulted for reactions
-  /// whose emoji is `AvatarConfig.isAvatarReaction` — plain emoji
-  /// reactions never touch this. Null (the default) or a lookup miss both
-  /// degrade gracefully to UserAvatar's own initials fallback, never a
-  /// crash or a broken-image placeholder.
+  /// Resolves a reaction's sender to their live room member data. Every
+  /// flight uses this for the reactor's NAME; an avatar-token reaction
+  /// additionally uses it to render the sender's own expressive avatar as
+  /// the reaction graphic itself (not a plain identity photo — see
+  /// _ReactionContent's doc comment). Null (the default) or a lookup miss
+  /// both degrade gracefully (empty name, UserAvatar's own initials
+  /// fallback for an avatar-token reaction), never a crash or a
+  /// broken-image placeholder.
   final AvatarReactionResolver? avatarResolver;
 
   @override
@@ -124,21 +160,14 @@ class _AnimatedReactionOverlayState extends State<AnimatedReactionOverlay> {
   final _rng = Random();
   final Set<int> _seenTs = {};
   final List<_Flight> _flights = [];
-  final List<Timer> _burstTimers = [];
   int _nextFlightId = 0;
 
   @override
   void initState() {
     super.initState();
+    // Pre-existing reactions at mount (e.g. reconnect mid-round) must not
+    // all replay — only genuinely new ones after this point are shown.
     _seenTs.addAll(widget.reactions.map((r) => r.ts));
-  }
-
-  @override
-  void dispose() {
-    for (final t in _burstTimers) {
-      t.cancel();
-    }
-    super.dispose();
   }
 
   @override
@@ -154,38 +183,22 @@ class _AnimatedReactionOverlayState extends State<AnimatedReactionOverlay> {
       return;
     }
 
+    // Each event ts is only ever spawned once — this Set is the single
+    // duplicate-event guard for both a genuinely repeated broadcast and a
+    // rebuild that hands back the same underlying list.
     for (final r in widget.reactions) {
       if (_seenTs.add(r.ts)) {
         widget.onNewReaction?.call(r.emoji);
-        _spawnBurst(r.emoji, r.userId);
+        _spawn(r.emoji, r.userId);
       }
     }
   }
 
-  /// WhatsApp-style burst: one reaction event spawns several staggered
-  /// flying copies instead of a single emoji — still exactly one
-  /// [ReactionEvent] per action (no protocol/broadcast change), this is
-  /// purely how it's rendered.
-  void _spawnBurst(String emoji, String userId) {
-    const burstCount = 4;
-    for (var i = 0; i < burstCount; i++) {
-      if (i == 0) {
-        _spawnOne(emoji, userId);
-        continue;
-      }
-      final delay = Duration(milliseconds: i * 90 + _rng.nextInt(60));
-      final timer = Timer(delay, () {
-        if (mounted) _spawnOne(emoji, userId);
-      });
-      _burstTimers.add(timer);
-    }
-  }
-
-  void _spawnOne(String emoji, String userId) {
-    // Cap concurrent flights instead of letting a heavy burst pile up
+  void _spawn(String emoji, String userId) {
+    // Cap concurrent flights instead of letting a heavy pile-on grow
     // unboundedly — a dropped spawn here is invisible to the user (a few
-    // fewer copies during a huge pile-on), whereas exceeding the cap costs
-    // real frame time across every active game screen.
+    // fewer flights during a huge burst of reactions), whereas exceeding
+    // the cap costs real frame time across every active game screen.
     if (_flights.length >= _kMaxConcurrentFlights) return;
 
     final id = _nextFlightId++;
@@ -195,16 +208,27 @@ class _AnimatedReactionOverlayState extends State<AnimatedReactionOverlay> {
           id: id,
           emoji: emoji,
           userId: userId,
-          startX: 0.1 + _rng.nextDouble() * 0.8,
-          drift: (_rng.nextDouble() - 0.5) * 60,
-          swayAmplitude: 14 + _rng.nextDouble() * 22,
+          // Bottom-right origin, spread with a controlled random offset so
+          // several concurrent flights never stack on exactly the same
+          // spot.
+          startX: 0.58 + _rng.nextDouble() * 0.34,
+          startYFraction: 0.80 + _rng.nextDouble() * 0.10,
+          // Toward the center/upper-center — also randomized within a
+          // tighter band so flights converge without literally
+          // overlapping.
+          endX: 0.32 + _rng.nextDouble() * 0.30,
+          endYFraction: 0.14 + _rng.nextDouble() * 0.12,
+          swayAmplitude: 6 + _rng.nextDouble() * 12,
           swayPhase: _rng.nextDouble() * pi * 2,
-          swayCycles: 1 + _rng.nextDouble(),
-          rotationAmplitude: (0.12 + _rng.nextDouble() * 0.22) *
-              (_rng.nextBool() ? 1 : -1),
+          swayCycles: 1 + _rng.nextDouble() * 0.6,
+          rotationAmplitude:
+              (0.05 + _rng.nextDouble() * 0.10) * (_rng.nextBool() ? 1 : -1),
           rotationPhase: _rng.nextDouble() * pi * 2,
-          scaleTarget: 0.85 + _rng.nextDouble() * 0.3,
-          durationMs: 1800 + _rng.nextInt(800),
+          scaleTarget: 0.9 + _rng.nextDouble() * 0.2,
+          // Noticeably slower than a typical burst-style reaction (that
+          // reference is ~1-1.5s) and long enough that the icon/name stay
+          // clearly readable for most of the flight, not just an instant.
+          durationMs: 3600 + _rng.nextInt(1400),
         ),
       );
     });
@@ -218,19 +242,23 @@ class _AnimatedReactionOverlayState extends State<AnimatedReactionOverlay> {
   @override
   Widget build(BuildContext context) {
     if (_flights.isEmpty) return const SizedBox.shrink();
-    return IgnorePointer(
-      child: Stack(
-        children: _flights
-            .map(
-              (f) => _FlyingEmoji(
-                key: ValueKey(f.id),
-                flight: f,
-                onDone: () => _remove(f.id),
-                avatarResolver: widget.avatarResolver,
-              ),
-            )
-            .toList(),
-      ),
+    // Not IgnorePointer: each flight's own composite (icon+name) is
+    // individually tappable (opens the player's profile — see _Flight),
+    // but a bare Positioned child with no gesture detector of its own
+    // never absorbs a hit-test on its own, so every pixel of the overlay
+    // OUTSIDE an actual flight's rendered content still passes taps
+    // straight through to the game controls underneath, unblocked.
+    return Stack(
+      children: _flights
+          .map(
+            (f) => _FlyingReaction(
+              key: ValueKey(f.id),
+              flight: f,
+              onDone: () => _remove(f.id),
+              avatarResolver: widget.avatarResolver,
+            ),
+          )
+          .toList(),
     );
   }
 }
@@ -241,7 +269,9 @@ class _Flight {
     required this.emoji,
     required this.userId,
     required this.startX,
-    required this.drift,
+    required this.startYFraction,
+    required this.endX,
+    required this.endYFraction,
     required this.swayAmplitude,
     required this.swayPhase,
     required this.swayCycles,
@@ -253,19 +283,21 @@ class _Flight {
   final int id;
   final String emoji;
   final String userId;
-  final double startX; // fraction of width, 0..1
-  final double drift; // px of steady horizontal carry by the end
-  final double swayAmplitude; // px of side-to-side wobble on top of drift
+  final double startX; // fraction of width
+  final double startYFraction; // fraction of height
+  final double endX; // fraction of width
+  final double endYFraction; // fraction of height
+  final double swayAmplitude; // px of side-to-side wobble riding the path
   final double swayPhase;
   final double swayCycles;
   final double rotationAmplitude; // radians of tilt wobble, signed
   final double rotationPhase;
-  final double scaleTarget; // resting scale once "popped in", 0.85..1.15
+  final double scaleTarget; // resting scale once "popped in"
   final int durationMs;
 }
 
-class _FlyingEmoji extends StatefulWidget {
-  const _FlyingEmoji({
+class _FlyingReaction extends StatefulWidget {
+  const _FlyingReaction({
     super.key,
     required this.flight,
     required this.onDone,
@@ -276,10 +308,10 @@ class _FlyingEmoji extends StatefulWidget {
   final AvatarReactionResolver? avatarResolver;
 
   @override
-  State<_FlyingEmoji> createState() => _FlyingEmojiState();
+  State<_FlyingReaction> createState() => _FlyingReactionState();
 }
 
-class _FlyingEmojiState extends State<_FlyingEmoji>
+class _FlyingReactionState extends State<_FlyingReaction>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
 
@@ -287,16 +319,16 @@ class _FlyingEmojiState extends State<_FlyingEmoji>
   void initState() {
     super.initState();
     // One controller drives every animated property of this flight
-    // (position, sway, rotation, scale, opacity) via derived values below,
-    // rather than a separate controller per property — the "reuse
-    // animation controllers efficiently" this system needs when up to 15
-    // of these can be alive at once.
-    _controller = AnimationController(
-      vsync: this,
-      duration: Duration(milliseconds: widget.flight.durationMs),
-    )..addStatusListener((status) {
-        if (status == AnimationStatus.completed) widget.onDone();
-      });
+    // (position, sway, rotation, scale, opacity) via derived values below
+    // — its own independent lifecycle, entirely unaffected by any other
+    // concurrent flight.
+    _controller =
+        AnimationController(
+          vsync: this,
+          duration: Duration(milliseconds: widget.flight.durationMs),
+        )..addStatusListener((status) {
+          if (status == AnimationStatus.completed) widget.onDone();
+        });
     _controller.forward();
   }
 
@@ -306,10 +338,21 @@ class _FlyingEmojiState extends State<_FlyingEmoji>
     super.dispose();
   }
 
+  void _openProfile(RoomMemberEntity? member) {
+    if (member == null) return;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Center(child: PlayerProfileCard(member: member)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
+    final padding = MediaQuery.paddingOf(context);
     final flight = widget.flight;
+    final member = widget.avatarResolver?.call(flight.userId);
     final isAvatarReaction = AvatarConfig.isAvatarReaction(flight.emoji);
     final animatedEmoji = isAvatarReaction
         ? null
@@ -318,65 +361,44 @@ class _FlyingEmojiState extends State<_FlyingEmoji>
     // AnimatedBuilder must be the outermost wrapper here, with Positioned
     // returned directly from its builder — Positioned only takes effect
     // when the enclosing Stack can see it as the immediate ParentDataWidget
-    // on whatever RenderObjectWidget ends up as Stack's actual child. The
-    // previous ordering (RepaintBoundary wrapping AnimatedBuilder, with
-    // Positioned built *inside* it) put RepaintBoundary's RenderObject
-    // between Stack and Positioned's target — so Stack's real direct child
-    // was RenderRepaintBoundary, which never got StackParentData at all.
-    // Flutter reports that mismatch as a caught "Incorrect use of
-    // ParentDataWidget" error (non-fatal, so nothing crashes) and simply
-    // ignores the position, leaving every flight as an unpositioned Stack
-    // child — collapsed into the Stack's default corner alignment. Moving
-    // RepaintBoundary inside Positioned (still wrapping the exact same
-    // Opacity/Transform subtree, so per-flight repaint isolation is
-    // unchanged) fixes this: Positioned's target is now genuinely Stack's
-    // direct child.
+    // on whatever RenderObjectWidget ends up as Stack's actual child (see
+    // this file's git history for the exact "Incorrect use of
+    // ParentDataWidget" pitfall this avoids).
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
         final t = _controller.value;
-
-        // Rises from the bottom portion of the screen up past the top,
-        // easing out (Curves.easeOut) so it decelerates near the end
-        // instead of a constant-speed climb — reads as drifting rather
-        // than launched.
         final riseT = Curves.easeOut.transform(t);
-        final top = size.height * 0.85 - (size.height * 0.78 * riseT);
 
-        // Horizontal motion is a steady carry (drift) plus a sine sway
-        // riding on top of it, so the path curves left/right instead of
-        // moving in a straight diagonal line — the TikTok/IG-Live feel
-        // the task asks for.
-        final sway = sin(
-              t * pi * 2 * flight.swayCycles + flight.swayPhase,
-            ) *
+        // Safe-area-respecting travel band: never starts below the
+        // bottom inset or ends above the top inset.
+        final topStart = size.height * flight.startYFraction;
+        final topEnd = (size.height * flight.endYFraction) + padding.top + 4;
+        final top = topStart + (topEnd - topStart) * riseT;
+
+        final leftStart = size.width * flight.startX;
+        final leftEnd = size.width * flight.endX;
+        final sway =
+            sin(t * pi * 2 * flight.swayCycles + flight.swayPhase) *
             flight.swayAmplitude *
             // Sway eases in from spawn so it doesn't visibly "snap"
             // sideways in the first frame.
             min(t * 4, 1.0);
-        final left = size.width * flight.startX + flight.drift * t + sway;
+        final left = leftStart + (leftEnd - leftStart) * riseT + sway;
 
-        // Gentle continuous tilt wobble (not a one-way spin) — "slightly
-        // rotate" while staying playful rather than dizzying.
-        final rotation = sin(
-              t * pi * 2 + flight.rotationPhase,
-            ) *
-            flight.rotationAmplitude;
+        // Gentle continuous tilt wobble (not a one-way spin).
+        final rotation =
+            sin(t * pi * 2 + flight.rotationPhase) * flight.rotationAmplitude;
 
-        // Pops in with a small overshoot over the first ~20% of the
-        // flight, then holds close to its resting scale with a faint
-        // breathing wobble for the remainder — "slightly scale while
-        // moving" instead of a static size once spawned.
-        final popT = Curves.easeOutBack.transform(min(t / 0.2, 1.0));
-        final breathing = sin(t * pi * 3) * 0.04;
-        final scale = 0.4 +
-            (flight.scaleTarget - 0.4) * popT +
-            (t > 0.2 ? breathing : 0);
+        // Pops in with a small overshoot over the first ~15% of the
+        // flight, then holds close to its resting scale.
+        final popT = Curves.easeOutBack.transform(min(t / 0.15, 1.0));
+        final scale = 0.5 + (flight.scaleTarget - 0.5) * popT;
 
-        // Fade in quickly at spawn, hold, fade out over the back
-        // quarter of the flight.
-        final opacity = t < 0.12
-            ? t / 0.12
+        // Fade in quickly at spawn, hold through the middle so the
+        // name stays clearly readable, fade out over the final quarter.
+        final opacity = t < 0.10
+            ? t / 0.10
             : (t < 0.75 ? 1.0 : (1 - (t - 0.75) / 0.25).clamp(0.0, 1.0));
 
         return Positioned(
@@ -395,79 +417,133 @@ class _FlyingEmojiState extends State<_FlyingEmoji>
       },
       // Built once per flight (not per frame) — AnimatedBuilder re-runs
       // only the transform wrapper above on each tick, not this leaf.
-      child: isAvatarReaction
-          ? _FlyingAvatarReaction(
-              userId: flight.userId,
-              reactionKey: AvatarConfig.avatarReactionKey(flight.emoji),
-              resolver: widget.avatarResolver,
-            )
-          : animatedEmoji != null
-          ? AnimatedEmoji(
-              animatedEmoji,
-              size: 40,
-              source: AnimatedEmojiSource.asset,
-              errorWidget: Text(
-                flight.emoji,
-                style: const TextStyle(fontSize: 32),
-              ),
-            )
-          : Text(
-              flight.emoji,
-              style: const TextStyle(fontSize: 32),
-            ),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => _openProfile(member),
+        child: _ReactionContent(
+          emoji: flight.emoji,
+          isAvatarReaction: isAvatarReaction,
+          animatedEmoji: animatedEmoji,
+          member: member,
+        ),
+      ),
     );
   }
 }
 
-/// The avatar-reaction leaf: wraps the app's single canonical avatar
-/// renderer (UserAvatar — the same widget used in friends/profile/room
-/// members/chat/leaderboards) with just a size and a decorative ring, and
-/// nothing else. No image loading, URL resolution, or SVG-vs-raster
-/// branching happens here — that all stays in UserAvatar, so a premium
-/// avatar reaction automatically renders identically to (and inherits any
-/// future feature added to) every other avatar in the app: generated
-/// avatars, uploaded avatars, frames, borders, background colors.
-class _FlyingAvatarReaction extends StatelessWidget {
-  const _FlyingAvatarReaction({
-    required this.userId,
-    required this.reactionKey,
-    required this.resolver,
+/// The reaction's visible content: the reaction icon/emoji/custom
+/// reaction graphic + the reactor's NAME only — see
+/// AnimatedReactionOverlay's own class doc. Deliberately no profile
+/// picture: the reactor's identity is conveyed by name alone, not their
+/// avatar, so removing it doesn't leave a name floating awkwardly next
+/// to an empty gap where an avatar used to sit. An avatar-token reaction
+/// (`avatar:<key>`) is unaffected by this — it renders the sender's
+/// expressive avatar as the reaction GRAPHIC itself (the actual reaction
+/// content, e.g. "😂 via my own face"), which is categorically different
+/// from a plain identity photo and is explicitly one of the reaction
+/// types this widget keeps (see the class doc's "emoji/custom reaction
+/// asset/avatar reaction" list).
+class _ReactionContent extends StatelessWidget {
+  const _ReactionContent({
+    required this.emoji,
+    required this.isAvatarReaction,
+    required this.animatedEmoji,
+    required this.member,
   });
 
-  final String userId;
-  final String reactionKey;
-  final AvatarReactionResolver? resolver;
+  final String emoji;
+  final bool isAvatarReaction;
+  final AnimatedEmojiData? animatedEmoji;
+  final RoomMemberEntity? member;
 
-  static const _size = 44.0;
+  static const double _iconSize = 30;
+
+  Widget _icon() {
+    if (isAvatarReaction) {
+      return DecoratedBox(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.25),
+              blurRadius: 8,
+            ),
+          ],
+        ),
+        child: UserAvatar(
+          avatarUrl: member?.avatarUrl,
+          avatarConfig: member?.avatarConfig,
+          isPremium: member?.isPremium ?? false,
+          displayName: member?.displayName,
+          avatarReactionKey: AvatarConfig.avatarReactionKey(emoji),
+          size: 40,
+          borderWidth: 2,
+          borderColor: Colors.white,
+        ),
+      );
+    }
+    if (animatedEmoji != null) {
+      return AnimatedEmoji(
+        animatedEmoji!,
+        size: _iconSize,
+        source: AnimatedEmojiSource.asset,
+        errorWidget: Text(emoji, style: const TextStyle(fontSize: 26)),
+      );
+    }
+    return Text(emoji, style: const TextStyle(fontSize: 26));
+  }
 
   @override
   Widget build(BuildContext context) {
-    // A lookup miss (member left, or a late-joining spectator whose room
-    // member list hasn't synced this sender yet) is expected, not
-    // exceptional — UserAvatar already renders a graceful initials
-    // fallback for null avatarUrl/avatarConfig, so there is nothing
-    // avatar-reaction-specific to guard against here.
-    final member = resolver?.call(userId);
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.25),
-            blurRadius: 8,
-          ),
-        ],
-      ),
-      child: UserAvatar(
-        avatarUrl: member?.avatarUrl,
-        avatarConfig: member?.avatarConfig,
-        isPremium: member?.isPremium ?? false,
-        displayName: member?.displayName,
-        avatarReactionKey: reactionKey,
-        size: _size,
-        borderWidth: 2,
-        borderColor: Colors.white,
-      ),
+    final name = member?.displayName ?? '';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _icon(),
+            if (name.isNotEmpty) ...[
+              const SizedBox(width: 6),
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Text(
+                    name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    // Item 1 (this pass) — explicit TextDecoration.none.
+                    // This Text's style previously left `decoration`
+                    // unset, so it silently inherited whatever the
+                    // nearest ambient DefaultTextStyle happened to carry
+                    // (Flutter merges an unset property from the given
+                    // style onto the inherited one, it does not reset it)
+                    // — that ambient decoration is what showed as stray
+                    // line(s) under every reactor's name. Every property
+                    // is now pinned explicitly so this name never again
+                    // depends on whatever DefaultTextStyle happens to be
+                    // above it in a given game screen's widget tree.
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      decoration: TextDecoration.none,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ],
     );
   }
 }

@@ -114,6 +114,7 @@ abstract final class RouteNames {
   static const room = 'room';
   static const packDetail = 'pack';
   static const userProfile = 'user';
+  static const publicProfile = 'publicProfile';
   static const wallet = '/wallet';
   static const notifications = '/notifications';
   static const settings = '/settings';
@@ -121,11 +122,23 @@ abstract final class RouteNames {
   static const premium = '/premium';
   static const themePicker = '/theme-picker';
   static const backgroundColor = '/theme-picker/background-color';
+  static const gameCardColor = '/theme-picker/game-card-color';
   static const avatarPicker = '/avatar-picker';
   static const avatarCreator = '/avatar-creator';
   static const creatorVerification = '/creator-verification';
   static const creatorRecoveryComplaint = '/creator-recovery-complaint';
   static const join = '/join';
+  // Item 7 (QR codes) — a real, GoRouter-registered route for the
+  // camera scanner (see qr_scan_screen.dart), reached via context.push()
+  // like every other drill-down screen. Previously pushed as a raw
+  // Navigator.push(MaterialPageRoute(...)) entirely outside GoRouter's
+  // own declarative page list — two independent navigation systems
+  // manipulating the same root Navigator, which is exactly the kind of
+  // desync that can leave a "popped" screen's state (and its still-live
+  // camera) resurrected on the next GoRouter-driven rebuild. Registering
+  // it here means the scanner's own pop/replace and every other route
+  // change all go through the ONE system that actually owns the stack.
+  static const scanQr = '/scan-qr';
   static const followers = '/profile/followers';
   static const aboutUs = '/settings/about';
   static const privacyPolicy = '/settings/privacy';

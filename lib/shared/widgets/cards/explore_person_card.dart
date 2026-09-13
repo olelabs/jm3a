@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/extensions/context_ext.dart';
-import '../../../features/friends/data/friends_repository.dart' show ExplorePerson;
+import '../../../features/friends/data/friends_repository.dart'
+    show ExplorePerson;
 import 'honesty_score_line.dart';
 import 'j_card.dart';
 import 'user_avatar.dart';
@@ -36,6 +37,19 @@ class ExplorePersonCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Item 1 (current pass) — Jma3a Official must be completely excluded
+    // from Discover, not specially presented (a prior pass gave it a
+    // dedicated "official account" card here; that has been deliberately
+    // removed per explicit product decision — do not reintroduce it).
+    // Item 8 — an incomplete account must never render as a normal
+    // discoverable user either. ExplorePerson.isDiscoverable covers both.
+    // FriendsProvider.loadExplorePeople already filters both cases out
+    // before they ever reach this widget, but this is the shared,
+    // reusable card every caller renders through — if either case ever
+    // reaches this widget by some other path regardless, it must still
+    // never render (see ExplorePerson.isDiscoverable's own doc comment).
+    if (!person.isDiscoverable) return const SizedBox.shrink();
+
     return JCard(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),

@@ -894,6 +894,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../extensions/context_ext.dart';
 import '../theme/app_theme.dart';
 
 enum BackgroundMotif {
@@ -919,6 +920,15 @@ class AppThemeData {
     this.isPremiumPlus = false,
     this.motif = BackgroundMotif.none,
   });
+
+  /// [name] is a stable, English, NEVER-shown-directly identifier — kept
+  /// only because [id] alone wasn't always distinct from a human-readable
+  /// label historically and other code may still read it for logging/
+  /// debugging. Every UI surface MUST call [appThemeLocalizedName] instead
+  /// of reading this field for display — see that function's own doc
+  /// comment for why (item 5's localization audit found this was
+  /// previously shown to the user as hardcoded English with no
+  /// translation at all).
   final String id, name, emoji;
   final Color primaryLight;
   final Color primaryDark;
@@ -934,6 +944,101 @@ class AppThemeData {
       );
 }
 
+/// Item 5 fix — resolves an [AppThemeData.id] to its localized display
+/// name. [AppThemeService.allThemes] is a top-level `const` list (cheap to
+/// define/extend as a single compile-time constant), so it cannot hold a
+/// `context.l10n`-resolved string directly — every theme name used to be
+/// shown to the user as hardcoded English with no translation at all.
+/// A switch (not a Map) so an unrecognized id is a compile-time-obvious
+/// dead branch rather than a silent lookup miss — falls back to
+/// [AppThemeData.name] itself only as a last resort, which should never
+/// actually happen since every id in [AppThemeService.allThemes] has a
+/// case here.
+String appThemeLocalizedName(BuildContext context, AppThemeData theme) {
+  final l10n = context.l10n;
+  return switch (theme.id) {
+    'jma3a' => l10n.appThemeNameJma3a,
+    'midnight' => l10n.appThemeNameMidnight,
+    'slate' => l10n.appThemeNameClassic,
+    'candy' => l10n.appThemeNameCandy,
+    'ocean' => l10n.appThemeNameOcean,
+    'forest' => l10n.appThemeNameForest,
+    'sunset' => l10n.appThemeNameSunset,
+    'lavender' => l10n.appThemeNameLavender,
+    'rose' => l10n.appThemeNameRose,
+    'galaxy' => l10n.appThemeNameGalaxy,
+    'neon' => l10n.appThemeNameNeon,
+    'gold' => l10n.appThemeNameGold,
+    'cyber' => l10n.appThemeNameCyber,
+    'lava' => l10n.appThemeNameLava,
+    'aurora' => l10n.appThemeNameAurora,
+    'bubblegum' => l10n.appThemeNameBubblegum,
+    'candy_pop' => l10n.appThemeNameCandyPop,
+    'space' => l10n.appThemeNameDeepSpace,
+    'blossom' => l10n.appThemeNameBlossom,
+    'lovestruck' => l10n.appThemeNameLovestruck,
+    _ => theme.name,
+  };
+}
+
+/// Items 5-8 (this pass) — a single, front-card-only color for
+/// GameFlipCard's shell, independent of the user's Background Color
+/// (profiles.theme_background_color) and independent of [AppThemeData]
+/// (the app-wide primary-color theme). See GameFlipCard's own doc comment
+/// for exactly how [gradientColors]/[borderGlowColor] are applied to ONLY
+/// the front face — the back face always keeps GameFlipCard's existing
+/// default shell color, never this override.
+///
+/// [gradientColors] is a 3-stop radial-gradient palette (brightest ->
+/// darkest) matching the EXACT structure GameFlipCard's shared shell
+/// already uses for its one hardcoded purple gradient — swapping only the
+/// hue/tone, not the visual language (radial glow, dark base) the rest of
+/// the card's decorations/white text/logo were designed against. Every
+/// entry is deliberately kept dark/saturated enough to preserve contrast
+/// with the card's white text, icons, and logo (see this class's own
+/// curation note in AppThemeService.gameCardColors) — none of these are
+/// exposed to the user as a raw color picker.
+class GameCardColorData {
+  const GameCardColorData({
+    required this.id,
+    required this.gradientColors,
+    required this.borderGlowColor,
+  });
+
+  final String id;
+
+  /// Exactly 3 colors: [center-brightest, mid, edge-darkest] — passed
+  /// straight into the same RadialGradient shape GameFlipCard's shell
+  /// already builds.
+  final List<Color> gradientColors;
+
+  /// Border + glow tint (replaces the shell's hardcoded neonPink for the
+  /// front face only) — chosen per palette entry so the accent color
+  /// still reads as intentional against that entry's own gradient, rather
+  /// of one fixed pink clashing with every hue.
+  final Color borderGlowColor;
+}
+
+/// Item 5 fix — resolves a [GameCardColorData.id] to its localized display
+/// name. Mirrors [appThemeLocalizedName]'s exact pattern/reasoning (a
+/// switch, not a Map, over a top-level `const` palette that can't hold a
+/// context.l10n-resolved string directly) — see that function's own doc
+/// comment.
+String gameCardColorLocalizedName(BuildContext context, String id) {
+  final l10n = context.l10n;
+  return switch (id) {
+    'classic_purple' => l10n.gameCardColorClassicPurple,
+    'midnight_blue' => l10n.gameCardColorMidnightBlue,
+    'ember_red' => l10n.gameCardColorEmberRed,
+    'forest_emerald' => l10n.gameCardColorForestEmerald,
+    'sunset_orange' => l10n.gameCardColorSunsetOrange,
+    'gold_prestige' => l10n.gameCardColorGoldPrestige,
+    'rose_pink' => l10n.gameCardColorRosePink,
+    'cyber_teal' => l10n.gameCardColorCyberTeal,
+    _ => id,
+  };
+}
+
 class AppThemeService extends ChangeNotifier {
   AppThemeService._();
   static final AppThemeService instance = AppThemeService._();
@@ -941,12 +1046,26 @@ class AppThemeService extends ChangeNotifier {
   static const _prefKey = 'app_theme_id_v2';
   static const _darkKey = 'app_theme_dark_v2';
 
+  /// Item 10 — LOCAL persistence only (SharedPreferences), mirroring
+  /// [_prefKey]/[_darkKey]'s existing pattern exactly, deliberately NOT
+  /// the server-synced pattern Background Color uses (profiles.
+  /// theme_background_color via the set_theme_background_color RPC —
+  /// see ProfileRepository.setThemeBackgroundColor). That would need a
+  /// new DB column + RPC, which this task's own constraints forbid
+  /// (no migrations, no Supabase access); Game Card Color is also not a
+  /// Premium-gated setting like Background Color is, so the app-theme-id/
+  /// dark-mode local-only pattern is the correct existing architecture to
+  /// follow here, not the background-color one.
+  static const _gameCardColorPrefKey = 'app_game_card_color_v1';
+
   String _currentId = 'jma3a';
   ThemeMode _themeMode = ThemeMode.system;
+  String _gameCardColorId = defaultGameCardColorId;
 
   String get currentId => _currentId;
   ThemeMode get themeMode => _themeMode;
   bool get isDark => _themeMode == ThemeMode.dark;
+  String get gameCardColorId => _gameCardColorId;
 
   static const List<AppThemeData> allThemes = [
     AppThemeData(
@@ -1119,15 +1238,83 @@ class AppThemeService extends ChangeNotifier {
     ),
   ];
 
+  /// Items 5/6 — the curated Game Card Color palette. 'classic_purple' is
+  /// first and is [defaultGameCardColorId]: the EXACT gradient/border
+  /// GameFlipCard's shell already hardcoded before this feature existed
+  /// (see GameFlipCard's own front-shell color), so a user who has never
+  /// opened this setting sees zero visual change. Every other entry is a
+  /// different hue at a comparably dark/saturated tone — "dark, warm,
+  /// cool, playful, premium-looking" per the product ask — deliberately
+  /// NOT including a literal light/pastel option: the front card's actual
+  /// game-prompt TEXT (each game screen's own frontChild/
+  /// frontContentBuilder content) is drawn in colors this shared palette
+  /// does not and cannot control, and those are designed for a dark card
+  /// background. A pastel option here would risk exactly the unreadable-
+  /// text problem this task explicitly warns against, for content this
+  /// component has no authority to also recolor.
+  static const String defaultGameCardColorId = 'classic_purple';
+
+  static const List<GameCardColorData> gameCardColors = [
+    GameCardColorData(
+      id: 'classic_purple',
+      gradientColors: [Color(0xFF4C2E8C), Color(0xFF2A1854), Color(0xFF130A29)],
+      borderGlowColor: Color(0xFFFF3D9A), // AppColors.neonPink
+    ),
+    GameCardColorData(
+      id: 'midnight_blue',
+      gradientColors: [Color(0xFF1E3A8A), Color(0xFF1B2450), Color(0xFF0A0F26)],
+      borderGlowColor: Color(0xFF38DFF0),
+    ),
+    GameCardColorData(
+      id: 'ember_red',
+      gradientColors: [Color(0xFF9A2E2E), Color(0xFF551818), Color(0xFF260A0A)],
+      borderGlowColor: Color(0xFFFFA23D),
+    ),
+    GameCardColorData(
+      id: 'forest_emerald',
+      gradientColors: [Color(0xFF1F6B4A), Color(0xFF143F2C), Color(0xFF091E15)],
+      borderGlowColor: Color(0xFF5CF2B0),
+    ),
+    GameCardColorData(
+      id: 'sunset_orange',
+      gradientColors: [Color(0xFFB85A1E), Color(0xFF7A3512), Color(0xFF2E1408)],
+      borderGlowColor: Color(0xFFFFD24C),
+    ),
+    GameCardColorData(
+      id: 'gold_prestige',
+      gradientColors: [Color(0xFF4A3A16), Color(0xFF241C0A), Color(0xFF120E05)],
+      borderGlowColor: Color(0xFFE8C25E),
+    ),
+    GameCardColorData(
+      id: 'rose_pink',
+      gradientColors: [Color(0xFF9A2E68), Color(0xFF551838), Color(0xFF260A19)],
+      borderGlowColor: Color(0xFFFF6FB8),
+    ),
+    GameCardColorData(
+      id: 'cyber_teal',
+      gradientColors: [Color(0xFF0E5C5C), Color(0xFF0A3838), Color(0xFF041818)],
+      borderGlowColor: Color(0xFF4CF0E0),
+    ),
+  ];
+
+  GameCardColorData get currentGameCardColor => gameCardColors.firstWhere(
+    (c) => c.id == _gameCardColorId,
+    orElse: () => gameCardColors.first,
+  );
+
   AppThemeData get current => allThemes.firstWhere(
     (t) => t.id == _currentId,
     orElse: () => allThemes.first,
   );
 
-  ThemeData lightTheme({Color? backgroundOverride}) =>
-      current.buildTheme(Brightness.light, backgroundOverride: backgroundOverride);
-  ThemeData darkTheme({Color? backgroundOverride}) =>
-      current.buildTheme(Brightness.dark, backgroundOverride: backgroundOverride);
+  ThemeData lightTheme({Color? backgroundOverride}) => current.buildTheme(
+    Brightness.light,
+    backgroundOverride: backgroundOverride,
+  );
+  ThemeData darkTheme({Color? backgroundOverride}) => current.buildTheme(
+    Brightness.dark,
+    backgroundOverride: backgroundOverride,
+  );
 
   // Ephemeral, in-memory-only preview color for the background-color
   // picker sheet — never persisted. Takes priority over the persisted
@@ -1168,6 +1355,22 @@ class AppThemeService extends ChangeNotifier {
       'dark' => ThemeMode.dark,
       _ => ThemeMode.system,
     };
+    _gameCardColorId =
+        prefs.getString(_gameCardColorPrefKey) ?? defaultGameCardColorId;
+    notifyListeners();
+  }
+
+  /// Items 6/10 — persists the chosen Game Card Color locally (see
+  /// [_gameCardColorPrefKey]'s own doc comment for why local, not the
+  /// server-synced pattern Background Color uses). An unrecognized id is
+  /// never persisted or applied — [currentGameCardColor] already falls
+  /// back safely, but this keeps the stored preference itself always
+  /// valid too.
+  Future<void> setGameCardColor(String id) async {
+    if (!gameCardColors.any((c) => c.id == id)) return;
+    _gameCardColorId = id;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_gameCardColorPrefKey, id);
     notifyListeners();
   }
 

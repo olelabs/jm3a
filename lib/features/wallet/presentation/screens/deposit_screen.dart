@@ -120,7 +120,7 @@ class _DepositScreenState extends State<DepositScreen> {
             isSuccess:   true,
             title:       context.l10n.walletDepositSubmittedTitle,
             subtitle:    context.l10n.walletDepositSubmittedSubtitle(
-              result.deposit?.formattedAmount ?? '',
+              result.deposit?.formattedAmount(context.l10n.walletCurrencyShort) ?? '',
             ),
             icon:        Icons.hourglass_top_rounded,
             iconColor:   AppColors.warningAmber,
@@ -296,7 +296,7 @@ class _AmountStepState extends State<_AmountStep> {
               onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
                 hintText:   '0',
-                suffixText: 'MRU',
+                suffixText: context.l10n.walletCurrencyShort,
                 prefixIcon: const Icon(Icons.money_rounded),
                 helperText: _amount > 0
                     ? context.l10n.walletAmountValue(_amount.toString())

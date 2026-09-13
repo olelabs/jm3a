@@ -351,6 +351,10 @@ abstract final class AppColors {
   static const spicyColor = Color(0xFFEA580C);
   static const spicyOrange = Color(0xFFEA580C); // alias
 
+  /// Neon pink accent — game card borders/glow (GameFlipCard), paired
+  /// with brandPurpleDark/brandPurpleMid for the "neon party game" look.
+  static const neonPink = Color(0xFFEC4899);
+
   /// Room owner crown badge
   static const ownerBadge = Color(0xFFF59E0B);
   static const ownerGold = Color(0xFFF59E0B); // alias

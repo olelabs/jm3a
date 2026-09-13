@@ -68,6 +68,8 @@ class _CreatePackScreenState extends State<CreatePackScreen> {
         minAge: p.minAge,
         maxAge: p.maxAge,
         genderRestriction: p.genderRestriction,
+        minPlayers: p.minPlayers,
+        maxPlayers: p.maxPlayers,
         suggestedPunishments: List<String>.from(p.suggestedPunishments),
       );
       // Jump to cards step if basic info already saved
@@ -854,7 +856,7 @@ class _GeneralInfoStepState extends State<_GeneralInfoStep> {
                     hintText: context.l10n.packMinPriceLabel(
                       AppConstants.minPaidPackPriceMru,
                     ),
-                    suffixText: 'MRU',
+                    suffixText: context.l10n.walletCurrencyShort,
                     // draft.priceMru drove both this errorText and the
                     // Continue button's onPressed below — mutating it
                     // without setState (the old behavior) meant neither
@@ -915,8 +917,64 @@ class _GeneralInfoStepState extends State<_GeneralInfoStep> {
                 max: 10,
                 divisions: 8,
                 label: context.l10n.packPlayersSliderLabel(draft.minPlayers),
-                onChanged: (v) => setState(() => draft.minPlayers = v.round()),
+                onChanged: (v) => setState(() {
+                  draft.minPlayers = v.round();
+                  // Keep maxPlayers a valid upper bound (>= minPlayers) as
+                  // the creator drags minPlayers past it, rather than
+                  // letting the draft enter a silently-invalid state that
+                  // only surfaces later at the issues screen.
+                  if (draft.maxPlayers != null &&
+                      draft.maxPlayers! < draft.minPlayers) {
+                    draft.maxPlayers = draft.minPlayers;
+                  }
+                }),
               ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Text(
+                    context.l10n.packSetMaxPlayersToggle,
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                  const Spacer(),
+                  Switch(
+                    value: draft.maxPlayers != null,
+                    onChanged: (v) => setState(() {
+                      // Explicitly optional: turning the toggle off always
+                      // clears back to null (no limit), never to 0 — a
+                      // creator who never touches this control leaves an
+                      // unplayable-looking pack.
+                      draft.maxPlayers = v ? draft.minPlayers : null;
+                    }),
+                  ),
+                ],
+              ),
+              if (draft.maxPlayers != null) ...[
+                Text(
+                  context.l10n.packMaxPlayersLabel(draft.maxPlayers!),
+                  style: theme.textTheme.bodyMedium,
+                ),
+                Slider(
+                  value: draft.maxPlayers!.toDouble(),
+                  min: draft.minPlayers.toDouble(),
+                  max: 12,
+                  divisions: (12 - draft.minPlayers).clamp(1, 12),
+                  label: context.l10n.packMaxPlayersSliderLabel(
+                    draft.maxPlayers!,
+                  ),
+                  onChanged: (v) =>
+                      setState(() => draft.maxPlayers = v.round()),
+                ),
+              ] else
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    context.l10n.packNoMaxPlayersHint,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
             ],
           ).animate(delay: 110.ms).fadeIn(),
 
@@ -2956,6 +3014,7 @@ String _issueMessage(BuildContext context, PackDraftIssue issue) =>
       PackDraftIssue.truthDareBalance => context.l10n.packIssueBalance,
       PackDraftIssue.punishments => context.l10n.packIssuePunishments,
       PackDraftIssue.terms => context.l10n.packIssueTerms,
+      PackDraftIssue.playerRange => context.l10n.packIssuePlayerRange,
     };
 
 /// Read-only Pack Creation Terms sheet — same modal-sheet style as the rest of

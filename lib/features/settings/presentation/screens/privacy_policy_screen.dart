@@ -2,12 +2,22 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/extensions/context_ext.dart';
 import '../../../../shared/widgets/cards/j_card.dart';
+import '../../../../shared/widgets/mouj_tech_brand.dart';
 
-/// Placeholder Privacy Policy — every section body is placeholder text
-/// (see the privacySection*Body l10n keys) pending the real legal copy.
-/// Structured as one [_PolicySection] per required topic specifically so
-/// swapping placeholder text for final copy later is a pure l10n-file
-/// edit, with no layout/widget changes needed.
+/// Privacy Policy — describes what this app actually collects/uses, based
+/// on the real implementation (see each privacySection*Body l10n key's own
+/// source-of-truth: account/auth fields, room/game/chat data, friends/
+/// followers/blocks, pack purchases + creator wallet, physical pack
+/// delivery details, pack reports, account deletion requests, and the
+/// third-party services actually integrated — Supabase, object storage,
+/// OneSignal. No analytics/ad-tracking SDK is integrated, so none is
+/// claimed. Company-specific legal details (registered address, formal
+/// data-protection contact, retention periods, jurisdiction) are NOT
+/// invented here — they were not verifiable from this codebase; see
+/// privacyPolicyIntro's own text and this task's final report for exactly
+/// what is still missing. Structured as one [_PolicySection] per topic so
+/// updating copy later (e.g. once those legal details are confirmed) is a
+/// pure l10n-file edit, with no layout/widget changes needed.
 class PrivacyPolicyScreen extends StatelessWidget {
   const PrivacyPolicyScreen({super.key});
 
@@ -53,10 +63,15 @@ class PrivacyPolicyScreen extends StatelessWidget {
             body: l10n.privacySectionAccountDeletionBody,
           ),
           _PolicySection(
+            title: l10n.privacySectionThirdParty,
+            body: l10n.privacySectionThirdPartyBody,
+          ),
+          _PolicySection(
             title: l10n.privacySectionContact,
-            body: l10n.privacySectionContactBody,
+            body: l10n.privacySectionContactBody(l10n.aboutUsContactEmail),
             isLast: true,
           ),
+          const MoujTechBrand(),
         ],
       ),
     );

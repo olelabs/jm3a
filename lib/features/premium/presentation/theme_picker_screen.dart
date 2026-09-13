@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -36,7 +35,9 @@ class ThemePickerScreen extends StatelessWidget {
               svc.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
             ),
             onPressed: svc.toggleDark,
-            tooltip: svc.isDark ? context.l10n.lightMode : context.l10n.darkMode,
+            tooltip: svc.isDark
+                ? context.l10n.lightMode
+                : context.l10n.darkMode,
           ),
         ],
       ),
@@ -112,8 +113,77 @@ class ThemePickerScreen extends StatelessWidget {
                   )
                 : () => AppRouter.router.push(RouteNames.premium),
           ),
+          const SizedBox(height: 28),
+          Text(
+            context.l10n.premiumGameCardColorEmoji,
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.5,
+            ),
+          ),
+          const SizedBox(height: 14),
+          _GameCardColorTile(
+            current: svc.currentGameCardColor,
+            onTap: () => AppRouter.router.push(RouteNames.gameCardColor),
+          ),
           const SizedBox(height: 32),
         ],
+      ),
+    );
+  }
+}
+
+/// Entry tile for the Game Card Color picker (items 9/10 of this pass) —
+/// mirrors [_BackgroundColorTile]'s layout, but this setting is free/local
+/// (see AppThemeService.setGameCardColor), so there's no lock icon or
+/// premium branch: the swatch just shows the currently selected color's
+/// gradient/border and its localized name.
+class _GameCardColorTile extends StatelessWidget {
+  const _GameCardColorTile({required this.current, required this.onTap});
+
+  final GameCardColorData current;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = context.theme;
+    return Material(
+      color: theme.colorScheme.surfaceContainerHigh,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    center: const Alignment(-0.4, -0.7),
+                    radius: 1.3,
+                    colors: current.gradientColors,
+                    stops: const [0.0, 0.55, 1.0],
+                  ),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: current.borderGlowColor),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  gameCardColorLocalizedName(context, current.id),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -276,7 +346,7 @@ class _ThemeTile extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  data.name,
+                  appThemeLocalizedName(context, data),
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,

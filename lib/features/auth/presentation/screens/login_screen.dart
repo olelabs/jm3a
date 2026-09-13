@@ -9,6 +9,7 @@ import '../../../../core/providers/auth_provider.dart';
 import '../../../../core/router/route_names.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/buttons/j_button.dart';
+import '../../../../shared/widgets/mouj_tech_brand.dart';
 
 /// The normal login screen: identifier + password is the primary way
 /// every account (new or existing) signs in. OTP only ever appears from
@@ -88,10 +89,7 @@ class _LoginScreenState extends State<LoginScreen> {
     // /auth/login page is a "public route", so that revalidation would
     // race the explicit Set Password navigation and bounce to Home
     // before the user ever sees the new-password step.
-    context.go(
-      RouteNames.forgotPassword,
-      extra: _identifierCtrl.text.trim(),
-    );
+    context.go(RouteNames.forgotPassword, extra: _identifierCtrl.text.trim());
   }
 
   void _enterGuestMode() {
@@ -300,6 +298,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     textAlign: TextAlign.center,
                   ),
                 ).animate(delay: 400.ms).fadeIn(),
+
+                const MoujTechBrand(size: MoujTechBrandSize.compact),
               ],
             ),
           ),
@@ -330,7 +330,11 @@ class _ExistingAccountBanner extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.info_outline_rounded, color: cs.onSecondaryContainer, size: 20),
+          Icon(
+            Icons.info_outline_rounded,
+            color: cs.onSecondaryContainer,
+            size: 20,
+          ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -341,7 +345,11 @@ class _ExistingAccountBanner extends StatelessWidget {
             ),
           ),
           IconButton(
-            icon: Icon(Icons.close_rounded, size: 18, color: cs.onSecondaryContainer),
+            icon: Icon(
+              Icons.close_rounded,
+              size: 18,
+              color: cs.onSecondaryContainer,
+            ),
             onPressed: onDismiss,
             visualDensity: VisualDensity.compact,
             padding: EdgeInsets.zero,

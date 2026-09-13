@@ -933,6 +933,7 @@ import 'dart:async';
 import '../../../core/errors/failures.dart';
 import '../../../core/providers/base_provider.dart';
 import '../../../core/services/pack_sync_service.dart';
+import '../../../core/storage/local_storage_service.dart';
 import '../../../core/utils/app_logger.dart';
 import '../data/pack_download_manager.dart';
 import '../data/pack_repository.dart';
@@ -966,6 +967,30 @@ class PackProvider extends BaseProvider {
   final _downloadStates = <String, PackDownloadState>{};
   StreamSubscription<MapEntry<String, PackDownloadState>>? _downloadSub;
   bool _isSyncing = false;
+
+  // Item 11 — duplicate-report prevention. Persisted per-account (keyed by
+  // userId, so switching accounts on the same device never inherits
+  // another user's "already reported" state) via the existing
+  // LocalStorageService, the same durable-per-device idiom
+  // AppTutorialService already uses for its own completed-tutorials set.
+  // This repo cannot verify whether the backend already has a unique
+  // (pack_id, reporter_id) constraint without a live database, and this
+  // task must not create a migration — so this is the strongest safe
+  // client-side/application-level protection available: it survives app
+  // restarts (not just the current session), reliably blocks every
+  // duplicate-attempt vector the task calls out (rapid re-taps, close+
+  // reopen the sheet, navigate away and back, reopening the report flow
+  // for the same pack later, a UI/network retry) because none of those
+  // can ever re-clear this set, and it degrades safely (fails open, i.e.
+  // still allows a genuine report attempt) if local storage itself is
+  // ever unavailable.
+  Set<String> _reportedPackIds = {};
+  String? _reportedPackIdsStorageKey;
+
+  /// Whether the CURRENT user has already reported [packId] — checked
+  /// before ReportPackSheet is even shown (pack_detail_screen.dart) and
+  /// again by [reportPack] itself as the actual guard.
+  bool hasReportedPack(String packId) => _reportedPackIds.contains(packId);
 
   List<PackEntity> _localPacks = [];
 
@@ -1035,6 +1060,17 @@ class PackProvider extends BaseProvider {
     loadCreatedPacks();
     _syncPacks(userId);
     _hydrateAllDownloads();
+    _loadReportedPackIds(userId);
+  }
+
+  void _loadReportedPackIds(String userId) {
+    _reportedPackIdsStorageKey = 'reported_pack_ids_$userId';
+    _reportedPackIds =
+        (LocalStorageService.instance.getStringList(
+                  _reportedPackIdsStorageKey!,
+                ) ??
+                const <String>[])
+            .toSet();
   }
 
   Future<void> _hydrateAllDownloads() async {
@@ -1074,6 +1110,8 @@ class PackProvider extends BaseProvider {
     _createdPacks = [];
     _purchaseRecords = [];
     _hydrateAllDownloads();
+    _reportedPackIds = {};
+    _reportedPackIdsStorageKey = null;
     super.onUserLoggedOut();
   }
 
@@ -1115,15 +1153,29 @@ class PackProvider extends BaseProvider {
     });
   }
 
+  /// Item 2 fix — this used to accept only [gameType]/[categoryId], so
+  /// scrolling to a further page under an active Free-only (or language)
+  /// filter silently dropped it (loadBrowsePacks defaults freeOnly to
+  /// false when omitted) — page 1 correctly showed e.g. free Truth or
+  /// Dare packs, but page 2+ would start mixing in paid ones. Now accepts
+  /// and forwards the SAME full filter set [loadBrowsePacks] itself does,
+  /// matching how loadMoreSearchResults already forwards all three.
   Future<void> loadMoreBrowsePacks({
     String? gameType,
     String? categoryId,
+    bool freeOnly = false,
+    String? language,
   }) async {
     if (_isLoadingMore || !_hasMorePacks) return;
     _isLoadingMore = true;
     notifyListeners();
     try {
-      await loadBrowsePacks(gameType: gameType, categoryId: categoryId);
+      await loadBrowsePacks(
+        gameType: gameType,
+        categoryId: categoryId,
+        freeOnly: freeOnly,
+        language: language,
+      );
     } finally {
       _isLoadingMore = false;
       notifyListeners();
@@ -1354,16 +1406,44 @@ class PackProvider extends BaseProvider {
     String? details,
   }) async {
     if (currentUserId == null) return false;
+    // The actual duplicate-report guard — see _reportedPackIds' own doc
+    // comment. Checked here (not just by the caller before opening the
+    // sheet) so this method is safe to call directly too.
+    if (_reportedPackIds.contains(packId)) return false;
+    // Optimistically claim the id BEFORE the network call, synchronously —
+    // not after success. Two near-simultaneous calls for the same packId
+    // (e.g. a UI/network retry firing while the first attempt is still in
+    // flight) both reach this method before either's `await` resolves;
+    // claiming first is what makes the SECOND one's contains() check above
+    // actually see the claim, closing that race. Rolled back below if the
+    // call genuinely fails, so a real retry after a network error isn't
+    // permanently blocked.
+    _reportedPackIds = {..._reportedPackIds, packId};
+    notifyListeners();
     var success = false;
-    await runAsync(() async {
-      await _repo.reportPack(
-        packId: packId,
-        reporterId: currentUserId!,
-        reason: reason,
-        details: details,
-      );
-      success = true;
-    }, setLoading: false);
+    try {
+      await runAsync(() async {
+        await _repo.reportPack(
+          packId: packId,
+          reporterId: currentUserId!,
+          reason: reason,
+          details: details,
+        );
+        success = true;
+      }, setLoading: false);
+    } finally {
+      if (!success) {
+        _reportedPackIds = {..._reportedPackIds}..remove(packId);
+        notifyListeners();
+      } else {
+        final key = _reportedPackIdsStorageKey;
+        if (key != null) {
+          LocalStorageService.instance
+              .setStringList(key, _reportedPackIds.toList())
+              .catchError((_) {});
+        }
+      }
+    }
     return success;
   }
 

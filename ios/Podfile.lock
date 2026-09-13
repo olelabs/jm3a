@@ -18,6 +18,9 @@ PODS:
   - just_audio (0.0.1):
     - Flutter
     - FlutterMacOS
+  - mobile_scanner (7.0.0):
+    - Flutter
+    - FlutterMacOS
   - onesignal_flutter (5.5.5):
     - Flutter
     - OneSignalXCFramework (= 5.5.1)
@@ -98,6 +101,7 @@ DEPENDENCIES:
   - flutter_secure_storage_darwin (from `.symlinks/plugins/flutter_secure_storage_darwin/darwin`)
   - image_picker_ios (from `.symlinks/plugins/image_picker_ios/ios`)
   - just_audio (from `.symlinks/plugins/just_audio/darwin`)
+  - mobile_scanner (from `.symlinks/plugins/mobile_scanner/darwin`)
   - onesignal_flutter (from `.symlinks/plugins/onesignal_flutter/ios`)
   - package_info_plus (from `.symlinks/plugins/package_info_plus/ios`)
   - record_ios (from `.symlinks/plugins/record_ios/ios`)
@@ -131,6 +135,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/image_picker_ios/ios"
   just_audio:
     :path: ".symlinks/plugins/just_audio/darwin"
+  mobile_scanner:
+    :path: ".symlinks/plugins/mobile_scanner/darwin"
   onesignal_flutter:
     :path: ".symlinks/plugins/onesignal_flutter/ios"
   package_info_plus:
@@ -160,6 +166,7 @@ SPEC CHECKSUMS:
   image_picker_ios: e0ece4aa2a75771a7de3fa735d26d90817041326
   IosAwnCore: 2cbb4f37f6f901ae9a3414d4f377690fcbe9a8a6
   just_audio: 4e391f57b79cad2b0674030a00453ca5ce817eed
+  mobile_scanner: 9157936403f5a0644ca3779a38ff8404c5434a93
   onesignal_flutter: 32ac5ac42156d5de32a6489b671cb21d92a43352
   OneSignalXCFramework: 2b46c36b38528b65dce33ed9d83375f8c98bf40c
   package_info_plus: af8e2ca6888548050f16fa2f1938db7b5a5df499

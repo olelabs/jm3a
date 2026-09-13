@@ -62,6 +62,42 @@ class RoomMembersManagementSheet extends StatelessWidget {
     }
   }
 
+  /// Item 5 — admin spectator toggle. Only the "make them a spectator"
+  /// direction confirms first (it stops counting them as an active player
+  /// and removes their turns immediately) — reversing it needs no
+  /// confirmation, same asymmetry Kick/Ban (confirm) vs Mute/Unmute (no
+  /// confirm) already establishes in this sheet.
+  Future<void> _toggleSpectator(BuildContext ctx, RoomMemberEntity m) async {
+    if (!m.isSpectator) {
+      final confirmed = await showDialog<bool>(
+        context: ctx,
+        builder: (dCtx) => AlertDialog(
+          title: Text(dCtx.l10n.sharedSetSpectatorTitle),
+          content: Text(dCtx.l10n.sharedSetSpectatorBody),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dCtx).pop(false),
+              child: Text(dCtx.l10n.cancel),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dCtx).pop(true),
+              child: Text(dCtx.l10n.sharedSetSpectator),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true || !ctx.mounted) return;
+    }
+    try {
+      await roomProvider.setMemberSpectator(
+        m.userId,
+        isSpectator: !m.isSpectator,
+      );
+    } on Failure catch (e) {
+      if (ctx.mounted) ctx.showErrorSnackBar(e.message);
+    }
+  }
+
   // isWaitingForGameApproval takes priority over every other label — a
   // pending rejoin request means nothing else about this member's game
   // state is decided yet, and in particular they must never read as
@@ -203,6 +239,15 @@ class RoomMembersManagementSheet extends StatelessWidget {
                             roomProvider.canMutePlayers &&
                             !isMe &&
                             !m.isSpectator &&
+                            !isWaitingForGameApproval;
+                        // Item 5 — available for BOTH directions (unlike
+                        // canMute, which excludes spectators since they
+                        // never take turns to mute); the owner can never
+                        // be targeted (mirrors the RPC's own owner-guard).
+                        final canSetSpectator =
+                            roomProvider.canSetSpectator &&
+                            !isMe &&
+                            !m.isOwner &&
                             !isWaitingForGameApproval;
                         final masked = m.isHiddenSpectator && !canRevealHidden;
                         final shownName = masked
@@ -383,10 +428,33 @@ class RoomMembersManagementSheet extends StatelessWidget {
                                       ),
                                   ],
                                 )
-                              : (canKick || canBan || canMute) && !isMe
+                              : (canKick || canBan || canMute || canSetSpectator) && !isMe
                               ? Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
+                                    if (canSetSpectator)
+                                      TextButton(
+                                        style: TextButton.styleFrom(
+                                          foregroundColor: m.isSpectator
+                                              ? Colors.blueGrey
+                                              : Colors.indigo,
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                          ),
+                                          minimumSize: Size.zero,
+                                          tapTargetSize:
+                                              MaterialTapTargetSize.shrinkWrap,
+                                        ),
+                                        onPressed: () =>
+                                            _toggleSpectator(ctx, m),
+                                        child: Text(
+                                          m.isSpectator
+                                              ? context
+                                                    .l10n
+                                                    .sharedRemoveSpectator
+                                              : context.l10n.sharedSetSpectator,
+                                        ),
+                                      ),
                                     if (canMute)
                                       TextButton(
                                         style: TextButton.styleFrom(

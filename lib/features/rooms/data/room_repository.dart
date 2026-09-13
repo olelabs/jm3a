@@ -2535,6 +2535,26 @@ import '../../../core/utils/app_logger.dart';
 import '../domain/room_entity.dart';
 import '../../games/engine/base_game_engine.dart';
 
+/// Whether a join attempt should be rejected purely for lack of a free
+/// seat. Pure decision logic, deliberately kept free of any Supabase/DB
+/// call so it's directly unit-testable — see joinRoom's own capacity
+/// check for how [isOwnerJoining] and [activePlayers] are computed.
+///
+/// The room's OWNER is never rejected by this check: [activePlayers] is
+/// always computed excluding the joining user themselves (so it already
+/// reflects "everyone ELSE currently active"), and the owner reclaiming
+/// their own seat adds no additional distinct member — treating them
+/// like any other prospective joiner would incorrectly lock them out of
+/// their own room just because it happens to be at max_players. A
+/// normal (non-owner) joiner is unaffected: this changes nothing about
+/// how full a room must be before a genuine new/returning player is
+/// turned away.
+bool roomJoinExceedsCapacity({
+  required bool isOwnerJoining,
+  required int activePlayers,
+  required int maxPlayers,
+}) => !isOwnerJoining && activePlayers >= maxPlayers;
+
 class RoomRepository extends BaseRepository {
   final _api = ApiClient.instance;
   RoomRepository._();
@@ -2839,7 +2859,26 @@ class RoomRepository extends BaseRepository {
           .neq('user_id', userId)
           .count(CountOption.exact);
       final activePlayers = playerCount.count ?? 0;
-      if (activePlayers >= room.maxPlayers) {
+      // Room capacity fix: the OWNER of this room must always be able to
+      // rejoin it — never rejected by the normal capacity check just
+      // because the room is at max_players (e.g. the owner force-closed
+      // the app without formally leaving, so their own seat is still one
+      // of the counted ones; a plain "activePlayers >= maxPlayers" gate
+      // has no way to know the caller IS one of those already-counted
+      // seats, not an additional new one). `isOwnerJoining` above is
+      // derived from `row['owner_id']` — the server-returned room row —
+      // compared against this authenticated call's own userId, exactly
+      // the same trusted comparison already used a few lines up for the
+      // "owner must still be present" check; never a client-supplied
+      // admin flag. Every other gate above this (closed room, banned)
+      // still applies to the owner exactly as before — only the numeric
+      // capacity count is bypassed. This does not weaken capacity
+      // enforcement for a normal (non-owner) joiner in any way.
+      if (roomJoinExceedsCapacity(
+        isOwnerJoining: isOwnerJoining,
+        activePlayers: activePlayers,
+        maxPlayers: room.maxPlayers,
+      )) {
         throw const ConflictFailure(message: 'Room is full.');
       }
 
@@ -3191,7 +3230,7 @@ class RoomRepository extends BaseRepository {
 
   /// Validates a room invitation before entering the room directly — the
   /// single source of truth called by NotificationService.
-  /// _handleRoomInviteTap (every notification trigger: OneSignal click,
+  /// _handleRoomDeepLinkTap (every notification trigger: OneSignal click,
   /// foreground local notification, in-app toast, Notification Center row
   /// tap, and PendingInvitesSection's "View" button all funnel through
   /// it). There is no intermediate confirmation screen — a null result
@@ -4207,6 +4246,30 @@ class RoomRepository extends BaseRepository {
           'p_target_user_id': targetUserId,
           'p_muted': muted,
           'p_duration_seconds': durationSeconds,
+        },
+      );
+    },
+  );
+
+  /// Item 5 — admin/moderator spectator toggle via the
+  /// set_room_member_spectator RPC. Reuses the EXISTING spectator concept
+  /// (room_members.role = 'spectator') rather than a second one: toggling
+  /// this is exactly what makes RoomMemberEntity.isSpectator true/false,
+  /// same field every other spectator check (eligiblePlayers, pack
+  /// min/max enforcement, turn order) already reads.
+  Future<void> setMemberSpectator(
+    String roomId,
+    String targetUserId, {
+    required bool isSpectator,
+  }) => guardedCall(
+    operationName: 'setMemberSpectator',
+    operation: () async {
+      await _supabase.rpc(
+        'set_room_member_spectator',
+        params: {
+          'p_room_id': roomId,
+          'p_target_user_id': targetUserId,
+          'p_is_spectator': isSpectator,
         },
       );
     },

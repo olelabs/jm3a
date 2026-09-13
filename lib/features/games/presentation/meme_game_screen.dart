@@ -24,7 +24,7 @@ import 'package:jma3a/shared/widgets/cards/user_avatar.dart';
 import 'package:jma3a/features/rooms/presentation/room_provider.dart';
 import 'package:jma3a/features/settings/presentation/screen_security_service.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:jma3a/shared/widgets/center_reaction_overlay.dart';
+import 'package:jma3a/shared/widgets/animated_reaction_overlay.dart';
 import 'package:jma3a/shared/widgets/game_rules_sheet.dart';
 import 'package:jma3a/shared/widgets/no_active_players_banner.dart';
 import 'package:jma3a/shared/widgets/join_requests_panel.dart';
@@ -43,11 +43,13 @@ import '../../../../core/services/realtime_service.dart';
 import '../../../../core/services/targeted_chat_listener.dart';
 // import '../../../../core/services/screen_security_service.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/overlays/branded_status_view.dart';
 import '../../../shared/widgets/game/away_presence_snackbar_listener.dart';
 import '../../../shared/widgets/game/game_chat_sheet.dart';
-import '../../../shared/widgets/game/game_card_background.dart';
+import '../../../shared/widgets/game/game_flip_card.dart';
 import '../../../shared/widgets/game/game_over_podium.dart';
+import '../../../shared/widgets/game/player_result_tile.dart';
 import '../../../shared/widgets/game/responsive_game_text.dart';
 import '../../../../core/utils/app_logger.dart';
 import '../../../../core/utils/game_end_navigation.dart';
@@ -161,30 +163,35 @@ class MemeGameProvider extends ChangeNotifier {
       // pack image already goes through (cached, batched, graceful
       // fallback to raw URL).
       if (urls.isEmpty) {
-        final stickerUrls = await PackRepository.instance.getPackStickers(packId);
+        final stickerUrls = await PackRepository.instance.getPackStickers(
+          packId,
+        );
         if (stickerUrls.isNotEmpty) {
           final signed = await ImageUrlSigner.instance.signAll(stickerUrls);
           urls = stickerUrls.map((u) => signed[u] ?? u).toList();
-          AppLogger.info('MemeGame: loaded ${urls.length} pack stickers (pack_stickers pool) for $packId');
+          AppLogger.info(
+            'MemeGame: loaded ${urls.length} pack stickers (pack_stickers pool) for $packId',
+          );
         }
       } else {
-        AppLogger.info('MemeGame: loaded ${urls.length} pack reactions for $packId');
+        AppLogger.info(
+          'MemeGame: loaded ${urls.length} pack reactions for $packId',
+        );
       }
       return urls;
     },
   );
 
   List<String> get stickerPool => _stickerPoolLoader.pool;
-  Future<List<String>> loadStickerPool(String packId) => _stickerPoolLoader.load(packId);
-  Future<void> precacheStickerPool(BuildContext context) => _stickerPoolLoader.precache(context);
+  Future<List<String>> loadStickerPool(String packId) =>
+      _stickerPoolLoader.load(packId);
+  Future<void> precacheStickerPool(BuildContext context) =>
+      _stickerPoolLoader.precache(context);
 
   List<RoomMemberEntity> get gameParticipants =>
       roomProvider?.members
           .where(
-            (m) =>
-                m.userId != _userId &&
-                !m.isSpectator &&
-                !m.leftDefinitively,
+            (m) => m.userId != _userId && !m.isSpectator && !m.leftDefinitively,
           )
           .toList() ??
       const [];
@@ -2867,26 +2874,6 @@ class _MemeGameScreenState extends State<MemeGameScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // In-game history overlay — rendered ABOVE all phases so it's reachable
-    // while the game is running, and gated by GameScreenSecurityGate (a system
-    // back closes it via _handleGameBack; the game route never pops under it).
-    if (_showHistory) {
-      return _wrapAwayListener(
-        Scaffold(
-          appBar: AppBar(
-            title: Text(context.l10n.nhieGameHistoryTitle),
-            leading: BackButton(
-              onPressed: () => setState(() => _showHistory = false),
-            ),
-          ),
-          body: _HistoryPanel(
-            history: _provider.state?.history ?? const [],
-            displayNames: widget.playerDisplayNames,
-            onClose: () => setState(() => _showHistory = false),
-          ),
-        ),
-      );
-    }
     // Stacked so the members management entry point stays reachable across
     // every phase this screen can render (submitting/voting/results) without
     // needing to be threaded into each phase's own Scaffold individually.
@@ -2960,7 +2947,7 @@ class _MemeGameScreenState extends State<MemeGameScreen> {
             child: ChangeNotifierProvider.value(
               value: _provider,
               child: Consumer<MemeGameProvider>(
-                builder: (ctx, game, _) => CenterReactionOverlay(
+                builder: (ctx, game, _) => AnimatedReactionOverlay(
                   reactions: (game.state?.reactions ?? const [])
                       .map(
                         (r) => (emoji: r.emoji, ts: r.ts, userId: r.reactorId),
@@ -2971,6 +2958,37 @@ class _MemeGameScreenState extends State<MemeGameScreen> {
               ),
             ),
           ),
+          // In-game history overlay (item 2, real-device report: iOS
+          // red-screen crash root-cause fix) — rendered ABOVE _buildContent
+          // as a Stack layer, not as an early `return` that replaced it
+          // entirely: the old version fully UNMOUNTED _buildContent (and
+          // therefore _SubmitScreen's own ScreenTutorial(tutorialId:
+          // TutorialIds.memeIntro, ...)) the instant History opened, which
+          // could race a still-in-flight first-time tour into
+          // showcaseview's uncaught LateInitializationError crash — see
+          // ScreenTutorial's own doc comments for the full mechanism. Now
+          // _buildContent stays mounted underneath (matching this stack's
+          // own pre-existing "rendered ABOVE all phases so it's reachable
+          // while the game is running" comment, which the early-return
+          // version never actually honored), gated by GameScreenSecurityGate
+          // exactly as before (a system back closes it via
+          // _handleGameBack; the game route never pops under it).
+          if (_showHistory)
+            Positioned.fill(
+              child: Scaffold(
+                appBar: AppBar(
+                  title: Text(context.l10n.nhieGameHistoryTitle),
+                  leading: BackButton(
+                    onPressed: () => setState(() => _showHistory = false),
+                  ),
+                ),
+                body: _HistoryPanel(
+                  history: _provider.state?.history ?? const [],
+                  displayNames: widget.playerDisplayNames,
+                  onClose: () => setState(() => _showHistory = false),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -3221,7 +3239,10 @@ List<Widget> memeChatAndHistoryActions({
                     game.sendChat(text, replyTo: replyTo),
                 memberOf: game.roomProvider?.memberById,
                 isPremiumPlus:
-                    context.read<AuthProvider>().currentUser?.isPremiumPlusActive ??
+                    context
+                        .read<AuthProvider>()
+                        .currentUser
+                        ?.isPremiumPlusActive ??
                     false,
                 participants: game.gameParticipants,
                 onSendTargeted:
@@ -4122,173 +4143,6 @@ class _MemeTimerBadgeState extends State<_MemeTimerBadge> {
   }
 }
 
-/// Item 7/8/16 — Meme's premium prompt-card centerpiece: same visual
-/// family as ToD's `_CardFace`/NHIE's `_NhieCardFace` (image background +
-/// gradient scrim + glossy highlight + ambient glow) with Meme's own amber
-/// identity, resolving its background through the one shared
-/// [GameCardBackground] instead of duplicating the fallback chain inline.
-/// Purely presentational — only renders `content`/`roundLabel`, never
-/// computes them.
-class _MemeCardFace extends StatelessWidget {
-  const _MemeCardFace({
-    required this.content,
-    required this.roundLabel,
-    required this.imageUrl,
-  });
-  final String content;
-  final String roundLabel;
-  final String? imageUrl;
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-          borderRadius: BorderRadius.circular(28),
-          child: Container(
-            width: double.infinity,
-            height: 210,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(28),
-              border: Border.all(
-                color: _kMemeVivid.withValues(alpha: 0.55),
-                width: 1.5,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: _kMemeVivid.withValues(alpha: 0.30),
-                  blurRadius: 36,
-                  spreadRadius: -4,
-                  offset: const Offset(0, 12),
-                ),
-                BoxShadow(
-                  color: _kMemeDeep.withValues(alpha: 0.38),
-                  blurRadius: 22,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Stack(
-              children: [
-                Positioned.fill(
-                  child: GameCardBackground(
-                    imageUrl: imageUrl,
-                    fallbackColor: _kMemeDeep,
-                  ),
-                ),
-                Positioned.fill(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          _kMemeDeep.withValues(alpha: 0.50),
-                          const Color(0xFF0D1B2A).withValues(alpha: 0.72),
-                        ],
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                      ),
-                    ),
-                  ),
-                ),
-                const Positioned.fill(
-                  child: IgnorePointer(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [Color(0x24FFFFFF), Color(0x00FFFFFF)],
-                          stops: [0.0, 0.5],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  top: 14,
-                  left: 0,
-                  right: 0,
-                  child: Center(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.18),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        roundLabel,
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1.2,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                Center(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 22,
-                      vertical: 40,
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text(
-                          '😂',
-                          style: TextStyle(fontSize: 44),
-                        ).animate().scale(
-                          begin: const Offset(0, 0),
-                          end: const Offset(1, 1),
-                          duration: 400.ms,
-                          curve: Curves.elasticOut,
-                        ),
-                        const SizedBox(height: 10),
-                        Flexible(
-                          child: SingleChildScrollView(
-                            child:
-                                Text(
-                                      content,
-                                      textAlign: TextAlign.center,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 19,
-                                        fontWeight: FontWeight.w700,
-                                        height: 1.4,
-                                        shadows: [
-                                          Shadow(
-                                            color: Colors.black54,
-                                            blurRadius: 8,
-                                          ),
-                                        ],
-                                      ),
-                                    )
-                                    .animate(key: ValueKey(content))
-                                    .fadeIn(duration: 320.ms),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        )
-        .animate(key: ValueKey(content))
-        .fadeIn()
-        .slideY(begin: -0.05, end: 0)
-        .shimmer(
-          delay: 260.ms,
-          duration: 800.ms,
-          color: Colors.white.withValues(alpha: 0.2),
-        );
-  }
-}
-
 class _SubmitScreen extends StatefulWidget {
   const _SubmitScreen({
     required this.game,
@@ -4325,10 +4179,74 @@ class _SubmitScreenState extends State<_SubmitScreen> {
   // First-time Meme game overview highlight (the meme card).
   final GlobalKey _memeShowcaseKey = GlobalKey();
 
+  // Card reveal → controls-panel-appears sequence (see GameFlipCard).
+  // Item 4 (Meme full-width pass) — this used to ALSO physically shrink
+  // the card itself (width and height) once true, which was the actual
+  // cause of the reported "front/caption side becomes narrow" bug (see
+  // this file's own note at the GameFlipCard call site in build()) — the
+  // card is now a constant size for its whole lifetime. `_minimized`
+  // still exists and still gates when the sticker/caption/submit
+  // controls (and the spectator/already-submitted waiting states) below
+  // it appear, so they still animate in as a continuation of the reveal
+  // sequence rather than popping in immediately.
+  bool _minimized = false;
+  String? _lastPromptId;
+
+  // Meme card width fix: the shared GameFlipCard defaults to a portrait
+  // ratio (0.68) sized for ToD/NHIE's short prompts. Meme's captions vary
+  // a lot in length and need real horizontal room, so this card opts into
+  // GameFlipCard.aspectRatioOverride for a wide/landscape shape instead —
+  // ToD/NHIE never set this, so they're completely unaffected.
+  //
+  // The "big" width used to be a fixed 600 constant, wider than any real
+  // phone, on the theory that the outer FittedBox(contain) scaling it
+  // down to the real available width was purely a geometric no-op. That
+  // reasoning holds for POSITIONS and BOX SIZES, but not for the caption
+  // auto-fit's font-size bounds (_MemeCaptionText's _minFontSize/
+  // _maxFontSize) — those are absolute pixel values chosen INSIDE the
+  // 600-wide subtree, before the outer FittedBox uniformly shrinks
+  // everything (including that already-chosen font) down to the real
+  // ~350-400px screen width. A "26px" font picked in 600-space renders at
+  // roughly 26 * (350/600) ≈ 15px on an actual phone — the real cause of
+  // "the caption is still too small", not the nominal max-width value
+  // itself. Fixed by sizing the "big" state from the REAL available width
+  // (via the LayoutBuilder in build() below) instead of a proxy value, so
+  // the font-size search operates in true on-screen pixel space. Kept as
+  // instance fields (not `static const`) because the real width is only
+  // known once `build()` runs.
+  double _bigCardWidth = 340;
+  static const double _wideAspectRatio = 1.5;
+
   @override
   void initState() {
     super.initState();
+    _lastPromptId = widget.state.currentPrompt?.id;
     _loadPackReactions();
+  }
+
+  @override
+  void didUpdateWidget(covariant _SubmitScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Defense in depth: _SubmitScreen is normally recreated fresh every
+    // round (MemePhase cycles through voting/results in between, so this
+    // State never survives across rounds in practice — see this file's
+    // switch in _MemeGameBodyState), but if a prompt ever changed while
+    // this exact instance somehow persisted, the card (keyed on prompt
+    // id) would already flip back to its back face on its own; this just
+    // makes sure the LAYOUT also goes back to "large" for that reveal
+    // instead of staying minimized.
+    final newId = widget.state.currentPrompt?.id;
+    if (newId != _lastPromptId) {
+      _lastPromptId = newId;
+      _minimized = false;
+    }
+  }
+
+  void _onCardRevealed() {
+    Future.delayed(const Duration(milliseconds: 550), () {
+      if (!mounted) return;
+      setState(() => _minimized = true);
+    });
   }
 
   // Correction pass — sticker preloading. This no longer fetches
@@ -4462,132 +4380,271 @@ class _SubmitScreenState extends State<_SubmitScreen> {
                 showcaseKey: _memeShowcaseKey,
                 title: context.l10n.tutMemeTitle,
                 description: context.l10n.tutMemeBody,
-                child: _MemeCardFace(
-                  content: widget.state.currentPrompt?.caption ?? '…',
-                  roundLabel: context.l10n.memeRoundBadgeAllCaps(
-                    widget.state.roundNumber,
-                  ),
-                  imageUrl: widget.packCoverUrl,
+                // Item 4 (Meme full-width pass) — the card used to
+                // physically shrink (width AND height, via FittedBox)
+                // once _minimized became true, to make room for the
+                // sticker/caption controls below it. That shrink was the
+                // actual cause of "the front/caption side becomes
+                // narrow": BoxFit.contain scales a FIXED-aspect-ratio
+                // box uniformly, so making the outer box shorter
+                // necessarily also made it narrower — there is no way to
+                // keep full width while uniformly scaling down height
+                // for a fixed aspect ratio. Since body is already a
+                // SingleChildScrollView (see build() above), the screen
+                // does not actually need the card to shrink to make
+                // room for the controls panel below — it can simply
+                // scroll instead. The card now renders at ONE constant
+                // size (_bigCardWidth × its aspect-derived height) for
+                // its entire lifetime; `_minimized` still exists and
+                // still gates onRevealed/the controls panel's reveal
+                // timing (unchanged sequencing), it just no longer
+                // drives any sizing.
+                child: LayoutBuilder(
+                  builder: (context, outerConstraints) {
+                    // The genuinely available width at this exact point in
+                    // the tree — replaces the old fixed-600 proxy (see
+                    // _bigCardWidth's own doc comment for why that made the
+                    // caption font render far smaller than its nominal
+                    // size). Stored on the State (not recomputed inline
+                    // below) purely so _MemeCaptionText's own reasoning
+                    // stays simple; it does not change between builds
+                    // unless the screen itself is resized/rotated.
+                    _bigCardWidth = outerConstraints.maxWidth;
+                    return SizedBox(
+                      width: _bigCardWidth,
+                      height: _bigCardWidth / _wideAspectRatio,
+                      child: GameFlipCard(
+                        title: context.l10n.gameNameMeme,
+                        contentId: widget.state.currentPrompt?.id,
+                        autoRevealDelay: const Duration(seconds: 1),
+                        onRevealed: _minimized ? null : _onCardRevealed,
+                        maxWidth: _bigCardWidth,
+                        aspectRatioOverride: _wideAspectRatio,
+                        frontChild: Text(
+                          widget.state.currentPrompt?.caption ?? '…',
+                          textAlign: TextAlign.center,
+                          style: AppTextStyles.gameCardContent(
+                            color: Colors.white,
+                          ),
+                        ),
+                        // Caption layout fix: a long caption used to be
+                        // wrapped at a fixed narrow width and then
+                        // block-scaled DOWN (width and font together) by
+                        // GameFlipCard's default FittedBox(scaleDown)
+                        // handling whenever the wrapped text was taller
+                        // than the safe zone — reading as the caption
+                        // being squeezed into a narrow vertical column
+                        // with small text and wasted side margins. This
+                        // builder gets the real bounded safe-zone size
+                        // and picks the largest font that fits WITHOUT
+                        // narrowing the width, so the caption always
+                        // uses the full available horizontal space.
+                        frontContentBuilder: (context, constraints) =>
+                            _MemeCaptionText(
+                              widget.state.currentPrompt?.caption ?? '…',
+                              maxWidth: constraints.maxWidth,
+                              maxHeight: constraints.maxHeight,
+                            ),
+                      ),
+                    );
+                  },
                 ),
               ),
               const SizedBox(height: 14),
 
-              if (!hasSubmitted && !widget.isSpectator) ...[
-                Text(
-                  context.l10n.memePickSticker,
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                // Tinder-style reaction cards: each reaction is a card with the
-                // reaction image as its cover; swipe left/right to browse and the
-                // centered card is your pick. One reaction is submitted per round
-                // (the picker is replaced by a "submitted" state once you submit,
-                // and the engine rejects any second submission).
-                _loadingReactions
-                    ? const Center(child: CircularProgressIndicator())
-                    : _ReactionCardSwiper(
-                        // Item 5 (client UX layer only — the engine's
-                        // _handleSubmit is the actual enforcement): hide
-                        // stickers this player already used earlier in the
-                        // current game so they're not offered again. Falls
-                        // back to the full deck if every sticker has been used
-                        // (exhausted pool), matching the engine's own
-                        // fallback-safe behavior rather than showing an empty
-                        // picker.
-                        items: _availableStickers,
-                        selected: _pickedSticker,
-                        onSelect: (path) =>
-                            setState(() => _pickedSticker = path),
+              if (_minimized)
+                _MemeControlsPanel(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (!hasSubmitted && !widget.isSpectator) ...[
+                            _buildStickerPickerSection(theme, context),
+                          ] else if (widget.isSpectator) ...[
+                            _buildWaitingBox(
+                              theme,
+                              context.l10n.memeSpectatingWaitingSubmit,
+                            ),
+                          ] else ...[
+                            _buildWaitingBox(
+                              theme,
+                              context.l10n.memeResponseSubmittedWaiting,
+                            ),
+                          ],
+                        ],
                       ),
-                const SizedBox(height: 12),
-
-                TextField(
-                  controller: _captionCtrl,
-                  maxLines: 2,
-                  maxLength: 200,
-                  textCapitalization: TextCapitalization.sentences,
-                  decoration: InputDecoration(
-                    hintText: context.l10n.memeAddCaptionOptional,
-                    border: const OutlineInputBorder(),
-                    counterText: '',
-                  ),
-                  onChanged: (_) => setState(() {}),
-                ),
-                const SizedBox(height: 16),
-
-                SizedBox(
-                  height: 52,
-                  child: FilledButton(
-                    onPressed: _canSubmit
-                        ? () => widget.game.submit(
-                            caption: _captionCtrl.text.trim(),
-                            stickerChoice: _pickedSticker,
-                          )
-                        : null,
-                    child: Text(
-                      _pickedSticker.isEmpty
-                          ? context.l10n.memePickStickerFirst
-                          : context.l10n.memeSubmitResponseButton,
-                    ),
-                  ),
-                ),
-              ] else if (widget.isSpectator) ...[
-                const SizedBox(height: 20),
-                Container(
-                  padding: const EdgeInsets.symmetric(vertical: 24),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    children: [
-                      const SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        context.l10n.memeSpectatingWaitingSubmit,
-                        textAlign: TextAlign.center,
-                        style: theme.textTheme.bodyMedium,
-                      ),
-                    ],
-                  ),
-                ),
-              ] else ...[
-                const SizedBox(height: 20),
-                Container(
-                  padding: const EdgeInsets.symmetric(vertical: 24),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    children: [
-                      const SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        context.l10n.memeResponseSubmittedWaiting,
-                        textAlign: TextAlign.center,
-                        style: theme.textTheme.bodyMedium,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+                    )
+                    // Continuation of the same minimize sequence rather
+                    // than an abrupt pop-in underneath a still-shrinking
+                    // card — a short fade+rise, lightly staggered after
+                    // the shrink starts.
+                    .animate()
+                    .fadeIn(delay: 150.ms, duration: 300.ms)
+                    .slideY(delay: 150.ms, begin: 0.06, end: 0),
             ],
           ),
         ),
       ),
     );
   }
+
+  Widget _buildWaitingBox(ThemeData theme, String message) => Container(
+    padding: const EdgeInsets.symmetric(vertical: 24),
+    decoration: BoxDecoration(
+      color: theme.colorScheme.surfaceContainerHighest,
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Column(
+      children: [
+        const SizedBox(
+          width: 24,
+          height: 24,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          message,
+          textAlign: TextAlign.center,
+          style: theme.textTheme.bodyMedium,
+        ),
+      ],
+    ),
+  );
+
+  Widget _buildStickerPickerSection(ThemeData theme, BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          context.l10n.memePickSticker,
+          style: theme.textTheme.labelMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 8),
+        // Tinder-style reaction cards: each reaction is a card with the
+        // reaction image as its cover; swipe left/right to browse and the
+        // centered card is your pick. One reaction is submitted per round
+        // (the picker is replaced by a "submitted" state once you submit,
+        // and the engine rejects any second submission).
+        _loadingReactions
+            ? const Center(child: CircularProgressIndicator())
+            : _ReactionCardSwiper(
+                // Item 5 (client UX layer only — the engine's
+                // _handleSubmit is the actual enforcement): hide
+                // stickers this player already used earlier in the
+                // current game so they're not offered again. Falls
+                // back to the full deck if every sticker has been used
+                // (exhausted pool), matching the engine's own
+                // fallback-safe behavior rather than showing an empty
+                // picker.
+                items: _availableStickers,
+                selected: _pickedSticker,
+                onSelect: (path) => setState(() => _pickedSticker = path),
+              ),
+        const SizedBox(height: 12),
+
+        TextField(
+          controller: _captionCtrl,
+          maxLines: 2,
+          maxLength: 200,
+          textCapitalization: TextCapitalization.sentences,
+          decoration: InputDecoration(
+            hintText: context.l10n.memeAddCaptionOptional,
+            border: const OutlineInputBorder(),
+            counterText: '',
+          ),
+          onChanged: (_) => setState(() {}),
+        ),
+        const SizedBox(height: 16),
+
+        SizedBox(
+          height: 52,
+          child: FilledButton(
+            onPressed: _canSubmit
+                ? () => widget.game.submit(
+                    caption: _captionCtrl.text.trim(),
+                    stickerChoice: _pickedSticker,
+                  )
+                : null,
+            child: Text(
+              _pickedSticker.isEmpty
+                  ? context.l10n.memePickStickerFirst
+                  : context.l10n.memeSubmitResponseButton,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Auto-fits [text] into the given bounded box by picking the LARGEST
+/// font size that fits, always wrapping at the FULL [maxWidth] first —
+/// never narrowing the rendered block the way GameFlipCard's default
+/// FittedBox(scaleDown) front-content handling does. Short/medium
+/// captions render at [_maxFontSize] (never scaled up further); only a
+/// caption whose full-width wrap is still taller than [maxHeight] steps
+/// the font size down, one point at a time, until it fits — so a long
+/// caption gains more lines at a large, readable size instead of
+/// shrinking into a small, narrow column with wasted side margins. Pure
+/// synchronous measurement (TextPainter), computed once per build — no
+/// per-frame recomputation, so it can't fight the card's own animation.
+class _MemeCaptionText extends StatelessWidget {
+  const _MemeCaptionText(
+    this.text, {
+    required this.maxWidth,
+    required this.maxHeight,
+  });
+
+  final String text;
+  final double maxWidth;
+  final double maxHeight;
+
+  // Now that the card's "big" width is the REAL available screen width
+  // (see _bigCardWidth's doc comment), these render at their true on-
+  // screen pixel size — no longer silently shrunk ~40% by an outer
+  // FittedBox — so the ceiling can genuinely mean "large, easy to read"
+  // rather than compensating in advance for that shrink.
+  static const double _maxFontSize = 34;
+  static const double _minFontSize = 16;
+
+  @override
+  Widget build(BuildContext context) {
+    final baseStyle = AppTextStyles.gameCardContent(color: Colors.white);
+    var fontSize = _maxFontSize;
+    while (fontSize > _minFontSize) {
+      final painter = TextPainter(
+        text: TextSpan(
+          text: text,
+          style: baseStyle.copyWith(fontSize: fontSize),
+        ),
+        textAlign: TextAlign.center,
+        textDirection: Directionality.of(context),
+      )..layout(maxWidth: maxWidth <= 0 ? 1 : maxWidth);
+      if (painter.height <= maxHeight) break;
+      fontSize -= 1;
+    }
+    return Text(
+      text,
+      textAlign: TextAlign.center,
+      style: baseStyle.copyWith(fontSize: fontSize),
+    );
+  }
+}
+
+/// Fades + slides the sticker/caption/submit controls (or the spectator/
+/// already-submitted waiting box) up into view — built fresh only once
+/// the card has minimized (see _SubmitScreenState), so this widget's
+/// first build IS the moment it should animate in; flutter_animate's
+/// `.animate()` plays once per new element the same way every other
+/// entrance animation in this file already does.
+class _MemeControlsPanel extends StatelessWidget {
+  const _MemeControlsPanel({required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) =>
+      child.animate().fadeIn(duration: 380.ms).slideY(begin: 0.12, end: 0);
 }
 
 class _VotingScreen extends StatelessWidget {
@@ -4929,6 +4986,22 @@ class _ResultsScreenState extends State<_ResultsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // Item 5 (result-screen pass) — a compact, visually prominent
+            // completion indicator, matching the "Results" header goal
+            // (item 5's own list) without adding a second big banner
+            // above the existing winner card.
+            Align(
+              alignment: Alignment.centerRight,
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: ResultCompletionChip(
+                  responded: state.submissions.length,
+                  total: state.playerOrder
+                      .where((id) => !game.awayPlayerIds.contains(id))
+                      .length,
+                ),
+              ),
+            ),
             if (winnerId != null)
               Container(
                 padding: const EdgeInsets.all(20),
@@ -5015,39 +5088,67 @@ class _ResultsScreenState extends State<_ResultsScreen> {
 
             Expanded(
               child: ListView(
-                children: state.submissions.entries
-                    .toList()
-                    .asMap()
-                    .entries
-                    .map((indexed) {
-                      final i = indexed.key;
-                      final e = indexed.value;
-                      final sub = e.value;
-                      final votes = tally[e.key] ?? 0;
-                      final isWinner = e.key == winnerId;
-                      return Card(
-                            margin: const EdgeInsets.only(bottom: 10),
-                            color: isWinner
-                                ? AppColors.amberOrangeLight.withOpacity(0.08)
-                                : null,
-                            shape: isWinner
-                                ? RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    side: BorderSide(
-                                      color: AppColors.amberOrangeLight
-                                          .withOpacity(0.5),
+                children: [
+                  ...state.submissions.entries.toList().asMap().entries.map((
+                    indexed,
+                  ) {
+                    final i = indexed.key;
+                    final e = indexed.value;
+                    final sub = e.value;
+                    final votes = tally[e.key] ?? 0;
+                    final isWinner = e.key == winnerId;
+                    return Card(
+                          margin: const EdgeInsets.only(bottom: 10),
+                          color: isWinner
+                              ? AppColors.amberOrangeLight.withOpacity(0.08)
+                              : null,
+                          shape: isWinner
+                              ? RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  side: BorderSide(
+                                    color: AppColors.amberOrangeLight
+                                        .withOpacity(0.5),
+                                  ),
+                                )
+                              : null,
+                          child: Padding(
+                            padding: const EdgeInsets.all(14),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    // Item 5 (result-screen pass) — every
+                                    // other result row in the app now
+                                    // shows an avatar (see
+                                    // PlayerResultTile); this card was
+                                    // previously text-only.
+                                    UserAvatar(
+                                      avatarUrl: memeRoomMemberFor(
+                                        game,
+                                        e.key,
+                                      )?.avatarUrl,
+                                      avatarConfig: memeRoomMemberFor(
+                                        game,
+                                        e.key,
+                                      )?.avatarConfig,
+                                      isPremium:
+                                          memeRoomMemberFor(
+                                            game,
+                                            e.key,
+                                          )?.isPremium ??
+                                          false,
+                                      displayName: _nameOf(
+                                        widget.displayNames,
+                                        e.key,
+                                      ),
+                                      size: 30,
                                     ),
-                                  )
-                                : null,
-                            child: Padding(
-                              padding: const EdgeInsets.all(14),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Text(
+                                    const SizedBox(width: 8),
+                                    Flexible(
+                                      child: Text(
                                         _nameOf(widget.displayNames, e.key),
+                                        overflow: TextOverflow.ellipsis,
                                         style: theme.textTheme.labelLarge
                                             ?.copyWith(
                                               fontWeight: FontWeight.w600,
@@ -5056,73 +5157,113 @@ class _ResultsScreenState extends State<_ResultsScreen> {
                                                   : null,
                                             ),
                                       ),
-                                      if (isWinner) ...[
-                                        const SizedBox(width: 4),
-                                        const Text('🏆'),
-                                      ],
-                                      const Spacer(),
-                                      Text(
-                                        context.l10n.memeVotesAbbrev(votes),
-                                        style: theme.textTheme.labelLarge
-                                            ?.copyWith(
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                      ),
+                                    ),
+                                    if (isWinner) ...[
+                                      const SizedBox(width: 4),
+                                      const Text('🏆'),
                                     ],
-                                  ),
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 2),
-                                    child: HonestyScoreLine(
-                                      honestyPoints:
-                                          memeRoomMemberFor(game, e.key)?.honestyPoints ??
-                                              0,
-                                      generalScore:
-                                          memeRoomMemberFor(game, e.key)?.generalScore ??
-                                              0,
-                                      iconSize: 10,
+                                    const Spacer(),
+                                    Text(
+                                      context.l10n.memeVotesAbbrev(votes),
+                                      style: theme.textTheme.labelLarge
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w700,
+                                          ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  if (sub.stickerChoice.isNotEmpty)
-                                    _TappableStickerCard(
-                                      assetPath: sub.stickerChoice,
-                                      caption: sub.caption,
-                                    ),
-                                  const SizedBox(height: 8),
-                                  _ReactionBar(
-                                    targetUserId: e.key,
-                                    game: game,
-                                    reactions: state.reactions,
-                                    myId: game.userId,
-                                    isSpectator: widget.isSpectator,
-                                    viewerHasSubmitted: state.submissions
-                                        .containsKey(game.userId),
-                                  ),
-                                  if (!widget.isSpectator)
-                                    Align(
-                                      alignment: Alignment.centerRight,
-                                      child: CompactHonestyVoteButtons(
-                                        voterId: game.userId,
-                                        targetUserId: e.key,
-                                        participantIds: state.playerOrder,
-                                        responseKey:
-                                            'round:${state.roundNumber}',
-                                        hasVoted: game.hasVotedHonesty(
-                                          'round:${state.roundNumber}',
+                                  ],
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 2),
+                                  child: HonestyScoreLine(
+                                    honestyPoints:
+                                        memeRoomMemberFor(
+                                          game,
                                           e.key,
-                                        ),
-                                        onVote: game.castHonestyVote,
+                                        )?.honestyPoints ??
+                                        0,
+                                    generalScore:
+                                        memeRoomMemberFor(
+                                          game,
+                                          e.key,
+                                        )?.generalScore ??
+                                        0,
+                                    iconSize: 10,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                if (sub.stickerChoice.isNotEmpty)
+                                  _TappableStickerCard(
+                                    assetPath: sub.stickerChoice,
+                                    caption: sub.caption,
+                                  ),
+                                const SizedBox(height: 8),
+                                _ReactionBar(
+                                  targetUserId: e.key,
+                                  game: game,
+                                  reactions: state.reactions,
+                                  myId: game.userId,
+                                  isSpectator: widget.isSpectator,
+                                  viewerHasSubmitted: state.submissions
+                                      .containsKey(game.userId),
+                                ),
+                                if (!widget.isSpectator &&
+                                    (game.config?.honestyVoteEnabled ?? true))
+                                  Align(
+                                    alignment: Alignment.centerRight,
+                                    child: CompactHonestyVoteButtons(
+                                      voterId: game.userId,
+                                      targetUserId: e.key,
+                                      participantIds: state.playerOrder,
+                                      responseKey: 'round:${state.roundNumber}',
+                                      hasVoted: game.hasVotedHonesty(
+                                        'round:${state.roundNumber}',
+                                        e.key,
                                       ),
+                                      onVote: game.castHonestyVote,
                                     ),
-                                ],
-                              ),
+                                  ),
+                              ],
                             ),
-                          )
-                          .animate(delay: (i * 60).ms)
-                          .fadeIn()
-                          .slideX(begin: 0.05, end: 0);
-                    })
-                    .toList(),
+                          ),
+                        )
+                        .animate(delay: (i * 60).ms)
+                        .fadeIn()
+                        .slideX(begin: 0.05, end: 0);
+                  }),
+                  // Item 4/5 (result-screen pass) — a player who never
+                  // submitted before the round closed previously had NO
+                  // row at all here (state.submissions is keyed only by
+                  // actual submitters). Meme has no separate Skip action
+                  // (only a timer), so every player in the active roster
+                  // absent from state.submissions is genuinely a timeout,
+                  // determined from real state, never inferred from any
+                  // response text.
+                  ...state.playerOrder
+                      .where(
+                        (id) =>
+                            !state.submissions.containsKey(id) &&
+                            !game.awayPlayerIds.contains(id),
+                      )
+                      .map(
+                        (id) => Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: PlayerResultTile(
+                            key: ValueKey('meme_nr_$id'),
+                            avatarUrl: memeRoomMemberFor(game, id)?.avatarUrl,
+                            avatarConfig: memeRoomMemberFor(
+                              game,
+                              id,
+                            )?.avatarConfig,
+                            isPremium:
+                                memeRoomMemberFor(game, id)?.isPremium ?? false,
+                            displayName: _nameOf(widget.displayNames, id),
+                            status: PlayerResultStatus.timedOut,
+                            isViewer: id == game.userId,
+                            accentColor: AppColors.amberOrangeLight,
+                          ).animate().fadeIn(),
+                        ),
+                      ),
+                ],
               ),
             ),
 
@@ -5585,6 +5726,7 @@ class _GameOverScreenState extends State<_GameOverScreen> {
                     context,
                     widget.roomId,
                     roomProvider: widget.game.roomProvider,
+                    isOwner: widget.game.isOwner,
                   ),
                   child: Text(context.l10n.gameBackToRoom),
                 ),

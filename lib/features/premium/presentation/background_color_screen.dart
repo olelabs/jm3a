@@ -9,35 +9,76 @@ import '../../profile/presentation/profile_provider.dart';
 /// so it blends under any of the app's saturated theme primaries (Neon,
 /// Candy, Galaxy, ...) instead of competing with them. Add more entries
 /// here to extend the palette — nothing else needs to change.
+///
+/// [id] is a stable, internal, never-shown identifier — [_localizedName]
+/// resolves it to real EN/AR/FR display text (see that function). Kept as
+/// a plain top-level const list (so the whole palette stays a single
+/// compile-time constant, cheap to define/extend) rather than storing a
+/// display string directly on each option, which is what item 5's
+/// localization audit found: every one of these names used to be shown to
+/// the user as hardcoded English with no translation at all.
 class _BackgroundOption {
-  const _BackgroundOption(this.name, this.color);
-  final String name;
+  const _BackgroundOption(this.id, this.color);
+  final String id;
   final Color color;
 }
 
 const List<_BackgroundOption> _backgroundPalette = [
-  _BackgroundOption('White', Color(0xFFFFFFFF)),
-  _BackgroundOption('Warm White', Color(0xFFFAF6F0)),
-  _BackgroundOption('Light Grey', Color(0xFFE9E9EA)),
-  _BackgroundOption('Cool Grey', Color(0xFFDEE2E6)),
-  _BackgroundOption('Charcoal', Color(0xFF2F3136)),
-  _BackgroundOption('Soft Black', Color(0xFF1B1B1D)),
-  _BackgroundOption('Cream', Color(0xFFF6F1E4)),
-  _BackgroundOption('Beige', Color(0xFFE8DCC4)),
-  _BackgroundOption('Sand', Color(0xFFE0D2AE)),
-  _BackgroundOption('Stone', Color(0xFFD8D3C4)),
-  _BackgroundOption('Slate', Color(0xFF6E7B8B)),
-  _BackgroundOption('Navy Grey', Color(0xFF3C4656)),
-  _BackgroundOption('Deep Blue Grey', Color(0xFF2B333E)),
-  _BackgroundOption('Forest Mist', Color(0xFFDCE6DD)),
-  _BackgroundOption('Sage', Color(0xFFC3D0BE)),
-  _BackgroundOption('Pale Blue', Color(0xFFDCE8F2)),
-  _BackgroundOption('Mist Blue', Color(0xFFCFE0EA)),
-  _BackgroundOption('Lavender Mist', Color(0xFFE6E1F2)),
-  _BackgroundOption('Blush', Color(0xFFF3E1E3)),
-  _BackgroundOption('Soft Mint', Color(0xFFDCF0E6)),
-  _BackgroundOption('Graphite', Color(0xFF3A3A3C)),
+  _BackgroundOption('white', Color(0xFFFFFFFF)),
+  _BackgroundOption('warm_white', Color(0xFFFAF6F0)),
+  _BackgroundOption('light_grey', Color(0xFFE9E9EA)),
+  _BackgroundOption('cool_grey', Color(0xFFDEE2E6)),
+  _BackgroundOption('charcoal', Color(0xFF2F3136)),
+  _BackgroundOption('soft_black', Color(0xFF1B1B1D)),
+  _BackgroundOption('cream', Color(0xFFF6F1E4)),
+  _BackgroundOption('beige', Color(0xFFE8DCC4)),
+  _BackgroundOption('sand', Color(0xFFE0D2AE)),
+  _BackgroundOption('stone', Color(0xFFD8D3C4)),
+  _BackgroundOption('slate', Color(0xFF6E7B8B)),
+  _BackgroundOption('navy_grey', Color(0xFF3C4656)),
+  _BackgroundOption('deep_blue_grey', Color(0xFF2B333E)),
+  _BackgroundOption('forest_mist', Color(0xFFDCE6DD)),
+  _BackgroundOption('sage', Color(0xFFC3D0BE)),
+  _BackgroundOption('pale_blue', Color(0xFFDCE8F2)),
+  _BackgroundOption('mist_blue', Color(0xFFCFE0EA)),
+  _BackgroundOption('lavender_mist', Color(0xFFE6E1F2)),
+  _BackgroundOption('blush', Color(0xFFF3E1E3)),
+  _BackgroundOption('soft_mint', Color(0xFFDCF0E6)),
+  _BackgroundOption('graphite', Color(0xFF3A3A3C)),
 ];
+
+/// Resolves a [_BackgroundOption.id] to its localized display name. A
+/// switch (not a Map) so an unrecognized id is a compile-time-obvious
+/// dead branch rather than a silent lookup miss — falls back to the id
+/// itself only as a last resort, which should never actually happen since
+/// every id above has a case here.
+String _localizedName(BuildContext context, String id) {
+  final l10n = context.l10n;
+  return switch (id) {
+    'white' => l10n.bgColorWhite,
+    'warm_white' => l10n.bgColorWarmWhite,
+    'light_grey' => l10n.bgColorLightGrey,
+    'cool_grey' => l10n.bgColorCoolGrey,
+    'charcoal' => l10n.bgColorCharcoal,
+    'soft_black' => l10n.bgColorSoftBlack,
+    'cream' => l10n.bgColorCream,
+    'beige' => l10n.bgColorBeige,
+    'sand' => l10n.bgColorSand,
+    'stone' => l10n.bgColorStone,
+    'slate' => l10n.bgColorSlate,
+    'navy_grey' => l10n.bgColorNavyGrey,
+    'deep_blue_grey' => l10n.bgColorDeepBlueGrey,
+    'forest_mist' => l10n.bgColorForestMist,
+    'sage' => l10n.bgColorSage,
+    'pale_blue' => l10n.bgColorPaleBlue,
+    'mist_blue' => l10n.bgColorMistBlue,
+    'lavender_mist' => l10n.bgColorLavenderMist,
+    'blush' => l10n.bgColorBlush,
+    'soft_mint' => l10n.bgColorSoftMint,
+    'graphite' => l10n.bgColorGraphite,
+    _ => id,
+  };
+}
 
 /// Full-screen replacement for the former Background Color modal bottom
 /// sheet. Selection is a curated, theme-safe palette (no free color picker)
@@ -321,7 +362,7 @@ class _SwatchTile extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              option.name,
+              _localizedName(context, option.id),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
@@ -351,8 +392,10 @@ class _BackgroundPreviewMockup extends StatelessWidget {
       ? const Color(0xFF1A1A1A)
       : const Color(0xFFFFFFFF);
 
-  static Color _blend(Color background, double amount) =>
-      Color.alphaBlend(_contrastFor(background).withValues(alpha: amount), background);
+  static Color _blend(Color background, double amount) => Color.alphaBlend(
+    _contrastFor(background).withValues(alpha: amount),
+    background,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -411,8 +454,7 @@ class _BackgroundPreviewMockup extends StatelessWidget {
                     backgroundColor: activeTheme.colorScheme.primary,
                     disabledBackgroundColor: activeTheme.colorScheme.primary,
                     foregroundColor: activeTheme.colorScheme.onPrimary,
-                    disabledForegroundColor:
-                        activeTheme.colorScheme.onPrimary,
+                    disabledForegroundColor: activeTheme.colorScheme.onPrimary,
                   ),
                   child: Text(context.l10n.actionLabel),
                 ),

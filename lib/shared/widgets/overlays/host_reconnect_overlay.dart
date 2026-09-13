@@ -1,8 +1,14 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/di/service_locator.dart';
 import '../../../core/extensions/context_ext.dart';
+import '../../../core/providers/auth_provider.dart';
+import '../../../core/router/app_router.dart';
+import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../features/rooms/presentation/room_provider.dart';
 import 'branded_status_view.dart';
@@ -56,6 +62,87 @@ class _HostReconnectOverlayState extends State<HostReconnectOverlay> {
       accent: AppColors.brandOrangeMid,
       showLoader: false,
       footer: _CountdownChip(seconds: seconds),
+      // Players must never be stuck waiting under this countdown with no
+      // way out — pinned top-left (see BrandedStatusView.topAction), well
+      // clear of the countdown chip in the footer below. This overlay is
+      // never shown to the room owner/admin themselves (see every game
+      // screen's `roomProvider.isOwner != true` gate before rendering
+      // it), so whoever can see this button is always a normal
+      // participant — never the admin being waited for.
+      topAction: _LeaveGameButton(roomProvider: widget.roomProvider),
+    );
+  }
+}
+
+/// Lets a non-owner participant leave the room while waiting for the host
+/// to reconnect, instead of being stuck under the countdown with no way
+/// out. Reuses the exact same "normal player leaves the room entirely"
+/// sequence already used elsewhere (LobbyScreen._leaveRoom's non-owner
+/// branch, memeShowLeaveDialog's non-owner branch) rather than inventing
+/// a new leave mechanism — free this player's room slot, tell every
+/// other client, then exit to Home. Never touches any other room/game
+/// the player may separately be a member of.
+class _LeaveGameButton extends StatelessWidget {
+  const _LeaveGameButton({required this.roomProvider});
+
+  final RoomProvider roomProvider;
+
+  Future<void> _confirmAndLeave(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (d) => AlertDialog(
+        title: Text(context.l10n.todQuitGameTitle),
+        content: Text(context.l10n.todQuitGameBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(d).pop(false),
+            child: Text(context.l10n.cancel),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.of(d).pop(true),
+            child: Text(context.l10n.leaveGame),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    final roomId = roomProvider.room?.id;
+    final myId = Supabase.instance.client.auth.currentUser?.id ?? '';
+    if (roomId != null && myId.isNotEmpty) {
+      final displayName =
+          context.read<AuthProvider>().currentUser?.displayName ??
+          context.l10n.defaultPlayerName;
+      try {
+        await sl.realtimeService.broadcastRoomEvent(roomId, {
+          'type': 'player_left',
+          'user_id': myId,
+          'display_name': displayName,
+          'for_good': true,
+        });
+        await sl.roomRepository.setMemberDefinitiveLeave(roomId, myId);
+      } catch (_) {
+        // Best-effort, matching every other non-owner leave path in this
+        // app: even if either call fails, the player still must not be
+        // stuck on this screen — fall through to navigating away.
+      }
+    }
+    if (context.mounted) AppRouter.router.go(RouteNames.home);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TextButton.icon(
+      onPressed: () => _confirmAndLeave(context),
+      style: TextButton.styleFrom(
+        foregroundColor: Colors.white.withValues(alpha: 0.9),
+        backgroundColor: Colors.white.withValues(alpha: 0.08),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+      ),
+      icon: const Icon(Icons.logout, size: 18),
+      label: Text(context.l10n.leaveGame),
     );
   }
 }

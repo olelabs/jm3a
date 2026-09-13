@@ -1,0 +1,4 @@
+Placeholder — drop the real MOUJ TECH logo file here as mouj_tech_logo.png
+(see lib/core/constants/app_branding.dart). This directory is registered
+in pubspec.yaml so no other file needs to change when the real logo is
+added.

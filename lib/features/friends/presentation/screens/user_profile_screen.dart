@@ -9,7 +9,10 @@ import '../../../../core/providers/auth_provider.dart';
 import '../../../../core/router/route_names.dart';
 import '../../../../core/services/presence_service.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../features/profile/presentation/screens/profile_screen.dart'
+    show ProfileStatsSection;
 import '../../../../shared/widgets/buttons/j_button.dart';
+import '../../../../shared/widgets/cards/profile_pack_card.dart';
 import '../../../../shared/widgets/cards/user_avatar.dart';
 import '../../../../shared/widgets/feedback/error_view.dart';
 import '../../../../shared/widgets/media/signed_network_image.dart';
@@ -17,6 +20,7 @@ import '../../../packs/data/pack_repository.dart';
 import '../../../packs/domain/pack_entity.dart';
 import '../../presentation/friends_provider.dart';
 import '../widgets/online_indicator.dart';
+import '../widgets/report_user_sheet.dart';
 
 /// Correction-pass §12 — the shared official-account action policy. Every
 /// surface that offers a friend-request/block/invite-to-room action on a
@@ -49,9 +53,70 @@ bool canShowBlockAction(SocialProfile profile) => !profile.isOfficial;
 /// room_invites INSERT policy extension.
 bool canShowInviteToRoomAction(SocialProfile profile) => !profile.isOfficial;
 
+/// Item 9 fix ("tap a follower -> Profile not found") — whether at least
+/// one piece of known public identity was passed through from the list row
+/// that led to this screen, i.e. whether [buildKnownIdentityFallbackProfile]
+/// has anything real to build from. Pure so it's directly unit-testable.
+bool hasKnownIdentity({String? knownDisplayName, String? knownUsername}) =>
+    (knownDisplayName != null && knownDisplayName.isNotEmpty) ||
+    (knownUsername != null && knownUsername.isNotEmpty);
+
+/// Builds the minimal fallback [SocialProfile] used when
+/// FriendsProvider.getSocialProfile fails but the caller already knows this
+/// person's basic public identity from the list row that led here (see
+/// _UserProfileScreenState._load's own doc comment for the exact failure
+/// this protects against). Pure — no network/BuildContext — so it's
+/// directly unit-testable without a live database. Stats/friendship/block
+/// state are unknown here, so they default to zero/false; canInteract
+/// stays true (not blocked by default) so Follow still works.
+SocialProfile buildKnownIdentityFallbackProfile({
+  required String userId,
+  String? knownDisplayName,
+  String? knownUsername,
+  String? knownAvatarUrl,
+  Map<String, dynamic>? knownAvatarConfig,
+  bool knownIsPremium = false,
+}) => SocialProfile(
+  userId: userId,
+  displayName: knownDisplayName?.isNotEmpty == true
+      ? knownDisplayName!
+      : (knownUsername ?? userId),
+  username: knownUsername,
+  avatarUrl: knownAvatarUrl,
+  avatarConfig: knownAvatarConfig,
+  isPremium: knownIsPremium,
+  followersCount: 0,
+  followingCount: 0,
+  friendsCount: 0,
+);
+
 class UserProfileScreen extends StatefulWidget {
-  const UserProfileScreen({super.key, required this.userId});
+  const UserProfileScreen({
+    super.key,
+    required this.userId,
+    this.knownDisplayName,
+    this.knownUsername,
+    this.knownAvatarUrl,
+    this.knownAvatarConfig,
+    this.knownIsPremium = false,
+  });
   final String userId;
+
+  /// Item 9 fix — "tap a follower -> Profile not found": every list this
+  /// screen is opened from (Followers, Explore, Friends) already has the
+  /// target's basic public identity in hand (it's what rendered their row)
+  /// BEFORE this screen ever calls getSocialProfile. Passing it through
+  /// means a full profile-lookup failure degrades to a minimal-but-real
+  /// profile view instead of a dead-end "not found" error — see [_load]'s
+  /// own comment for exactly which failure this protects against. None of
+  /// these are trusted as-is for anything privacy-sensitive (stats,
+  /// friendship/block state) — only for the same publicly-visible fields
+  /// already shown in the list row that led here.
+  final String? knownDisplayName;
+  final String? knownUsername;
+  final String? knownAvatarUrl;
+  final Map<String, dynamic>? knownAvatarConfig;
+  final bool knownIsPremium;
 
   @override
   State<UserProfileScreen> createState() => _UserProfileScreenState();
@@ -76,26 +141,87 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       _isLoading = true;
       _error = null;
     });
+    // getSocialProfile is awaited separately from the pack queries (not
+    // inside the same Future.wait as before) so a genuine profile-lookup
+    // failure can be told apart from a packs-query failure — the previous
+    // single catch-all attributed EITHER failure to the same generic
+    // "Profile not found" message, which made this bug impossible to
+    // diagnose from the symptom alone. The actual underlying exception is
+    // still logged by FriendsRepository's own guardedCall either way.
+    SocialProfile? profile;
+    Object? profileError;
+    try {
+      profile = await context.read<FriendsProvider>().getSocialProfile(
+        widget.userId,
+      );
+    } catch (e) {
+      profileError = e;
+    }
+
+    // ROOT CAUSE this branch guards against: getSocialProfile queries
+    // profiles_public first, falling back to the base `profiles` table
+    // only if that view has nothing for this id. That fallback is subject
+    // to the SAME row-level security a normal client already has on
+    // `profiles` for a non-self target — if profiles_public genuinely
+    // excludes this row (a real, verified reason this repo cannot inspect
+    // without a live database, but privacy/incomplete-profile view
+    // filtering is the standard pattern for exactly this kind of view+
+    // locked-base-table split) the fallback can legitimately return
+    // nothing or be denied, and the ONLY signal that reaches this screen
+    // is "not found" — even though the follower/friend/explore row that
+    // led here proves this account is real and was already safely shown
+    // once. Rather than dead-ending on an error for a relationship the
+    // user can clearly see exists, fall back to the same publicly-visible
+    // identity fields already rendered in that list row (see
+    // buildKnownIdentityFallbackProfile's own doc comment).
+    if (profile == null &&
+        hasKnownIdentity(
+          knownDisplayName: widget.knownDisplayName,
+          knownUsername: widget.knownUsername,
+        )) {
+      profile = buildKnownIdentityFallbackProfile(
+        userId: widget.userId,
+        knownDisplayName: widget.knownDisplayName,
+        knownUsername: widget.knownUsername,
+        knownAvatarUrl: widget.knownAvatarUrl,
+        knownAvatarConfig: widget.knownAvatarConfig,
+        knownIsPremium: widget.knownIsPremium,
+      );
+    }
+
+    if (profile == null) {
+      if (mounted) {
+        setState(() {
+          _error = profileError ?? Exception('Profile not found');
+          _isLoading = false;
+        });
+      }
+      return;
+    }
+
     try {
       final results = await Future.wait([
-        context.read<FriendsProvider>().getSocialProfile(widget.userId),
         sl.packRepository.getPublicPacksByCreator(widget.userId),
         sl.packRepository.getMostPlayedPacksForUser(widget.userId),
       ]);
       if (mounted) {
         setState(() {
-          _profile = results[0] as SocialProfile;
-          _packs = results[1] as List<PackEntity>;
-          _mostPlayed = results[2] as List<PackEntity>;
+          _profile = profile;
+          _packs = results[0];
+          _mostPlayed = results[1];
           _isLoading = false;
         });
       }
     } catch (e) {
-      if (mounted)
+      // Packs failed but the profile itself is real and known — still show
+      // it (with empty pack sections) rather than erroring the whole
+      // screen over a secondary query.
+      if (mounted) {
         setState(() {
-          _error = e;
+          _profile = profile;
           _isLoading = false;
         });
+      }
     }
   }
 
@@ -104,6 +230,39 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     await fn();
     await _load();
     setState(() => _isActing = false);
+  }
+
+  /// Item 9 — Report / Report & Block. Reuses [ReportUserSheet]
+  /// (mirroring ReportPackSheet's own flow) and FriendsProvider.reportUser
+  /// (backed by the generic `reports` table's anti-duplicate constraint —
+  /// no separate logic here). [alsoBlock] additionally calls the EXISTING
+  /// blockUser after a successful report, rather than a second/duplicated
+  /// blocking implementation.
+  Future<void> _showReportSheet(String targetUserId, {required bool alsoBlock}) async {
+    final friends = context.read<FriendsProvider>();
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => ReportUserSheet(
+        targetUserId: targetUserId,
+        onSubmit: (reason, details) async {
+          final ok = await friends.reportUser(
+            targetUserId: targetUserId,
+            reason: reason,
+            details: details,
+          );
+          if (ok) {
+            if (alsoBlock) {
+              await _act(() => friends.blockUser(targetUserId));
+            } else if (mounted) {
+              context.showSnackBar(context.l10n.packReportSubmitted);
+            }
+          }
+          return ok;
+        },
+      ),
+    );
   }
 
   @override
@@ -164,21 +323,19 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: _packs.length,
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      mainAxisSpacing: 12,
-                      crossAxisSpacing: 12,
-                      childAspectRatio: 0.78,
-                    ),
-                    itemBuilder: (_, i) =>
-                        _OfficialPackGridTile(
-                              pack: _packs[i],
-                              onTap: () => context.push(
-                                '${RouteNames.marketplace}/pack/${_packs[i].id}',
-                              ),
-                            )
-                            .animate(delay: (i * 40).ms)
-                            .fadeIn(),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          mainAxisSpacing: 12,
+                          crossAxisSpacing: 12,
+                          childAspectRatio: 0.78,
+                        ),
+                    itemBuilder: (_, i) => _OfficialPackGridTile(
+                      pack: _packs[i],
+                      onTap: () => context.push(
+                        '${RouteNames.marketplace}/pack/${_packs[i].id}',
+                      ),
+                    ).animate(delay: (i * 40).ms).fadeIn(),
                   ),
                 ),
               ] else
@@ -200,13 +357,32 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       );
     }
 
+    // Item 9 — own profile must never offer Report/Block against yourself.
+    // isOfficial already fully short-circuits into a separate, actions-free
+    // Scaffold above (see the early return a few lines up), so this menu
+    // is never reached for the official account at all.
+    final isSelf = p.userId == friends.currentUserId;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(p.displayName),
         actions: [
-          if (!p.isBlocked && !p.isBlockedBy)
+          if (!p.isBlocked && !p.isBlockedBy && !isSelf)
             PopupMenuButton<String>(
               itemBuilder: (_) => [
+                PopupMenuItem(
+                  value: 'report',
+                  child: Row(
+                    children: [
+                      Icon(Icons.flag_outlined, color: AppColors.errorRed),
+                      const SizedBox(width: 8),
+                      Text(
+                        context.l10n.friendsReport,
+                        style: TextStyle(color: AppColors.errorRed),
+                      ),
+                    ],
+                  ),
+                ),
                 PopupMenuItem(
                   value: 'block',
                   child: Row(
@@ -220,9 +396,32 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                     ],
                   ),
                 ),
+                PopupMenuItem(
+                  value: 'report_block',
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.report_gmailerrorred_rounded,
+                        color: AppColors.errorRed,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        context.l10n.friendsReportAndBlock,
+                        style: TextStyle(color: AppColors.errorRed),
+                      ),
+                    ],
+                  ),
+                ),
               ],
               onSelected: (v) {
-                if (v == 'block') _act(() => friends.blockUser(p.userId));
+                switch (v) {
+                  case 'block':
+                    _act(() => friends.blockUser(p.userId));
+                  case 'report':
+                    _showReportSheet(p.userId, alsoBlock: false);
+                  case 'report_block':
+                    _showReportSheet(p.userId, alsoBlock: true);
+                }
               },
             ),
         ],
@@ -236,18 +435,39 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   _ProfileHeader(
                     p: p,
                   ).animate().fadeIn().slideY(begin: -0.05, end: 0),
-                  _StatsRow(p: p).animate(delay: 80.ms).fadeIn(),
+                  // Item 3 (this pass) — reuses the SAME polished stats
+                  // card language ProfileScreen's own profile already
+                  // uses (score hero + honesty pill + games/friends/packs/
+                  // followers mini-tiles) instead of a separate, plainer
+                  // Row-of-numbers implementation, so "my profile" and
+                  // "their profile" read as the same product. Followers
+                  // has no onTap here — there is no "view someone else's
+                  // followers list" screen yet (FollowersScreen is
+                  // hardcoded to the signed-in user's own followers), so
+                  // this tile is informational only rather than inventing
+                  // that feature.
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
-                    child: Align(
-                      alignment: Alignment.center,
-                      child: _HonestyStatBadge(value: p.honestyPoints),
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
+                    child: ProfileStatsSection(
+                      loaded: true,
+                      score: p.generalScore,
+                      scoreLabel: context.l10n.profileScore,
+                      honestyPoints: p.honestyPoints,
+                      honestyLabel: context.l10n.profileHonestyPoints,
+                      games: p.gamesPlayed,
+                      gamesLabel: context.l10n.profileGames,
+                      friends: p.friendsCount,
+                      friendsLabel: context.l10n.profileFriends,
+                      packs: p.packsCount,
+                      packsLabel: context.l10n.profilePacks,
+                      followers: p.followersCount,
+                      followersLabel: context.l10n.profileFollowers,
                     ),
-                  ).animate(delay: 100.ms).fadeIn(),
+                  ).animate(delay: 80.ms).fadeIn(),
                   if (p.isBlocked || p.isBlockedBy) _BlockedBanner(p: p),
                   if (p.canInteract)
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
                       child: Column(
                         children: [
                           if (canShowFriendRequestAction(p)) ...[
@@ -285,14 +505,16 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                       emoji: '🔥',
                     ),
                     SizedBox(
-                      height: 160,
-                      child: ListView.builder(
+                      height: 156,
+                      child: ListView.separated(
                         scrollDirection: Axis.horizontal,
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         itemCount: _mostPlayed.length,
+                        separatorBuilder: (_, _) => const SizedBox(width: 10),
                         itemBuilder: (_, i) =>
-                            _PackCard(
+                            ProfilePackCard(
                                   pack: _mostPlayed[i],
+                                  showStats: true,
                                   onTap: () => context.push(
                                     '${RouteNames.marketplace}/pack/${_mostPlayed[i].id}',
                                   ),
@@ -310,14 +532,16 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                       emoji: '🎴',
                     ),
                     SizedBox(
-                      height: 160,
-                      child: ListView.builder(
+                      height: 156,
+                      child: ListView.separated(
                         scrollDirection: Axis.horizontal,
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         itemCount: _packs.length,
+                        separatorBuilder: (_, _) => const SizedBox(width: 10),
                         itemBuilder: (_, i) =>
-                            _PackCard(
+                            ProfilePackCard(
                                   pack: _packs[i],
+                                  showStats: true,
                                   onTap: () => context.push(
                                     '${RouteNames.marketplace}/pack/${_packs[i].id}',
                                   ),
@@ -407,33 +631,68 @@ class _ProfileHeaderContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = context.theme;
+    // Item 3 (this pass) — "polished profile background" instead of a flat
+    // single-color Container: a soft gradient from the ACTIVE theme's own
+    // primary color (colorScheme.primary already reflects whatever app
+    // theme/background color the VIEWER has selected — see JCard's own
+    // doc comment on why reading it here, rather than a hardcoded color,
+    // is what makes this automatically follow the user's theme) down into
+    // the ordinary surface color, so every profile immediately reads as a
+    // real "header" section instead of a plain settings-page block.
     return Container(
       width: double.infinity,
-      color: theme.colorScheme.surfaceContainerHighest,
-      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            theme.colorScheme.primary.withValues(alpha: 0.22),
+            theme.colorScheme.surface,
+          ],
+        ),
+      ),
+      padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
       child: Column(
         children: [
-          UserAvatar(
-            avatarUrl: p.avatarUrl,
-            avatarConfig: p.avatarConfig,
-            isPremium: p.isPremium,
-            displayName: p.displayName,
-            size: 80,
-            showOnlineStatus: !p.isBlockedBy && !p.isBlocked,
-            isOnline: status != UserPresenceStatus.offline,
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: theme.colorScheme.surface,
+              boxShadow: [
+                BoxShadow(
+                  color: theme.colorScheme.primary.withValues(alpha: 0.25),
+                  blurRadius: 18,
+                  spreadRadius: 1,
+                ),
+              ],
+            ),
+            child: UserAvatar(
+              avatarUrl: p.avatarUrl,
+              avatarConfig: p.avatarConfig,
+              isPremium: p.isPremium,
+              displayName: p.displayName,
+              size: 88,
+              showOnlineStatus: !p.isBlockedBy && !p.isBlocked,
+              isOnline: status != UserPresenceStatus.offline,
+            ),
           ).animate().scale(
             begin: const Offset(0.8, 0.8),
             end: const Offset(1, 1),
             duration: 300.ms,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(
-                p.displayName,
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
+              Flexible(
+                child: Text(
+                  p.displayName,
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               if (p.isPremium) ...[
@@ -457,46 +716,60 @@ class _ProfileHeaderContent extends StatelessWidget {
               ],
             ],
           ),
-          if (p.username != null)
+          if (p.username != null) ...[
+            const SizedBox(height: 2),
             Text(
               '@${p.username}',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
               ),
-            ),
-          if (p.currentStreak > 0) ...[
-            const SizedBox(height: 6),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text('🔥', style: TextStyle(fontSize: 14)),
-                const SizedBox(width: 4),
-                Text(
-                  context.l10n.profileStreakDays(p.currentStreak),
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: AppColors.amberOrangeLight,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
-          ],
-          if (p.bio != null && p.bio!.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Text(
-              p.bio!,
-              style: theme.textTheme.bodyMedium,
-              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
           if (!p.isBlockedBy && !p.isBlocked) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             OnlineIndicator(
               status: status,
               showLabel: true,
               roomStatus: roomStatus,
               gameType: gameType,
               showDetail: showDetail,
+            ),
+          ],
+          if (p.currentStreak > 0) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.amberOrangeLight.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('🔥', style: TextStyle(fontSize: 13)),
+                  const SizedBox(width: 4),
+                  Text(
+                    context.l10n.profileStreakDays(p.currentStreak),
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: AppColors.amberOrangeLight,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          if (p.bio != null && p.bio!.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text(
+              p.bio!,
+              style: theme.textTheme.bodyMedium,
+              textAlign: TextAlign.center,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ],
@@ -519,7 +792,8 @@ class _OfficialProfileHeader extends StatelessWidget {
   // (jma3a_card_background.png, distinct from jma3a_card_cover_playful.png
   // which GameCardBackground uses — this one is literally named for the
   // "background" use case), rather than introducing a third brand image.
-  static const _coverAsset = 'assets/images/backgrounds/jma3a_card_background.png';
+  static const _coverAsset =
+      'assets/images/backgrounds/jma3a_card_background.png';
 
   @override
   Widget build(BuildContext context) {
@@ -546,11 +820,13 @@ class _OfficialProfileHeader extends StatelessWidget {
                     color: theme.colorScheme.surfaceContainerHighest,
                     shape: BoxShape.circle,
                   ),
-                  child: const UserAvatar(size: 80, isOfficial: true).animate().scale(
-                    begin: const Offset(0.8, 0.8),
-                    end: const Offset(1, 1),
-                    duration: 300.ms,
-                  ),
+                  child: const UserAvatar(size: 80, isOfficial: true)
+                      .animate()
+                      .scale(
+                        begin: const Offset(0.8, 0.8),
+                        end: const Offset(1, 1),
+                        duration: 300.ms,
+                      ),
                 ),
               ),
             ],
@@ -586,45 +862,11 @@ class _OfficialProfileHeader extends StatelessWidget {
           // this branch never reaches _StatsRow/_HonestyStatBadge at all.
           Text(
             context.l10n.friendsFollowersCount(p.followersCount),
-            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
           ),
           const SizedBox(height: 20),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatsRow extends StatelessWidget {
-  const _StatsRow({required this.p});
-  final SocialProfile p;
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-      child: Row(
-        children: [
-          _StatCell(
-            label: context.l10n.profileFriends,
-            value: '${p.friendsCount}',
-          ),
-          _Divider(),
-          _StatCell(
-            label: context.l10n.profileFollowers,
-            value: '${p.followersCount}',
-          ),
-          _Divider(),
-          _StatCell(
-            label: context.l10n.profileGames,
-            value: '${p.gamesPlayed}',
-          ),
-          _Divider(),
-          _StatCell(label: context.l10n.profilePacks, value: '${p.packsCount}'),
-          _Divider(),
-          _StatCell(
-            label: context.l10n.profileScore,
-            value: '${p.generalScore}',
-          ),
         ],
       ),
     );
@@ -680,94 +922,18 @@ class _SectionHeader extends StatelessWidget {
   );
 }
 
-class _PackCard extends StatelessWidget {
-  const _PackCard({required this.pack, required this.onTap});
-  final PackEntity pack;
-  final VoidCallback onTap;
-  @override
-  Widget build(BuildContext context) {
-    final theme = context.theme;
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 130,
-        margin: const EdgeInsets.only(right: 12),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: theme.colorScheme.outlineVariant),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ClipRRect(
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(14),
-              ),
-              child: pack.coverImageUrl != null
-                  ? SignedNetworkImage(
-                      url: pack.coverImageUrl!,
-                      height: 80,
-                      width: 130,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_) => _PackCoverPlaceholder(pack: pack),
-                    )
-                  : _PackCoverPlaceholder(pack: pack),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    pack.titleFor(Localizations.localeOf(context).languageCode),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.star_rounded,
-                        size: 12,
-                        color: Color(0xFFF5A623),
-                      ),
-                      const SizedBox(width: 2),
-                      Text(
-                        '${pack.avgRating.toStringAsFixed(1)}',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          fontSize: 10,
-                        ),
-                      ),
-                      const Spacer(),
-                      Text(
-                        '${pack.totalPlays} 🎮',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          fontSize: 10,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 /// §9 — grid tile for the official profile's pack catalog. Same cover/
-/// placeholder resolution as [_PackCard] (SignedNetworkImage when the
-/// pack has its own cover, else an emoji placeholder matching the
+/// placeholder resolution as ProfilePackCard (the shared, non-official
+/// pack card this screen's normal-user branch now uses — see
+/// shared/widgets/cards/profile_pack_card.dart): SignedNetworkImage when
+/// the pack has its own cover, else an emoji placeholder matching the
 /// game type — same convention this screen already established, kept
 /// consistent rather than reaching for a different fallback widget from
 /// elsewhere in the app), just sized to fill its GridView cell instead of
-/// a fixed 130px horizontal-scroller card.
+/// a fixed-width horizontal-scroller card. Deliberately NOT unified with
+/// ProfilePackCard: the official catalog is a grid (fills its cell), not
+/// a fixed-width horizontal strip, and per item 1 of this pass the
+/// official profile is intentionally being left alone, not redesigned.
 class _OfficialPackGridTile extends StatelessWidget {
   const _OfficialPackGridTile({required this.pack, required this.onTap});
   final PackEntity pack;
@@ -804,7 +970,9 @@ class _OfficialPackGridTile extends StatelessWidget {
                 pack.titleFor(Localizations.localeOf(context).languageCode),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ],
@@ -831,101 +999,6 @@ class _GridCoverPlaceholder extends StatelessWidget {
         style: const TextStyle(fontSize: 32),
       ),
     ),
-  );
-}
-
-class _PackCoverPlaceholder extends StatelessWidget {
-  const _PackCoverPlaceholder({required this.pack});
-  final PackEntity pack;
-  @override
-  Widget build(BuildContext context) => Container(
-    height: 80,
-    width: 130,
-    color: Theme.of(context).colorScheme.primaryContainer,
-    child: Center(
-      child: Text(
-        pack.gameType == 'truth_or_dare'
-            ? '🎯'
-            : pack.gameType == 'never_have_i_ever'
-            ? '🍹'
-            : '😂',
-        style: const TextStyle(fontSize: 32),
-      ),
-    ),
-  );
-}
-
-/// Honesty Points get a distinct pill treatment, not another _StatCell —
-/// it's a signed reputation ledger (can go negative), not a flat
-/// participation count, so it needs its own sign-aware color/prefix.
-class _HonestyStatBadge extends StatelessWidget {
-  const _HonestyStatBadge({required this.value});
-  final int value;
-
-  @override
-  Widget build(BuildContext context) {
-    final isNegative = value < 0;
-    final isZero = value == 0;
-    final color = isNegative
-        ? AppColors.errorRed
-        : isZero
-            ? context.colorScheme.onSurfaceVariant
-            : AppColors.nhieGreen;
-    final display = '${value > 0 ? '+' : ''}$value';
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.handshake_rounded, size: 14, color: color),
-          const SizedBox(width: 6),
-          Text(
-            '${context.l10n.profileHonestyPoints}: $display',
-            style: context.textTheme.labelMedium?.copyWith(
-              color: color,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatCell extends StatelessWidget {
-  const _StatCell({required this.label, required this.value});
-  final String label, value;
-  @override
-  Widget build(BuildContext context) => Expanded(
-    child: Column(
-      children: [
-        Text(
-          value,
-          style: context.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        Text(
-          label,
-          style: context.textTheme.bodySmall?.copyWith(
-            color: context.colorScheme.onSurfaceVariant,
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
-class _Divider extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) => Container(
-    width: 1,
-    height: 32,
-    color: context.colorScheme.outlineVariant,
   );
 }
 

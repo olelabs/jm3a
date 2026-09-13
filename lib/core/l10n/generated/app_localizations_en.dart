@@ -297,6 +297,39 @@ class AppLocalizationsEn extends AppLocalizations {
   String get roomsJoin => 'Join';
 
   @override
+  String get qrRoomRevealTitle => 'Room QR Code';
+
+  @override
+  String get qrRoomRevealInstruction => 'Scan to join this room';
+
+  @override
+  String get qrProfileRevealTitle => 'My QR Code';
+
+  @override
+  String get qrProfileRevealInstruction => 'Scan to view my profile';
+
+  @override
+  String get qrClose => 'Close';
+
+  @override
+  String get qrShareLink => 'Share Link';
+
+  @override
+  String get qrScanButtonLabel => 'Scan QR Code';
+
+  @override
+  String get qrScanScreenTitle => 'Scan QR Code';
+
+  @override
+  String get qrScanInstruction => 'Point your camera at a Jma3a QR code';
+
+  @override
+  String get qrScanInvalidCode => 'This isn\'t a valid Jma3a QR code';
+
+  @override
+  String get qrScanTryAgain => 'Try Again';
+
+  @override
   String roomsInvitedByName(String name) {
     return 'Invited by $name';
   }
@@ -391,6 +424,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gameTryAgain => 'Try again';
+
+  @override
+  String get gameYourTurn => 'Your turn!';
+
+  @override
+  String gamePlayerTurn(String name) {
+    return '$name\'s turn';
+  }
 
   @override
   String get moderationKick => 'Kick player';
@@ -525,6 +566,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profileGames => 'Games';
 
   @override
+  String get usernameProfileResolving => 'Loading profile…';
+
+  @override
+  String get usernameProfileNotFound => 'This profile couldn\'t be found.';
+
+  @override
   String get profileScore => 'Score';
 
   @override
@@ -555,6 +602,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get profileFollowers => 'Followers';
+
+  @override
+  String get streakAchievementBarrierLabel => 'Streak achievement';
 
   @override
   String get streakNewTitle => 'New Streak!';
@@ -600,6 +650,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gameSettingsRequireApproval => 'Require approval to join';
+
+  @override
+  String get gameSettingsHonestyVote => 'Honesty vote';
 
   @override
   String get gameSettingsAllowSpectators => 'Allow spectators';
@@ -711,6 +764,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get leave => 'Leave';
+
+  @override
+  String get leaveGame => 'Leave Game';
 
   @override
   String get ok => 'OK';
@@ -932,6 +988,23 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get lobbyShareInviteLink => 'Share invite link';
+
+  @override
+  String roomShareMaxPlayers(int count) {
+    return '$count players max';
+  }
+
+  @override
+  String get roomShareInvitedBy => 'Invited by';
+
+  @override
+  String get roomShareScoreLabel => 'Score';
+
+  @override
+  String get roomShareHonestyLabel => 'Honesty';
+
+  @override
+  String get roomShareJoinCta => 'JOIN ROOM';
 
   @override
   String lobbyShareInviteMessage(String code, String link) {
@@ -1451,6 +1524,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get todCompletedTurn => 'completed their turn!';
 
   @override
+  String get todNoAnswerOrProofYet => 'No response or proof for this turn';
+
+  @override
+  String get todSpectatorWatchingLabel => 'Watching — no actions available';
+
+  @override
   String get todCustomCardAdded => '✅ Custom card added to deck!';
 
   @override
@@ -1469,7 +1548,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get todDifficultyLabel => 'Difficulty';
 
   @override
-  String get todDoneButton => 'Done! ✅';
+  String get todDoneButton => 'Respond ✅';
 
   @override
   String get todEndGame => 'End Game';
@@ -1535,6 +1614,33 @@ class AppLocalizationsEn extends AppLocalizations {
   String get todProofVisibilityPickAtLeastOne => 'Pick at least one person.';
 
   @override
+  String get todProofViewedLabel => 'Proof viewed';
+
+  @override
+  String get todProofTapToViewLabel => '🔒 Tap to view proof';
+
+  @override
+  String get todVoiceProofLabel => 'VOICE PROOF';
+
+  @override
+  String get todImageProofLabel => 'IMAGE PROOF';
+
+  @override
+  String todProofReplayCount(int count) {
+    return '👁 Replay ($count left)';
+  }
+
+  @override
+  String get todProofNoReplaysLeft => 'No replays left for this proof.';
+
+  @override
+  String get todProofNotAllowedToView =>
+      'You are not allowed to view this proof.';
+
+  @override
+  String get todProofOpenFailed => 'Could not open proof — please try again.';
+
+  @override
   String get todReactLabel => 'React:';
 
   @override
@@ -1573,6 +1679,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String todPlayerIsChoosing(String name) {
     return '$name is choosing…';
   }
+
+  @override
+  String get todWaitingForPlayerGeneric => 'Waiting for player…';
 
   @override
   String get todTruthChoiceDescription =>
@@ -1911,6 +2020,26 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get todPunishmentHint => 'e.g. \"Do 10 push-ups\"';
+
+  @override
+  String get todPickYourPunishment => '⚡ PICK YOUR PUNISHMENT';
+
+  @override
+  String todPlayerIsChoosingPunishment(String name) {
+    return '⚡ $name IS CHOOSING…';
+  }
+
+  @override
+  String get todEveryoneSubmittedPickOne =>
+      'Everyone submitted one — pick which you\'ll do.';
+
+  @override
+  String todWaitingForPlayerToPickOne(String name) {
+    return 'Waiting for $name to pick one.';
+  }
+
+  @override
   String todSubmittedCount(int submitted, int expected) {
     return '$submitted / $expected submitted';
   }
@@ -1924,6 +2053,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get todWaitingChoosingQuestion => 'Truth or Dare?';
+
+  @override
+  String get todYourTurnBadge => '⚡ YOUR TURN';
+
+  @override
+  String get todTheirTurn => 'It\'s their turn';
 
   @override
   String todWinnerWins(String name) {
@@ -2574,6 +2709,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get walletCurrencyName => 'Mauritanian Ouguiya';
 
   @override
+  String get walletCurrencyShort => 'MRU';
+
+  @override
+  String get walletAvailableBalanceLabel => 'Available Balance';
+
+  @override
+  String get walletFrozenLabel => 'Wallet (Frozen)';
+
+  @override
   String get walletDeposit => 'Deposit';
 
   @override
@@ -2779,6 +2923,103 @@ class AppLocalizationsEn extends AppLocalizations {
   String get premiumAppThemeTitle => 'App Theme';
 
   @override
+  String get appThemeNameJma3a => 'Jma3a';
+
+  @override
+  String get appThemeNameMidnight => 'Midnight';
+
+  @override
+  String get appThemeNameClassic => 'Classic';
+
+  @override
+  String get appThemeNameCandy => 'Candy';
+
+  @override
+  String get appThemeNameOcean => 'Ocean';
+
+  @override
+  String get appThemeNameForest => 'Forest';
+
+  @override
+  String get appThemeNameSunset => 'Sunset';
+
+  @override
+  String get appThemeNameLavender => 'Lavender';
+
+  @override
+  String get appThemeNameRose => 'Rose';
+
+  @override
+  String get appThemeNameGalaxy => 'Galaxy';
+
+  @override
+  String get appThemeNameNeon => 'Neon';
+
+  @override
+  String get appThemeNameGold => 'Gold';
+
+  @override
+  String get appThemeNameCyber => 'Cyber';
+
+  @override
+  String get appThemeNameLava => 'Lava';
+
+  @override
+  String get appThemeNameAurora => 'Aurora';
+
+  @override
+  String get appThemeNameBubblegum => 'Bubblegum';
+
+  @override
+  String get appThemeNameCandyPop => 'Candy Pop';
+
+  @override
+  String get appThemeNameDeepSpace => 'Deep Space';
+
+  @override
+  String get appThemeNameBlossom => 'Blossom';
+
+  @override
+  String get appThemeNameLovestruck => 'Lovestruck';
+
+  @override
+  String get premiumGameCardColorTitle => 'Game Card Color';
+
+  @override
+  String get premiumGameCardColorHint =>
+      'Applies to the front of your game cards only — the back keeps its own look.';
+
+  @override
+  String get premiumGameCardColorEmoji => 'Game Card Color 🎴';
+
+  @override
+  String get premiumChooseGameCardColor => 'Choose a game card color';
+
+  @override
+  String get gameCardColorClassicPurple => 'Classic Purple';
+
+  @override
+  String get gameCardColorMidnightBlue => 'Midnight Blue';
+
+  @override
+  String get gameCardColorEmberRed => 'Ember Red';
+
+  @override
+  String get gameCardColorForestEmerald => 'Forest Emerald';
+
+  @override
+  String get gameCardColorSunsetOrange => 'Sunset Orange';
+
+  @override
+  String get gameCardColorGoldPrestige => 'Gold Prestige';
+
+  @override
+  String get gameCardColorRosePink => 'Rose Pink';
+
+  @override
+  String get gameCardColorCyberTeal => 'Cyber Teal';
+
+  @override
   String get premiumAutoRenewNotice =>
       'Subscriptions auto-renew unless cancelled 24h before renewal.';
 
@@ -2787,6 +3028,69 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get premiumBackgroundColorTitle => 'Background Color';
+
+  @override
+  String get bgColorWhite => 'White';
+
+  @override
+  String get bgColorWarmWhite => 'Warm White';
+
+  @override
+  String get bgColorLightGrey => 'Light Grey';
+
+  @override
+  String get bgColorCoolGrey => 'Cool Grey';
+
+  @override
+  String get bgColorCharcoal => 'Charcoal';
+
+  @override
+  String get bgColorSoftBlack => 'Soft Black';
+
+  @override
+  String get bgColorCream => 'Cream';
+
+  @override
+  String get bgColorBeige => 'Beige';
+
+  @override
+  String get bgColorSand => 'Sand';
+
+  @override
+  String get bgColorStone => 'Stone';
+
+  @override
+  String get bgColorSlate => 'Slate';
+
+  @override
+  String get bgColorNavyGrey => 'Navy Grey';
+
+  @override
+  String get bgColorDeepBlueGrey => 'Deep Blue Grey';
+
+  @override
+  String get bgColorForestMist => 'Forest Mist';
+
+  @override
+  String get bgColorSage => 'Sage';
+
+  @override
+  String get bgColorPaleBlue => 'Pale Blue';
+
+  @override
+  String get bgColorMistBlue => 'Mist Blue';
+
+  @override
+  String get bgColorLavenderMist => 'Lavender Mist';
+
+  @override
+  String get bgColorBlush => 'Blush';
+
+  @override
+  String get bgColorSoftMint => 'Soft Mint';
+
+  @override
+  String get bgColorGraphite => 'Graphite';
 
   @override
   String get premiumBlendsIntoTheme =>
@@ -3123,6 +3427,23 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get packSetMaxPlayersToggle => 'Set a maximum number of players';
+
+  @override
+  String packMaxPlayersLabel(int count) {
+    return 'Maximum players: $count';
+  }
+
+  @override
+  String packMaxPlayersSliderLabel(int count) {
+    return '$count players';
+  }
+
+  @override
+  String get packNoMaxPlayersHint =>
+      'No limit — playable with any group above the minimum';
+
+  @override
   String get packMinimumReached => '✅ Minimum reached';
 
   @override
@@ -3160,6 +3481,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get packPickExistingCategory => 'Pick existing category';
+
+  @override
+  String get roomSettingsCategoryFilterLabel => 'Category';
 
   @override
   String packPlayersSliderLabel(int count) {
@@ -3397,6 +3721,17 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get packBrowseMarketplaceHint =>
       'Browse the marketplace to find packs.';
+
+  @override
+  String get packConfirmPurchaseTitle => 'Confirm Purchase';
+
+  @override
+  String packConfirmPurchaseBody(String name, String price) {
+    return 'You\'re about to purchase \"$name\" for $price.';
+  }
+
+  @override
+  String get packConfirmPurchaseAction => 'Purchase';
 
   @override
   String packBuyForPrice(int price) {
@@ -3662,6 +3997,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get packReportSubmitted => 'Report submitted.';
+
+  @override
+  String get packReportAlreadySubmitted =>
+      'You\'ve already reported this pack.';
+
+  @override
+  String get packReportFailed =>
+      'Couldn\'t submit your report. Please try again.';
 
   @override
   String get packPromoteYourPack => 'Promote your pack';
@@ -3933,6 +4276,361 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get avatarTabHair => 'Hair';
+
+  @override
+  String get avatarOptTanned => 'Tanned';
+
+  @override
+  String get avatarOptYellow => 'Yellow';
+
+  @override
+  String get avatarOptPale => 'Pale';
+
+  @override
+  String get avatarOptLight => 'Light';
+
+  @override
+  String get avatarOptBrown => 'Brown';
+
+  @override
+  String get avatarOptDarkBrown => 'Dark Brown';
+
+  @override
+  String get avatarOptBlack => 'Black';
+
+  @override
+  String get avatarOptAuburn => 'Auburn';
+
+  @override
+  String get avatarOptBlonde => 'Blonde';
+
+  @override
+  String get avatarOptBlondeGolden => 'Golden Blonde';
+
+  @override
+  String get avatarOptBrownDark => 'Dark Brown';
+
+  @override
+  String get avatarOptPastelPink => 'Pastel Pink';
+
+  @override
+  String get avatarOptPlatinum => 'Platinum';
+
+  @override
+  String get avatarOptRed => 'Red';
+
+  @override
+  String get avatarOptSilverGray => 'Silver Gray';
+
+  @override
+  String get avatarOptNoHair => 'No Hair';
+
+  @override
+  String get avatarOptEyepatch => 'Eyepatch';
+
+  @override
+  String get avatarOptHat => 'Hat';
+
+  @override
+  String get avatarOptHijab => 'Hijab';
+
+  @override
+  String get avatarOptTurban => 'Turban';
+
+  @override
+  String get avatarOptWinterHat1 => 'Winter Hat 1';
+
+  @override
+  String get avatarOptWinterHat2 => 'Winter Hat 2';
+
+  @override
+  String get avatarOptWinterHat3 => 'Winter Hat 3';
+
+  @override
+  String get avatarOptWinterHat4 => 'Winter Hat 4';
+
+  @override
+  String get avatarOptLongHairBigHair => 'Long Hair — Big Hair';
+
+  @override
+  String get avatarOptLongHairBob => 'Long Hair — Bob';
+
+  @override
+  String get avatarOptLongHairBun => 'Long Hair — Bun';
+
+  @override
+  String get avatarOptLongHairCurly => 'Long Hair — Curly';
+
+  @override
+  String get avatarOptLongHairCurvy => 'Long Hair — Curvy';
+
+  @override
+  String get avatarOptLongHairDreads => 'Long Hair — Dreads';
+
+  @override
+  String get avatarOptLongHairFrida => 'Long Hair — Frida';
+
+  @override
+  String get avatarOptLongHairFro => 'Long Hair — Fro';
+
+  @override
+  String get avatarOptLongHairFroBand => 'Long Hair — Fro with Band';
+
+  @override
+  String get avatarOptLongHairNotTooLong => 'Long Hair — Not Too Long';
+
+  @override
+  String get avatarOptLongHairShavedSides => 'Long Hair — Shaved Sides';
+
+  @override
+  String get avatarOptLongHairMiaWallace => 'Long Hair — Mia Wallace';
+
+  @override
+  String get avatarOptLongHairStraight => 'Long Hair — Straight';
+
+  @override
+  String get avatarOptLongHairStraight2 => 'Long Hair — Straight 2';
+
+  @override
+  String get avatarOptLongHairStraightStrand => 'Long Hair — Straight Strand';
+
+  @override
+  String get avatarOptShortHairDreads01 => 'Short Hair — Dreads 1';
+
+  @override
+  String get avatarOptShortHairDreads02 => 'Short Hair — Dreads 2';
+
+  @override
+  String get avatarOptShortHairFrizzle => 'Short Hair — Frizzle';
+
+  @override
+  String get avatarOptShortHairShaggyMullet => 'Short Hair — Shaggy Mullet';
+
+  @override
+  String get avatarOptShortHairShortCurly => 'Short Hair — Short Curly';
+
+  @override
+  String get avatarOptShortHairShortFlat => 'Short Hair — Short Flat';
+
+  @override
+  String get avatarOptShortHairShortRound => 'Short Hair — Short Round';
+
+  @override
+  String get avatarOptShortHairShortWaved => 'Short Hair — Short Waved';
+
+  @override
+  String get avatarOptShortHairSides => 'Short Hair — Sides';
+
+  @override
+  String get avatarOptShortHairTheCaesar => 'Short Hair — Caesar';
+
+  @override
+  String get avatarOptShortHairTheCaesarSidePart =>
+      'Short Hair — Caesar Side Part';
+
+  @override
+  String get avatarOptBlank => 'None';
+
+  @override
+  String get avatarOptKurt => 'Kurt Glasses';
+
+  @override
+  String get avatarOptPrescription01 => 'Prescription Glasses 1';
+
+  @override
+  String get avatarOptPrescription02 => 'Prescription Glasses 2';
+
+  @override
+  String get avatarOptRound => 'Round Glasses';
+
+  @override
+  String get avatarOptSunglasses => 'Sunglasses';
+
+  @override
+  String get avatarOptWayfarers => 'Wayfarers';
+
+  @override
+  String get avatarOptBeardMedium => 'Medium Beard';
+
+  @override
+  String get avatarOptBeardLight => 'Light Beard';
+
+  @override
+  String get avatarOptBeardMagestic => 'Majestic Beard';
+
+  @override
+  String get avatarOptMoustacheFancy => 'Fancy Moustache';
+
+  @override
+  String get avatarOptMoustacheMagnum => 'Magnum Moustache';
+
+  @override
+  String get avatarOptBlazerShirt => 'Blazer & Shirt';
+
+  @override
+  String get avatarOptBlazerSweater => 'Blazer & Sweater';
+
+  @override
+  String get avatarOptCollarSweater => 'Collar Sweater';
+
+  @override
+  String get avatarOptGraphicShirt => 'Graphic Shirt';
+
+  @override
+  String get avatarOptHoodie => 'Hoodie';
+
+  @override
+  String get avatarOptOverall => 'Overalls';
+
+  @override
+  String get avatarOptShirtCrewNeck => 'Crew Neck Shirt';
+
+  @override
+  String get avatarOptShirtScoopNeck => 'Scoop Neck Shirt';
+
+  @override
+  String get avatarOptShirtVNeck => 'V-Neck Shirt';
+
+  @override
+  String get avatarOptBlue01 => 'Blue 1';
+
+  @override
+  String get avatarOptBlue02 => 'Blue 2';
+
+  @override
+  String get avatarOptBlue03 => 'Blue 3';
+
+  @override
+  String get avatarOptGray01 => 'Gray 1';
+
+  @override
+  String get avatarOptGray02 => 'Gray 2';
+
+  @override
+  String get avatarOptHeather => 'Heather';
+
+  @override
+  String get avatarOptPastelBlue => 'Pastel Blue';
+
+  @override
+  String get avatarOptPastelGreen => 'Pastel Green';
+
+  @override
+  String get avatarOptPastelOrange => 'Pastel Orange';
+
+  @override
+  String get avatarOptPastelRed => 'Pastel Red';
+
+  @override
+  String get avatarOptPastelYellow => 'Pastel Yellow';
+
+  @override
+  String get avatarOptPink => 'Pink';
+
+  @override
+  String get avatarOptWhite => 'White';
+
+  @override
+  String get avatarOptClose => 'Closed';
+
+  @override
+  String get avatarOptCry => 'Crying';
+
+  @override
+  String get avatarOptDefault => 'Default';
+
+  @override
+  String get avatarOptDizzy => 'Dizzy';
+
+  @override
+  String get avatarOptEyeRoll => 'Eye Roll';
+
+  @override
+  String get avatarOptHappy => 'Happy';
+
+  @override
+  String get avatarOptHearts => 'Heart Eyes';
+
+  @override
+  String get avatarOptSide => 'Looking Side';
+
+  @override
+  String get avatarOptSquint => 'Squinting';
+
+  @override
+  String get avatarOptSurprised => 'Surprised';
+
+  @override
+  String get avatarOptWink => 'Wink';
+
+  @override
+  String get avatarOptWinkWacky => 'Wacky Wink';
+
+  @override
+  String get avatarOptAngry => 'Angry';
+
+  @override
+  String get avatarOptAngryNatural => 'Angry (Natural)';
+
+  @override
+  String get avatarOptDefaultNatural => 'Default (Natural)';
+
+  @override
+  String get avatarOptFlatNatural => 'Flat (Natural)';
+
+  @override
+  String get avatarOptRaisedExcited => 'Raised Excited';
+
+  @override
+  String get avatarOptRaisedExcitedNatural => 'Raised Excited (Natural)';
+
+  @override
+  String get avatarOptSadConcerned => 'Sad Concerned';
+
+  @override
+  String get avatarOptSadConcernedNatural => 'Sad Concerned (Natural)';
+
+  @override
+  String get avatarOptUnibrowNatural => 'Unibrow (Natural)';
+
+  @override
+  String get avatarOptUpDown => 'Up & Down';
+
+  @override
+  String get avatarOptUpDownNatural => 'Up & Down (Natural)';
+
+  @override
+  String get avatarOptConcerned => 'Concerned';
+
+  @override
+  String get avatarOptDisbelief => 'Disbelief';
+
+  @override
+  String get avatarOptEating => 'Eating';
+
+  @override
+  String get avatarOptGrimace => 'Grimace';
+
+  @override
+  String get avatarOptSad => 'Sad';
+
+  @override
+  String get avatarOptScreamOpen => 'Screaming';
+
+  @override
+  String get avatarOptSerious => 'Serious';
+
+  @override
+  String get avatarOptSmile => 'Smile';
+
+  @override
+  String get avatarOptTongue => 'Tongue Out';
+
+  @override
+  String get avatarOptTwinkle => 'Twinkle';
+
+  @override
+  String get avatarOptVomit => 'Vomit';
 
   @override
   String get avatarTabMouth => 'Mouth';
@@ -4392,6 +5090,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String roomsPackRequiresMaxPlayers(int count) {
+    return 'This pack can only be played by $count players. Set the extra players as spectators or remove them to start.';
+  }
+
+  @override
   String get roomsPendingEllipsis => 'Pending…';
 
   @override
@@ -4414,6 +5117,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get roomsPermManageSettings => 'Manage room settings';
+
+  @override
+  String get roomsPermSetSpectator => 'Set players as spectators';
 
   @override
   String get roomsPermMuteChat => 'Mute chat';
@@ -4513,6 +5219,39 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sharedReactionIconsTab => 'Icons';
 
   @override
+  String get sharedReactionPickIconTitle => 'Pick a reaction';
+
+  @override
+  String get sharedReactionPickAvatarTitle => 'Pick an avatar reaction';
+
+  @override
+  String get sharedReactionCategoryPopular => 'Popular';
+
+  @override
+  String get sharedReactionCategoryLove => 'Love';
+
+  @override
+  String get sharedReactionCategoryFunny => 'Funny';
+
+  @override
+  String get sharedReactionCategoryShock => 'Shock';
+
+  @override
+  String get sharedReactionCategoryCelebration => 'Celebration';
+
+  @override
+  String get sharedReactionCategorySocial => 'Social';
+
+  @override
+  String get sharedReactionCategoryMoody => 'Moody';
+
+  @override
+  String get gameResultSkipped => 'Skipped';
+
+  @override
+  String get gameResultDidNotRespond => 'Did not respond in time';
+
+  @override
   String sharedJoinRequestFailed(String error) {
     return 'Failed: $error';
   }
@@ -4571,6 +5310,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sharedReject => 'Reject';
+
+  @override
+  String get sharedRemoveSpectator => 'Remove Spectator';
+
+  @override
+  String get sharedSetSpectator => 'Set as Spectator';
+
+  @override
+  String get sharedSetSpectatorBody =>
+      'This player will stop counting as an active player and won\'t be able to take turns, but can still watch. You can reverse this anytime.';
+
+  @override
+  String get sharedSetSpectatorTitle => 'Set as Spectator';
 
   @override
   String get sharedRoomMembers => 'Room members';
@@ -4704,6 +5456,27 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get friendsBlock => 'Block';
+
+  @override
+  String get friendsReport => 'Report';
+
+  @override
+  String get friendsReportAndBlock => 'Report & Block';
+
+  @override
+  String get friendsReportUserTitle => 'Report User';
+
+  @override
+  String get friendsReportHint => 'Help us keep the community safe.';
+
+  @override
+  String get friendsReportReasonHarassment => 'Harassment';
+
+  @override
+  String get friendsReportReasonImpersonation => 'Impersonation';
+
+  @override
+  String get friendsReportReasonUnderage => 'Underage user';
 
   @override
   String get friendsBlocked => 'Blocked';
@@ -5053,6 +5826,32 @@ class AppLocalizationsEn extends AppLocalizations {
       'You already have a pending deletion request.';
 
   @override
+  String get settingsCancelAccountDeletion => 'Cancel Account Deletion';
+
+  @override
+  String get settingsCancelAccountDeletionHint =>
+      'Your account will stay active if you cancel before it\'s processed.';
+
+  @override
+  String get settingsCancelAccountDeletionDialogTitle =>
+      'Cancel deletion request?';
+
+  @override
+  String get settingsCancelAccountDeletionDialogMessage =>
+      'Your account will remain active and nothing will be deleted.';
+
+  @override
+  String get settingsCancelAccountDeletionConfirm => 'Cancel Request';
+
+  @override
+  String get settingsAccountDeletionCancelled =>
+      'Your account deletion request has been cancelled.';
+
+  @override
+  String get settingsCancelAccountDeletionFailed =>
+      'Couldn\'t cancel your request. It may already be past cancellation — please try again or contact support.';
+
+  @override
   String get aboutUsTitle => 'About Us';
 
   @override
@@ -5060,14 +5859,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutUsDescription =>
-      'Jma3a is a multiplayer party game app — play Truth or Dare, Never Have I Ever, and meme games with friends and family, anytime, anywhere.';
+      'Jma3a is a social multiplayer party-game platform developed and owned by MOUJ TECH. Play Truth or Dare, Never Have I Ever, and Meme games with friends and family, create and share your own packs, build a profile, and — as a Verified Creator — earn from packs you publish.';
 
   @override
   String get aboutUsCompanySectionTitle => 'Company';
 
   @override
   String get aboutUsCompanyInfo =>
-      'Jma3a is developed and operated by the Jma3a team.';
+      'Jma3a is developed and owned by MOUJ TECH. MOUJ TECH is responsible for the app\'s development, features, and ongoing operation, including community-created packs, Verified Creator tools, Premium and Premium Plus, and the creator earnings wallet.';
+
+  @override
+  String get moujTechDevelopedBy => 'Developed by MOUJ TECH';
 
   @override
   String get aboutUsContactTitle => 'Contact';
@@ -5098,63 +5900,71 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get privacyPolicyIntro =>
-      'This Privacy Policy explains what information Jma3a collects and how it\'s used. This is placeholder content — it will be replaced with the full legal policy.';
+      'This Privacy Policy explains what information the Jma3a app collects, how it is used, and the choices you have. It describes Jma3a\'s actual current features. Some legal details specific to MOUJ TECH as a company (such as its registered address and formal contact channels) are still being finalized and will be added here once available — this does not change what is described below about how the app itself handles your information.';
 
   @override
   String get privacySectionInfoCollected => 'Information We Collect';
 
   @override
   String get privacySectionInfoCollectedBody =>
-      'Placeholder — describes account details, usage data, and content you create within the app.';
+      'Account information: the email address you sign up with, and your chosen username, display name, bio, and avatar (either an uploaded photo or a generated avatar). Authentication: your password is handled by our authentication provider and is never visible to us in plain text; sign-in also uses one-time verification codes sent to your email. Activity and social data: the rooms and games you join or host, your in-game actions, scores, and streaks, chat messages you send in game rooms, and your friends, followers, and any accounts you block. Purchases and creator activity: packs you buy or publish, your Verified Creator status, wallet balance and payout history, and — if you request a physical pack — the name, phone number, and delivery area you provide for that order. Reports: if you report a pack, we record the reason and any details you add. Account deletion requests: if you request to delete your account, we record the reason you select and the request\'s status. Device and app information: your app version and build number, and basic platform information (Android or iOS), used to keep the app working correctly and to check for required updates.';
 
   @override
   String get privacySectionHowUsed => 'How We Use Your Information';
 
   @override
   String get privacySectionHowUsedBody =>
-      'Placeholder — describes how collected information is used to provide and improve the app.';
+      'We use your information to operate the app\'s core features: creating and securing your account, matching you with rooms and games, showing your profile and stats to other players and friends as intended by each feature, processing pack purchases and creator payouts, delivering physical pack orders you request, reviewing reports and account deletion requests, and sending the notifications described below. We do not use a third-party analytics or advertising-tracking SDK in this app. We do not sell your information.';
 
   @override
   String get privacySectionNotifications => 'Notifications';
 
   @override
   String get privacySectionNotificationsBody =>
-      'Placeholder — describes push notifications and how to manage your preferences.';
+      'Jma3a sends notifications for things like game invites, room activity, friend requests, and messages. Push delivery is handled through OneSignal, a third-party notification service; some notifications are also scheduled directly on your device. You can manage notification permissions at any time from your device\'s system settings.';
 
   @override
   String get privacySectionPurchases => 'Purchases';
 
   @override
   String get privacySectionPurchasesBody =>
-      'Placeholder — describes how in-app purchases and subscriptions are handled.';
+      'Some packs are paid, and Premium/Premium Plus are paid subscriptions. Verified Creators can publish packs and earn from them through an in-app wallet. Jma3a does not directly collect or store your full payment card details; payments are processed through the payment methods offered at checkout. Purchase and payout records (amounts, pack/subscription identifiers, and status) are kept as part of your account and creator history.';
 
   @override
   String get privacySectionUserContent => 'User-Generated Content';
 
   @override
   String get privacySectionUserContentBody =>
-      'Placeholder — describes ownership and handling of packs, cards, and other content you create.';
+      'Packs, cards, and other content you create and publish may be visible to other users as intended by the feature you used to create them (for example, a published pack in the marketplace). Chat messages you send in a room are visible to other members of that room. You are responsible for the content you choose to create and share.';
 
   @override
   String get privacySectionAccountDeletion => 'Account Deletion';
 
   @override
   String get privacySectionAccountDeletionBody =>
-      'Placeholder — describes how to request account deletion and what happens to your data.';
+      'You can request account deletion from Settings. This submits a request for review — your account is not deleted immediately. While a request is pending, you can cancel it from Settings and your account stays active. Once a request has been accepted and processed, deletion cannot be undone, and your profile, packs, wallet balance, and game history are permanently removed.';
+
+  @override
+  String get privacySectionThirdParty => 'Third-Party Services';
+
+  @override
+  String get privacySectionThirdPartyBody =>
+      'Jma3a relies on a small number of third-party services to operate: our backend database and authentication provider, cloud object storage for images you upload (such as avatars and pack covers), and OneSignal for push notifications. These providers process data only as needed to provide their service to Jma3a.';
 
   @override
   String get privacySectionContact => 'Contact Us';
 
   @override
-  String get privacySectionContactBody =>
-      'Placeholder — contact details for privacy-related questions.';
+  String privacySectionContactBody(String email) {
+    return 'If you have questions about this Privacy Policy or your information, contact us at $email.';
+  }
 
   @override
   String get termsConditionsTitle => 'Terms & Conditions';
 
   @override
   String get termsConditionsIntro =>
-      'These Terms & Conditions govern your use of Jma3a, a social multiplayer game app. By creating an account or using the app, you agree to these Terms.';
+      'These Terms & Conditions govern your use of Jma3a, a social multiplayer game app developed and operated by MOUJ TECH. By creating an account or using the app, you agree to these Terms.';
 
   @override
   String get termsSectionAccount => 'Accounts';
@@ -5460,6 +6270,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get packIssueTerms => 'Accept the Pack Creation Terms';
+
+  @override
+  String get packIssuePlayerRange =>
+      'Maximum players must be at least the minimum';
 
   @override
   String get packTermsAgreePrefix => 'I agree to the ';

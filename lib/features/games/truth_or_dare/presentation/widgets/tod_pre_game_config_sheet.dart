@@ -43,28 +43,39 @@ class TodPreGameConfig {
 Future<TodPreGameConfig?> showTodPreGameConfigSheet(
   BuildContext context, {
   required PackEntity? pack,
+  // Item 3 (real-device report) root-cause fix: this sheet used to
+  // always initialize _allowSkip to a hardcoded `true`, regardless of
+  // what the room's admin had actually already configured — see this
+  // parameter's own doc comment on _TodPreGameConfigSheet.
+  bool initialAllowSkip = true,
 }) {
   return showModalBottomSheet<TodPreGameConfig>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (_) => _TodPreGameConfigSheet(pack: pack),
+    builder: (_) =>
+        _TodPreGameConfigSheet(pack: pack, initialAllowSkip: initialAllowSkip),
   );
 }
 
 class _TodPreGameConfigSheet extends StatefulWidget {
-  const _TodPreGameConfigSheet({this.pack});
+  const _TodPreGameConfigSheet({this.pack, this.initialAllowSkip = true});
   final PackEntity? pack;
 
+  /// The room's actual currently-persisted allow-skip setting
+  /// (RoomSettingsEntity.allowSkip), so this sheet reflects reality
+  /// instead of always starting from a hardcoded `true` — see item 3's
+  /// own root-cause note at the Allow Skip row below.
+  final bool initialAllowSkip;
+
   @override
-  State<_TodPreGameConfigSheet> createState() =>
-      _TodPreGameConfigSheetState();
+  State<_TodPreGameConfigSheet> createState() => _TodPreGameConfigSheetState();
 }
 
 class _TodPreGameConfigSheetState extends State<_TodPreGameConfigSheet> {
   bool _enablePunishments = false;
   String _punishmentSource = 'players';
-  bool _allowSkip = true;
+  late bool _allowSkip = widget.initialAllowSkip;
   String _forceDareMode = 'unlimited';
   int _maxTruths = 2;
   String _cardRepetitionMode = 'shuffle';
@@ -192,9 +203,12 @@ class _TodPreGameConfigSheetState extends State<_TodPreGameConfigSheet> {
                   IconButton(
                     onPressed: () => Navigator.of(context).pop(),
                     icon: const Icon(Icons.close_rounded),
-                    tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+                    tooltip: MaterialLocalizations.of(
+                      context,
+                    ).closeButtonTooltip,
                     style: IconButton.styleFrom(
-                      backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                      backgroundColor:
+                          theme.colorScheme.surfaceContainerHighest,
                       foregroundColor: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
@@ -243,7 +257,9 @@ class _TodPreGameConfigSheetState extends State<_TodPreGameConfigSheet> {
                                 segments: [
                                   ButtonSegment(
                                     value: 'pack',
-                                    label: Text(l10n.gameSettingsPackPunishments),
+                                    label: Text(
+                                      l10n.gameSettingsPackPunishments,
+                                    ),
                                   ),
                                   ButtonSegment(
                                     value: 'players',
@@ -264,17 +280,33 @@ class _TodPreGameConfigSheetState extends State<_TodPreGameConfigSheet> {
                                   color: theme.colorScheme.onSurfaceVariant,
                                 ),
                               ),
-                            const SizedBox(height: 4),
-                            SettingsSwitchRow(
-                              label: l10n.gameSettingsAllowSkip,
-                              icon: Icons.skip_next_rounded,
-                              value: _allowSkip,
-                              onChanged: (v) => setState(() => _allowSkip = v),
-                            ),
                           ],
                         ),
                       )
                     : null,
+              ),
+
+              const SizedBox(height: 12),
+
+              // ── Allow Skip — item 3 (real-device report) root-cause fix:
+              // this used to be nested INSIDE the Punishments section's
+              // `_enablePunishments ? ... : null` conditional child, so it
+              // only ever rendered once the admin also turned Punishments
+              // on (default off) — in the common case the admin could
+              // never see or disable this toggle at all, and _allowSkip
+              // stayed hardcoded at its initial `true` every time. Now a
+              // standalone, always-visible row, independent of
+              // Punishments, and initialized from the room's actual
+              // current setting (see this sheet's own constructor/
+              // initState) instead of a hardcoded default.
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: SettingsSwitchRow(
+                  label: l10n.gameSettingsAllowSkip,
+                  icon: Icons.skip_next_rounded,
+                  value: _allowSkip,
+                  onChanged: (v) => setState(() => _allowSkip = v),
+                ),
               ),
 
               // ── Force Dare rules ─────────────────────────────────────
@@ -362,15 +394,12 @@ class _TodPreGameConfigSheetState extends State<_TodPreGameConfigSheet> {
               // large one; this shows the pack's raw card count as the
               // simplest honest number without guessing at final active
               // player count here).
-              if (_cardRepetitionMode == 'unique' &&
-                  widget.pack != null) ...[
+              if (_cardRepetitionMode == 'unique' && widget.pack != null) ...[
                 const SizedBox(height: 6),
                 Padding(
                   padding: const EdgeInsets.only(left: 4),
                   child: Text(
-                    l10n.todConfigUniqueCardsCapHint(
-                      widget.pack!.cardCount,
-                    ),
+                    l10n.todConfigUniqueCardsCapHint(widget.pack!.cardCount),
                     style: theme.textTheme.labelSmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
@@ -510,9 +539,7 @@ class _PackPreviewCard extends StatelessWidget {
                       color: Colors.white,
                       fontWeight: FontWeight.w800,
                       fontSize: 18,
-                      shadows: [
-                        Shadow(color: Colors.black54, blurRadius: 6),
-                      ],
+                      shadows: [Shadow(color: Colors.black54, blurRadius: 6)],
                     ),
                   ),
                   const SizedBox(height: 6),
@@ -608,43 +635,43 @@ class _SectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: accent.withValues(alpha: 0.16)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: accent.withValues(alpha: 0.16)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, size: 18, color: accent),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  title,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
+              Row(
+                children: [
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: accent.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(icon, size: 18, color: accent),
                   ),
-                ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  if (trailing != null) trailing!,
+                ],
               ),
-              if (trailing != null) trailing!,
+              if (child != null) child!,
             ],
           ),
-          if (child != null) child!,
-        ],
-      ),
-    )
+        )
         .animate(delay: (90 + index * 70).ms)
         .fadeIn(duration: 260.ms)
         .slideY(begin: 0.06, end: 0, curve: Curves.easeOut);

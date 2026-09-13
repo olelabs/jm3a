@@ -9,6 +9,7 @@ import '../../../../core/extensions/context_ext.dart';
 import '../../../../core/providers/auth_provider.dart';
 import '../../../../core/router/route_names.dart';
 import '../../../../shared/widgets/buttons/j_button.dart';
+import '../../../../shared/widgets/mouj_tech_brand.dart';
 import '../../domain/password_validation.dart';
 import '../widgets/auth_method_selector.dart';
 
@@ -94,10 +95,7 @@ class _SignupScreenState extends State<SignupScreen> {
     if (existsResult.exists) {
       setState(() => _isCheckingAndSending = false);
       context.showSnackBar(context.l10n.authAccountAlreadyExists);
-      context.pushReplacement(
-        RouteNames.authPasswordLogin,
-        extra: identifier,
-      );
+      context.pushReplacement(RouteNames.authPasswordLogin, extra: identifier);
       return;
     }
 
@@ -135,7 +133,9 @@ class _SignupScreenState extends State<SignupScreen> {
         ),
       );
     } else {
-      context.showErrorSnackBar(otpErrorMessage ?? context.l10n.errorUnexpected);
+      context.showErrorSnackBar(
+        otpErrorMessage ?? context.l10n.errorUnexpected,
+      );
     }
   }
 
@@ -178,10 +178,10 @@ class _SignupScreenState extends State<SignupScreen> {
 
                 const SizedBox(height: 28),
 
-                AuthMethodSelector(selected: _method, onChanged: _switchMethod)
-                    .animate(delay: 140.ms)
-                    .fadeIn()
-                    .slideY(begin: 0.08, end: 0),
+                AuthMethodSelector(
+                  selected: _method,
+                  onChanged: _switchMethod,
+                ).animate(delay: 140.ms).fadeIn().slideY(begin: 0.08, end: 0),
 
                 const SizedBox(height: 24),
 
@@ -343,6 +343,8 @@ class _SignupScreenState extends State<SignupScreen> {
                     textAlign: TextAlign.center,
                   ),
                 ).animate(delay: 300.ms).fadeIn(),
+
+                const MoujTechBrand(size: MoujTechBrandSize.compact),
               ],
             ),
           ),

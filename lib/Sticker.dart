@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 
 import 'core/extensions/context_ext.dart';
@@ -19,6 +18,12 @@ const kStickerAssets = <String>[
   'assets/images/stickers/sticker_12.jpg',
 ];
 
+// Item 6 (reaction-expansion pass) — the original 21 reactions below are
+// kept byte-for-byte in their original order (their literal string VALUE
+// is the reaction's stable id — see AnimatedReactionOverlay/EmojiReactionRow,
+// which key everything off this exact string, never a list index) so no
+// existing reaction anyone has ever sent changes identity. Every new
+// reaction is appended after them, never inserted, for the same reason.
 const kEmojiReactions = [
   '😂',
   '❤️',
@@ -41,7 +46,57 @@ const kEmojiReactions = [
   '💔',
   '🎉',
   '😈',
+  // New reactions (this pass) — curated, no duplicates of the 21 above.
+  // Most of these already have a real animated_emoji asset mapped in
+  // kAnimatedEmojiMap (animated_reaction_overlay.dart); the rest render
+  // as a plain glyph via the exact same fallback path every existing
+  // unmapped reaction (e.g. 👑) already uses.
+  '😍',
+  '🤩',
+  '🥳',
+  '😘',
+  '💖',
+  '✨',
+  '🌟',
+  '🌈',
+  '🏆',
+  '👍',
+  '🤝',
+  '🤞',
+  '👀',
+  '😆',
+  '😉',
+  '😏',
+  '🫠',
+  '🤠',
+  '😲',
+  '😳',
+  '🙄',
+  '😠',
+  '😔',
+  '🥺',
+  '🎯',
+  '😹',
 ];
+
+/// Item 6 (this pass) — labeled groupings of [kEmojiReactions] purely for
+/// the picker's own organized browsing (`_ReactionPickerSheet`); every
+/// other consumer of reactions (the flying overlay, the quick-react row,
+/// stored reaction events) keeps reading the flat [kEmojiReactions] list
+/// exactly as before — this mapping doesn't change what a reaction IS,
+/// only how the picker groups it visually. Every emoji in
+/// [kEmojiReactions] appears in exactly one category below — verified by
+/// a dedicated test (see test/emoji_reaction_categories_test.dart) rather
+/// than a runtime check, since this is a fixed compile-time constant.
+const Map<String, List<String>> kEmojiReactionCategories = {
+  'popular': ['😂', '❤️', '🔥', '💀', '👏', '💯', '🎉', '👍'],
+  'love': ['😍', '🤩', '😘', '💖', '🫶', '💅'],
+  'funny': ['🤣', '🤡', '😏', '🫠', '🤠', '😉', '😆', '🙈'],
+  'shock': ['🤯', '😲', '😳', '🙄'],
+  'celebration': ['🥳', '🏆', '🌟', '✨', '🌈', '👑'],
+  'social': ['🫡', '🤝', '🤞', '👀', '😎', '😹', '🎯'],
+  'moody': ['😭', '😤', '🥹', '💔', '😔', '🥺', '😠', '😈'],
+};
 
 class StickerImage extends StatelessWidget {
   const StickerImage({
@@ -158,6 +213,11 @@ class StickerDisplay extends StatelessWidget {
   }
 }
 
+// Item 6 (reaction-expansion pass) — same stability guarantee as
+// kEmojiReactions above: the original 12 keys stay first and unchanged
+// (an avatar reaction's id is 'avatar:<key>' — see AvatarConfig.
+// isAvatarReaction/avatarReactionKey — so a key rename would break every
+// already-sent reaction of that kind), new keys only ever appended.
 const kReactionKeys = [
   'laugh',
   'fire',
@@ -171,6 +231,20 @@ const kReactionKeys = [
   'crown',
   'annoyed',
   'touched',
+  // New (this pass) — see AvatarConfig.reactionExpressions for each
+  // key's actual eye/mouth/eyebrow combination.
+  'love',
+  'wink',
+  'silly',
+  'dizzy',
+  'sad',
+  'shocked',
+  'confident',
+  'grumpy',
+  'sleepy',
+  'starstruck',
+  'yum',
+  'unimpressed',
 ];
 
 class ReactionDisplay extends StatelessWidget {
@@ -226,17 +300,23 @@ class EmojiReactionRow extends StatelessWidget {
 
   void _openPicker(BuildContext context, {required bool avatars}) {
     final items = avatars
-        ? kReactionKeys
-              .map((k) => '${AvatarConfig.reactionPrefix}$k')
-              .toList()
+        ? kReactionKeys.map((k) => '${AvatarConfig.reactionPrefix}$k').toList()
         : kEmojiReactions;
+    final l10n = context.l10n;
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (sheetCtx) => _ReactionPickerSheet(
-        title: avatars ? 'Pick an avatar reaction' : 'Pick an icon',
+        title: avatars
+            ? l10n.sharedReactionPickAvatarTitle
+            : l10n.sharedReactionPickIconTitle,
         items: items,
+        // Item 6 (this pass) — only the plain-emoji picker groups into
+        // categories; the avatar grid has no category concept of its
+        // own, so it keeps the flat grid it already had (still fully
+        // scrollable at the new, larger size — see _ReactionPickerSheet).
+        categories: avatars ? null : kEmojiReactionCategories,
         avatarConfig: avatars ? ownAvatarConfig : null,
         onPick: (value) {
           Navigator.of(sheetCtx).pop();
@@ -298,10 +378,7 @@ class EmojiReactionRow extends StatelessWidget {
                 Expanded(
                   child: _ReactionModeButton(
                     label: context.l10n.sharedReactionIconsTab,
-                    leading: const Text(
-                      '😀',
-                      style: TextStyle(fontSize: 20),
-                    ),
+                    leading: const Text('😀', style: TextStyle(fontSize: 20)),
                     onTap: () => _openPicker(context, avatars: false),
                   ),
                 ),
@@ -309,10 +386,7 @@ class EmojiReactionRow extends StatelessWidget {
                 Expanded(
                   child: _ReactionModeButton(
                     label: context.l10n.sharedReactionAvatarsTab,
-                    leading: const Text(
-                      '👤',
-                      style: TextStyle(fontSize: 20),
-                    ),
+                    leading: const Text('👤', style: TextStyle(fontSize: 20)),
                     onTap: () => _openPicker(context, avatars: true),
                   ),
                 ),
@@ -337,8 +411,7 @@ class EmojiReactionRow extends StatelessWidget {
                             height: 34,
                             alignment: Alignment.center,
                             decoration: BoxDecoration(
-                              color:
-                                  theme.colorScheme.surfaceContainerHighest,
+                              color: theme.colorScheme.surfaceContainerHighest,
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: ReactionDisplay(value: s, size: 18),
@@ -397,14 +470,40 @@ class _ReactionModeButton extends StatelessWidget {
   }
 }
 
+/// Item 6 (reaction-expansion pass) — resolves a category id (a key of
+/// [kEmojiReactionCategories]) to its localized display label.
+String _categoryLabel(BuildContext context, String categoryId) {
+  final l10n = context.l10n;
+  return switch (categoryId) {
+    'popular' => l10n.sharedReactionCategoryPopular,
+    'love' => l10n.sharedReactionCategoryLove,
+    'funny' => l10n.sharedReactionCategoryFunny,
+    'shock' => l10n.sharedReactionCategoryShock,
+    'celebration' => l10n.sharedReactionCategoryCelebration,
+    'social' => l10n.sharedReactionCategorySocial,
+    'moody' => l10n.sharedReactionCategoryMoody,
+    _ => categoryId,
+  };
+}
+
 /// Large-tile grid picker opened by either mode button — same sheet shape
 /// for icons and avatars, just a different item set.
+///
+/// Item 6 (this pass) — [items] grew substantially (kEmojiReactions:
+/// 21 → 47; the avatar set: 12 → 24), so the old shrinkWrap-everything
+/// GridView (sized to fit ALL rows, no matter how tall) risked a real
+/// overflow on a short/narrow phone. The whole sheet now caps itself at
+/// a fraction of the screen height and scrolls its own content — via a
+/// real scrollable ([categories] != null: a ListView of labeled
+/// sections; null: the same flat grid as before, just now genuinely
+/// scrollable) — instead of only ever growing to fit.
 class _ReactionPickerSheet extends StatelessWidget {
   const _ReactionPickerSheet({
     required this.title,
     required this.items,
     required this.onPick,
     this.avatarConfig,
+    this.categories,
   });
 
   final String title;
@@ -412,12 +511,45 @@ class _ReactionPickerSheet extends StatelessWidget {
   final Map<String, dynamic>? avatarConfig;
   final ValueChanged<String> onPick;
 
+  /// When set, [items] is rendered as labeled sections (this category's
+  /// items filtered against [items] so an id present in a category but
+  /// absent from [items] — shouldn't happen, but defensively — never
+  /// renders a broken tile). When null, falls back to one flat grid.
+  final Map<String, List<String>>? categories;
+
+  Widget _tile(BuildContext context, String value, {required double size}) {
+    final theme = Theme.of(context);
+    return Material(
+      color: theme.colorScheme.surfaceContainerHighest,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () => onPick(value),
+        child: SizedBox(
+          width: size,
+          height: size,
+          child: Center(
+            child: ReactionDisplay(
+              value: value,
+              size: size * 0.55,
+              avatarConfig: avatarConfig,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final maxSheetHeight = MediaQuery.sizeOf(context).height * 0.72;
+    final cats = categories;
+
     return SafeArea(
       top: false,
       child: Container(
+        constraints: BoxConstraints(maxHeight: maxSheetHeight),
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
         decoration: BoxDecoration(
           color: theme.colorScheme.surface,
@@ -445,35 +577,51 @@ class _ReactionPickerSheet extends StatelessWidget {
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 16),
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 4,
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-                childAspectRatio: 1,
-              ),
-              itemCount: items.length,
-              itemBuilder: (_, i) {
-                final value = items[i];
-                return Material(
-                  color: theme.colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(14),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(14),
-                    onTap: () => onPick(value),
-                    child: Center(
-                      child: ReactionDisplay(
-                        value: value,
-                        size: 30,
-                        avatarConfig: avatarConfig,
-                      ),
+            const SizedBox(height: 12),
+            Flexible(
+              child: cats == null
+                  ? GridView.builder(
+                      shrinkWrap: true,
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 4,
+                            mainAxisSpacing: 12,
+                            crossAxisSpacing: 12,
+                            childAspectRatio: 1,
+                          ),
+                      itemCount: items.length,
+                      itemBuilder: (_, i) => _tile(context, items[i], size: 64),
+                    )
+                  : ListView(
+                      shrinkWrap: true,
+                      children: [
+                        for (final entry in cats.entries)
+                          if (entry.value.any(items.contains)) ...[
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                top: 10,
+                                bottom: 8,
+                              ),
+                              child: Text(
+                                _categoryLabel(context, entry.key),
+                                style: theme.textTheme.labelLarge?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                            Wrap(
+                              spacing: 10,
+                              runSpacing: 10,
+                              children: [
+                                for (final value in entry.value)
+                                  if (items.contains(value))
+                                    _tile(context, value, size: 56),
+                              ],
+                            ),
+                          ],
+                      ],
                     ),
-                  ),
-                );
-              },
             ),
           ],
         ),

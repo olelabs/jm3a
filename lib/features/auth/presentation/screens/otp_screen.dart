@@ -8,6 +8,7 @@ import '../../../../core/extensions/context_ext.dart';
 import '../../../../core/providers/auth_provider.dart';
 import '../../../../core/router/route_names.dart';
 import '../../../../shared/widgets/buttons/j_button.dart';
+import '../../../../shared/widgets/mouj_tech_brand.dart';
 
 /// Route arguments for [OtpScreen]. [identifier] is what's actually used to
 /// verify/resend the code — for phone sign-in this is the synthetic
@@ -148,8 +149,14 @@ class _OtpScreenState extends State<OtpScreen> {
     setState(() => _resendSeconds = _cooldown);
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (!mounted) { t.cancel(); return; }
-      setState(() { _resendSeconds--; if (_resendSeconds <= 0) t.cancel(); });
+      if (!mounted) {
+        t.cancel();
+        return;
+      }
+      setState(() {
+        _resendSeconds--;
+        if (_resendSeconds <= 0) t.cancel();
+      });
     });
   }
 
@@ -252,7 +259,9 @@ class _OtpScreenState extends State<OtpScreen> {
       });
       _shakeKey.currentState?.shake();
       _clearAll();
-      context.showErrorSnackBar(result.errorMessage ?? context.l10n.authOtpInvalid);
+      context.showErrorSnackBar(
+        result.errorMessage ?? context.l10n.authOtpInvalid,
+      );
       return;
     }
 
@@ -320,7 +329,9 @@ class _OtpScreenState extends State<OtpScreen> {
         // Password legitimately revisits it while already fully ready),
         // so this screen must decide its own destination rather than
         // relying on that cleanup.
-        context.go(auth.needsOnboarding ? RouteNames.onboarding : RouteNames.home);
+        context.go(
+          auth.needsOnboarding ? RouteNames.onboarding : RouteNames.home,
+        );
         return;
     }
   }
@@ -328,7 +339,11 @@ class _OtpScreenState extends State<OtpScreen> {
   // ── Resend ────────────────────────────────────────────────────────────────
   Future<void> _resend() async {
     if (_resendSeconds > 0 || _isResending) return;
-    setState(() { _isResending = true; _hasError = false; _attemptsRemaining = null; });
+    setState(() {
+      _isResending = true;
+      _hasError = false;
+      _attemptsRemaining = null;
+    });
 
     final auth = context.read<AuthProvider>();
     // Phone numbers are re-sent through sendPhoneOtp (SMS), not sendOtp
@@ -414,12 +429,15 @@ class _OtpScreenState extends State<OtpScreen> {
                 key: _shakeKey,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: List.generate(_len, (i) => _OtpBox(
-                    controller: _controllers[i],
-                    focusNode: _focusNodes[i],
-                    hasError: _hasError,
-                    onChanged: (v) => _onChanged(i, v),
-                  )),
+                  children: List.generate(
+                    _len,
+                    (i) => _OtpBox(
+                      controller: _controllers[i],
+                      focusNode: _focusNodes[i],
+                      hasError: _hasError,
+                      onChanged: (v) => _onChanged(i, v),
+                    ),
+                  ),
                 ),
               ).animate(delay: 160.ms).fadeIn().slideY(begin: 0.08, end: 0),
 
@@ -459,6 +477,8 @@ class _OtpScreenState extends State<OtpScreen> {
                         label: l10n.authOtpResend,
                       ),
               ),
+
+              const MoujTechBrand(size: MoujTechBrandSize.compact),
             ],
           ),
         ),
@@ -488,7 +508,8 @@ class _OtpBox extends StatelessWidget {
     final errorColor = theme.colorScheme.error;
 
     return SizedBox(
-      width: 46, height: 58,
+      width: 46,
+      height: 58,
       child: TextFormField(
         controller: controller,
         focusNode: focusNode,
@@ -545,7 +566,8 @@ class _ResendCountdown extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         SizedBox(
-          width: 14, height: 14,
+          width: 14,
+          height: 14,
           child: CircularProgressIndicator(
             value: seconds / 60,
             strokeWidth: 1.5,
@@ -580,7 +602,8 @@ class _ResendButton extends StatelessWidget {
       onPressed: isLoading ? null : onTap,
       child: isLoading
           ? const SizedBox(
-              width: 16, height: 16,
+              width: 16,
+              height: 16,
               child: CircularProgressIndicator(strokeWidth: 2),
             )
           : Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
@@ -608,7 +631,10 @@ class _ShakeState extends State<_ShakeWidget>
   void shake() => _ctrl.forward(from: 0);
 
   @override
-  void dispose() { _ctrl.dispose(); super.dispose(); }
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {

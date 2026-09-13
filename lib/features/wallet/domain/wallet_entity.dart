@@ -177,8 +177,15 @@ class WalletEntity extends Equatable {
   final bool      isFrozen;
   final DateTime? updatedAt;
 
-  String get formattedBalance => '${_formatMru(balanceMru)} MRU';
-  String get formattedEarningsBalance => '${_formatMru(earningsBalanceMru)} MRU';
+  /// [currency] defaults to the raw "MRU" code for any caller that hasn't
+  /// been threaded a localized label yet — never a breaking change for an
+  /// unmigrated call site. User-facing call sites should pass
+  /// `context.l10n.walletCurrencyShort` (see app_*.arb) so Arabic shows
+  /// "أوقية" instead of the Latin-script code.
+  String formattedBalance([String currency = 'MRU']) =>
+      '${_formatMru(balanceMru)} $currency';
+  String formattedEarningsBalance([String currency = 'MRU']) =>
+      '${_formatMru(earningsBalanceMru)} $currency';
 
   bool canDebit(int amountMru) =>
       !isFrozen && balanceMru >= amountMru;
@@ -234,9 +241,10 @@ class WalletTransaction extends Equatable {
   bool get isCredit    => amountMru > 0;
   bool get isDebit     => amountMru < 0;
   int  get absAmount   => amountMru.abs();
-  String get formattedAmount =>
-      '${isCredit ? '+' : '-'}${_formatMru(absAmount)} MRU';
-  String get formattedBalance => '${_formatMru(balanceAfter)} MRU';
+  String formattedAmount([String currency = 'MRU']) =>
+      '${isCredit ? '+' : '-'}${_formatMru(absAmount)} $currency';
+  String formattedBalance([String currency = 'MRU']) =>
+      '${_formatMru(balanceAfter)} $currency';
 
   @override
   List<Object?> get props => [id, walletId, amountMru, createdAt];
@@ -271,7 +279,8 @@ class DepositEntity extends Equatable {
   final DateTime?     approvedAt;
   final DateTime?     rejectedAt;
 
-  String get formattedAmount => '${_formatMru(amountMru)} MRU';
+  String formattedAmount([String currency = 'MRU']) =>
+      '${_formatMru(amountMru)} $currency';
   bool   get isPending  => !status.isTerminal;
 
   @override
@@ -305,7 +314,8 @@ class WithdrawalEntity extends Equatable {
   final DateTime              submittedAt;
   final DateTime?             processedAt;
 
-  String get formattedAmount => '${_formatMru(amountMru)} MRU';
+  String formattedAmount([String currency = 'MRU']) =>
+      '${_formatMru(amountMru)} $currency';
   bool   get isPending  => status.isPending;
 
   @override
@@ -377,10 +387,14 @@ class EarningsSummary extends Equatable {
   final int    thisMonthMru;
   final double commissionRate;
 
-  String get formatted       => '${_formatMru(totalEarnedMru)} MRU';
-  String get pendingFormatted => '${_formatMru(pendingEarningsMru)} MRU';
-  String get availableFormatted => '${_formatMru(availableForWithdrawalMru)} MRU';
-  String get thisMonthFormatted => '${_formatMru(thisMonthMru)} MRU';
+  String formatted([String currency = 'MRU']) =>
+      '${_formatMru(totalEarnedMru)} $currency';
+  String pendingFormatted([String currency = 'MRU']) =>
+      '${_formatMru(pendingEarningsMru)} $currency';
+  String availableFormatted([String currency = 'MRU']) =>
+      '${_formatMru(availableForWithdrawalMru)} $currency';
+  String thisMonthFormatted([String currency = 'MRU']) =>
+      '${_formatMru(thisMonthMru)} $currency';
 
   @override
   List<Object?> get props => [totalEarnedMru, pendingEarningsMru, totalSales];

@@ -4,8 +4,10 @@ import 'package:flutter/services.dart';
 import '../../../../core/constants/social_links.dart';
 import '../../../../core/extensions/context_ext.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/app_version.dart';
 import '../../../../shared/utils/external_link_launcher.dart';
 import '../../../../shared/widgets/cards/j_card.dart';
+import '../../../../shared/widgets/mouj_tech_brand.dart';
 
 /// Placeholder company/contact info — see l10n keys aboutUsCompanyInfo /
 /// aboutUsContactEmail / aboutUsWebsite for the actual displayed text,
@@ -17,8 +19,6 @@ import '../../../../shared/widgets/cards/j_card.dart';
 /// filled in there, with no further UI changes needed.
 class AboutUsScreen extends StatelessWidget {
   const AboutUsScreen({super.key});
-
-  static const _appVersion = '1.0.0';
 
   void _copyToClipboard(BuildContext context, String value) {
     Clipboard.setData(ClipboardData(text: value));
@@ -69,9 +69,19 @@ class AboutUsScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  '${l10n.aboutUsVersionLabel} $_appVersion',
-                  style: const TextStyle(color: Colors.white70, fontSize: 13),
+                FutureBuilder<String>(
+                  future: formattedAppVersion(),
+                  builder: (context, snapshot) {
+                    final version = snapshot.data;
+                    if (version == null) return const SizedBox.shrink();
+                    return Text(
+                      '${l10n.aboutUsVersionLabel} $version',
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 13,
+                      ),
+                    );
+                  },
                 ),
               ],
             ),
@@ -147,6 +157,8 @@ class AboutUsScreen extends StatelessWidget {
               ],
             ),
           ),
+
+          const MoujTechBrand(),
         ],
       ),
     );
@@ -175,7 +187,11 @@ class _SectionHeader extends StatelessWidget {
 /// case for all three today; this widget itself is fully wired to
 /// launch the moment a real URL is filled in there.
 class _SocialTile extends StatelessWidget {
-  const _SocialTile({required this.icon, required this.label, required this.url});
+  const _SocialTile({
+    required this.icon,
+    required this.label,
+    required this.url,
+  });
   final IconData icon;
   final String label;
   final String url;

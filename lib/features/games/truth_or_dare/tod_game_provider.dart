@@ -888,6 +888,7 @@ import '../../rooms/domain/room_entity.dart';
 import '../../rooms/presentation/room_provider.dart';
 import '../game_session_messages.dart';
 import '../engine/base_game_engine.dart';
+import '../engine/turn_queue.dart';
 import '../../../shared/widgets/game/game_chat_sheet.dart';
 import 'data/tod_repository.dart';
 import 'domain/tod_models.dart';
@@ -977,10 +978,7 @@ class TodGameProvider extends ChangeNotifier {
   List<RoomMemberEntity> get gameParticipants =>
       roomProvider?.members
           .where(
-            (m) =>
-                m.userId != _userId &&
-                !m.isSpectator &&
-                !m.leftDefinitively,
+            (m) => m.userId != _userId && !m.isSpectator && !m.leftDefinitively,
           )
           .toList() ??
       const [];
@@ -1057,6 +1055,17 @@ class TodGameProvider extends ChangeNotifier {
   bool isNavigatingAway = false;
 
   TruthOrDareEngine? _engine;
+
+  /// Turn-selection policy — see turn_queue.dart. Reassigned (never left
+  /// stale) whenever [_engine]/[_state] are (re)established, in
+  /// [initAsOwner]'s both branches. Defaults to an empty queue so it's
+  /// never null before that.
+  TurnQueue _turnQueue = TurnQueue(const []);
+
+  /// Ids this provider currently believes are game-muted — the "last
+  /// known" side of [syncMutedPlayers]'s edge detection.
+  final Set<String> _knownMutedIds = {};
+
   TodState? _state;
   GameConfig? _config;
   GameConfig? get config => _config;
@@ -1169,26 +1178,18 @@ class TodGameProvider extends ChangeNotifier {
   /// but may lag a beat behind the broadcast on the acting client itself.
   Set<String> get _effectiveAwayIds => _awayPlayerIds.union(_durableAwayIds);
 
-  /// The set used for TURN ROTATION only — genuinely absent players
-  /// (left/away/disconnected), deliberately NOT the merely game-muted. A
-  /// moderator-muted player keeps their turn: it parks on them, blocked
-  /// (they can't submit — see _handleAction's isGameMuted check), until the
-  /// mute is lifted or a moderator advances past them. This is narrower
-  /// than [_effectiveAwayIds], which still counts muted players for
-  /// ready-exemption and the action chokepoint. Excluding only muted-AND-
-  /// otherwise-present ids means a player who is muted *and* actually gone
-  /// is still skipped, as before.
-  Set<String> get _turnSkipIds {
-    final rp = roomProvider;
-    if (rp == null) return _effectiveAwayIds;
-    final members = {for (final m in rp.members) m.userId: m};
-    bool mutedButPresent(String id) {
-      final m = members[id];
-      return m != null && m.isGameMuted && !m.isAway && !m.isDisconnected;
-    }
-
-    return _effectiveAwayIds.where((id) => !mutedButPresent(id)).toSet();
-  }
+  /// The set used for TURN ROTATION — identical to [_effectiveAwayIds]
+  /// (which already folds in isGameMuted via [_durableAwayIds]).
+  /// Muted = temporary spectator for turn purposes: immediately skipped,
+  /// same as away/disconnected, never parked-and-blocked waiting for a
+  /// moderator. (Previously this deliberately EXCLUDED muted-but-present
+  /// players from the skip set — the turn "parked" on them instead of
+  /// skipping. That behavior is reversed: see [syncMutedPlayers] for the
+  /// force-advance-on-mute / rejoin-at-end-on-unmute mechanics this now
+  /// requires.) Kept as its own getter (rather than inlining
+  /// _effectiveAwayIds at every call site) purely so call sites read as
+  /// "the turn-rotation skip set" — same name, same meaning as before.
+  Set<String> get _turnSkipIds => _effectiveAwayIds;
 
   Set<String> get awayPlayerIds => Set.unmodifiable(_effectiveAwayIds);
 
@@ -1199,13 +1200,41 @@ class TodGameProvider extends ChangeNotifier {
       .where((id) => !_effectiveAwayIds.contains(id))
       .length;
 
+  /// Real-device crash fix ("Tried to build dirty widget in the wrong
+  /// build scope", AnimatedBuilder/`_InheritedProviderScope<TodGameProvider?>`
+  /// — reported when a non-admin player leaves): this used to have NO
+  /// idempotency guard (unlike [markPlayerReturned] below), so a single
+  /// 'player_left' realtime event — fanned out synchronously to BOTH
+  /// RoomProvider's and this screen's own listener on the same channel
+  /// (see RealtimeService._fanOut) — called this twice for the same
+  /// userId: once via TodGameScreen._syncAwayFromPresence (a plain
+  /// listener on RoomProvider, itself invoked synchronously from
+  /// RoomProvider.notifyListeners()) and once directly from the
+  /// screen's own 'player_left' handler. Each call queued its OWN
+  /// `Future.microtask(() => ownerAdvanceTurn(...))` and its OWN
+  /// notifyListeners() — a reentrant cross-provider notify chain
+  /// (RoomProvider.notifyListeners() synchronously triggering this
+  /// provider's notifyListeners(), nested inside the same call stack)
+  /// with a turn-advance microtask landing in the middle of it, mutating
+  /// state.phase and reparenting the GlobalKey-keyed GameFlipCard mid-
+  /// cascade. Guarding here (mirroring markPlayerReturned's existing
+  /// pattern) makes the second, redundant call a safe no-op — exactly
+  /// one notify, exactly one queued turn-advance per actual departure.
   void markPlayerAway(String userId, {bool forGood = false}) {
-    _awayPlayerIds.add(userId);
+    if (!_awayPlayerIds.add(userId)) return;
     if (_isOwner &&
         _state != null &&
         _state!.currentPlayerId == userId &&
         _state!.phase == TodTurnPhase.choosingType) {
-      Future.microtask(() => ownerAdvanceTurn(force: true));
+      // Deferred to the next frame (not a bare Future.microtask, which
+      // drains before the current synchronous realtime fan-out even
+      // finishes) so the turn-advance — which swaps TodCardScreen's
+      // child and reparents the GlobalKey-keyed GameFlipCard — never
+      // runs nested inside another ChangeNotifier's own notify/rebuild
+      // pass, only safely after it.
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (!_disposed) ownerAdvanceTurn(force: true);
+      });
     }
     _safeNotify();
   }
@@ -1221,6 +1250,50 @@ class TodGameProvider extends ChangeNotifier {
 
   bool get isCurrentPlayerAway =>
       _state != null && _turnSkipIds.contains(_state!.currentPlayerId);
+
+  /// Reconciles the CURRENT set of game-muted player ids (from the room's
+  /// live, backend-synced member list) against what this provider last
+  /// knew, acting only on the DELTA — safe to call every presence/member
+  /// sync tick (see tod_game_screen.dart's _syncAwayFromPresence), exactly
+  /// mirroring [markPlayerAway]/[markPlayerReturned]'s own idempotency.
+  ///
+  /// "Muted = temporary spectator for turn purposes": a newly-muted id is
+  /// already excluded from turn selection via [_turnSkipIds] (now
+  /// mute-aware) for every FUTURE advance — the one thing that needs an
+  /// immediate, explicit reaction here is when the muted id IS the
+  /// current player, since nothing else would otherwise interrupt
+  /// whatever phase they're in (choosing, reading/answering, recording or
+  /// submitting proof, awaiting a result) — this force-advances regardless
+  /// of phase, unlike [markPlayerAway]'s own force-advance, which only
+  /// fires during TodTurnPhase.choosingType. A newly-unmuted id rejoins
+  /// the active rotation at the END via [TurnQueue.markReturned] — never
+  /// their original fixed-playerOrder slot.
+  void syncMutedPlayers(Set<String> mutedIds) {
+    final newlyMuted = mutedIds.difference(_knownMutedIds);
+    final newlyUnmuted = _knownMutedIds.difference(mutedIds);
+    if (newlyMuted.isEmpty && newlyUnmuted.isEmpty) return;
+    _knownMutedIds
+      ..clear()
+      ..addAll(mutedIds);
+    for (final id in newlyUnmuted) {
+      _turnQueue.markReturned(id);
+    }
+    final currentId = _state?.currentPlayerId;
+    if (_isOwner &&
+        _state != null &&
+        !_state!.isOver &&
+        currentId != null &&
+        newlyMuted.contains(currentId)) {
+      // Deferred to the next frame — same reasoning as markPlayerAway's
+      // own force-advance: never run a turn-advancing engine mutation
+      // (which reparents GlobalKey-keyed widgets like GameFlipCard)
+      // nested inside another ChangeNotifier's own notify/rebuild pass.
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (!_disposed) ownerAdvanceTurn(force: true);
+      });
+    }
+    _safeNotify();
+  }
 
   final List<TodChatMsg> _chatMessages = [];
   int _unreadChat = 0;
@@ -1531,6 +1604,7 @@ class TodGameProvider extends ChangeNotifier {
         _sessionId = existing['id'] as String;
         _engine!.restoreFromSnapshot(existingSnapshot);
         _state = _engine!.currentState as TodState;
+        _turnQueue = TurnQueue(_state!.playerOrder);
         _gameOverHandled = existingStatus != 'active';
         _lifecycleState = existing['lifecycle_state'] as String? ?? 'active';
         AppLogger.info(
@@ -1563,6 +1637,7 @@ class TodGameProvider extends ChangeNotifier {
 
         _engine!.init(playerOrder: freshPlayerIds);
         _state = _engine!.currentState as TodState;
+        _turnQueue = TurnQueue(_state!.playerOrder);
         _lifecycleState = 'starting';
 
         _sessionId = await _repo.createSession(
@@ -2400,6 +2475,15 @@ class TodGameProvider extends ChangeNotifier {
     'card_type': TodCardType.dare.name,
   });
 
+  bool _completingTurn = false;
+
+  /// True while this player's own `tod_complete` submission is in
+  /// flight — the response sheet uses this to lock its submit button.
+  /// [completeTurn]'s own re-entrancy guard (below) is the actual
+  /// state-level protection against a duplicate submission; this getter
+  /// exists purely so the UI can reflect that same state.
+  bool get isCompletingTurn => _completingTurn;
+
   Future<void> completeTurn({
     String response = '',
     String proofImageB64 = '',
@@ -2409,16 +2493,29 @@ class TodGameProvider extends ChangeNotifier {
     int proofViewSeconds = 5,
     TodProofVisibilitySettings proofVisibility =
         const TodProofVisibilitySettings(),
-  }) => _handleAction({
-    'action': 'tod_complete',
-    'response': response,
-    'proof_image': proofImageB64,
-    'proof_voice': proofVoiceB64,
-    'proof_source': proofSource.name,
-    'proof_view_mode': proofViewMode.name,
-    'proof_view_seconds': proofViewSeconds,
-    'proof_visibility': proofVisibility.toMap(),
-  });
+  }) async {
+    // Explicit re-entrancy guard against a rapid double-tap sending two
+    // tod_complete actions back to back — the same pattern already used
+    // by ownerAdvanceTurn's _advancing guard. A second call arriving
+    // while the first is still in flight is a silent no-op, not a queued
+    // or duplicate submission.
+    if (_completingTurn) return;
+    _completingTurn = true;
+    try {
+      await _handleAction({
+        'action': 'tod_complete',
+        'response': response,
+        'proof_image': proofImageB64,
+        'proof_voice': proofVoiceB64,
+        'proof_source': proofSource.name,
+        'proof_view_mode': proofViewMode.name,
+        'proof_view_seconds': proofViewSeconds,
+        'proof_visibility': proofVisibility.toMap(),
+      });
+    } finally {
+      _completingTurn = false;
+    }
+  }
 
   Future<void> markProofViewed() =>
       _handleAction({'action': 'tod_proof_viewed'});
@@ -2452,8 +2549,9 @@ class TodGameProvider extends ChangeNotifier {
   /// from build()/a subscription callback) so it never re-fires on rebuild.
   /// Returns {} on any failure or when there's no session yet — the UI
   /// falls back to showing only the (already-available) watched-by count.
-  Future<Map<int, ({int distinctViewers, int totalViews})>>
-      fetchProofViewStats(List<int> turnStartedAts) async {
+  Future<Map<int, ({int distinctViewers, int totalViews})>> fetchProofViewStats(
+    List<int> turnStartedAts,
+  ) async {
     if (_sessionId == null || turnStartedAts.isEmpty) return {};
     try {
       return await _repo.getProofViewStats(
@@ -2498,7 +2596,10 @@ class TodGameProvider extends ChangeNotifier {
       _dishonestReasonGeneration[responseKey] ?? 0;
 
   void onDishonestReasonAdded(Map<String, dynamic> payload) {
-    final updated = applyDishonestReasonSignal(_dishonestReasonGeneration, payload);
+    final updated = applyDishonestReasonSignal(
+      _dishonestReasonGeneration,
+      payload,
+    );
     if (identical(updated, _dishonestReasonGeneration)) return;
     _dishonestReasonGeneration = updated;
     _safeNotify();
@@ -2673,27 +2774,31 @@ class TodGameProvider extends ChangeNotifier {
     if (_advancing) return;
     _advancing = true;
     try {
-      _readyForNext.clear();
-      _engine!.advanceTurn();
-      _state = _engine!.currentState as TodState;
       // playerOrder is fixed for the life of the session — a kicked/left
-      // player is never removed from it, only added to _awayPlayerIds. The
-      // engine's turn rotation has no concept of "away", so left unchecked
-      // the rotation would eventually land back on them in a later round
-      // with no one able to act, stalling the game. Skip forward past any
-      // genuinely-absent player here so the game keeps moving without them,
-      // exactly as if they'd been removed from playerOrder. A merely
-      // game-muted (but present) player is deliberately NOT skipped — the
-      // turn parks on them, blocked, until they're unmuted or a moderator
-      // advances (see _turnSkipIds).
-      var guard = 0;
-      while (!_state!.isOver &&
-          _turnSkipIds.contains(_state!.currentPlayerId) &&
-          guard < _state!.playerOrder.length) {
-        _engine!.advanceTurn();
-        _state = _engine!.currentState as TodState;
-        guard++;
+      // player is never removed from it, only added to _awayPlayerIds/
+      // tracked as muted. TurnQueue.nextEligible (see turn_queue.dart)
+      // is the SHARED policy that decides who's actually next: it skips
+      // every id in _turnSkipIds (away, disconnected, or game-muted —
+      // "muted = temporary spectator for turn purposes") and places a
+      // player TurnQueue.markReturned'd back in (on unmute — see
+      // syncMutedPlayers) at the END of the active rotation rather than
+      // their original fixed-order slot. A single deterministic lookup,
+      // not a bounded skip-loop over the raw index — the old loop could
+      // only ever "resume someone's original slot", never truly reorder.
+      final nextId = _turnQueue.nextEligible(
+        _state!.currentPlayerId,
+        _turnSkipIds,
+      );
+      if (nextId == null) {
+        // Nobody is eligible for a turn at all (e.g. every player
+        // currently muted/away) — do not advance; the game waits until
+        // someone becomes eligible again rather than crashing or
+        // fabricating a destination.
+        return;
       }
+      _readyForNext.clear();
+      _engine!.advanceTurn(forcePlayerId: nextId);
+      _state = _engine!.currentState as TodState;
       _syncTimer();
       _broadcastState();
       _safeNotify();

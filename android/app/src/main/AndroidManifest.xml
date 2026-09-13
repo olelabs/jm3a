@@ -5,6 +5,11 @@
    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
    <uses-permission android:name="android.permission.VIBRATE"/>
    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+   <!-- Item 7 (QR codes) — mobile_scanner needs this to open the camera
+        for scanning a room/profile QR code. -->
+   <uses-permission android:name="android.permission.CAMERA"/>
+   <uses-feature android:name="android.hardware.camera" android:required="false"/>
+   <uses-feature android:name="android.hardware.camera.autofocus" android:required="false"/>
     <application
         android:label="jma3a"
         android:name="${applicationName}"
@@ -42,17 +47,32 @@
                 <data android:scheme="jma3a" />
             </intent-filter>
 
-            <!-- Android App Links — what every SHARED invite link actually
-                 uses: https://jma3a.com/join?code=ABC123&invited_by=uuid.
-                 autoVerify="true" makes Android verify ownership of
-                 jma3a.com against /.well-known/assetlinks.json (must be
-                 hosted there — see assetlinks.json.template in this repo)
-                 before it'll open the app directly instead of a browser
-                 tab; until that file is live and verification succeeds,
-                 Android silently falls back to opening the URL in the
-                 browser, landing on the website instead — which is exactly
-                 the "app not installed" fallback requirement, so no
-                 further code needs to handle that case explicitly. -->
+            <!-- Android App Links — what every SHARED link actually uses:
+                 https://jma3a.com/join?code=ABC123&invited_by=uuid,
+                 https://jma3a.com/profile/<uuid> (legacy profile links —
+                 see deep_links.dart's parseProfileLink), and
+                 https://www.moujgroup.jma3a.com/u/<username> (AppConstants.
+                 publicProfileUrl — the current, UUID-free profile share
+                 link; a separate host from jma3a.com per product decision
+                 — see AppConstants.profileWebHost). The legacy
+                 https://jma3a.com/u/<username> host is also kept here so a
+                 profile link shared before that host switch still opens
+                 the app. /profile and /u were previously missing from this
+                 filter entirely — a shared profile link only ever opened
+                 in the browser on Android, never the app; adding them
+                 here is what actually makes the deep link work, not just
+                 look right. autoVerify="true" makes Android verify
+                 ownership of EACH host against its own
+                 /.well-known/assetlinks.json (must be hosted there — see
+                 assetlinks.json.template in this repo; www.moujgroup.
+                 jma3a.com needs its own copy, which this repo cannot
+                 verify is deployed) before it'll open the app directly
+                 instead of a browser tab; until that file is live and
+                 verification succeeds for a given host, Android silently
+                 falls back to opening the URL in the browser, landing on
+                 the website instead — which is exactly the "app not
+                 installed" fallback requirement, so no further code needs
+                 to handle that case explicitly. -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -61,6 +81,18 @@
                     android:scheme="https"
                     android:host="jma3a.com"
                     android:pathPrefix="/join" />
+                <data
+                    android:scheme="https"
+                    android:host="jma3a.com"
+                    android:pathPrefix="/profile" />
+                <data
+                    android:scheme="https"
+                    android:host="jma3a.com"
+                    android:pathPrefix="/u" />
+                <data
+                    android:scheme="https"
+                    android:host="www.moujgroup.jma3a.com"
+                    android:pathPrefix="/u" />
             </intent-filter>
             <!-- Specifies an Android theme to apply to this Activity as soon as
                  the Android process has started. This theme is visible to the user

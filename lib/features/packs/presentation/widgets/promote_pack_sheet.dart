@@ -188,7 +188,7 @@ class _DurationTile extends StatelessWidget {
               child: Text(label, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
             ),
             Text(
-              '$priceMru MRU',
+              context.l10n.packPriceMru(priceMru),
               style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
             ),
           ],

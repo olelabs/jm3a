@@ -1358,6 +1358,7 @@ class PackEntity extends Equatable {
     this.maxAge,
     this.genderRestriction = 'everyone',
     this.minPlayers = 2,
+    this.maxPlayers,
     List<String>? suggestedPunishments,
     this.platformManaged = false,
   }) : availableLanguages = availableLanguages ?? const [],
@@ -1412,6 +1413,14 @@ class PackEntity extends Equatable {
 
   /// Minimum recommended player count for this pack (2-12).
   final int minPlayers;
+
+  /// Maximum player count this pack supports, or null for "no limit"
+  /// (the original, and still default, behavior — most packs work fine
+  /// with any group size above minPlayers). When set, always >= minPlayers;
+  /// minPlayers == maxPlayers means the pack requires an exact player
+  /// count. Enforced against ACTIVE (non-spectator) room players at game
+  /// start — see create_game_session's too_many_players check.
+  final int? maxPlayers;
 
   /// Creator-authored Truth-or-Dare punishment options, empty or >=10.
   final List<String> suggestedPunishments;
@@ -1486,6 +1495,7 @@ class PackEntity extends Equatable {
     maxAge: maxAge,
     genderRestriction: genderRestriction,
     minPlayers: minPlayers,
+    maxPlayers: maxPlayers,
     suggestedPunishments: suggestedPunishments,
     platformManaged: platformManaged,
   );
@@ -1715,6 +1725,7 @@ enum PackDraftIssue {
   truthDareBalance,
   punishments,
   terms,
+  playerRange,
 }
 
 class PackDraft {
@@ -1729,6 +1740,7 @@ class PackDraft {
     this.categoryId,
     this.pendingCategorySuggestionId,
     this.minPlayers = 2,
+    this.maxPlayers,
     List<String>? tags,
     this.allowSpicy = false,
     this.coverImagePath,
@@ -1772,6 +1784,13 @@ class PackDraft {
   String? categoryId;
   String? pendingCategorySuggestionId;
   int minPlayers;
+
+  /// Optional max player count — null means "no limit" (the default).
+  /// When set, must be >= minPlayers; minPlayers == maxPlayers means an
+  /// exact player count is required. Never defaults to 0 — a creator who
+  /// never touches this leaves it null, not an accidentally-unplayable
+  /// pack.
+  int? maxPlayers;
   List<String> tags;
   bool allowSpicy;
   String? coverImagePath;
@@ -1815,6 +1834,12 @@ class PackDraft {
   bool get hasValidPunishments =>
       suggestedPunishments.isEmpty || suggestedPunishments.length >= 10;
 
+  /// No limit (null) is always valid; otherwise maxPlayers must be at
+  /// least minPlayers — min-only, exact (min==max), and range are all
+  /// valid shapes, only max < min is rejected.
+  bool get hasValidPlayerRange =>
+      maxPlayers == null || maxPlayers! >= minPlayers;
+
   /// Minimum pack price is [AppConstants.minPaidPackPriceMru] (300 MRU). Free
   /// packs (0) and anything 1–299 are invalid.
   bool get hasValidPrice => priceMru >= AppConstants.minPaidPackPriceMru;
@@ -1839,6 +1864,7 @@ class PackDraft {
     if (!hasValidPrice) issues.add(PackDraftIssue.price);
     if (!hasBalancedTruthDare) issues.add(PackDraftIssue.truthDareBalance);
     if (!hasValidPunishments) issues.add(PackDraftIssue.punishments);
+    if (!hasValidPlayerRange) issues.add(PackDraftIssue.playerRange);
     if (requireTerms && !termsAccepted) issues.add(PackDraftIssue.terms);
     return issues;
   }

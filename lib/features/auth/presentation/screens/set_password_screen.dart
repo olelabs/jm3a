@@ -7,6 +7,7 @@ import '../../../../core/extensions/context_ext.dart';
 import '../../../../core/providers/auth_provider.dart';
 import '../../../../core/router/route_names.dart';
 import '../../../../shared/widgets/buttons/j_button.dart';
+import '../../../../shared/widgets/mouj_tech_brand.dart';
 import '../../domain/password_validation.dart';
 
 /// Route arguments for [SetPasswordScreen]. [isRecovery] only changes the
@@ -198,7 +199,8 @@ class _SetPasswordScreenState extends State<SetPasswordScreen> {
                     ),
                   ),
                   validator: (v) {
-                    if (v != _passwordCtrl.text) return l10n.authPasswordMismatch;
+                    if (v != _passwordCtrl.text)
+                      return l10n.authPasswordMismatch;
                     return null;
                   },
                 ).animate(delay: 220.ms).fadeIn().slideY(begin: 0.08, end: 0),
@@ -214,6 +216,8 @@ class _SetPasswordScreenState extends State<SetPasswordScreen> {
                     isLoading: auth.isSettingPassword,
                   ),
                 ).animate(delay: 280.ms).fadeIn(),
+
+                const MoujTechBrand(size: MoujTechBrandSize.compact),
               ],
             ),
           ),

@@ -104,6 +104,7 @@ class GameConfig {
     this.forceDareMode = 'unlimited',
     this.maxTruths = 2,
     this.cardRepetitionMode = 'shuffle',
+    this.honestyVoteEnabled = true,
   }) : suggestedPunishments = suggestedPunishments ?? const [];
 
   bool get timerEnabled => turnTimerSeconds > 0;
@@ -137,8 +138,10 @@ class GameConfig {
   // same as allowSpicy/enablePunishments already are for them.
   /// 'everyone' | 'players_only' | 'spectators_only'
   final String proofVisibilityPolicy;
+
   /// Seconds a timed-mode proof stays visible before auto-hiding.
   final int proofViewSeconds;
+
   /// 'once' | 'replay_once'
   final String proofReplayMode;
 
@@ -151,14 +154,23 @@ class GameConfig {
   /// across all players, resets whenever a dare — forced or chosen —
   /// happens).
   final String forceDareMode;
+
   /// Truth choices allowed before a dare is forced. Only consulted when
   /// [forceDareMode] isn't 'unlimited'.
   final int maxTruths;
+
   /// 'shuffle' (default — the original behavior: a card pool resets and
   /// can repeat once exhausted) | 'unique' (each card appears at most
   /// once per game; the game ends normally once a requested type's pool
   /// is exhausted instead of resetting it).
   final String cardRepetitionMode;
+
+  /// Whether the shared honesty-vote mechanic (CompactHonestyVoteButtons/
+  /// _HonestyVoteRow, cast_honesty_vote RPC — used identically by ToD,
+  /// NHIE, and Meme Game) is active for this game. Sourced from
+  /// RoomSettingsEntity.honestyVoteEnabled; defaults true (honesty voting
+  /// was previously always on).
+  final bool honestyVoteEnabled;
 
   Map<String, dynamic> toMap() => {
     'max_rounds': maxRounds,
@@ -177,6 +189,7 @@ class GameConfig {
     'force_dare_mode': forceDareMode,
     'max_truths': maxTruths,
     'card_repetition_mode': cardRepetitionMode,
+    'honesty_vote_enabled': honestyVoteEnabled,
   };
 
   static GameConfig fromMap(Map<String, dynamic> m) => GameConfig(
@@ -198,6 +211,7 @@ class GameConfig {
     forceDareMode: m['force_dare_mode'] as String? ?? 'unlimited',
     maxTruths: m['max_truths'] as int? ?? 2,
     cardRepetitionMode: m['card_repetition_mode'] as String? ?? 'shuffle',
+    honestyVoteEnabled: m['honesty_vote_enabled'] as bool? ?? true,
     turnOrderMode: TurnOrderMode.values.firstWhere(
       (t) => t.name == m['turn_order_mode'],
       orElse: () => TurnOrderMode.circular,

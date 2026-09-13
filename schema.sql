@@ -4437,6 +4437,12 @@ CREATE TABLE IF NOT EXISTS "public"."room_settings" (
     -- migration_2026_tod_force_dare_persistence.sql.
     "force_dare_mode" "text" DEFAULT 'unlimited'::"text" NOT NULL,
     "max_truths" smallint DEFAULT 2 NOT NULL,
+    -- Per-room enable/disable for the shared honesty-vote mechanic
+    -- (cast_honesty_vote RPC, used identically by ToD/NHIE/Meme Game).
+    -- Defaults true: preserves the previously-unconditional-on behavior
+    -- for every room created before this column existed — see
+    -- migration_2026_honesty_vote_toggle.sql.
+    "honesty_vote_enabled" boolean DEFAULT true NOT NULL,
     CONSTRAINT "room_settings_max_rounds_check" CHECK ((("max_rounds" >= 1) AND ("max_rounds" <= 50))),
     CONSTRAINT "room_settings_turn_timer_secs_check" CHECK ((("turn_timer_secs" >= 15) AND ("turn_timer_secs" <= 300))),
     CONSTRAINT "room_settings_proof_visibility_policy_check" CHECK (("proof_visibility_policy" = ANY (ARRAY['everyone'::"text", 'players_only'::"text", 'spectators_only'::"text", 'selected'::"text"]))),

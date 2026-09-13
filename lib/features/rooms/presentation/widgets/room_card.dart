@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/extensions/context_ext.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/cards/j_card.dart';
@@ -11,9 +12,24 @@ class RoomCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme  = context.theme;
-    final l10n   = context.l10n;
-    final isFull = room.isFull;
+    final theme = context.theme;
+    final l10n = context.l10n;
+
+    // Room capacity fix: a room's own owner must always be able to tap back
+    // into it — the numeric "isFull" count legitimately includes the owner's
+    // OWN seat (they never stopped being a counted member just because they
+    // force-closed the app), so applying the same full-room block to them as
+    // to a genuine prospective new joiner incorrectly locks them out of their
+    // own room. `room.ownerId` comes from the server-returned room row (the
+    // same trusted field RoomProvider already compares against for its own
+    // `isOwner` determination), never a client-supplied flag — this is a
+    // server-sourced fact being compared to the authenticated session's own
+    // id, not a claim the client invents. Actual admission is still decided
+    // server-side by RoomRepository.joinRoom's own owner-aware check; this
+    // only stops the tap from being disabled before that can even run.
+    final myUserId = Supabase.instance.client.auth.currentUser?.id;
+    final isOwnRoom = myUserId != null && myUserId == room.ownerId;
+    final isFull = room.isFull && !isOwnRoom;
 
     // A keep-game-closed room only ever appears here for its OWNER (Browse
     // filters closed_at for everyone else — see RoomRepository.getPublicRooms).
@@ -29,14 +45,17 @@ class RoomCard extends StatelessWidget {
           children: [
             // Emoji avatar
             Container(
-              width: 48, height: 48,
+              width: 48,
+              height: 48,
               decoration: BoxDecoration(
                 color: _gameColor(room.gameType).withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Center(
-                child: Text(room.coverEmoji,
-                    style: const TextStyle(fontSize: 24)),
+                child: Text(
+                  room.coverEmoji,
+                  style: const TextStyle(fontSize: 24),
+                ),
               ),
             ),
             const SizedBox(width: 12),
@@ -52,7 +71,8 @@ class RoomCard extends StatelessWidget {
                         child: Text(
                           room.name,
                           style: theme.textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w700),
+                            fontWeight: FontWeight.w700,
+                          ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -60,9 +80,11 @@ class RoomCard extends StatelessWidget {
                       if (room.isPrivate)
                         Padding(
                           padding: const EdgeInsets.only(left: 4),
-                          child: Icon(Icons.lock_outline_rounded,
-                              size: 14,
-                              color: theme.colorScheme.onSurfaceVariant),
+                          child: Icon(
+                            Icons.lock_outline_rounded,
+                            size: 14,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
                         ),
                     ],
                   ),
@@ -71,14 +93,17 @@ class RoomCard extends StatelessWidget {
                     children: [
                       _StatusBadge(status: room.status, isClosed: isClosed),
                       const SizedBox(width: 8),
-                      Icon(Icons.people_outline_rounded,
-                          size: 13,
-                          color: theme.colorScheme.onSurfaceVariant),
+                      Icon(
+                        Icons.people_outline_rounded,
+                        size: 13,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
                       const SizedBox(width: 3),
                       Text(
                         l10n.roomsPlayers(room.currentPlayers, room.maxPlayers),
                         style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant),
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
                       ),
                       if (room.gameType != null) ...[
                         const SizedBox(width: 8),
@@ -96,13 +121,18 @@ class RoomCard extends StatelessWidget {
             // Join indicator
             const SizedBox(width: 8),
             if (!isFull)
-              Icon(Icons.chevron_right_rounded,
-                  color: theme.colorScheme.onSurfaceVariant)
+              Icon(
+                Icons.chevron_right_rounded,
+                color: theme.colorScheme.onSurfaceVariant,
+              )
             else
-              Text(context.l10n.roomsFull,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.error,
-                      fontWeight: FontWeight.w600)),
+              Text(
+                context.l10n.roomsFull,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.error,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
           ],
         ),
       ),
@@ -110,17 +140,17 @@ class RoomCard extends StatelessWidget {
   }
 
   Color _gameColor(dynamic gt) => switch (gt?.toString()) {
-    'GameType.truthOrDare'    => AppColors.truthColor,
+    'GameType.truthOrDare' => AppColors.truthColor,
     'GameType.neverHaveIEver' => AppColors.tealGreen,
-    'GameType.memeGame'       => AppColors.purple,
-    _                         => AppColors.navyBlue,
+    'GameType.memeGame' => AppColors.purple,
+    _ => AppColors.navyBlue,
   };
 
   String _gameEmoji(dynamic gt) => switch (gt?.toString()) {
-    'GameType.truthOrDare'    => '🎯',
+    'GameType.truthOrDare' => '🎯',
     'GameType.neverHaveIEver' => '🍹',
-    'GameType.memeGame'       => '😂',
-    _                         => '',
+    'GameType.memeGame' => '😂',
+    _ => '',
   };
 }
 
@@ -137,11 +167,20 @@ class _StatusBadge extends StatelessWidget {
     final (label, color) = isClosed
         ? (context.l10n.roomsStatusClosed, AppColors.textTertiaryLight)
         : switch (status) {
-      RoomStatus.waiting  => (context.l10n.roomsStatusWaiting, AppColors.successGreen),
-      RoomStatus.inGame   => (context.l10n.roomsStatusInGame, AppColors.amberOrangeLight),
-      RoomStatus.paused   => (context.l10n.roomsStatusPaused, AppColors.warningAmber),
-      _                   => (context.l10n.roomsStatusClosed, AppColors.textTertiaryLight),
-    };
+            RoomStatus.waiting => (
+              context.l10n.roomsStatusWaiting,
+              AppColors.successGreen,
+            ),
+            RoomStatus.inGame => (
+              context.l10n.roomsStatusInGame,
+              AppColors.amberOrangeLight,
+            ),
+            RoomStatus.paused => (
+              context.l10n.roomsStatusPaused,
+              AppColors.warningAmber,
+            ),
+            _ => (context.l10n.roomsStatusClosed, AppColors.textTertiaryLight),
+          };
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -149,9 +188,14 @@ class _StatusBadge extends StatelessWidget {
         color: color.withOpacity(0.12),
         borderRadius: BorderRadius.circular(4),
       ),
-      child: Text(label,
-          style: TextStyle(
-              fontSize: 11, fontWeight: FontWeight.w700, color: color)),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: color,
+        ),
+      ),
     );
   }
 }

@@ -652,6 +652,72 @@ abstract class AppLocalizations {
   /// **'Join'**
   String get roomsJoin;
 
+  /// No description provided for @qrRoomRevealTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Room QR Code'**
+  String get qrRoomRevealTitle;
+
+  /// No description provided for @qrRoomRevealInstruction.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan to join this room'**
+  String get qrRoomRevealInstruction;
+
+  /// No description provided for @qrProfileRevealTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'My QR Code'**
+  String get qrProfileRevealTitle;
+
+  /// No description provided for @qrProfileRevealInstruction.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan to view my profile'**
+  String get qrProfileRevealInstruction;
+
+  /// No description provided for @qrClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get qrClose;
+
+  /// No description provided for @qrShareLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Share Link'**
+  String get qrShareLink;
+
+  /// No description provided for @qrScanButtonLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan QR Code'**
+  String get qrScanButtonLabel;
+
+  /// No description provided for @qrScanScreenTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan QR Code'**
+  String get qrScanScreenTitle;
+
+  /// No description provided for @qrScanInstruction.
+  ///
+  /// In en, this message translates to:
+  /// **'Point your camera at a Jma3a QR code'**
+  String get qrScanInstruction;
+
+  /// No description provided for @qrScanInvalidCode.
+  ///
+  /// In en, this message translates to:
+  /// **'This isn\'t a valid Jma3a QR code'**
+  String get qrScanInvalidCode;
+
+  /// No description provided for @qrScanTryAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Try Again'**
+  String get qrScanTryAgain;
+
   /// No description provided for @roomsInvitedByName.
   ///
   /// In en, this message translates to:
@@ -819,6 +885,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Try again'**
   String get gameTryAgain;
+
+  /// No description provided for @gameYourTurn.
+  ///
+  /// In en, this message translates to:
+  /// **'Your turn!'**
+  String get gameYourTurn;
+
+  /// No description provided for @gamePlayerTurn.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}\'s turn'**
+  String gamePlayerTurn(String name);
 
   /// No description provided for @moderationKick.
   ///
@@ -1072,6 +1150,18 @@ abstract class AppLocalizations {
   /// **'Games'**
   String get profileGames;
 
+  /// No description provided for @usernameProfileResolving.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading profile…'**
+  String get usernameProfileResolving;
+
+  /// No description provided for @usernameProfileNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'This profile couldn\'t be found.'**
+  String get usernameProfileNotFound;
+
   /// No description provided for @profileScore.
   ///
   /// In en, this message translates to:
@@ -1131,6 +1221,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Followers'**
   String get profileFollowers;
+
+  /// No description provided for @streakAchievementBarrierLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Streak achievement'**
+  String get streakAchievementBarrierLabel;
 
   /// No description provided for @streakNewTitle.
   ///
@@ -1203,6 +1299,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Require approval to join'**
   String get gameSettingsRequireApproval;
+
+  /// No description provided for @gameSettingsHonestyVote.
+  ///
+  /// In en, this message translates to:
+  /// **'Honesty vote'**
+  String get gameSettingsHonestyVote;
 
   /// No description provided for @gameSettingsAllowSpectators.
   ///
@@ -1407,6 +1509,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Leave'**
   String get leave;
+
+  /// No description provided for @leaveGame.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave Game'**
+  String get leaveGame;
 
   /// No description provided for @ok.
   ///
@@ -1779,6 +1887,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Share invite link'**
   String get lobbyShareInviteLink;
+
+  /// No description provided for @roomShareMaxPlayers.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} players max'**
+  String roomShareMaxPlayers(int count);
+
+  /// No description provided for @roomShareInvitedBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Invited by'**
+  String get roomShareInvitedBy;
+
+  /// No description provided for @roomShareScoreLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Score'**
+  String get roomShareScoreLabel;
+
+  /// No description provided for @roomShareHonestyLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Honesty'**
+  String get roomShareHonestyLabel;
+
+  /// No description provided for @roomShareJoinCta.
+  ///
+  /// In en, this message translates to:
+  /// **'JOIN ROOM'**
+  String get roomShareJoinCta;
 
   /// No description provided for @lobbyShareInviteMessage.
   ///
@@ -2644,6 +2782,18 @@ abstract class AppLocalizations {
   /// **'completed their turn!'**
   String get todCompletedTurn;
 
+  /// No description provided for @todNoAnswerOrProofYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No response or proof for this turn'**
+  String get todNoAnswerOrProofYet;
+
+  /// No description provided for @todSpectatorWatchingLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Watching — no actions available'**
+  String get todSpectatorWatchingLabel;
+
   /// No description provided for @todCustomCardAdded.
   ///
   /// In en, this message translates to:
@@ -2677,7 +2827,7 @@ abstract class AppLocalizations {
   /// No description provided for @todDoneButton.
   ///
   /// In en, this message translates to:
-  /// **'Done! ✅'**
+  /// **'Respond ✅'**
   String get todDoneButton;
 
   /// No description provided for @todEndGame.
@@ -2782,6 +2932,54 @@ abstract class AppLocalizations {
   /// **'Pick at least one person.'**
   String get todProofVisibilityPickAtLeastOne;
 
+  /// No description provided for @todProofViewedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Proof viewed'**
+  String get todProofViewedLabel;
+
+  /// No description provided for @todProofTapToViewLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'🔒 Tap to view proof'**
+  String get todProofTapToViewLabel;
+
+  /// No description provided for @todVoiceProofLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'VOICE PROOF'**
+  String get todVoiceProofLabel;
+
+  /// No description provided for @todImageProofLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'IMAGE PROOF'**
+  String get todImageProofLabel;
+
+  /// No description provided for @todProofReplayCount.
+  ///
+  /// In en, this message translates to:
+  /// **'👁 Replay ({count} left)'**
+  String todProofReplayCount(int count);
+
+  /// No description provided for @todProofNoReplaysLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'No replays left for this proof.'**
+  String get todProofNoReplaysLeft;
+
+  /// No description provided for @todProofNotAllowedToView.
+  ///
+  /// In en, this message translates to:
+  /// **'You are not allowed to view this proof.'**
+  String get todProofNotAllowedToView;
+
+  /// No description provided for @todProofOpenFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open proof — please try again.'**
+  String get todProofOpenFailed;
+
   /// No description provided for @todReactLabel.
   ///
   /// In en, this message translates to:
@@ -2853,6 +3051,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{name} is choosing…'**
   String todPlayerIsChoosing(String name);
+
+  /// No description provided for @todWaitingForPlayerGeneric.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for player…'**
+  String get todWaitingForPlayerGeneric;
 
   /// No description provided for @todTruthChoiceDescription.
   ///
@@ -3400,6 +3604,36 @@ abstract class AppLocalizations {
   /// **'Submit one punishment for {name}:'**
   String todSubmitPunishmentFor(String name);
 
+  /// No description provided for @todPunishmentHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. \"Do 10 push-ups\"'**
+  String get todPunishmentHint;
+
+  /// No description provided for @todPickYourPunishment.
+  ///
+  /// In en, this message translates to:
+  /// **'⚡ PICK YOUR PUNISHMENT'**
+  String get todPickYourPunishment;
+
+  /// No description provided for @todPlayerIsChoosingPunishment.
+  ///
+  /// In en, this message translates to:
+  /// **'⚡ {name} IS CHOOSING…'**
+  String todPlayerIsChoosingPunishment(String name);
+
+  /// No description provided for @todEveryoneSubmittedPickOne.
+  ///
+  /// In en, this message translates to:
+  /// **'Everyone submitted one — pick which you\'ll do.'**
+  String get todEveryoneSubmittedPickOne;
+
+  /// No description provided for @todWaitingForPlayerToPickOne.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for {name} to pick one.'**
+  String todWaitingForPlayerToPickOne(String name);
+
   /// No description provided for @todSubmittedCount.
   ///
   /// In en, this message translates to:
@@ -3423,6 +3657,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Truth or Dare?'**
   String get todWaitingChoosingQuestion;
+
+  /// No description provided for @todYourTurnBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'⚡ YOUR TURN'**
+  String get todYourTurnBadge;
+
+  /// No description provided for @todTheirTurn.
+  ///
+  /// In en, this message translates to:
+  /// **'It\'s their turn'**
+  String get todTheirTurn;
 
   /// No description provided for @todWinnerWins.
   ///
@@ -4522,6 +4768,24 @@ abstract class AppLocalizations {
   /// **'Mauritanian Ouguiya'**
   String get walletCurrencyName;
 
+  /// No description provided for @walletCurrencyShort.
+  ///
+  /// In en, this message translates to:
+  /// **'MRU'**
+  String get walletCurrencyShort;
+
+  /// No description provided for @walletAvailableBalanceLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Available Balance'**
+  String get walletAvailableBalanceLabel;
+
+  /// No description provided for @walletFrozenLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Wallet (Frozen)'**
+  String get walletFrozenLabel;
+
   /// No description provided for @walletDeposit.
   ///
   /// In en, this message translates to:
@@ -4894,6 +5158,198 @@ abstract class AppLocalizations {
   /// **'App Theme'**
   String get premiumAppThemeTitle;
 
+  /// No description provided for @appThemeNameJma3a.
+  ///
+  /// In en, this message translates to:
+  /// **'Jma3a'**
+  String get appThemeNameJma3a;
+
+  /// No description provided for @appThemeNameMidnight.
+  ///
+  /// In en, this message translates to:
+  /// **'Midnight'**
+  String get appThemeNameMidnight;
+
+  /// No description provided for @appThemeNameClassic.
+  ///
+  /// In en, this message translates to:
+  /// **'Classic'**
+  String get appThemeNameClassic;
+
+  /// No description provided for @appThemeNameCandy.
+  ///
+  /// In en, this message translates to:
+  /// **'Candy'**
+  String get appThemeNameCandy;
+
+  /// No description provided for @appThemeNameOcean.
+  ///
+  /// In en, this message translates to:
+  /// **'Ocean'**
+  String get appThemeNameOcean;
+
+  /// No description provided for @appThemeNameForest.
+  ///
+  /// In en, this message translates to:
+  /// **'Forest'**
+  String get appThemeNameForest;
+
+  /// No description provided for @appThemeNameSunset.
+  ///
+  /// In en, this message translates to:
+  /// **'Sunset'**
+  String get appThemeNameSunset;
+
+  /// No description provided for @appThemeNameLavender.
+  ///
+  /// In en, this message translates to:
+  /// **'Lavender'**
+  String get appThemeNameLavender;
+
+  /// No description provided for @appThemeNameRose.
+  ///
+  /// In en, this message translates to:
+  /// **'Rose'**
+  String get appThemeNameRose;
+
+  /// No description provided for @appThemeNameGalaxy.
+  ///
+  /// In en, this message translates to:
+  /// **'Galaxy'**
+  String get appThemeNameGalaxy;
+
+  /// No description provided for @appThemeNameNeon.
+  ///
+  /// In en, this message translates to:
+  /// **'Neon'**
+  String get appThemeNameNeon;
+
+  /// No description provided for @appThemeNameGold.
+  ///
+  /// In en, this message translates to:
+  /// **'Gold'**
+  String get appThemeNameGold;
+
+  /// No description provided for @appThemeNameCyber.
+  ///
+  /// In en, this message translates to:
+  /// **'Cyber'**
+  String get appThemeNameCyber;
+
+  /// No description provided for @appThemeNameLava.
+  ///
+  /// In en, this message translates to:
+  /// **'Lava'**
+  String get appThemeNameLava;
+
+  /// No description provided for @appThemeNameAurora.
+  ///
+  /// In en, this message translates to:
+  /// **'Aurora'**
+  String get appThemeNameAurora;
+
+  /// No description provided for @appThemeNameBubblegum.
+  ///
+  /// In en, this message translates to:
+  /// **'Bubblegum'**
+  String get appThemeNameBubblegum;
+
+  /// No description provided for @appThemeNameCandyPop.
+  ///
+  /// In en, this message translates to:
+  /// **'Candy Pop'**
+  String get appThemeNameCandyPop;
+
+  /// No description provided for @appThemeNameDeepSpace.
+  ///
+  /// In en, this message translates to:
+  /// **'Deep Space'**
+  String get appThemeNameDeepSpace;
+
+  /// No description provided for @appThemeNameBlossom.
+  ///
+  /// In en, this message translates to:
+  /// **'Blossom'**
+  String get appThemeNameBlossom;
+
+  /// No description provided for @appThemeNameLovestruck.
+  ///
+  /// In en, this message translates to:
+  /// **'Lovestruck'**
+  String get appThemeNameLovestruck;
+
+  /// No description provided for @premiumGameCardColorTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Game Card Color'**
+  String get premiumGameCardColorTitle;
+
+  /// No description provided for @premiumGameCardColorHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Applies to the front of your game cards only — the back keeps its own look.'**
+  String get premiumGameCardColorHint;
+
+  /// No description provided for @premiumGameCardColorEmoji.
+  ///
+  /// In en, this message translates to:
+  /// **'Game Card Color 🎴'**
+  String get premiumGameCardColorEmoji;
+
+  /// No description provided for @premiumChooseGameCardColor.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a game card color'**
+  String get premiumChooseGameCardColor;
+
+  /// No description provided for @gameCardColorClassicPurple.
+  ///
+  /// In en, this message translates to:
+  /// **'Classic Purple'**
+  String get gameCardColorClassicPurple;
+
+  /// No description provided for @gameCardColorMidnightBlue.
+  ///
+  /// In en, this message translates to:
+  /// **'Midnight Blue'**
+  String get gameCardColorMidnightBlue;
+
+  /// No description provided for @gameCardColorEmberRed.
+  ///
+  /// In en, this message translates to:
+  /// **'Ember Red'**
+  String get gameCardColorEmberRed;
+
+  /// No description provided for @gameCardColorForestEmerald.
+  ///
+  /// In en, this message translates to:
+  /// **'Forest Emerald'**
+  String get gameCardColorForestEmerald;
+
+  /// No description provided for @gameCardColorSunsetOrange.
+  ///
+  /// In en, this message translates to:
+  /// **'Sunset Orange'**
+  String get gameCardColorSunsetOrange;
+
+  /// No description provided for @gameCardColorGoldPrestige.
+  ///
+  /// In en, this message translates to:
+  /// **'Gold Prestige'**
+  String get gameCardColorGoldPrestige;
+
+  /// No description provided for @gameCardColorRosePink.
+  ///
+  /// In en, this message translates to:
+  /// **'Rose Pink'**
+  String get gameCardColorRosePink;
+
+  /// No description provided for @gameCardColorCyberTeal.
+  ///
+  /// In en, this message translates to:
+  /// **'Cyber Teal'**
+  String get gameCardColorCyberTeal;
+
   /// No description provided for @premiumAutoRenewNotice.
   ///
   /// In en, this message translates to:
@@ -4911,6 +5367,132 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Background Color'**
   String get premiumBackgroundColorTitle;
+
+  /// No description provided for @bgColorWhite.
+  ///
+  /// In en, this message translates to:
+  /// **'White'**
+  String get bgColorWhite;
+
+  /// No description provided for @bgColorWarmWhite.
+  ///
+  /// In en, this message translates to:
+  /// **'Warm White'**
+  String get bgColorWarmWhite;
+
+  /// No description provided for @bgColorLightGrey.
+  ///
+  /// In en, this message translates to:
+  /// **'Light Grey'**
+  String get bgColorLightGrey;
+
+  /// No description provided for @bgColorCoolGrey.
+  ///
+  /// In en, this message translates to:
+  /// **'Cool Grey'**
+  String get bgColorCoolGrey;
+
+  /// No description provided for @bgColorCharcoal.
+  ///
+  /// In en, this message translates to:
+  /// **'Charcoal'**
+  String get bgColorCharcoal;
+
+  /// No description provided for @bgColorSoftBlack.
+  ///
+  /// In en, this message translates to:
+  /// **'Soft Black'**
+  String get bgColorSoftBlack;
+
+  /// No description provided for @bgColorCream.
+  ///
+  /// In en, this message translates to:
+  /// **'Cream'**
+  String get bgColorCream;
+
+  /// No description provided for @bgColorBeige.
+  ///
+  /// In en, this message translates to:
+  /// **'Beige'**
+  String get bgColorBeige;
+
+  /// No description provided for @bgColorSand.
+  ///
+  /// In en, this message translates to:
+  /// **'Sand'**
+  String get bgColorSand;
+
+  /// No description provided for @bgColorStone.
+  ///
+  /// In en, this message translates to:
+  /// **'Stone'**
+  String get bgColorStone;
+
+  /// No description provided for @bgColorSlate.
+  ///
+  /// In en, this message translates to:
+  /// **'Slate'**
+  String get bgColorSlate;
+
+  /// No description provided for @bgColorNavyGrey.
+  ///
+  /// In en, this message translates to:
+  /// **'Navy Grey'**
+  String get bgColorNavyGrey;
+
+  /// No description provided for @bgColorDeepBlueGrey.
+  ///
+  /// In en, this message translates to:
+  /// **'Deep Blue Grey'**
+  String get bgColorDeepBlueGrey;
+
+  /// No description provided for @bgColorForestMist.
+  ///
+  /// In en, this message translates to:
+  /// **'Forest Mist'**
+  String get bgColorForestMist;
+
+  /// No description provided for @bgColorSage.
+  ///
+  /// In en, this message translates to:
+  /// **'Sage'**
+  String get bgColorSage;
+
+  /// No description provided for @bgColorPaleBlue.
+  ///
+  /// In en, this message translates to:
+  /// **'Pale Blue'**
+  String get bgColorPaleBlue;
+
+  /// No description provided for @bgColorMistBlue.
+  ///
+  /// In en, this message translates to:
+  /// **'Mist Blue'**
+  String get bgColorMistBlue;
+
+  /// No description provided for @bgColorLavenderMist.
+  ///
+  /// In en, this message translates to:
+  /// **'Lavender Mist'**
+  String get bgColorLavenderMist;
+
+  /// No description provided for @bgColorBlush.
+  ///
+  /// In en, this message translates to:
+  /// **'Blush'**
+  String get bgColorBlush;
+
+  /// No description provided for @bgColorSoftMint.
+  ///
+  /// In en, this message translates to:
+  /// **'Soft Mint'**
+  String get bgColorSoftMint;
+
+  /// No description provided for @bgColorGraphite.
+  ///
+  /// In en, this message translates to:
+  /// **'Graphite'**
+  String get bgColorGraphite;
 
   /// No description provided for @premiumBlendsIntoTheme.
   ///
@@ -5486,6 +6068,30 @@ abstract class AppLocalizations {
   /// **'Minimum players: {count}'**
   String packMinPlayersLabel(int count);
 
+  /// No description provided for @packSetMaxPlayersToggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Set a maximum number of players'**
+  String get packSetMaxPlayersToggle;
+
+  /// No description provided for @packMaxPlayersLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Maximum players: {count}'**
+  String packMaxPlayersLabel(int count);
+
+  /// No description provided for @packMaxPlayersSliderLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} players'**
+  String packMaxPlayersSliderLabel(int count);
+
+  /// No description provided for @packNoMaxPlayersHint.
+  ///
+  /// In en, this message translates to:
+  /// **'No limit — playable with any group above the minimum'**
+  String get packNoMaxPlayersHint;
+
   /// No description provided for @packMinimumReached.
   ///
   /// In en, this message translates to:
@@ -5545,6 +6151,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Pick existing category'**
   String get packPickExistingCategory;
+
+  /// No description provided for @roomSettingsCategoryFilterLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Category'**
+  String get roomSettingsCategoryFilterLabel;
 
   /// No description provided for @packPlayersSliderLabel.
   ///
@@ -5929,6 +6541,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Browse the marketplace to find packs.'**
   String get packBrowseMarketplaceHint;
+
+  /// No description provided for @packConfirmPurchaseTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm Purchase'**
+  String get packConfirmPurchaseTitle;
+
+  /// No description provided for @packConfirmPurchaseBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re about to purchase \"{name}\" for {price}.'**
+  String packConfirmPurchaseBody(String name, String price);
+
+  /// No description provided for @packConfirmPurchaseAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Purchase'**
+  String get packConfirmPurchaseAction;
 
   /// No description provided for @packBuyForPrice.
   ///
@@ -6373,6 +7003,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Report submitted.'**
   String get packReportSubmitted;
+
+  /// No description provided for @packReportAlreadySubmitted.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve already reported this pack.'**
+  String get packReportAlreadySubmitted;
+
+  /// No description provided for @packReportFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t submit your report. Please try again.'**
+  String get packReportFailed;
 
   /// No description provided for @packPromoteYourPack.
   ///
@@ -6889,6 +7531,714 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Hair'**
   String get avatarTabHair;
+
+  /// No description provided for @avatarOptTanned.
+  ///
+  /// In en, this message translates to:
+  /// **'Tanned'**
+  String get avatarOptTanned;
+
+  /// No description provided for @avatarOptYellow.
+  ///
+  /// In en, this message translates to:
+  /// **'Yellow'**
+  String get avatarOptYellow;
+
+  /// No description provided for @avatarOptPale.
+  ///
+  /// In en, this message translates to:
+  /// **'Pale'**
+  String get avatarOptPale;
+
+  /// No description provided for @avatarOptLight.
+  ///
+  /// In en, this message translates to:
+  /// **'Light'**
+  String get avatarOptLight;
+
+  /// No description provided for @avatarOptBrown.
+  ///
+  /// In en, this message translates to:
+  /// **'Brown'**
+  String get avatarOptBrown;
+
+  /// No description provided for @avatarOptDarkBrown.
+  ///
+  /// In en, this message translates to:
+  /// **'Dark Brown'**
+  String get avatarOptDarkBrown;
+
+  /// No description provided for @avatarOptBlack.
+  ///
+  /// In en, this message translates to:
+  /// **'Black'**
+  String get avatarOptBlack;
+
+  /// No description provided for @avatarOptAuburn.
+  ///
+  /// In en, this message translates to:
+  /// **'Auburn'**
+  String get avatarOptAuburn;
+
+  /// No description provided for @avatarOptBlonde.
+  ///
+  /// In en, this message translates to:
+  /// **'Blonde'**
+  String get avatarOptBlonde;
+
+  /// No description provided for @avatarOptBlondeGolden.
+  ///
+  /// In en, this message translates to:
+  /// **'Golden Blonde'**
+  String get avatarOptBlondeGolden;
+
+  /// No description provided for @avatarOptBrownDark.
+  ///
+  /// In en, this message translates to:
+  /// **'Dark Brown'**
+  String get avatarOptBrownDark;
+
+  /// No description provided for @avatarOptPastelPink.
+  ///
+  /// In en, this message translates to:
+  /// **'Pastel Pink'**
+  String get avatarOptPastelPink;
+
+  /// No description provided for @avatarOptPlatinum.
+  ///
+  /// In en, this message translates to:
+  /// **'Platinum'**
+  String get avatarOptPlatinum;
+
+  /// No description provided for @avatarOptRed.
+  ///
+  /// In en, this message translates to:
+  /// **'Red'**
+  String get avatarOptRed;
+
+  /// No description provided for @avatarOptSilverGray.
+  ///
+  /// In en, this message translates to:
+  /// **'Silver Gray'**
+  String get avatarOptSilverGray;
+
+  /// No description provided for @avatarOptNoHair.
+  ///
+  /// In en, this message translates to:
+  /// **'No Hair'**
+  String get avatarOptNoHair;
+
+  /// No description provided for @avatarOptEyepatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Eyepatch'**
+  String get avatarOptEyepatch;
+
+  /// No description provided for @avatarOptHat.
+  ///
+  /// In en, this message translates to:
+  /// **'Hat'**
+  String get avatarOptHat;
+
+  /// No description provided for @avatarOptHijab.
+  ///
+  /// In en, this message translates to:
+  /// **'Hijab'**
+  String get avatarOptHijab;
+
+  /// No description provided for @avatarOptTurban.
+  ///
+  /// In en, this message translates to:
+  /// **'Turban'**
+  String get avatarOptTurban;
+
+  /// No description provided for @avatarOptWinterHat1.
+  ///
+  /// In en, this message translates to:
+  /// **'Winter Hat 1'**
+  String get avatarOptWinterHat1;
+
+  /// No description provided for @avatarOptWinterHat2.
+  ///
+  /// In en, this message translates to:
+  /// **'Winter Hat 2'**
+  String get avatarOptWinterHat2;
+
+  /// No description provided for @avatarOptWinterHat3.
+  ///
+  /// In en, this message translates to:
+  /// **'Winter Hat 3'**
+  String get avatarOptWinterHat3;
+
+  /// No description provided for @avatarOptWinterHat4.
+  ///
+  /// In en, this message translates to:
+  /// **'Winter Hat 4'**
+  String get avatarOptWinterHat4;
+
+  /// No description provided for @avatarOptLongHairBigHair.
+  ///
+  /// In en, this message translates to:
+  /// **'Long Hair — Big Hair'**
+  String get avatarOptLongHairBigHair;
+
+  /// No description provided for @avatarOptLongHairBob.
+  ///
+  /// In en, this message translates to:
+  /// **'Long Hair — Bob'**
+  String get avatarOptLongHairBob;
+
+  /// No description provided for @avatarOptLongHairBun.
+  ///
+  /// In en, this message translates to:
+  /// **'Long Hair — Bun'**
+  String get avatarOptLongHairBun;
+
+  /// No description provided for @avatarOptLongHairCurly.
+  ///
+  /// In en, this message translates to:
+  /// **'Long Hair — Curly'**
+  String get avatarOptLongHairCurly;
+
+  /// No description provided for @avatarOptLongHairCurvy.
+  ///
+  /// In en, this message translates to:
+  /// **'Long Hair — Curvy'**
+  String get avatarOptLongHairCurvy;
+
+  /// No description provided for @avatarOptLongHairDreads.
+  ///
+  /// In en, this message translates to:
+  /// **'Long Hair — Dreads'**
+  String get avatarOptLongHairDreads;
+
+  /// No description provided for @avatarOptLongHairFrida.
+  ///
+  /// In en, this message translates to:
+  /// **'Long Hair — Frida'**
+  String get avatarOptLongHairFrida;
+
+  /// No description provided for @avatarOptLongHairFro.
+  ///
+  /// In en, this message translates to:
+  /// **'Long Hair — Fro'**
+  String get avatarOptLongHairFro;
+
+  /// No description provided for @avatarOptLongHairFroBand.
+  ///
+  /// In en, this message translates to:
+  /// **'Long Hair — Fro with Band'**
+  String get avatarOptLongHairFroBand;
+
+  /// No description provided for @avatarOptLongHairNotTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'Long Hair — Not Too Long'**
+  String get avatarOptLongHairNotTooLong;
+
+  /// No description provided for @avatarOptLongHairShavedSides.
+  ///
+  /// In en, this message translates to:
+  /// **'Long Hair — Shaved Sides'**
+  String get avatarOptLongHairShavedSides;
+
+  /// No description provided for @avatarOptLongHairMiaWallace.
+  ///
+  /// In en, this message translates to:
+  /// **'Long Hair — Mia Wallace'**
+  String get avatarOptLongHairMiaWallace;
+
+  /// No description provided for @avatarOptLongHairStraight.
+  ///
+  /// In en, this message translates to:
+  /// **'Long Hair — Straight'**
+  String get avatarOptLongHairStraight;
+
+  /// No description provided for @avatarOptLongHairStraight2.
+  ///
+  /// In en, this message translates to:
+  /// **'Long Hair — Straight 2'**
+  String get avatarOptLongHairStraight2;
+
+  /// No description provided for @avatarOptLongHairStraightStrand.
+  ///
+  /// In en, this message translates to:
+  /// **'Long Hair — Straight Strand'**
+  String get avatarOptLongHairStraightStrand;
+
+  /// No description provided for @avatarOptShortHairDreads01.
+  ///
+  /// In en, this message translates to:
+  /// **'Short Hair — Dreads 1'**
+  String get avatarOptShortHairDreads01;
+
+  /// No description provided for @avatarOptShortHairDreads02.
+  ///
+  /// In en, this message translates to:
+  /// **'Short Hair — Dreads 2'**
+  String get avatarOptShortHairDreads02;
+
+  /// No description provided for @avatarOptShortHairFrizzle.
+  ///
+  /// In en, this message translates to:
+  /// **'Short Hair — Frizzle'**
+  String get avatarOptShortHairFrizzle;
+
+  /// No description provided for @avatarOptShortHairShaggyMullet.
+  ///
+  /// In en, this message translates to:
+  /// **'Short Hair — Shaggy Mullet'**
+  String get avatarOptShortHairShaggyMullet;
+
+  /// No description provided for @avatarOptShortHairShortCurly.
+  ///
+  /// In en, this message translates to:
+  /// **'Short Hair — Short Curly'**
+  String get avatarOptShortHairShortCurly;
+
+  /// No description provided for @avatarOptShortHairShortFlat.
+  ///
+  /// In en, this message translates to:
+  /// **'Short Hair — Short Flat'**
+  String get avatarOptShortHairShortFlat;
+
+  /// No description provided for @avatarOptShortHairShortRound.
+  ///
+  /// In en, this message translates to:
+  /// **'Short Hair — Short Round'**
+  String get avatarOptShortHairShortRound;
+
+  /// No description provided for @avatarOptShortHairShortWaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Short Hair — Short Waved'**
+  String get avatarOptShortHairShortWaved;
+
+  /// No description provided for @avatarOptShortHairSides.
+  ///
+  /// In en, this message translates to:
+  /// **'Short Hair — Sides'**
+  String get avatarOptShortHairSides;
+
+  /// No description provided for @avatarOptShortHairTheCaesar.
+  ///
+  /// In en, this message translates to:
+  /// **'Short Hair — Caesar'**
+  String get avatarOptShortHairTheCaesar;
+
+  /// No description provided for @avatarOptShortHairTheCaesarSidePart.
+  ///
+  /// In en, this message translates to:
+  /// **'Short Hair — Caesar Side Part'**
+  String get avatarOptShortHairTheCaesarSidePart;
+
+  /// No description provided for @avatarOptBlank.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get avatarOptBlank;
+
+  /// No description provided for @avatarOptKurt.
+  ///
+  /// In en, this message translates to:
+  /// **'Kurt Glasses'**
+  String get avatarOptKurt;
+
+  /// No description provided for @avatarOptPrescription01.
+  ///
+  /// In en, this message translates to:
+  /// **'Prescription Glasses 1'**
+  String get avatarOptPrescription01;
+
+  /// No description provided for @avatarOptPrescription02.
+  ///
+  /// In en, this message translates to:
+  /// **'Prescription Glasses 2'**
+  String get avatarOptPrescription02;
+
+  /// No description provided for @avatarOptRound.
+  ///
+  /// In en, this message translates to:
+  /// **'Round Glasses'**
+  String get avatarOptRound;
+
+  /// No description provided for @avatarOptSunglasses.
+  ///
+  /// In en, this message translates to:
+  /// **'Sunglasses'**
+  String get avatarOptSunglasses;
+
+  /// No description provided for @avatarOptWayfarers.
+  ///
+  /// In en, this message translates to:
+  /// **'Wayfarers'**
+  String get avatarOptWayfarers;
+
+  /// No description provided for @avatarOptBeardMedium.
+  ///
+  /// In en, this message translates to:
+  /// **'Medium Beard'**
+  String get avatarOptBeardMedium;
+
+  /// No description provided for @avatarOptBeardLight.
+  ///
+  /// In en, this message translates to:
+  /// **'Light Beard'**
+  String get avatarOptBeardLight;
+
+  /// No description provided for @avatarOptBeardMagestic.
+  ///
+  /// In en, this message translates to:
+  /// **'Majestic Beard'**
+  String get avatarOptBeardMagestic;
+
+  /// No description provided for @avatarOptMoustacheFancy.
+  ///
+  /// In en, this message translates to:
+  /// **'Fancy Moustache'**
+  String get avatarOptMoustacheFancy;
+
+  /// No description provided for @avatarOptMoustacheMagnum.
+  ///
+  /// In en, this message translates to:
+  /// **'Magnum Moustache'**
+  String get avatarOptMoustacheMagnum;
+
+  /// No description provided for @avatarOptBlazerShirt.
+  ///
+  /// In en, this message translates to:
+  /// **'Blazer & Shirt'**
+  String get avatarOptBlazerShirt;
+
+  /// No description provided for @avatarOptBlazerSweater.
+  ///
+  /// In en, this message translates to:
+  /// **'Blazer & Sweater'**
+  String get avatarOptBlazerSweater;
+
+  /// No description provided for @avatarOptCollarSweater.
+  ///
+  /// In en, this message translates to:
+  /// **'Collar Sweater'**
+  String get avatarOptCollarSweater;
+
+  /// No description provided for @avatarOptGraphicShirt.
+  ///
+  /// In en, this message translates to:
+  /// **'Graphic Shirt'**
+  String get avatarOptGraphicShirt;
+
+  /// No description provided for @avatarOptHoodie.
+  ///
+  /// In en, this message translates to:
+  /// **'Hoodie'**
+  String get avatarOptHoodie;
+
+  /// No description provided for @avatarOptOverall.
+  ///
+  /// In en, this message translates to:
+  /// **'Overalls'**
+  String get avatarOptOverall;
+
+  /// No description provided for @avatarOptShirtCrewNeck.
+  ///
+  /// In en, this message translates to:
+  /// **'Crew Neck Shirt'**
+  String get avatarOptShirtCrewNeck;
+
+  /// No description provided for @avatarOptShirtScoopNeck.
+  ///
+  /// In en, this message translates to:
+  /// **'Scoop Neck Shirt'**
+  String get avatarOptShirtScoopNeck;
+
+  /// No description provided for @avatarOptShirtVNeck.
+  ///
+  /// In en, this message translates to:
+  /// **'V-Neck Shirt'**
+  String get avatarOptShirtVNeck;
+
+  /// No description provided for @avatarOptBlue01.
+  ///
+  /// In en, this message translates to:
+  /// **'Blue 1'**
+  String get avatarOptBlue01;
+
+  /// No description provided for @avatarOptBlue02.
+  ///
+  /// In en, this message translates to:
+  /// **'Blue 2'**
+  String get avatarOptBlue02;
+
+  /// No description provided for @avatarOptBlue03.
+  ///
+  /// In en, this message translates to:
+  /// **'Blue 3'**
+  String get avatarOptBlue03;
+
+  /// No description provided for @avatarOptGray01.
+  ///
+  /// In en, this message translates to:
+  /// **'Gray 1'**
+  String get avatarOptGray01;
+
+  /// No description provided for @avatarOptGray02.
+  ///
+  /// In en, this message translates to:
+  /// **'Gray 2'**
+  String get avatarOptGray02;
+
+  /// No description provided for @avatarOptHeather.
+  ///
+  /// In en, this message translates to:
+  /// **'Heather'**
+  String get avatarOptHeather;
+
+  /// No description provided for @avatarOptPastelBlue.
+  ///
+  /// In en, this message translates to:
+  /// **'Pastel Blue'**
+  String get avatarOptPastelBlue;
+
+  /// No description provided for @avatarOptPastelGreen.
+  ///
+  /// In en, this message translates to:
+  /// **'Pastel Green'**
+  String get avatarOptPastelGreen;
+
+  /// No description provided for @avatarOptPastelOrange.
+  ///
+  /// In en, this message translates to:
+  /// **'Pastel Orange'**
+  String get avatarOptPastelOrange;
+
+  /// No description provided for @avatarOptPastelRed.
+  ///
+  /// In en, this message translates to:
+  /// **'Pastel Red'**
+  String get avatarOptPastelRed;
+
+  /// No description provided for @avatarOptPastelYellow.
+  ///
+  /// In en, this message translates to:
+  /// **'Pastel Yellow'**
+  String get avatarOptPastelYellow;
+
+  /// No description provided for @avatarOptPink.
+  ///
+  /// In en, this message translates to:
+  /// **'Pink'**
+  String get avatarOptPink;
+
+  /// No description provided for @avatarOptWhite.
+  ///
+  /// In en, this message translates to:
+  /// **'White'**
+  String get avatarOptWhite;
+
+  /// No description provided for @avatarOptClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Closed'**
+  String get avatarOptClose;
+
+  /// No description provided for @avatarOptCry.
+  ///
+  /// In en, this message translates to:
+  /// **'Crying'**
+  String get avatarOptCry;
+
+  /// No description provided for @avatarOptDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Default'**
+  String get avatarOptDefault;
+
+  /// No description provided for @avatarOptDizzy.
+  ///
+  /// In en, this message translates to:
+  /// **'Dizzy'**
+  String get avatarOptDizzy;
+
+  /// No description provided for @avatarOptEyeRoll.
+  ///
+  /// In en, this message translates to:
+  /// **'Eye Roll'**
+  String get avatarOptEyeRoll;
+
+  /// No description provided for @avatarOptHappy.
+  ///
+  /// In en, this message translates to:
+  /// **'Happy'**
+  String get avatarOptHappy;
+
+  /// No description provided for @avatarOptHearts.
+  ///
+  /// In en, this message translates to:
+  /// **'Heart Eyes'**
+  String get avatarOptHearts;
+
+  /// No description provided for @avatarOptSide.
+  ///
+  /// In en, this message translates to:
+  /// **'Looking Side'**
+  String get avatarOptSide;
+
+  /// No description provided for @avatarOptSquint.
+  ///
+  /// In en, this message translates to:
+  /// **'Squinting'**
+  String get avatarOptSquint;
+
+  /// No description provided for @avatarOptSurprised.
+  ///
+  /// In en, this message translates to:
+  /// **'Surprised'**
+  String get avatarOptSurprised;
+
+  /// No description provided for @avatarOptWink.
+  ///
+  /// In en, this message translates to:
+  /// **'Wink'**
+  String get avatarOptWink;
+
+  /// No description provided for @avatarOptWinkWacky.
+  ///
+  /// In en, this message translates to:
+  /// **'Wacky Wink'**
+  String get avatarOptWinkWacky;
+
+  /// No description provided for @avatarOptAngry.
+  ///
+  /// In en, this message translates to:
+  /// **'Angry'**
+  String get avatarOptAngry;
+
+  /// No description provided for @avatarOptAngryNatural.
+  ///
+  /// In en, this message translates to:
+  /// **'Angry (Natural)'**
+  String get avatarOptAngryNatural;
+
+  /// No description provided for @avatarOptDefaultNatural.
+  ///
+  /// In en, this message translates to:
+  /// **'Default (Natural)'**
+  String get avatarOptDefaultNatural;
+
+  /// No description provided for @avatarOptFlatNatural.
+  ///
+  /// In en, this message translates to:
+  /// **'Flat (Natural)'**
+  String get avatarOptFlatNatural;
+
+  /// No description provided for @avatarOptRaisedExcited.
+  ///
+  /// In en, this message translates to:
+  /// **'Raised Excited'**
+  String get avatarOptRaisedExcited;
+
+  /// No description provided for @avatarOptRaisedExcitedNatural.
+  ///
+  /// In en, this message translates to:
+  /// **'Raised Excited (Natural)'**
+  String get avatarOptRaisedExcitedNatural;
+
+  /// No description provided for @avatarOptSadConcerned.
+  ///
+  /// In en, this message translates to:
+  /// **'Sad Concerned'**
+  String get avatarOptSadConcerned;
+
+  /// No description provided for @avatarOptSadConcernedNatural.
+  ///
+  /// In en, this message translates to:
+  /// **'Sad Concerned (Natural)'**
+  String get avatarOptSadConcernedNatural;
+
+  /// No description provided for @avatarOptUnibrowNatural.
+  ///
+  /// In en, this message translates to:
+  /// **'Unibrow (Natural)'**
+  String get avatarOptUnibrowNatural;
+
+  /// No description provided for @avatarOptUpDown.
+  ///
+  /// In en, this message translates to:
+  /// **'Up & Down'**
+  String get avatarOptUpDown;
+
+  /// No description provided for @avatarOptUpDownNatural.
+  ///
+  /// In en, this message translates to:
+  /// **'Up & Down (Natural)'**
+  String get avatarOptUpDownNatural;
+
+  /// No description provided for @avatarOptConcerned.
+  ///
+  /// In en, this message translates to:
+  /// **'Concerned'**
+  String get avatarOptConcerned;
+
+  /// No description provided for @avatarOptDisbelief.
+  ///
+  /// In en, this message translates to:
+  /// **'Disbelief'**
+  String get avatarOptDisbelief;
+
+  /// No description provided for @avatarOptEating.
+  ///
+  /// In en, this message translates to:
+  /// **'Eating'**
+  String get avatarOptEating;
+
+  /// No description provided for @avatarOptGrimace.
+  ///
+  /// In en, this message translates to:
+  /// **'Grimace'**
+  String get avatarOptGrimace;
+
+  /// No description provided for @avatarOptSad.
+  ///
+  /// In en, this message translates to:
+  /// **'Sad'**
+  String get avatarOptSad;
+
+  /// No description provided for @avatarOptScreamOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Screaming'**
+  String get avatarOptScreamOpen;
+
+  /// No description provided for @avatarOptSerious.
+  ///
+  /// In en, this message translates to:
+  /// **'Serious'**
+  String get avatarOptSerious;
+
+  /// No description provided for @avatarOptSmile.
+  ///
+  /// In en, this message translates to:
+  /// **'Smile'**
+  String get avatarOptSmile;
+
+  /// No description provided for @avatarOptTongue.
+  ///
+  /// In en, this message translates to:
+  /// **'Tongue Out'**
+  String get avatarOptTongue;
+
+  /// No description provided for @avatarOptTwinkle.
+  ///
+  /// In en, this message translates to:
+  /// **'Twinkle'**
+  String get avatarOptTwinkle;
+
+  /// No description provided for @avatarOptVomit.
+  ///
+  /// In en, this message translates to:
+  /// **'Vomit'**
+  String get avatarOptVomit;
 
   /// No description provided for @avatarTabMouth.
   ///
@@ -7706,6 +9056,12 @@ abstract class AppLocalizations {
   /// **'This pack requires at least {count} players.'**
   String roomsPackRequiresMinPlayers(int count);
 
+  /// No description provided for @roomsPackRequiresMaxPlayers.
+  ///
+  /// In en, this message translates to:
+  /// **'This pack can only be played by {count} players. Set the extra players as spectators or remove them to start.'**
+  String roomsPackRequiresMaxPlayers(int count);
+
   /// No description provided for @roomsPendingEllipsis.
   ///
   /// In en, this message translates to:
@@ -7753,6 +9109,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Manage room settings'**
   String get roomsPermManageSettings;
+
+  /// No description provided for @roomsPermSetSpectator.
+  ///
+  /// In en, this message translates to:
+  /// **'Set players as spectators'**
+  String get roomsPermSetSpectator;
 
   /// No description provided for @roomsPermMuteChat.
   ///
@@ -7934,6 +9296,72 @@ abstract class AppLocalizations {
   /// **'Icons'**
   String get sharedReactionIconsTab;
 
+  /// No description provided for @sharedReactionPickIconTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a reaction'**
+  String get sharedReactionPickIconTitle;
+
+  /// No description provided for @sharedReactionPickAvatarTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick an avatar reaction'**
+  String get sharedReactionPickAvatarTitle;
+
+  /// No description provided for @sharedReactionCategoryPopular.
+  ///
+  /// In en, this message translates to:
+  /// **'Popular'**
+  String get sharedReactionCategoryPopular;
+
+  /// No description provided for @sharedReactionCategoryLove.
+  ///
+  /// In en, this message translates to:
+  /// **'Love'**
+  String get sharedReactionCategoryLove;
+
+  /// No description provided for @sharedReactionCategoryFunny.
+  ///
+  /// In en, this message translates to:
+  /// **'Funny'**
+  String get sharedReactionCategoryFunny;
+
+  /// No description provided for @sharedReactionCategoryShock.
+  ///
+  /// In en, this message translates to:
+  /// **'Shock'**
+  String get sharedReactionCategoryShock;
+
+  /// No description provided for @sharedReactionCategoryCelebration.
+  ///
+  /// In en, this message translates to:
+  /// **'Celebration'**
+  String get sharedReactionCategoryCelebration;
+
+  /// No description provided for @sharedReactionCategorySocial.
+  ///
+  /// In en, this message translates to:
+  /// **'Social'**
+  String get sharedReactionCategorySocial;
+
+  /// No description provided for @sharedReactionCategoryMoody.
+  ///
+  /// In en, this message translates to:
+  /// **'Moody'**
+  String get sharedReactionCategoryMoody;
+
+  /// No description provided for @gameResultSkipped.
+  ///
+  /// In en, this message translates to:
+  /// **'Skipped'**
+  String get gameResultSkipped;
+
+  /// No description provided for @gameResultDidNotRespond.
+  ///
+  /// In en, this message translates to:
+  /// **'Did not respond in time'**
+  String get gameResultDidNotRespond;
+
   /// No description provided for @sharedJoinRequestFailed.
   ///
   /// In en, this message translates to:
@@ -8029,6 +9457,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Reject'**
   String get sharedReject;
+
+  /// No description provided for @sharedRemoveSpectator.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove Spectator'**
+  String get sharedRemoveSpectator;
+
+  /// No description provided for @sharedSetSpectator.
+  ///
+  /// In en, this message translates to:
+  /// **'Set as Spectator'**
+  String get sharedSetSpectator;
+
+  /// No description provided for @sharedSetSpectatorBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This player will stop counting as an active player and won\'t be able to take turns, but can still watch. You can reverse this anytime.'**
+  String get sharedSetSpectatorBody;
+
+  /// No description provided for @sharedSetSpectatorTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Set as Spectator'**
+  String get sharedSetSpectatorTitle;
 
   /// No description provided for @sharedRoomMembers.
   ///
@@ -8257,6 +9709,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Block'**
   String get friendsBlock;
+
+  /// No description provided for @friendsReport.
+  ///
+  /// In en, this message translates to:
+  /// **'Report'**
+  String get friendsReport;
+
+  /// No description provided for @friendsReportAndBlock.
+  ///
+  /// In en, this message translates to:
+  /// **'Report & Block'**
+  String get friendsReportAndBlock;
+
+  /// No description provided for @friendsReportUserTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Report User'**
+  String get friendsReportUserTitle;
+
+  /// No description provided for @friendsReportHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Help us keep the community safe.'**
+  String get friendsReportHint;
+
+  /// No description provided for @friendsReportReasonHarassment.
+  ///
+  /// In en, this message translates to:
+  /// **'Harassment'**
+  String get friendsReportReasonHarassment;
+
+  /// No description provided for @friendsReportReasonImpersonation.
+  ///
+  /// In en, this message translates to:
+  /// **'Impersonation'**
+  String get friendsReportReasonImpersonation;
+
+  /// No description provided for @friendsReportReasonUnderage.
+  ///
+  /// In en, this message translates to:
+  /// **'Underage user'**
+  String get friendsReportReasonUnderage;
 
   /// No description provided for @friendsBlocked.
   ///
@@ -8828,6 +10322,48 @@ abstract class AppLocalizations {
   /// **'You already have a pending deletion request.'**
   String get deleteAccountAlreadyPending;
 
+  /// No description provided for @settingsCancelAccountDeletion.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel Account Deletion'**
+  String get settingsCancelAccountDeletion;
+
+  /// No description provided for @settingsCancelAccountDeletionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Your account will stay active if you cancel before it\'s processed.'**
+  String get settingsCancelAccountDeletionHint;
+
+  /// No description provided for @settingsCancelAccountDeletionDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel deletion request?'**
+  String get settingsCancelAccountDeletionDialogTitle;
+
+  /// No description provided for @settingsCancelAccountDeletionDialogMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Your account will remain active and nothing will be deleted.'**
+  String get settingsCancelAccountDeletionDialogMessage;
+
+  /// No description provided for @settingsCancelAccountDeletionConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel Request'**
+  String get settingsCancelAccountDeletionConfirm;
+
+  /// No description provided for @settingsAccountDeletionCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Your account deletion request has been cancelled.'**
+  String get settingsAccountDeletionCancelled;
+
+  /// No description provided for @settingsCancelAccountDeletionFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t cancel your request. It may already be past cancellation — please try again or contact support.'**
+  String get settingsCancelAccountDeletionFailed;
+
   /// No description provided for @aboutUsTitle.
   ///
   /// In en, this message translates to:
@@ -8843,7 +10379,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutUsDescription.
   ///
   /// In en, this message translates to:
-  /// **'Jma3a is a multiplayer party game app — play Truth or Dare, Never Have I Ever, and meme games with friends and family, anytime, anywhere.'**
+  /// **'Jma3a is a social multiplayer party-game platform developed and owned by MOUJ TECH. Play Truth or Dare, Never Have I Ever, and Meme games with friends and family, create and share your own packs, build a profile, and — as a Verified Creator — earn from packs you publish.'**
   String get aboutUsDescription;
 
   /// No description provided for @aboutUsCompanySectionTitle.
@@ -8855,8 +10391,14 @@ abstract class AppLocalizations {
   /// No description provided for @aboutUsCompanyInfo.
   ///
   /// In en, this message translates to:
-  /// **'Jma3a is developed and operated by the Jma3a team.'**
+  /// **'Jma3a is developed and owned by MOUJ TECH. MOUJ TECH is responsible for the app\'s development, features, and ongoing operation, including community-created packs, Verified Creator tools, Premium and Premium Plus, and the creator earnings wallet.'**
   String get aboutUsCompanyInfo;
+
+  /// No description provided for @moujTechDevelopedBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Developed by MOUJ TECH'**
+  String get moujTechDevelopedBy;
 
   /// No description provided for @aboutUsContactTitle.
   ///
@@ -8915,7 +10457,7 @@ abstract class AppLocalizations {
   /// No description provided for @privacyPolicyIntro.
   ///
   /// In en, this message translates to:
-  /// **'This Privacy Policy explains what information Jma3a collects and how it\'s used. This is placeholder content — it will be replaced with the full legal policy.'**
+  /// **'This Privacy Policy explains what information the Jma3a app collects, how it is used, and the choices you have. It describes Jma3a\'s actual current features. Some legal details specific to MOUJ TECH as a company (such as its registered address and formal contact channels) are still being finalized and will be added here once available — this does not change what is described below about how the app itself handles your information.'**
   String get privacyPolicyIntro;
 
   /// No description provided for @privacySectionInfoCollected.
@@ -8927,7 +10469,7 @@ abstract class AppLocalizations {
   /// No description provided for @privacySectionInfoCollectedBody.
   ///
   /// In en, this message translates to:
-  /// **'Placeholder — describes account details, usage data, and content you create within the app.'**
+  /// **'Account information: the email address you sign up with, and your chosen username, display name, bio, and avatar (either an uploaded photo or a generated avatar). Authentication: your password is handled by our authentication provider and is never visible to us in plain text; sign-in also uses one-time verification codes sent to your email. Activity and social data: the rooms and games you join or host, your in-game actions, scores, and streaks, chat messages you send in game rooms, and your friends, followers, and any accounts you block. Purchases and creator activity: packs you buy or publish, your Verified Creator status, wallet balance and payout history, and — if you request a physical pack — the name, phone number, and delivery area you provide for that order. Reports: if you report a pack, we record the reason and any details you add. Account deletion requests: if you request to delete your account, we record the reason you select and the request\'s status. Device and app information: your app version and build number, and basic platform information (Android or iOS), used to keep the app working correctly and to check for required updates.'**
   String get privacySectionInfoCollectedBody;
 
   /// No description provided for @privacySectionHowUsed.
@@ -8939,7 +10481,7 @@ abstract class AppLocalizations {
   /// No description provided for @privacySectionHowUsedBody.
   ///
   /// In en, this message translates to:
-  /// **'Placeholder — describes how collected information is used to provide and improve the app.'**
+  /// **'We use your information to operate the app\'s core features: creating and securing your account, matching you with rooms and games, showing your profile and stats to other players and friends as intended by each feature, processing pack purchases and creator payouts, delivering physical pack orders you request, reviewing reports and account deletion requests, and sending the notifications described below. We do not use a third-party analytics or advertising-tracking SDK in this app. We do not sell your information.'**
   String get privacySectionHowUsedBody;
 
   /// No description provided for @privacySectionNotifications.
@@ -8951,7 +10493,7 @@ abstract class AppLocalizations {
   /// No description provided for @privacySectionNotificationsBody.
   ///
   /// In en, this message translates to:
-  /// **'Placeholder — describes push notifications and how to manage your preferences.'**
+  /// **'Jma3a sends notifications for things like game invites, room activity, friend requests, and messages. Push delivery is handled through OneSignal, a third-party notification service; some notifications are also scheduled directly on your device. You can manage notification permissions at any time from your device\'s system settings.'**
   String get privacySectionNotificationsBody;
 
   /// No description provided for @privacySectionPurchases.
@@ -8963,7 +10505,7 @@ abstract class AppLocalizations {
   /// No description provided for @privacySectionPurchasesBody.
   ///
   /// In en, this message translates to:
-  /// **'Placeholder — describes how in-app purchases and subscriptions are handled.'**
+  /// **'Some packs are paid, and Premium/Premium Plus are paid subscriptions. Verified Creators can publish packs and earn from them through an in-app wallet. Jma3a does not directly collect or store your full payment card details; payments are processed through the payment methods offered at checkout. Purchase and payout records (amounts, pack/subscription identifiers, and status) are kept as part of your account and creator history.'**
   String get privacySectionPurchasesBody;
 
   /// No description provided for @privacySectionUserContent.
@@ -8975,7 +10517,7 @@ abstract class AppLocalizations {
   /// No description provided for @privacySectionUserContentBody.
   ///
   /// In en, this message translates to:
-  /// **'Placeholder — describes ownership and handling of packs, cards, and other content you create.'**
+  /// **'Packs, cards, and other content you create and publish may be visible to other users as intended by the feature you used to create them (for example, a published pack in the marketplace). Chat messages you send in a room are visible to other members of that room. You are responsible for the content you choose to create and share.'**
   String get privacySectionUserContentBody;
 
   /// No description provided for @privacySectionAccountDeletion.
@@ -8987,8 +10529,20 @@ abstract class AppLocalizations {
   /// No description provided for @privacySectionAccountDeletionBody.
   ///
   /// In en, this message translates to:
-  /// **'Placeholder — describes how to request account deletion and what happens to your data.'**
+  /// **'You can request account deletion from Settings. This submits a request for review — your account is not deleted immediately. While a request is pending, you can cancel it from Settings and your account stays active. Once a request has been accepted and processed, deletion cannot be undone, and your profile, packs, wallet balance, and game history are permanently removed.'**
   String get privacySectionAccountDeletionBody;
+
+  /// No description provided for @privacySectionThirdParty.
+  ///
+  /// In en, this message translates to:
+  /// **'Third-Party Services'**
+  String get privacySectionThirdParty;
+
+  /// No description provided for @privacySectionThirdPartyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Jma3a relies on a small number of third-party services to operate: our backend database and authentication provider, cloud object storage for images you upload (such as avatars and pack covers), and OneSignal for push notifications. These providers process data only as needed to provide their service to Jma3a.'**
+  String get privacySectionThirdPartyBody;
 
   /// No description provided for @privacySectionContact.
   ///
@@ -8999,8 +10553,8 @@ abstract class AppLocalizations {
   /// No description provided for @privacySectionContactBody.
   ///
   /// In en, this message translates to:
-  /// **'Placeholder — contact details for privacy-related questions.'**
-  String get privacySectionContactBody;
+  /// **'If you have questions about this Privacy Policy or your information, contact us at {email}.'**
+  String privacySectionContactBody(String email);
 
   /// No description provided for @termsConditionsTitle.
   ///
@@ -9011,7 +10565,7 @@ abstract class AppLocalizations {
   /// No description provided for @termsConditionsIntro.
   ///
   /// In en, this message translates to:
-  /// **'These Terms & Conditions govern your use of Jma3a, a social multiplayer game app. By creating an account or using the app, you agree to these Terms.'**
+  /// **'These Terms & Conditions govern your use of Jma3a, a social multiplayer game app developed and operated by MOUJ TECH. By creating an account or using the app, you agree to these Terms.'**
   String get termsConditionsIntro;
 
   /// No description provided for @termsSectionAccount.
@@ -9541,6 +11095,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Accept the Pack Creation Terms'**
   String get packIssueTerms;
+
+  /// No description provided for @packIssuePlayerRange.
+  ///
+  /// In en, this message translates to:
+  /// **'Maximum players must be at least the minimum'**
+  String get packIssuePlayerRange;
 
   /// No description provided for @packTermsAgreePrefix.
   ///

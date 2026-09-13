@@ -20,13 +20,28 @@ import 'user_profile_screen.dart';
 /// happens to exist. Viewing is intentionally NOT friendship-gated (see
 /// UserProfileScreen/getSocialProfile — profile data is public-safe by
 /// design; only specific social actions like messaging are gated).
-void openUserProfile(BuildContext ctx, String userId) {
+void openUserProfile(
+  BuildContext ctx,
+  String userId, {
+  String? knownDisplayName,
+  String? knownUsername,
+  String? knownAvatarUrl,
+  Map<String, dynamic>? knownAvatarConfig,
+  bool knownIsPremium = false,
+}) {
   Navigator.push(
     ctx,
     MaterialPageRoute(
       builder: (_) => ChangeNotifierProvider.value(
         value: ctx.read<FriendsProvider>(),
-        child: UserProfileScreen(userId: userId),
+        child: UserProfileScreen(
+          userId: userId,
+          knownDisplayName: knownDisplayName,
+          knownUsername: knownUsername,
+          knownAvatarUrl: knownAvatarUrl,
+          knownAvatarConfig: knownAvatarConfig,
+          knownIsPremium: knownIsPremium,
+        ),
       ),
     ),
   );
@@ -229,7 +244,15 @@ class _FriendsTab extends StatelessWidget {
                 roomStatus: friends.roomStatusOf(e.value.userId),
                 gameType: friends.gameTypeOf(e.value.userId),
                 showDetail: showDetail,
-                onTap: () => openUserProfile(context, e.value.userId),
+                onTap: () => openUserProfile(
+                  context,
+                  e.value.userId,
+                  knownDisplayName: e.value.displayName,
+                  knownUsername: e.value.username,
+                  knownAvatarUrl: e.value.avatarUrl,
+                  knownAvatarConfig: e.value.avatarConfig,
+                  knownIsPremium: e.value.isPremium,
+                ),
                 onJoinRoom: friends.roomIdOf(e.value.userId) != null
                     ? () => AppRouter.router.go(
                         '${context.l10n.navRooms}/room/${friends.roomIdOf(e.value.userId)}',
@@ -251,7 +274,15 @@ class _FriendsTab extends StatelessWidget {
               (e) => FriendTile(
                 friend: e.value,
                 status: friends.statusOf(e.value.userId),
-                onTap: () => openUserProfile(context, e.value.userId),
+                onTap: () => openUserProfile(
+                  context,
+                  e.value.userId,
+                  knownDisplayName: e.value.displayName,
+                  knownUsername: e.value.username,
+                  knownAvatarUrl: e.value.avatarUrl,
+                  knownAvatarConfig: e.value.avatarConfig,
+                  knownIsPremium: e.value.isPremium,
+                ),
                 onRemove: () => friends.removeFriend(e.value.userId),
                 onBlock: () => friends.blockUser(e.value.userId),
               ).animate(delay: (e.key * 20).ms).fadeIn(),
@@ -322,7 +353,6 @@ class _SectionHeader extends StatelessWidget {
     );
   }
 }
-
 
 class _RequestCard extends StatelessWidget {
   const _RequestCard({
@@ -458,7 +488,6 @@ class _RequestCard extends StatelessWidget {
   }
 }
 
-
 class _Badge extends StatelessWidget {
   const _Badge({required this.count});
   final int count;
@@ -523,7 +552,10 @@ class _EmptyState extends StatelessWidget {
             ),
             if (actionLabel != null && onAction != null) ...[
               const SizedBox(height: 16),
-              FilledButton.tonal(onPressed: onAction, child: Text(actionLabel!)),
+              FilledButton.tonal(
+                onPressed: onAction,
+                child: Text(actionLabel!),
+              ),
             ],
           ],
         ),
@@ -557,7 +589,9 @@ class _BlockedTab extends StatelessWidget {
             if (ok && ctx.mounted) {
               ScaffoldMessenger.of(ctx).showSnackBar(
                 SnackBar(
-                  content: Text(ctx.l10n.friendsUnblockedNotice(user.displayName)),
+                  content: Text(
+                    ctx.l10n.friendsUnblockedNotice(user.displayName),
+                  ),
                 ),
               );
             }
@@ -699,9 +733,10 @@ class _ExploreTabState extends State<_ExploreTab> {
             ),
           );
         }
-        return _ExploreCard(person: people[i], friends: friends)
-            .animate(delay: (i * 20).ms)
-            .fadeIn();
+        return _ExploreCard(
+          person: people[i],
+          friends: friends,
+        ).animate(delay: (i * 20).ms).fadeIn();
       },
     );
   }
@@ -738,7 +773,13 @@ class _ExploreCard extends StatelessWidget {
       person: person,
       hasSentRequest: friends.hasSentExploreRequest(person.userId),
       onAddFriend: () => friends.sendExploreFriendRequest(person.userId),
-      onTap: () => openUserProfile(context, person.userId),
+      onTap: () => openUserProfile(
+        context,
+        person.userId,
+        knownDisplayName: person.displayName,
+        knownUsername: person.username,
+        knownAvatarUrl: person.avatarUrl,
+      ),
     );
   }
 }

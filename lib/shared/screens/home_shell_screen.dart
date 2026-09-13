@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -118,79 +117,90 @@ class _HomeShellScreenState extends State<HomeShellScreen> {
       tutorialId: TutorialIds.homeIntro,
       steps: [_navShowcaseKey],
       child: Scaffold(
-      body: PlayfulBackground(
-        child: IndexedStack(index: _index, children: _pages),
-      ),
-      bottomNavigationBar: tutorialShowcase(
-        context: context,
-        showcaseKey: _navShowcaseKey,
-        title: context.l10n.tutHomeNavTitle,
-        description: context.l10n.tutHomeNavBody,
-        child: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: (i) {
-          // Profile persists in the IndexedStack rather than being
-          // pushed/popped as its own route, so tab switches never reach
-          // RouteObserver/didPopNext (see ProfileScreen) — this is the
-          // one signal available for "the Profile tab was reopened".
-          // Reuses the existing tab-switch callback rather than adding a
-          // separate visibility-detection mechanism.
-          final enteringProfile = i == _profileTabIndex && _index != i;
-          setState(() => _index = i);
-          if (enteringProfile) {
-            context.read<ProfileProvider>().refreshAll();
-          }
-        },
-        destinations: [
-          NavigationDestination(
-            icon: const Icon(Icons.meeting_room_outlined),
-            selectedIcon: const Icon(Icons.meeting_room_rounded),
-            label: l10n.navRooms,
-          ),
-          NavigationDestination(
-            icon: Badge(
-              isLabelVisible: friendCount > 0,
-              label: Text('$friendCount'),
-              child: const Icon(Icons.people_outline_rounded),
-            ),
-            selectedIcon: Badge(
-              isLabelVisible: friendCount > 0,
-              label: Text('$friendCount'),
-              child: const Icon(Icons.people_rounded),
-            ),
-            label: l10n.navFriends,
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.store_outlined),
-            selectedIcon: const Icon(Icons.store_rounded),
-            label: l10n.navMarketplace,
-          ),
-          NavigationDestination(
-            icon: Badge(
-              isLabelVisible: notifCount > 0,
-              label: Text('$notifCount'),
-              child: const Icon(Icons.person_outline_rounded),
-            ),
-            selectedIcon: Badge(
-              isLabelVisible: notifCount > 0,
-              label: Text('$notifCount'),
-              child: isPremium
-                  ? ShaderMask(
-                      shaderCallback: (bounds) => const LinearGradient(
-                        colors: [Color(0xFFF5A623), Color(0xFFFF6B35)],
-                      ).createShader(bounds),
-                      child: const Icon(
-                        Icons.person_rounded,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Icon(Icons.person_rounded),
-            ),
-            label: l10n.navProfile,
-          ),
-        ],
+        body: PlayfulBackground(
+          child: IndexedStack(index: _index, children: _pages),
         ),
-      ),
+        bottomNavigationBar: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // The "Developed by MOUJ TECH" mark previously shown here for the
+            // Rooms Browse (index 0) and Packs/Marketplace (index 2) tabs has
+            // been deliberately removed from this shared nav bar — those two
+            // screens should not carry developer branding. MoujTechBrand
+            // itself is untouched and still used elsewhere (Settings, About,
+            // auth screens, Splash).
+            tutorialShowcase(
+              context: context,
+              showcaseKey: _navShowcaseKey,
+              title: context.l10n.tutHomeNavTitle,
+              description: context.l10n.tutHomeNavBody,
+              child: NavigationBar(
+                selectedIndex: _index,
+                onDestinationSelected: (i) {
+                  // Profile persists in the IndexedStack rather than being
+                  // pushed/popped as its own route, so tab switches never reach
+                  // RouteObserver/didPopNext (see ProfileScreen) — this is the
+                  // one signal available for "the Profile tab was reopened".
+                  // Reuses the existing tab-switch callback rather than adding a
+                  // separate visibility-detection mechanism.
+                  final enteringProfile = i == _profileTabIndex && _index != i;
+                  setState(() => _index = i);
+                  if (enteringProfile) {
+                    context.read<ProfileProvider>().refreshAll();
+                  }
+                },
+                destinations: [
+                  NavigationDestination(
+                    icon: const Icon(Icons.meeting_room_outlined),
+                    selectedIcon: const Icon(Icons.meeting_room_rounded),
+                    label: l10n.navRooms,
+                  ),
+                  NavigationDestination(
+                    icon: Badge(
+                      isLabelVisible: friendCount > 0,
+                      label: Text('$friendCount'),
+                      child: const Icon(Icons.people_outline_rounded),
+                    ),
+                    selectedIcon: Badge(
+                      isLabelVisible: friendCount > 0,
+                      label: Text('$friendCount'),
+                      child: const Icon(Icons.people_rounded),
+                    ),
+                    label: l10n.navFriends,
+                  ),
+                  NavigationDestination(
+                    icon: const Icon(Icons.store_outlined),
+                    selectedIcon: const Icon(Icons.store_rounded),
+                    label: l10n.navMarketplace,
+                  ),
+                  NavigationDestination(
+                    icon: Badge(
+                      isLabelVisible: notifCount > 0,
+                      label: Text('$notifCount'),
+                      child: const Icon(Icons.person_outline_rounded),
+                    ),
+                    selectedIcon: Badge(
+                      isLabelVisible: notifCount > 0,
+                      label: Text('$notifCount'),
+                      child: isPremium
+                          ? ShaderMask(
+                              shaderCallback: (bounds) => const LinearGradient(
+                                colors: [Color(0xFFF5A623), Color(0xFFFF6B35)],
+                              ).createShader(bounds),
+                              child: const Icon(
+                                Icons.person_rounded,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(Icons.person_rounded),
+                    ),
+                    label: l10n.navProfile,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

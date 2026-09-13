@@ -11,7 +11,8 @@ import 'package:share_plus/share_plus.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/extensions/context_ext.dart';
 import '../../features/auth/domain/entities/user_entity.dart';
-import '../../features/avatar/presentation/avatar_creator_screen.dart' show AvatarConfig;
+import '../../features/avatar/presentation/avatar_creator_screen.dart'
+    show AvatarConfig;
 import '../widgets/profile_share_card.dart';
 
 /// Profile sharing: generates an isolated, purpose-built share-card image
@@ -32,7 +33,24 @@ Future<void> shareProfile(
   required int honestyPoints,
 }) async {
   final l10n = context.l10n;
-  final link = AppConstants.profileShareUrl(user.id);
+  // ROOT CAUSE of the "share isn't clickable" regression this fixes: this
+  // used to share AppConstants.appProfileLink (the jma3a:// custom scheme)
+  // instead of the HTTPS publicProfileUrl — despite this very file's own
+  // class doc comment already stating the opposite ("same real, tappable
+  // HTTPS deep link"). Most chat apps (WhatsApp, SMS, etc.) do NOT
+  // auto-linkify a custom scheme, so the shared text rendered as plain,
+  // non-tappable characters. publicProfileUrl (https://www.moujgroup.
+  // jma3a.com/u/<username> — see AppConstants.profileWebHost) is a real
+  // tappable link and still falls back to the website when the app isn't
+  // installed. Still never a userId-keyed link either way. A user who
+  // hasn't set a username yet (profiles.username is nullable) still gets a
+  // working share (name + a generic app link), just without a
+  // profile-specific deep link, rather than falling back to exposing
+  // their internal id.
+  final username = user.username;
+  final link = (username != null && username.isNotEmpty)
+      ? AppConstants.publicProfileUrl(username)
+      : 'https://${AppConstants.profileWebHost}';
   final name = user.displayName ?? user.username ?? l10n.packPlayer;
   final shareText = l10n.profileShareMessage(name, link);
   final shareSubject = l10n.profileShareSubject(name);
@@ -133,7 +151,9 @@ Future<String?> _renderProfileShareCard(
 /// as blank/placeholder.
 Future<Widget> _loadAvatarWidget(UserEntity user) async {
   String? url;
-  if (user.isPremium && user.avatarConfig != null && user.avatarConfig!.isNotEmpty) {
+  if (user.isPremium &&
+      user.avatarConfig != null &&
+      user.avatarConfig!.isNotEmpty) {
     url = AvatarConfig.fromMap(user.avatarConfig!).avatarUrl;
   } else {
     url = user.avatarUrl;

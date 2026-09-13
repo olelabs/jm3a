@@ -295,10 +295,11 @@ class WalletProvider extends BaseProvider {
   // ── Getters ────────────────────────────────────────────────────────────────
   WalletEntity? get wallet => _wallet;
   int get balanceMru => _wallet?.balanceMru ?? 0;
-  String get formattedBalance => _wallet?.formattedBalance ?? '0 MRU';
+  String formattedBalance([String currency = 'MRU']) =>
+      _wallet?.formattedBalance(currency) ?? '0 $currency';
   int get earningsBalanceMru => _wallet?.earningsBalanceMru ?? 0;
-  String get formattedEarningsBalance =>
-      _wallet?.formattedEarningsBalance ?? '0 MRU';
+  String formattedEarningsBalance([String currency = 'MRU']) =>
+      _wallet?.formattedEarningsBalance(currency) ?? '0 $currency';
   bool get isWalletFrozen => _wallet?.isFrozen ?? false;
   List<WalletTransaction> get transactions => _transactions;
   List<PaymentMethodEntity> get depositMethods => _depositMethods;

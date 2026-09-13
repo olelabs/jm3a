@@ -616,6 +616,46 @@ class ProfileRepository extends BaseRepository {
     },
   );
 
+  /// Item 12 (and its own follow-up fix) — cancels the CURRENT user's own
+  /// still-pending account deletion request by flipping its status away
+  /// from 'pending' (never a hard delete of the request row — the same
+  /// "review, don't act directly" posture [requestAccountDeletion] already
+  /// documents).
+  ///
+  /// ROOT CAUSE of "Cancel deletion doesn't work" (confirmed against the
+  /// actual migration, not guessed): this used to attempt a direct client
+  /// `.update({'status': 'cancelled'})` on account_deletion_requests, but
+  /// that table's own RLS policy ("account_deletion_requests: no client
+  /// update", USING (false) — see
+  /// 20260805090200_account_deletion_requests.sql) unconditionally blocks
+  /// EVERY client-side UPDATE, including the owner cancelling their own
+  /// pending row — PostgREST returns zero rows for an RLS-filtered UPDATE
+  /// rather than an error, so this method's own "only report success when
+  /// a row actually came back" check could never see true. A second,
+  /// independent bug: 'cancelled' wasn't even a legal value under the
+  /// table's status CHECK constraint at the time.
+  ///
+  /// Fixed via a SECURITY DEFINER RPC (cancel_account_deletion_request,
+  /// see 20260909090000_cancel_account_deletion_request_rpc.sql) that
+  /// verifies ownership via auth.uid() internally and updates with the
+  /// function owner's privileges — mirroring this codebase's own
+  /// established "checked RPC instead of a raw RLS-gated table write"
+  /// pattern (e.g. mute_player_in_game). The `.eq`-style
+  /// `WHERE user_id = auth.uid() AND status = 'pending'` inside that RPC
+  /// is deliberate, not just defensive: it's what makes this operation
+  /// atomically refuse to "cancel" a request already processed past
+  /// pending. Still returns a bool the caller MUST check — the RPC itself
+  /// returns false (never throws) when there was nothing pending to
+  /// cancel, so a stale "success" can never be reported here either.
+  Future<bool> cancelAccountDeletionRequest() => guardedCall(
+    operationName: 'cancelAccountDeletionRequest',
+    operation: () async {
+      if (_supabase.auth.currentUser?.id == null) return false;
+      final result = await _supabase.rpc('cancel_account_deletion_request');
+      return result as bool? ?? false;
+    },
+  );
+
   /// Requirement thresholds + this user's live progress toward becoming a
   /// verified creator, both computed server-side (get_creator_verification_
   /// progress RPC) from a DB-driven requirements row rather than hardcoded
@@ -841,11 +881,15 @@ class ProfileStats {
   /// own-profile moderation channel) — avoids a full getProfileStats()
   /// round trip just to reflect a score/honesty change the payload
   /// already carries inline.
-  ProfileStats copyWith({int? generalScore, int? honestyPoints}) => ProfileStats(
+  ProfileStats copyWith({
+    int? generalScore,
+    int? honestyPoints,
+    int? followersCount,
+  }) => ProfileStats(
     friendsCount: friendsCount,
     gamesPlayed: gamesPlayed,
     packsCount: packsCount,
-    followersCount: followersCount,
+    followersCount: followersCount ?? this.followersCount,
     followingCount: followingCount,
     generalScore: generalScore ?? this.generalScore,
     currentStreak: currentStreak,

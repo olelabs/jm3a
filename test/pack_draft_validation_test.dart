@@ -140,6 +140,45 @@ void main() {
     });
   });
 
+  group('Player range (Item 3 — optional max_players)', () {
+    test('a brand-new draft has no max limit, never defaults to 0', () {
+      final d = PackDraft();
+      expect(d.maxPlayers, isNull);
+      expect(d.hasValidPlayerRange, isTrue);
+    });
+
+    test('min-only (max still null) is valid — unchanged existing behavior', () {
+      final d = _validTod()..minPlayers = 6;
+      expect(d.maxPlayers, isNull);
+      expect(d.hasValidPlayerRange, isTrue);
+      expect(d.validationIssues(), isNot(contains(PackDraftIssue.playerRange)));
+    });
+
+    test('an exact player count (min == max) is valid', () {
+      final d = _validTod()
+        ..minPlayers = 2
+        ..maxPlayers = 2;
+      expect(d.hasValidPlayerRange, isTrue);
+      expect(d.validationIssues(), isNot(contains(PackDraftIssue.playerRange)));
+    });
+
+    test('a proper range (max > min) is valid', () {
+      final d = _validTod()
+        ..minPlayers = 2
+        ..maxPlayers = 4;
+      expect(d.hasValidPlayerRange, isTrue);
+    });
+
+    test('max below min is invalid and blocks submission', () {
+      final d = _validTod()
+        ..minPlayers = 5
+        ..maxPlayers = 3;
+      expect(d.hasValidPlayerRange, isFalse);
+      expect(d.validationIssues(), contains(PackDraftIssue.playerRange));
+      expect(d.canPublish, isFalse);
+    });
+  });
+
   group('Cards minimum & terms & default price', () {
     test('fewer than 20 cards blocks submission', () {
       final d = _validTod();
@@ -225,6 +264,38 @@ void main() {
       d.cards[5] = CardDraft(type: d.cards[5].type, content: {'fr': 'x'});
       expect(d.cards[5].hasContentFor('hs'), isFalse);
       expect(d.validationIssues(), contains(PackDraftIssue.language));
+    });
+  });
+
+  group('PackEntity — maxPlayers (Item 3)', () {
+    PackEntity entity({int? maxPlayers}) => PackEntity(
+          id: 'p1',
+          creatorId: 'c1',
+          titleJson: const {'en': 'T'},
+          status: PackStatus.approved,
+          gameType: 'truth_or_dare',
+          language: 'en',
+          priceMru: 0,
+          cardCount: 20,
+          avgRating: 0,
+          totalRatings: 0,
+          totalPurchases: 0,
+          totalPlays: 0,
+          maxPlayers: maxPlayers,
+        );
+
+    test('defaults to null (no limit), never 0, when unset', () {
+      expect(entity().maxPlayers, isNull);
+    });
+
+    test('an explicit value round-trips unchanged', () {
+      expect(entity(maxPlayers: 4).maxPlayers, 4);
+    });
+
+    test('copyWith preserves maxPlayers (not in its own parameter list)', () {
+      final e = entity(maxPlayers: 4);
+      final copy = e.copyWith(isFeatured: true);
+      expect(copy.maxPlayers, 4);
     });
   });
 

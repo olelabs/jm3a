@@ -559,8 +559,16 @@ class NeverHaveIEverEngine implements BaseGameEngine {
     );
   }
 
+  /// [forcePlayerId], when given and actually part of playerOrder, selects
+  /// that player as the next round's revealer instead of the natural next
+  /// index — used by NhieGameProvider's TurnQueue-based selection so a
+  /// muted player is never chosen as revealer and a just-unmuted player
+  /// rejoins at the END of the active rotation. Safe regardless of
+  /// roundNumber's own unconditional-per-call increment (see the Item
+  /// 18.5 comment below) — currentPlayerIndex here is purely which
+  /// player's card is shown, never a gate on round completion.
   @override
-  NhieState advanceTurn() {
+  NhieState advanceTurn({String? forcePlayerId}) {
     // Save current round to history
     final record = _state.currentCard != null
         ? NhieRoundRecord(
@@ -584,8 +592,12 @@ class NeverHaveIEverEngine implements BaseGameEngine {
     // configured round count was reached. currentPlayerIndex itself still
     // advances below (used elsewhere only as a "did a new round start"
     // signal), it just no longer gates roundNumber.
-    final nextIndex =
-        (_state.currentPlayerIndex + 1) % _state.playerOrder.length;
+    final forcedIdx = forcePlayerId != null
+        ? _state.playerOrder.indexOf(forcePlayerId)
+        : -1;
+    final nextIndex = forcedIdx >= 0
+        ? forcedIdx
+        : (_state.currentPlayerIndex + 1) % _state.playerOrder.length;
     final newRound = _state.roundNumber + 1;
     final isOver = newRound > _state.maxRounds;
 

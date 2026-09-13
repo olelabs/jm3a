@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -13,8 +12,10 @@ import '../../../../core/services/app_tutorial_service.dart';
 import '../../../../core/storage/local_storage_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/errors/failures.dart';
+import '../../../../core/utils/app_version.dart';
 import '../../../../features/intro/presentation/screens/intro_screen.dart';
 import '../../../../features/profile/data/profile_repository.dart';
+import '../../../../shared/widgets/mouj_tech_brand.dart';
 import '../../../../shared/widgets/overlays/confirm_dialog.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -34,6 +35,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool? _hasPendingDeletionRequest;
   bool _deletionSubmitting = false;
 
+  String? _versionText;
+
   @override
   void initState() {
     super.initState();
@@ -47,6 +50,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         .catchError((_) {
           if (mounted) setState(() => _hasPendingDeletionRequest = false);
         });
+    formattedAppVersion().then((v) {
+      if (mounted) setState(() => _versionText = v);
+    });
   }
 
   Future<void> _requestAccountDeletion() async {
@@ -99,6 +105,56 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  /// Item 12 — cancel a still-pending deletion request. See
+  /// ProfileRepository.cancelAccountDeletionRequest's own doc comment for
+  /// the important caveat this method respects: that call returns a bool
+  /// this code MUST check, never assuming success just because the
+  /// request didn't throw (an RLS-filtered-to-nothing update returns
+  /// normally with zero rows, not an error). Only a confirmed true result
+  /// flips this screen's local state and tells the user it worked —
+  /// anything else surfaces as a real failure, never a fake success.
+  Future<void> _cancelAccountDeletion() async {
+    if (_hasPendingDeletionRequest != true || _deletionSubmitting) return;
+    final l10n = context.l10n;
+
+    final confirmed = await showConfirmDialog(
+      context: context,
+      title: l10n.settingsCancelAccountDeletionDialogTitle,
+      message: l10n.settingsCancelAccountDeletionDialogMessage,
+      confirmLabel: l10n.settingsCancelAccountDeletionConfirm,
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _deletionSubmitting = true);
+    try {
+      final cancelled = await ProfileRepository.instance
+          .cancelAccountDeletionRequest();
+      if (!mounted) return;
+      if (cancelled) {
+        setState(() => _hasPendingDeletionRequest = false);
+        context.showSnackBar(l10n.settingsAccountDeletionCancelled);
+      } else {
+        // Either the request is no longer pending (already processed —
+        // cancellation is genuinely no longer possible, see this
+        // screen's own doc comment) or the backend has no UPDATE policy
+        // permitting this. Either way, re-check the real server state
+        // rather than guessing which one happened.
+        final requestedAt = await ProfileRepository.instance
+            .getPendingAccountDeletionRequestedAt();
+        if (mounted) {
+          setState(() => _hasPendingDeletionRequest = requestedAt != null);
+          context.showErrorSnackBar(l10n.settingsCancelAccountDeletionFailed);
+        }
+      }
+    } catch (_) {
+      if (mounted) {
+        context.showErrorSnackBar(l10n.settingsCancelAccountDeletionFailed);
+      }
+    } finally {
+      if (mounted) setState(() => _deletionSubmitting = false);
+    }
+  }
+
   Future<void> _setPresenceMode(String mode, bool isPremiumActive) async {
     if (mode != 'auto' && !isPremiumActive) return;
     setState(() {
@@ -119,8 +175,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       // Revert on failure — server is the source of truth.
       if (mounted) {
         setState(
-          () => _presenceMode =
-              context.read<AuthProvider>().currentUser?.presenceMode,
+          () => _presenceMode = context
+              .read<AuthProvider>()
+              .currentUser
+              ?.presenceMode,
         );
       }
     } finally {
@@ -164,8 +222,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       title: Text(l10n.settingsTheme),
                       trailing: _ThemeDropdown(
                         current: context.read<AppThemeService>().themeMode,
-                        onChanged:
-                            context.read<AppThemeService>().setThemeMode,
+                        onChanged: context.read<AppThemeService>().setThemeMode,
                       ),
                     ),
 
@@ -205,7 +262,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     leading: const Icon(Icons.password_outlined),
                     title: Text(l10n.settingsPassword),
                     subtitle: Text(
-                      (context.watch<AuthProvider>().currentUser?.hasPassword ?? false)
+                      (context.watch<AuthProvider>().currentUser?.hasPassword ??
+                              false)
                           ? l10n.settingsPasswordSubtitleReady
                           : l10n.settingsPasswordSubtitleNotSet,
                     ),
@@ -249,6 +307,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         !_deletionSubmitting,
                     onTap: _requestAccountDeletion,
                   ),
+
+                  // Item 12 — only offered while a request is genuinely
+                  // still pending (see _hasPendingDeletionRequest, sourced
+                  // from getPendingAccountDeletionRequestedAt — real
+                  // server state, not client bookkeeping). Once Jma3a has
+                  // accepted/processed the deletion this tile is gone, not
+                  // just disabled, matching the requirement that
+                  // cancellation must never be offered once it's no
+                  // longer reversible.
+                  if (_hasPendingDeletionRequest == true)
+                    ListTile(
+                      leading: const Icon(Icons.undo_rounded),
+                      title: Text(l10n.settingsCancelAccountDeletion),
+                      subtitle: Text(l10n.settingsCancelAccountDeletionHint),
+                      enabled: !_deletionSubmitting,
+                      onTap: _cancelAccountDeletion,
+                    ),
 
                   const Divider(height: 32),
                   _SectionHeader(context.l10n.settingsSectionAbout),
@@ -315,13 +390,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ListTile(
                     leading: const Icon(Icons.info_outline_rounded),
                     title: Text(context.l10n.settingsVersionLabel),
-                    trailing: Text(
-                      '1.0.0',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
+                    trailing: _versionText == null
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Text(
+                            _versionText!,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
                   ),
+
+                  const MoujTechBrand(),
                 ],
               ),
             ),
@@ -457,10 +540,7 @@ class _PresenceDropdown extends StatelessWidget {
           : null,
       items: [
         DropdownMenuItem(value: 'auto', child: Text(l10n.presenceModeAuto)),
-        DropdownMenuItem(
-          value: 'online',
-          child: Text(l10n.presenceModeOnline),
-        ),
+        DropdownMenuItem(value: 'online', child: Text(l10n.presenceModeOnline)),
         DropdownMenuItem(
           value: 'offline',
           child: Text(l10n.presenceModeOffline),
@@ -550,9 +630,7 @@ class _DeletionReasonSheetState extends State<_DeletionReasonSheet> {
     ];
 
     return Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.viewInsetsOf(context).bottom,
-      ),
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
       child: Container(
         decoration: BoxDecoration(
           color: theme.colorScheme.surface,
@@ -605,8 +683,7 @@ class _DeletionReasonSheetState extends State<_DeletionReasonSheet> {
                       hintText: l10n.deleteAccountReasonOtherHint,
                       border: const OutlineInputBorder(),
                       errorText:
-                          _otherTouched &&
-                              _otherController.text.trim().isEmpty
+                          _otherTouched && _otherController.text.trim().isEmpty
                           ? l10n.deleteAccountOtherDescriptionValidation
                           : null,
                     ),

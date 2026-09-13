@@ -1,11 +1,12 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/di/service_locator.dart';
 import '../../../../core/errors/failures.dart';
 import '../../../../core/extensions/context_ext.dart';
 import '../../../../core/providers/auth_provider.dart';
+import '../../../../core/router/route_names.dart';
 
 class JoinCodeDialog extends StatefulWidget {
   const JoinCodeDialog({super.key, this.prefillCode, this.invitedBy});
@@ -70,7 +71,9 @@ class _JoinCodeDialogState extends State<JoinCodeDialog> {
       if (mounted)
         setState(() {
           _isJoining = false;
-          _error = e is Failure ? e.message : context.l10n.roomsInvalidCodeOrNotFound;
+          _error = e is Failure
+              ? e.message
+              : context.l10n.roomsInvalidCodeOrNotFound;
         });
     }
   }
@@ -151,6 +154,31 @@ class _JoinCodeDialogState extends State<JoinCodeDialog> {
               fontWeight: FontWeight.w700,
               letterSpacing: 8,
             ),
+          ),
+          const SizedBox(height: 16),
+          // Item 7 (QR codes) — "Join with code" now presents two
+          // options: typing the code above, or scanning a room's QR
+          // code here. A scan resolves through the exact same
+          // JoinInviteScreen/joinByCode pipeline (see
+          // resolveScannedQrRoute's own doc comment) — no separate,
+          // weaker join path.
+          OutlinedButton.icon(
+            onPressed: () {
+              // A real GoRouter route (RouteNames.scanQr), not a raw
+              // Navigator.push(MaterialPageRoute(...)) — that used to run
+              // an entirely separate imperative navigation system
+              // alongside GoRouter's own declarative one on the same
+              // root Navigator, which is what let the scanner screen (and
+              // its still-live camera) survive a GoRouter-driven rebuild
+              // underneath the screen it had already "popped" to. Routing
+              // through GoRouter here means the scanner's own pop/replace
+              // in qr_scan_screen.dart is the only thing that ever needs
+              // to reconcile the stack.
+              Navigator.pop(context);
+              context.push(RouteNames.scanQr);
+            },
+            icon: const Icon(Icons.qr_code_scanner_rounded, size: 18),
+            label: Text(context.l10n.qrScanButtonLabel),
           ),
         ],
       ),

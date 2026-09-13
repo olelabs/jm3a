@@ -6133,15 +6133,57 @@ class _AppShellState extends State<_AppShell> {
     _profileSub = DeepLinkService.instance.profileStream.listen(_onProfileLink);
   }
 
+  /// The ONE place that turns a resolved profile deep link into an actual
+  /// navigation for the "app already running/warm" case — cold start is
+  /// handled entirely by AppRouter's own redirect "resume pendingProfile"
+  /// logic (app_router.dart), which runs as part of the INITIAL route
+  /// resolution and therefore never needs a real Navigator push at all.
+  /// Pushes straight to `/user/<id>` (never the legacy `/profile/<id>`
+  /// hop, which only exists for resolving a raw, already-in-flight
+  /// location string) — a real, always-registered route, so this can
+  /// never land on errorBuilder/NotFoundScreen regardless of timing.
+  /// Deliberately gated on the exact same readiness check AppRouter's own
+  /// redirect resume rule uses: if auth isn't ready yet, this does
+  /// NOTHING and leaves DeepLinkService.pendingProfile stashed exactly as
+  /// [DeepLinkService._handle] set it — the redirect resume rule is what
+  /// consumes it once auth finishes (as part of cold-start's initial
+  /// route resolution). Consuming it HERE too, unconditionally, would
+  /// either double-navigate (both this push and the later redirect firing
+  /// for the same link) or — worse — silently drop the link if this push
+  /// gets bounced to login/splash by the auth gate before the resume rule
+  /// ever gets a chance to run. A real, additive push() (not a redirect
+  /// substitution) is what lets Back return to whatever screen was
+  /// already showing, per the "no replacement navigation" requirement.
   Future<void> _onProfileLink(ProfileLinkPayload payload) async {
     await AppRouter.ready;
     if (!mounted) return;
-    AppRouter.router.push('/profile/${payload.userId}');
+    final auth = context.read<AuthProvider>();
+    if (!auth.isLoggedIn ||
+        auth.isGuest ||
+        auth.needsOnboarding ||
+        auth.isInitializing) {
+      return;
+    }
+    DeepLinkService.instance.clearPendingProfile();
+    AppRouter.router.push('/user/${payload.userId}');
   }
 
+  /// Same "single authoritative consumption point, only once actually
+  /// ready" shape as [_onProfileLink] — AppRouter's own redirect "resume
+  /// pendingInvite" logic already used the same four-condition readiness
+  /// check to decide when to act on it; mirrored here so this direct-push
+  /// path and that resume path never both fire for the same invite.
   Future<void> _onInvite(RoomInvitePayload payload) async {
     await AppRouter.ready;
     if (!mounted) return;
+    final auth = context.read<AuthProvider>();
+    if (!auth.isLoggedIn ||
+        auth.isGuest ||
+        auth.needsOnboarding ||
+        auth.isInitializing) {
+      return;
+    }
+    DeepLinkService.instance.clearPendingInvite();
     AppRouter.router.push(
       Uri(
         path: RouteNames.join,

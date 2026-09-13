@@ -10,10 +10,11 @@
 /// a non-empty URL is filled in here; see its own doc comment.
 abstract final class SocialLinks {
   /// TODO: fill in with the real official Jma3a TikTok profile URL.
-  static const String tiktok = '';
+  static const String tiktok =
+      'https://www.tiktok.com/@jma3a7?_r=1&_t=ZS-99WeZhK9XTc';
 
   /// TODO: fill in with the real official Jma3a Snapchat profile URL.
-  static const String snapchat = '';
+  static const String snapchat = 'https://snapchat.com/t/ZlsKAFm6';
 
   /// TODO: fill in with the real official Jma3a Facebook page URL.
   static const String facebook = '';

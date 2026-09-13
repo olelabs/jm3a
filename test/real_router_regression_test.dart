@@ -38,6 +38,8 @@ import 'package:jma3a/features/auth/presentation/screens/login_screen.dart';
 import 'package:jma3a/features/auth/presentation/screens/onboarding_screen.dart';
 import 'package:jma3a/features/auth/presentation/screens/set_password_screen.dart';
 import 'package:jma3a/features/auth/presentation/screens/splash_screen.dart';
+import 'package:jma3a/features/friends/presentation/screens/followers_screen.dart';
+import 'package:jma3a/features/friends/presentation/screens/user_profile_screen.dart';
 import 'package:jma3a/shared/screens/home_shell_screen.dart';
 
 class _MockAuthRepository extends Mock implements AuthRepository {}
@@ -91,7 +93,10 @@ const _incompleteLegacyUser = UserEntity(
 /// here deliberately: this file only asserts on the RESOLVED ROUTE
 /// (proving the redirect actually landed on Home), not on
 /// HomeShellScreen's own functionality, which has its own tests.
-Future<void> pumpIgnoringHomeShellDeps(WidgetTester tester, Widget widget) async {
+Future<void> pumpIgnoringHomeShellDeps(
+  WidgetTester tester,
+  Widget widget,
+) async {
   await withHomeShellDepsIgnored(() async {
     await tester.pumpWidget(widget);
     await tester.pump();
@@ -148,9 +153,9 @@ Future<void> loginWithPassword(
   required String password,
   required UserEntity resultUser,
 }) async {
-  when(() => repo.loginWithPassword(email, password)).thenAnswer(
-    (_) async => (_fakeSession(resultUser.id), resultUser),
-  );
+  when(
+    () => repo.loginWithPassword(email, password),
+  ).thenAnswer((_) async => (_fakeSession(resultUser.id), resultUser));
 
   expect(find.byType(LoginScreen), findsOneWidget);
   await tester.enterText(
@@ -176,31 +181,32 @@ void main() {
   });
 
   group('Normal login (identifier + password)', () {
-    testWidgets(
-      'B: correct password, complete profile -> Home',
-      (tester) async {
-        final repo = _MockAuthRepository();
-        when(() => repo.restoreSession()).thenAnswer((_) async => (null, null));
-        final auth = await buildAndInitAuth(repo, _MockSecureStorageService());
+    testWidgets('B: correct password, complete profile -> Home', (
+      tester,
+    ) async {
+      final repo = _MockAuthRepository();
+      when(() => repo.restoreSession()).thenAnswer((_) async => (null, null));
+      final auth = await buildAndInitAuth(repo, _MockSecureStorageService());
 
-        final router = AppRouter.createRouter(auth);
-        await pumpIgnoringHomeShellDeps(tester, wrapRouter(auth, router));
+      final router = AppRouter.createRouter(auth);
+      await pumpIgnoringHomeShellDeps(tester, wrapRouter(auth, router));
 
-        await withHomeShellDepsIgnored(() => loginWithPassword(
+      await withHomeShellDepsIgnored(
+        () => loginWithPassword(
           tester,
           repo: repo,
           email: _completeWithPassword.email,
           password: 'correcthorse1',
           resultUser: _completeWithPassword,
-        ));
+        ),
+      );
 
-        expect(find.byType(SetPasswordScreen), findsNothing);
-        expect(
-          router.routerDelegate.currentConfiguration.uri.toString(),
-          RouteNames.home,
-        );
-      },
-    );
+      expect(find.byType(SetPasswordScreen), findsNothing);
+      expect(
+        router.routerDelegate.currentConfiguration.uri.toString(),
+        RouteNames.home,
+      );
+    });
 
     testWidgets(
       'C: correct password, incomplete profile -> Profile onboarding',
@@ -236,12 +242,18 @@ void main() {
         final repo = _MockAuthRepository();
         when(() => repo.restoreSession()).thenAnswer((_) async => (null, null));
         final auth = await buildAndInitAuth(repo, _MockSecureStorageService());
-        when(() => repo.sendOtp('recovered@example.com')).thenAnswer((_) async {});
-        when(() => repo.verifyOtp('recovered@example.com', '123456')).thenAnswer(
-          (_) async => (_fakeSession(_completeNoPassword.id), _completeNoPassword),
+        when(
+          () => repo.sendOtp('recovered@example.com'),
+        ).thenAnswer((_) async {});
+        when(
+          () => repo.verifyOtp('recovered@example.com', '123456'),
+        ).thenAnswer(
+          (_) async =>
+              (_fakeSession(_completeNoPassword.id), _completeNoPassword),
         );
-        when(() => repo.setPassword('NewStr0ngPass', 'NewStr0ngPass'))
-            .thenAnswer((_) async => _fakeSession(_completeNoPassword.id));
+        when(
+          () => repo.setPassword('NewStr0ngPass', 'NewStr0ngPass'),
+        ).thenAnswer((_) async => _fakeSession(_completeNoPassword.id));
 
         final router = AppRouter.createRouter(auth);
         await tester.pumpWidget(wrapRouter(auth, router));
@@ -278,11 +290,15 @@ void main() {
           'NewStr0ngPass',
         );
         await withHomeShellDepsIgnored(() async {
-          await tester.tap(find.widgetWithText(ElevatedButton, 'Reset password'));
+          await tester.tap(
+            find.widgetWithText(ElevatedButton, 'Reset password'),
+          );
           await tester.pumpAndSettle();
         });
 
-        verify(() => repo.setPassword('NewStr0ngPass', 'NewStr0ngPass')).called(1);
+        verify(
+          () => repo.setPassword('NewStr0ngPass', 'NewStr0ngPass'),
+        ).called(1);
         expect(
           router.routerDelegate.currentConfiguration.uri.toString(),
           RouteNames.home,
@@ -296,12 +312,18 @@ void main() {
         final repo = _MockAuthRepository();
         when(() => repo.restoreSession()).thenAnswer((_) async => (null, null));
         final auth = await buildAndInitAuth(repo, _MockSecureStorageService());
-        when(() => repo.sendOtp('has-password@example.com')).thenAnswer((_) async {});
-        when(() => repo.verifyOtp('has-password@example.com', '123456')).thenAnswer(
-          (_) async => (_fakeSession(_completeWithPassword.id), _completeWithPassword),
+        when(
+          () => repo.sendOtp('has-password@example.com'),
+        ).thenAnswer((_) async {});
+        when(
+          () => repo.verifyOtp('has-password@example.com', '123456'),
+        ).thenAnswer(
+          (_) async =>
+              (_fakeSession(_completeWithPassword.id), _completeWithPassword),
         );
-        when(() => repo.setPassword('ReplacedStr0ngPass', 'ReplacedStr0ngPass'))
-            .thenAnswer((_) async => _fakeSession(_completeWithPassword.id));
+        when(
+          () => repo.setPassword('ReplacedStr0ngPass', 'ReplacedStr0ngPass'),
+        ).thenAnswer((_) async => _fakeSession(_completeWithPassword.id));
 
         final router = AppRouter.createRouter(auth);
         await tester.pumpWidget(wrapRouter(auth, router));
@@ -332,11 +354,15 @@ void main() {
           'ReplacedStr0ngPass',
         );
         await withHomeShellDepsIgnored(() async {
-          await tester.tap(find.widgetWithText(ElevatedButton, 'Reset password'));
+          await tester.tap(
+            find.widgetWithText(ElevatedButton, 'Reset password'),
+          );
           await tester.pumpAndSettle();
         });
 
-        verify(() => repo.setPassword('ReplacedStr0ngPass', 'ReplacedStr0ngPass')).called(1);
+        verify(
+          () => repo.setPassword('ReplacedStr0ngPass', 'ReplacedStr0ngPass'),
+        ).called(1);
         expect(
           router.routerDelegate.currentConfiguration.uri.toString(),
           RouteNames.home,
@@ -344,56 +370,52 @@ void main() {
       },
     );
 
-    test(
-      'J: the new password works for a subsequent normal login',
-      () async {
-        final repo = _MockAuthRepository();
-        when(() => repo.authStateStream).thenAnswer((_) => const Stream.empty());
-        final auth = AuthProvider(
-          authRepository: repo,
-          secureStorage: _MockSecureStorageService(),
-        );
-        final resetUser = _completeNoPassword.copyWith(hasPassword: true);
-        when(() => repo.loginWithPassword('recovered@example.com', 'NewStr0ngPass'))
-            .thenAnswer((_) async => (_fakeSession(resetUser.id), resetUser));
+    test('J: the new password works for a subsequent normal login', () async {
+      final repo = _MockAuthRepository();
+      when(() => repo.authStateStream).thenAnswer((_) => const Stream.empty());
+      final auth = AuthProvider(
+        authRepository: repo,
+        secureStorage: _MockSecureStorageService(),
+      );
+      final resetUser = _completeNoPassword.copyWith(hasPassword: true);
+      when(
+        () => repo.loginWithPassword('recovered@example.com', 'NewStr0ngPass'),
+      ).thenAnswer((_) async => (_fakeSession(resetUser.id), resetUser));
 
-        final result = await auth.loginWithPassword(
-          'recovered@example.com',
-          'NewStr0ngPass',
-        );
+      final result = await auth.loginWithPassword(
+        'recovered@example.com',
+        'NewStr0ngPass',
+      );
 
-        expect(result.success, isTrue);
-        expect(auth.isLoggedIn, isTrue);
-      },
-    );
+      expect(result.success, isTrue);
+      expect(auth.isLoggedIn, isTrue);
+    });
 
-    test(
-      'K: the old password no longer works after a reset',
-      () async {
-        final repo = _MockAuthRepository();
-        when(() => repo.authStateStream).thenAnswer((_) => const Stream.empty());
-        final auth = AuthProvider(
-          authRepository: repo,
-          secureStorage: _MockSecureStorageService(),
-        );
-        when(() => repo.loginWithPassword('recovered@example.com', 'OldPassword1'))
-            .thenThrow(
-          const AuthFailure(
-            message: 'Incorrect email/phone or password.',
-            code: 'invalid_credentials',
-          ),
-        );
+    test('K: the old password no longer works after a reset', () async {
+      final repo = _MockAuthRepository();
+      when(() => repo.authStateStream).thenAnswer((_) => const Stream.empty());
+      final auth = AuthProvider(
+        authRepository: repo,
+        secureStorage: _MockSecureStorageService(),
+      );
+      when(
+        () => repo.loginWithPassword('recovered@example.com', 'OldPassword1'),
+      ).thenThrow(
+        const AuthFailure(
+          message: 'Incorrect email/phone or password.',
+          code: 'invalid_credentials',
+        ),
+      );
 
-        final result = await auth.loginWithPassword(
-          'recovered@example.com',
-          'OldPassword1',
-        );
+      final result = await auth.loginWithPassword(
+        'recovered@example.com',
+        'OldPassword1',
+      );
 
-        expect(result.success, isFalse);
-        expect(result.code, 'invalid_credentials');
-        expect(auth.isLoggedIn, isFalse);
-      },
-    );
+      expect(result.success, isFalse);
+      expect(result.code, 'invalid_credentials');
+      expect(auth.isLoggedIn, isFalse);
+    });
 
     testWidgets(
       'L: a legacy account (has_password=false) establishes its FIRST password through Forgot Password, no separate legacy-setup flow',
@@ -403,10 +425,12 @@ void main() {
         final auth = await buildAndInitAuth(repo, _MockSecureStorageService());
         when(() => repo.sendOtp('legacy@example.com')).thenAnswer((_) async {});
         when(() => repo.verifyOtp('legacy@example.com', '123456')).thenAnswer(
-          (_) async => (_fakeSession(_incompleteLegacyUser.id), _incompleteLegacyUser),
+          (_) async =>
+              (_fakeSession(_incompleteLegacyUser.id), _incompleteLegacyUser),
         );
-        when(() => repo.setPassword('FirstPass1', 'FirstPass1'))
-            .thenAnswer((_) async => _fakeSession(_incompleteLegacyUser.id));
+        when(
+          () => repo.setPassword('FirstPass1', 'FirstPass1'),
+        ).thenAnswer((_) async => _fakeSession(_incompleteLegacyUser.id));
 
         final router = AppRouter.createRouter(auth);
         await tester.pumpWidget(wrapRouter(auth, router));
@@ -460,7 +484,8 @@ void main() {
       (tester) async {
         final repo = _MockAuthRepository();
         when(() => repo.restoreSession()).thenAnswer(
-          (_) async => (_fakeSession(_incompleteLegacyUser.id), _incompleteLegacyUser),
+          (_) async =>
+              (_fakeSession(_incompleteLegacyUser.id), _incompleteLegacyUser),
         );
         final auth = await buildAndInitAuth(repo, _MockSecureStorageService());
 
@@ -531,7 +556,8 @@ void main() {
       (tester) async {
         final repo = _MockAuthRepository();
         when(() => repo.restoreSession()).thenAnswer(
-          (_) async => (_fakeSession(_completeNoPassword.id), _completeNoPassword),
+          (_) async =>
+              (_fakeSession(_completeNoPassword.id), _completeNoPassword),
         );
         final auth = await buildAndInitAuth(repo, _MockSecureStorageService());
 
@@ -546,56 +572,54 @@ void main() {
       },
     );
 
-    testWidgets(
-      'W: cold launch, unauthenticated -> Login',
-      (tester) async {
-        final repo = _MockAuthRepository();
-        when(() => repo.restoreSession()).thenAnswer((_) async => (null, null));
-        final auth = await buildAndInitAuth(repo, _MockSecureStorageService());
+    testWidgets('W: cold launch, unauthenticated -> Login', (tester) async {
+      final repo = _MockAuthRepository();
+      when(() => repo.restoreSession()).thenAnswer((_) async => (null, null));
+      final auth = await buildAndInitAuth(repo, _MockSecureStorageService());
 
-        final router = AppRouter.createRouter(auth);
-        await tester.pumpWidget(wrapRouter(auth, router));
-        await tester.pumpAndSettle();
-        await tester.pump(const Duration(seconds: 6));
+      final router = AppRouter.createRouter(auth);
+      await tester.pumpWidget(wrapRouter(auth, router));
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 6));
 
-        expect(find.byType(LoginScreen), findsOneWidget);
-        expect(find.byType(SetPasswordScreen), findsNothing);
-      },
-    );
+      expect(find.byType(LoginScreen), findsOneWidget);
+      expect(find.byType(SetPasswordScreen), findsNothing);
+    });
 
-    testWidgets(
-      'X: logout -> Login (never Set Password again)',
-      (tester) async {
-        final repo = _MockAuthRepository();
-        final secureStorage = _MockSecureStorageService();
-        when(() => repo.restoreSession()).thenAnswer(
-          (_) async => (_fakeSession(_completeWithPassword.id), _completeWithPassword),
-        );
-        when(() => repo.signOut()).thenAnswer((_) async {});
-        when(() => secureStorage.deleteAll()).thenAnswer((_) async {});
-        final auth = await buildAndInitAuth(repo, secureStorage);
+    testWidgets('X: logout -> Login (never Set Password again)', (
+      tester,
+    ) async {
+      final repo = _MockAuthRepository();
+      final secureStorage = _MockSecureStorageService();
+      when(() => repo.restoreSession()).thenAnswer(
+        (_) async =>
+            (_fakeSession(_completeWithPassword.id), _completeWithPassword),
+      );
+      when(() => repo.signOut()).thenAnswer((_) async {});
+      when(() => secureStorage.deleteAll()).thenAnswer((_) async {});
+      final auth = await buildAndInitAuth(repo, secureStorage);
 
-        final router = AppRouter.createRouter(auth);
-        await pumpIgnoringHomeShellDeps(tester, wrapRouter(auth, router));
-        expect(
-          router.routerDelegate.currentConfiguration.uri.toString(),
-          RouteNames.home,
-        );
+      final router = AppRouter.createRouter(auth);
+      await pumpIgnoringHomeShellDeps(tester, wrapRouter(auth, router));
+      expect(
+        router.routerDelegate.currentConfiguration.uri.toString(),
+        RouteNames.home,
+      );
 
-        await auth.signOut();
-        await tester.pumpAndSettle();
+      await auth.signOut();
+      await tester.pumpAndSettle();
 
-        expect(find.byType(LoginScreen), findsOneWidget);
-        expect(find.byType(SetPasswordScreen), findsNothing);
-      },
-    );
+      expect(find.byType(LoginScreen), findsOneWidget);
+      expect(find.byType(SetPasswordScreen), findsNothing);
+    });
 
     testWidgets(
       'Y: authenticated + incomplete profile -> Profile (onboarding), regardless of has_password',
       (tester) async {
         final repo = _MockAuthRepository();
         when(() => repo.restoreSession()).thenAnswer(
-          (_) async => (_fakeSession(_incompleteLegacyUser.id), _incompleteLegacyUser),
+          (_) async =>
+              (_fakeSession(_incompleteLegacyUser.id), _incompleteLegacyUser),
         );
         final auth = await buildAndInitAuth(repo, _MockSecureStorageService());
 
@@ -615,7 +639,8 @@ void main() {
       (tester) async {
         final repo = _MockAuthRepository();
         when(() => repo.restoreSession()).thenAnswer(
-          (_) async => (_fakeSession(_completeWithPassword.id), _completeWithPassword),
+          (_) async =>
+              (_fakeSession(_completeWithPassword.id), _completeWithPassword),
         );
         final auth = await buildAndInitAuth(repo, _MockSecureStorageService());
 
@@ -634,7 +659,8 @@ void main() {
       (tester) async {
         final repo = _MockAuthRepository();
         when(() => repo.restoreSession()).thenAnswer(
-          (_) async => (_fakeSession(_incompleteLegacyUser.id), _incompleteLegacyUser),
+          (_) async =>
+              (_fakeSession(_incompleteLegacyUser.id), _incompleteLegacyUser),
         );
         final auth = await buildAndInitAuth(repo, _MockSecureStorageService());
 
@@ -655,12 +681,14 @@ void main() {
       'cold launch while session restoration is loading -> Splash, never Set Password or Home',
       (tester) async {
         final repo = _MockAuthRepository();
-        when(() => repo.authStateStream).thenAnswer((_) => const Stream.empty());
+        when(
+          () => repo.authStateStream,
+        ).thenAnswer((_) => const Stream.empty());
         // restoreSession() never resolves during this test — simulates the
         // "still loading" window.
-        when(() => repo.restoreSession()).thenAnswer(
-          (_) => Completer<(Session?, UserEntity?)>().future,
-        );
+        when(
+          () => repo.restoreSession(),
+        ).thenAnswer((_) => Completer<(Session?, UserEntity?)>().future);
         final auth = AuthProvider(
           authRepository: repo,
           secureStorage: _MockSecureStorageService(),
@@ -679,17 +707,106 @@ void main() {
         expect(find.byType(SetPasswordScreen), findsNothing);
         expect(find.byType(HomeShellScreen), findsNothing);
 
-        // Flush AuthProvider.initialize()'s own 5s init-timeout Timer,
-        // SplashScreen's own 8s fallback-navigation Timer (only actually
-        // created here, unlike the other tests in this file, because this
-        // is the one scenario where SplashScreen stays mounted long
-        // enough for its initState to run at all), and the cascade of
-        // flutter_animate rebuild timers those two trigger — pumpAndSettle
-        // (rather than manual pumps) is what's needed to fully drain a
-        // cascading, not just a single, timer.
-        await tester.pump(const Duration(seconds: 9));
+        // Flush AuthProvider.initialize()'s own restoreSession().timeout()
+        // hard cutoff — raised from 5s to 10s by the splash-flash race fix
+        // (see AuthProvider.initialize()'s own doc comment: the old bare
+        // 5s Timer independently racing this same await was the actual
+        // bug; a real device's slow network legitimately needing more
+        // than 5s was exactly what caused the premature Login flash this
+        // pass fixes) — SplashScreen's own 8s fallback-navigation Timer
+        // (only actually created here, unlike the other tests in this
+        // file, because this is the one scenario where SplashScreen stays
+        // mounted long enough for its initState to run at all), and the
+        // cascade of flutter_animate rebuild timers those two trigger —
+        // pumpAndSettle (rather than manual pumps) is what's needed to
+        // fully drain a cascading, not just a single, timer.
+        await tester.pump(const Duration(seconds: 11));
         await tester.pumpAndSettle();
       },
     );
+  });
+
+  group('Router — /profile/followers route collision (real-device root cause '
+      'pass)', () {
+    testWidgets('1&2: navigating to RouteNames.followers resolves to '
+        'FollowersScreen — never redirected to /user/followers / '
+        'UserProfileScreen(userId: "followers")', (tester) async {
+      final repo = _MockAuthRepository();
+      when(() => repo.restoreSession()).thenAnswer(
+        (_) async =>
+            (_fakeSession(_completeWithPassword.id), _completeWithPassword),
+      );
+      final auth = await buildAndInitAuth(repo, _MockSecureStorageService());
+
+      final router = AppRouter.createRouter(auth);
+      await pumpIgnoringHomeShellDeps(tester, wrapRouter(auth, router));
+      expect(
+        router.routerDelegate.currentConfiguration.uri.toString(),
+        RouteNames.home,
+      );
+
+      // The exact navigation ProfileScreen's own Followers tile
+      // performs (AppRouter.router.push(RouteNames.followers) — see
+      // profile_screen.dart).
+      await withHomeShellDepsIgnored(() async {
+        router.push(RouteNames.followers);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 500));
+      });
+
+      // Before the fix: this pushed '/user/followers' and built
+      // UserProfileScreen(userId: 'followers'), whose own provider
+      // call chain reaches FriendsRepository.getSocialProfile('followers')
+      // — a real Supabase call this offline test can't make, but the
+      // widget itself (and the actually-matched route) are what prove
+      // the bug/fix regardless of that call's outcome.
+      //
+      // currentConfiguration.uri stays '/home' here even on success —
+      // RouteNames.followers is registered with parentNavigatorKey:
+      // rootKey, so an imperative push() of it lands as its own
+      // top-level match on the root Navigator (confirmed via
+      // currentConfiguration.matches) rather than replacing the
+      // shell's own reported location; matches + the actual widget
+      // tree are the reliable signal, not .uri alone.
+      final matchedPaths = router.routerDelegate.currentConfiguration.matches
+          .map((m) => m.matchedLocation)
+          .toList();
+      expect(matchedPaths, contains(RouteNames.followers));
+      expect(find.byType(FollowersScreen), findsOneWidget);
+      expect(find.byType(UserProfileScreen), findsNothing);
+    });
+
+    testWidgets('3: a genuine shared-profile-link path (a real id, not the '
+        'reserved "followers" segment) still resolves to '
+        'UserProfileScreen with that real id — the fix only excludes '
+        'reserved /profile/* routes, it does not break real profile links', (
+      tester,
+    ) async {
+      final repo = _MockAuthRepository();
+      when(() => repo.restoreSession()).thenAnswer(
+        (_) async =>
+            (_fakeSession(_completeWithPassword.id), _completeWithPassword),
+      );
+      final auth = await buildAndInitAuth(repo, _MockSecureStorageService());
+
+      final router = AppRouter.createRouter(auth);
+      await pumpIgnoringHomeShellDeps(tester, wrapRouter(auth, router));
+
+      await withHomeShellDepsIgnored(() async {
+        router.push('/profile/a-real-shared-user-id');
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 500));
+      });
+
+      final matchedPaths = router.routerDelegate.currentConfiguration.matches
+          .map((m) => m.matchedLocation)
+          .toList();
+      expect(matchedPaths, contains('/user/a-real-shared-user-id'));
+      expect(find.byType(UserProfileScreen), findsOneWidget);
+      final screen = tester.widget<UserProfileScreen>(
+        find.byType(UserProfileScreen),
+      );
+      expect(screen.userId, 'a-real-shared-user-id');
+    });
   });
 }

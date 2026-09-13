@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../../core/config/platform_config_provider.dart';
 import '../../../../core/di/service_locator.dart';
 import '../../../../core/extensions/context_ext.dart';
+import '../../../../core/l10n/generated/app_localizations.dart';
 import '../../../../core/services/image_cache_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/settings_row_widgets.dart';
@@ -14,15 +15,53 @@ import '../../../packs/presentation/pack_provider.dart';
 import '../../../packs/presentation/widgets/pack_situation_tag_picker.dart';
 import '../room_provider.dart';
 
-/// The pack's own title in the viewer's language if available, else in the
-/// pack's declared language, else in whatever language it actually has —
+/// The pack's own title in [lang] if available, else in the pack's
+/// declared language, else in whatever language it actually has —
 /// [PackEntity.titleFor] never returns a raw id. Only truly empty title
 /// data (a corrupt/incomplete pack row) falls through to the generic
 /// localized "Pack" placeholder — never the pack's UUID.
-String _displayTitle(BuildContext context, PackEntity pack) {
-  final title = pack.titleFor(Localizations.localeOf(context).languageCode);
+///
+/// Item 5 (real-device report) — [lang] must be the ROOM's own selected
+/// language (RoomEntity.language / this screen's own `_langFilter`
+/// state), NOT the viewer's app UI language
+/// (`Localizations.localeOf(context)`, the previous — wrong — source):
+/// an admin whose own phone is set to English but who picked Arabic for
+/// the room should see Arabic pack names here, since that's what every
+/// OTHER player in the room will actually see the pack as.
+String _displayTitle(BuildContext context, PackEntity pack, String lang) {
+  final title = pack.titleFor(lang);
   return title.isNotEmpty ? title : context.l10n.defaultPackName;
 }
+
+/// Item 9 (real-device report) — Room Settings language chips used to
+/// always show raw 2-letter codes ("EN"/"FR"/"AR") uppercased,
+/// regardless of the viewer's own app language. Localizes en/ar/fr's
+/// display name using the APP's current UI language ([l10n] — see
+/// edit_profile_screen.dart/onboarding_screen.dart for the same
+/// language-name keys used the same way) — deliberately NOT the room's
+/// own selected language (RoomEntity.language/_langFilter, a completely
+/// separate field this function never reads: which language a chip's
+/// LABEL is written in, and which language that chip SELECTS, are two
+/// independent things). Codes without a localized name (the
+/// pack_languages table can list more than en/ar/fr) keep the existing
+/// uppercase-code fallback.
+String languageLabel(AppLocalizations l10n, String code) => switch (code) {
+  'en' => l10n.languageEnglish,
+  'ar' => l10n.languageArabic,
+  'fr' => l10n.languageFrench,
+  _ => code.toUpperCase(),
+};
+
+/// Item 6 (real-device report) — the actual category-match predicate a
+/// pack must satisfy: `categoryId == null` means "All categories" (no
+/// filter, matches everything, including packs with no category set at
+/// all), otherwise the pack's own [PackEntity.categoryId] must match
+/// exactly. A top-level pure function (not inlined in _filteredPacks)
+/// so this exact predicate is independently unit-testable without a
+/// live PackProvider/Supabase client — the same established pattern as
+/// every other extracted decision function in this codebase.
+bool packMatchesCategory(PackEntity pack, String? categoryId) =>
+    categoryId == null || pack.categoryId == categoryId;
 
 class GameSettingsSheet extends StatefulWidget {
   const GameSettingsSheet({super.key, this.scrollController});
@@ -42,6 +81,19 @@ class _GameSettingsSheetState extends State<GameSettingsSheet> {
   String _langFilter = 'en';
   Set<String> _playedPackIds = {}; // packs already used in this room
 
+  // Item 6 (real-device report) — category filter. Null means "All
+  // categories" (no filtering by category, the existing behavior).
+  // Client-side against the already-loaded _packs, same as _langFilter/
+  // _packTab above — GameSettingsSheet builds its pack list from
+  // provider state already in memory (purchased + local + free browse
+  // packs), not a fresh per-filter server fetch, so this stays
+  // consistent with how every other filter in this sheet already works.
+  // Because ToD/NHIE/Meme packs are all picked from this ONE sheet
+  // (only _packTab changes which game's packs are visible), this single
+  // filter automatically applies uniformly across all three games
+  // rather than needing three separate implementations.
+  String? _categoryFilter;
+
   // Optional admin "what are you looking for" filter (item 5). Empty by
   // default — existing pack browsing is completely unchanged until the
   // admin actually picks something (see rankPacksBySituation). ToD-only
@@ -51,6 +103,14 @@ class _GameSettingsSheetState extends State<GameSettingsSheet> {
   // Item 7: DB-driven situation-tag vocabulary, loaded once like every
   // other admin-configurable list this sheet already fetches (languages).
   List<PackSituationTag> _situationTags = [];
+
+  // Item 6 (real-device report) — DB-driven category vocabulary.
+  // PackProvider already loads this once on login (_loadCategories, see
+  // its own onUserLoggedIn), so this is a one-shot read of already-
+  // available state in initState, same convention as _situationTags
+  // above rather than a live context.watch<PackProvider>() — nothing
+  // else in this sheet reactively watches PackProvider either.
+  List<PackCategory> _categories = [];
 
   // Item 6: which game's packs the picker currently shows. Defaults to the
   // room's own active game so opening the sheet never changes what's
@@ -79,7 +139,11 @@ class _GameSettingsSheetState extends State<GameSettingsSheet> {
     'ru': '🇷🇺',
   };
 
-  List<(String, String)> _langs = [];
+  // Just the available codes — the display LABEL (item 9) is derived at
+  // render time from the app's current UI language via languageLabel(),
+  // not baked in here, so it can't go stale if the app language changes
+  // while this sheet is open.
+  List<String> _langs = [];
 
   @override
   void initState() {
@@ -92,6 +156,7 @@ class _GameSettingsSheetState extends State<GameSettingsSheet> {
     _loadPacks();
     _loadLanguages();
     _loadSituationTags();
+    _categories = context.read<PackProvider>().categories;
   }
 
   Future<void> _loadSituationTags() async {
@@ -109,16 +174,13 @@ class _GameSettingsSheetState extends State<GameSettingsSheet> {
       final langs = await PackRepository.instance.getAvailableLanguages();
       if (!mounted) return;
       setState(() {
-        _langs = [
-          for (final l in langs)
-            (l.code, '${_flagEmoji[l.code] ?? '🏳️'} ${l.code.toUpperCase()}'),
-        ];
+        _langs = [for (final l in langs) l.code];
       });
     } catch (_) {
       // Fall back to just the room's own current language — never block
       // the sheet on this, and never silently hardcode a fixed set.
       if (mounted) {
-        setState(() => _langs = [(_langFilter, _langFilter.toUpperCase())]);
+        setState(() => _langs = [_langFilter]);
       }
     }
   }
@@ -171,6 +233,10 @@ class _GameSettingsSheetState extends State<GameSettingsSheet> {
       // is purely additive to the existing language/coverage filtering
       // below, never changes it.
       if (p.gameType != _packTab.toDbString()) return false;
+
+      // Item 6 (real-device report) — category filter, purely additive
+      // to every other predicate here (game tab + language/coverage).
+      if (!packMatchesCategory(p, _categoryFilter)) return false;
 
       // Title/metadata must claim the language...
       final titleHasLang = p.titleJson.containsKey(_langFilter);
@@ -298,16 +364,18 @@ class _GameSettingsSheetState extends State<GameSettingsSheet> {
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
-                    children: _langs.map((lang) {
-                      final selected = _langFilter == lang.$1;
+                    children: _langs.map((code) {
+                      final selected = _langFilter == code;
+                      final label =
+                          '${_flagEmoji[code] ?? '🏳️'} ${languageLabel(l10n, code)}';
                       return Padding(
                         padding: const EdgeInsets.only(right: 8),
                         child: ChoiceChip(
-                          label: Text(lang.$2),
+                          label: Text(label),
                           selected: selected,
                           onSelected: (_) {
-                            setState(() => _langFilter = lang.$1);
-                            room.setLanguage(lang.$1);
+                            setState(() => _langFilter = code);
+                            room.setLanguage(code);
                           },
                         ),
                       );
@@ -315,6 +383,50 @@ class _GameSettingsSheetState extends State<GameSettingsSheet> {
                   ),
                 ),
                 const SizedBox(height: 20),
+
+                // ── Category filter (item 6, real-device report) ─────────────
+                // Purely additive, same client-side-against-_packs pattern as
+                // the language filter above; shown only when there's
+                // actually more than "everything" to filter by, and only
+                // for the owner, matching the game tabs/pack picker above.
+                if (room.isOwner && _categories.isNotEmpty) ...[
+                  Text(
+                    l10n.roomSettingsCategoryFilterLabel,
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: ChoiceChip(
+                            label: Text(l10n.gameNameAll),
+                            selected: _categoryFilter == null,
+                            onSelected: (_) =>
+                                setState(() => _categoryFilter = null),
+                          ),
+                        ),
+                        for (final category in _categories)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: ChoiceChip(
+                              label: Text(
+                                '${category.icon} ${category.nameFor(_langFilter)}',
+                              ),
+                              selected: _categoryFilter == category.id,
+                              onSelected: (_) =>
+                                  setState(() => _categoryFilter = category.id),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                ],
 
                 // ── Pack picker ───────────────────────────────────────────────
                 if (room.isOwner) ...[
@@ -444,6 +556,7 @@ class _GameSettingsSheetState extends State<GameSettingsSheet> {
                                     situationTags: _situationTags,
                                     selected: room.room?.packId == pack.id,
                                     onTap: () => room.setPackId(pack.id),
+                                    language: _langFilter,
                                   ),
                                 ),
                               ),
@@ -459,7 +572,20 @@ class _GameSettingsSheetState extends State<GameSettingsSheet> {
                               const SizedBox(height: 8),
                             ],
                             SizedBox(
-                              height: 110,
+                              // Item 8 (real-device report) — was 110,
+                              // exactly tall enough for a SINGLE-line
+                              // pack title. _PackPickerCard's title is
+                              // maxLines: 2, and once a long pack name
+                              // actually wraps to its second line, the
+                              // card's intrinsic content height (icon
+                              // row + both title lines + card-count row
+                              // + padding) exceeds 110, producing a
+                              // bottom RenderFlex overflow. 136 gives
+                              // enough room for the full 2-line case
+                              // without touching any font size, per
+                              // this task's own "do not shrink fonts to
+                              // fit" instruction.
+                              height: 136,
                               child: ListView.separated(
                                 scrollDirection: Axis.horizontal,
                                 itemCount: others.length,
@@ -469,6 +595,7 @@ class _GameSettingsSheetState extends State<GameSettingsSheet> {
                                   pack: others[i],
                                   selected: room.room?.packId == others[i].id,
                                   onTap: () => room.setPackId(others[i].id),
+                                  language: _langFilter,
                                 ),
                               ),
                             ),
@@ -606,6 +733,13 @@ class _GameSettingsSheetState extends State<GameSettingsSheet> {
                   value: s.requiresApproval,
                   onChanged: (v) => room.updateSetting('requires_approval', v),
                 ),
+                SettingsSwitchRow(
+                  label: l10n.gameSettingsHonestyVote,
+                  icon: Icons.handshake_outlined,
+                  value: s.honestyVoteEnabled,
+                  onChanged: (v) =>
+                      room.updateSetting('honesty_vote_enabled', v),
+                ),
               ],
             ),
           );
@@ -627,6 +761,7 @@ class _BestMatchPackCard extends StatelessWidget {
     required this.situationTags,
     required this.selected,
     required this.onTap,
+    required this.language,
   });
 
   final PackEntity pack;
@@ -634,6 +769,10 @@ class _BestMatchPackCard extends StatelessWidget {
   final List<PackSituationTag> situationTags;
   final bool selected;
   final VoidCallback onTap;
+
+  /// The room's own selected language (item 5) — see _displayTitle's
+  /// own doc comment for why this must not be the viewer's app locale.
+  final String language;
 
   @override
   Widget build(BuildContext context) {
@@ -744,7 +883,7 @@ class _BestMatchPackCard extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      _displayTitle(context, pack),
+                      _displayTitle(context, pack, language),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -819,11 +958,16 @@ class _PackPickerCard extends StatelessWidget {
     required this.pack,
     required this.selected,
     required this.onTap,
+    required this.language,
   });
 
   final PackEntity pack;
   final bool selected;
   final VoidCallback onTap;
+
+  /// The room's own selected language (item 5) — see _displayTitle's
+  /// own doc comment for why this must not be the viewer's app locale.
+  final String language;
 
   @override
   Widget build(BuildContext context) {
@@ -875,7 +1019,7 @@ class _PackPickerCard extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              _displayTitle(context, pack),
+              _displayTitle(context, pack, language),
               style: theme.textTheme.labelMedium?.copyWith(
                 fontWeight: FontWeight.w600,
               ),

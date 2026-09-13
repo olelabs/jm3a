@@ -301,6 +301,39 @@ class AppLocalizationsFr extends AppLocalizations {
   String get roomsJoin => 'Rejoindre';
 
   @override
+  String get qrRoomRevealTitle => 'Code QR de la salle';
+
+  @override
+  String get qrRoomRevealInstruction => 'Scannez pour rejoindre cette salle';
+
+  @override
+  String get qrProfileRevealTitle => 'Mon code QR';
+
+  @override
+  String get qrProfileRevealInstruction => 'Scannez pour voir mon profil';
+
+  @override
+  String get qrClose => 'Fermer';
+
+  @override
+  String get qrShareLink => 'Partager le lien';
+
+  @override
+  String get qrScanButtonLabel => 'Scanner un code QR';
+
+  @override
+  String get qrScanScreenTitle => 'Scanner un code QR';
+
+  @override
+  String get qrScanInstruction => 'Pointez votre caméra vers un code QR Jma3a';
+
+  @override
+  String get qrScanInvalidCode => 'Ce n\'est pas un code QR Jma3a valide';
+
+  @override
+  String get qrScanTryAgain => 'Réessayer';
+
+  @override
   String roomsInvitedByName(String name) {
     return 'Invité(e) par $name';
   }
@@ -395,6 +428,14 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get gameTryAgain => 'Réessayer';
+
+  @override
+  String get gameYourTurn => 'À vous de jouer !';
+
+  @override
+  String gamePlayerTurn(String name) {
+    return 'Au tour de $name';
+  }
 
   @override
   String get moderationKick => 'Expulser le joueur';
@@ -529,6 +570,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get profileGames => 'Jeux';
 
   @override
+  String get usernameProfileResolving => 'Chargement du profil…';
+
+  @override
+  String get usernameProfileNotFound => 'Ce profil est introuvable.';
+
+  @override
   String get profileScore => 'Score';
 
   @override
@@ -560,6 +607,9 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get profileFollowers => 'Abonnés';
+
+  @override
+  String get streakAchievementBarrierLabel => 'Succès de série';
 
   @override
   String get streakNewTitle => 'Nouvelle série !';
@@ -606,6 +656,9 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get gameSettingsRequireApproval =>
       'Approbation requise pour rejoindre';
+
+  @override
+  String get gameSettingsHonestyVote => 'Vote d\'honnêteté';
 
   @override
   String get gameSettingsAllowSpectators => 'Autoriser les spectateurs';
@@ -717,6 +770,9 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get leave => 'Quitter';
+
+  @override
+  String get leaveGame => 'Quitter la partie';
 
   @override
   String get ok => 'OK';
@@ -942,6 +998,23 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get lobbyShareInviteLink => 'Partager le lien d\'invitation';
+
+  @override
+  String roomShareMaxPlayers(int count) {
+    return '$count joueurs max';
+  }
+
+  @override
+  String get roomShareInvitedBy => 'Invité par';
+
+  @override
+  String get roomShareScoreLabel => 'Score';
+
+  @override
+  String get roomShareHonestyLabel => 'Honnêteté';
+
+  @override
+  String get roomShareJoinCta => 'REJOINDRE LA SALLE';
 
   @override
   String lobbyShareInviteMessage(String code, String link) {
@@ -1470,6 +1543,13 @@ class AppLocalizationsFr extends AppLocalizations {
   String get todCompletedTurn => 'a terminé son tour !';
 
   @override
+  String get todNoAnswerOrProofYet => 'Aucune réponse ni preuve pour ce tour';
+
+  @override
+  String get todSpectatorWatchingLabel =>
+      'En spectateur — aucune action disponible';
+
+  @override
   String get todCustomCardAdded => '✅ Carte personnalisée ajoutée au deck !';
 
   @override
@@ -1488,7 +1568,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get todDifficultyLabel => 'Difficulté';
 
   @override
-  String get todDoneButton => 'Terminé ! ✅';
+  String get todDoneButton => 'Répondre ✅';
 
   @override
   String get todEndGame => 'Terminer la partie';
@@ -1558,6 +1638,35 @@ class AppLocalizationsFr extends AppLocalizations {
       'Choisissez au moins une personne.';
 
   @override
+  String get todProofViewedLabel => 'Preuve consultée';
+
+  @override
+  String get todProofTapToViewLabel => '🔒 Toucher pour voir la preuve';
+
+  @override
+  String get todVoiceProofLabel => 'PREUVE VOCALE';
+
+  @override
+  String get todImageProofLabel => 'PREUVE IMAGE';
+
+  @override
+  String todProofReplayCount(int count) {
+    return '👁 Revoir ($count restant(s))';
+  }
+
+  @override
+  String get todProofNoReplaysLeft =>
+      'Plus de visionnages disponibles pour cette preuve.';
+
+  @override
+  String get todProofNotAllowedToView =>
+      'Vous n\'êtes pas autorisé à voir cette preuve.';
+
+  @override
+  String get todProofOpenFailed =>
+      'Impossible d\'ouvrir la preuve — veuillez réessayer.';
+
+  @override
   String get todReactLabel => 'Réagir :';
 
   @override
@@ -1596,6 +1705,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String todPlayerIsChoosing(String name) {
     return '$name choisit…';
   }
+
+  @override
+  String get todWaitingForPlayerGeneric => 'En attente du joueur…';
 
   @override
   String get todTruthChoiceDescription =>
@@ -1939,6 +2051,26 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get todPunishmentHint => 'ex. « Fais 10 pompes »';
+
+  @override
+  String get todPickYourPunishment => '⚡ CHOISISSEZ VOTRE GAGE';
+
+  @override
+  String todPlayerIsChoosingPunishment(String name) {
+    return '⚡ $name CHOISIT…';
+  }
+
+  @override
+  String get todEveryoneSubmittedPickOne =>
+      'Tout le monde a proposé un gage — choisissez celui que vous ferez.';
+
+  @override
+  String todWaitingForPlayerToPickOne(String name) {
+    return 'En attente que $name en choisisse un.';
+  }
+
+  @override
   String todSubmittedCount(int submitted, int expected) {
     return '$submitted / $expected envoyés';
   }
@@ -1951,6 +2083,12 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get todWaitingChoosingQuestion => 'Action ou Vérité ?';
+
+  @override
+  String get todYourTurnBadge => '⚡ VOTRE TOUR';
+
+  @override
+  String get todTheirTurn => 'C\'est leur tour';
 
   @override
   String todWinnerWins(String name) {
@@ -2612,6 +2750,15 @@ class AppLocalizationsFr extends AppLocalizations {
   String get walletCurrencyName => 'Ouguiya mauritanienne';
 
   @override
+  String get walletCurrencyShort => 'MRU';
+
+  @override
+  String get walletAvailableBalanceLabel => 'Solde disponible';
+
+  @override
+  String get walletFrozenLabel => 'Portefeuille (gelé)';
+
+  @override
   String get walletDeposit => 'Dépôt';
 
   @override
@@ -2819,6 +2966,104 @@ class AppLocalizationsFr extends AppLocalizations {
   String get premiumAppThemeTitle => 'Thème de l\'application';
 
   @override
+  String get appThemeNameJma3a => 'Jma3a';
+
+  @override
+  String get appThemeNameMidnight => 'Minuit';
+
+  @override
+  String get appThemeNameClassic => 'Classique';
+
+  @override
+  String get appThemeNameCandy => 'Bonbon';
+
+  @override
+  String get appThemeNameOcean => 'Océan';
+
+  @override
+  String get appThemeNameForest => 'Forêt';
+
+  @override
+  String get appThemeNameSunset => 'Coucher de soleil';
+
+  @override
+  String get appThemeNameLavender => 'Lavande';
+
+  @override
+  String get appThemeNameRose => 'Rose';
+
+  @override
+  String get appThemeNameGalaxy => 'Galaxie';
+
+  @override
+  String get appThemeNameNeon => 'Néon';
+
+  @override
+  String get appThemeNameGold => 'Or';
+
+  @override
+  String get appThemeNameCyber => 'Cyber';
+
+  @override
+  String get appThemeNameLava => 'Lave';
+
+  @override
+  String get appThemeNameAurora => 'Aurore';
+
+  @override
+  String get appThemeNameBubblegum => 'Chewing-gum';
+
+  @override
+  String get appThemeNameCandyPop => 'Candy Pop';
+
+  @override
+  String get appThemeNameDeepSpace => 'Espace profond';
+
+  @override
+  String get appThemeNameBlossom => 'Floraison';
+
+  @override
+  String get appThemeNameLovestruck => 'Éperdument amoureux';
+
+  @override
+  String get premiumGameCardColorTitle => 'Couleur de la carte de jeu';
+
+  @override
+  String get premiumGameCardColorHint =>
+      'S\'applique uniquement au recto de vos cartes de jeu — le verso garde son propre style.';
+
+  @override
+  String get premiumGameCardColorEmoji => 'Couleur de la carte de jeu 🎴';
+
+  @override
+  String get premiumChooseGameCardColor =>
+      'Choisissez une couleur de carte de jeu';
+
+  @override
+  String get gameCardColorClassicPurple => 'Violet classique';
+
+  @override
+  String get gameCardColorMidnightBlue => 'Bleu minuit';
+
+  @override
+  String get gameCardColorEmberRed => 'Rouge braise';
+
+  @override
+  String get gameCardColorForestEmerald => 'Émeraude forêt';
+
+  @override
+  String get gameCardColorSunsetOrange => 'Orange coucher de soleil';
+
+  @override
+  String get gameCardColorGoldPrestige => 'Or prestige';
+
+  @override
+  String get gameCardColorRosePink => 'Rose poudré';
+
+  @override
+  String get gameCardColorCyberTeal => 'Sarcelle cyber';
+
+  @override
   String get premiumAutoRenewNotice =>
       'Les abonnements se renouvellent automatiquement sauf annulation 24h avant le renouvellement.';
 
@@ -2827,6 +3072,69 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get premiumBackgroundColorTitle => 'Couleur d\'arrière-plan';
+
+  @override
+  String get bgColorWhite => 'Blanc';
+
+  @override
+  String get bgColorWarmWhite => 'Blanc chaud';
+
+  @override
+  String get bgColorLightGrey => 'Gris clair';
+
+  @override
+  String get bgColorCoolGrey => 'Gris froid';
+
+  @override
+  String get bgColorCharcoal => 'Charbon';
+
+  @override
+  String get bgColorSoftBlack => 'Noir doux';
+
+  @override
+  String get bgColorCream => 'Crème';
+
+  @override
+  String get bgColorBeige => 'Beige';
+
+  @override
+  String get bgColorSand => 'Sable';
+
+  @override
+  String get bgColorStone => 'Pierre';
+
+  @override
+  String get bgColorSlate => 'Ardoise';
+
+  @override
+  String get bgColorNavyGrey => 'Gris marine';
+
+  @override
+  String get bgColorDeepBlueGrey => 'Gris bleu foncé';
+
+  @override
+  String get bgColorForestMist => 'Brume de forêt';
+
+  @override
+  String get bgColorSage => 'Sauge';
+
+  @override
+  String get bgColorPaleBlue => 'Bleu pâle';
+
+  @override
+  String get bgColorMistBlue => 'Bleu brumeux';
+
+  @override
+  String get bgColorLavenderMist => 'Brume de lavande';
+
+  @override
+  String get bgColorBlush => 'Rose poudré';
+
+  @override
+  String get bgColorSoftMint => 'Menthe douce';
+
+  @override
+  String get bgColorGraphite => 'Graphite';
 
   @override
   String get premiumBlendsIntoTheme =>
@@ -3167,6 +3475,23 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get packSetMaxPlayersToggle => 'Définir un nombre maximum de joueurs';
+
+  @override
+  String packMaxPlayersLabel(int count) {
+    return 'Joueurs maximum : $count';
+  }
+
+  @override
+  String packMaxPlayersSliderLabel(int count) {
+    return '$count joueurs';
+  }
+
+  @override
+  String get packNoMaxPlayersHint =>
+      'Aucune limite — jouable avec tout groupe au-dessus du minimum';
+
+  @override
   String get packMinimumReached => '✅ Minimum atteint';
 
   @override
@@ -3205,6 +3530,9 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get packPickExistingCategory => 'Choisir une catégorie existante';
+
+  @override
+  String get roomSettingsCategoryFilterLabel => 'Catégorie';
 
   @override
   String packPlayersSliderLabel(int count) {
@@ -3445,6 +3773,17 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get packBrowseMarketplaceHint =>
       'Parcourez la boutique pour trouver des packs.';
+
+  @override
+  String get packConfirmPurchaseTitle => 'Confirmer l\'achat';
+
+  @override
+  String packConfirmPurchaseBody(String name, String price) {
+    return 'Vous êtes sur le point d\'acheter « $name » pour $price.';
+  }
+
+  @override
+  String get packConfirmPurchaseAction => 'Acheter';
 
   @override
   String packBuyForPrice(int price) {
@@ -3717,6 +4056,13 @@ class AppLocalizationsFr extends AppLocalizations {
   String get packReportSubmitted => 'Signalement envoyé.';
 
   @override
+  String get packReportAlreadySubmitted => 'Vous avez déjà signalé ce pack.';
+
+  @override
+  String get packReportFailed =>
+      'Impossible d\'envoyer votre signalement. Veuillez réessayer.';
+
+  @override
   String get packPromoteYourPack => 'Promouvoir votre pack';
 
   @override
@@ -3987,6 +4333,362 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get avatarTabHair => 'Cheveux';
+
+  @override
+  String get avatarOptTanned => 'Bronzé';
+
+  @override
+  String get avatarOptYellow => 'Jaune';
+
+  @override
+  String get avatarOptPale => 'Pâle';
+
+  @override
+  String get avatarOptLight => 'Clair';
+
+  @override
+  String get avatarOptBrown => 'Brun';
+
+  @override
+  String get avatarOptDarkBrown => 'Brun foncé';
+
+  @override
+  String get avatarOptBlack => 'Noir';
+
+  @override
+  String get avatarOptAuburn => 'Auburn';
+
+  @override
+  String get avatarOptBlonde => 'Blond';
+
+  @override
+  String get avatarOptBlondeGolden => 'Blond doré';
+
+  @override
+  String get avatarOptBrownDark => 'Brun foncé';
+
+  @override
+  String get avatarOptPastelPink => 'Rose pastel';
+
+  @override
+  String get avatarOptPlatinum => 'Platine';
+
+  @override
+  String get avatarOptRed => 'Roux';
+
+  @override
+  String get avatarOptSilverGray => 'Gris argenté';
+
+  @override
+  String get avatarOptNoHair => 'Sans cheveux';
+
+  @override
+  String get avatarOptEyepatch => 'Cache-œil';
+
+  @override
+  String get avatarOptHat => 'Chapeau';
+
+  @override
+  String get avatarOptHijab => 'Hijab';
+
+  @override
+  String get avatarOptTurban => 'Turban';
+
+  @override
+  String get avatarOptWinterHat1 => 'Bonnet d\'hiver 1';
+
+  @override
+  String get avatarOptWinterHat2 => 'Bonnet d\'hiver 2';
+
+  @override
+  String get avatarOptWinterHat3 => 'Bonnet d\'hiver 3';
+
+  @override
+  String get avatarOptWinterHat4 => 'Bonnet d\'hiver 4';
+
+  @override
+  String get avatarOptLongHairBigHair => 'Cheveux longs — Volumineux';
+
+  @override
+  String get avatarOptLongHairBob => 'Cheveux longs — Carré';
+
+  @override
+  String get avatarOptLongHairBun => 'Cheveux longs — Chignon';
+
+  @override
+  String get avatarOptLongHairCurly => 'Cheveux longs — Bouclés';
+
+  @override
+  String get avatarOptLongHairCurvy => 'Cheveux longs — Ondulés';
+
+  @override
+  String get avatarOptLongHairDreads => 'Cheveux longs — Dreadlocks';
+
+  @override
+  String get avatarOptLongHairFrida => 'Cheveux longs — Frida';
+
+  @override
+  String get avatarOptLongHairFro => 'Cheveux longs — Afro';
+
+  @override
+  String get avatarOptLongHairFroBand => 'Cheveux longs — Afro avec bandeau';
+
+  @override
+  String get avatarOptLongHairNotTooLong => 'Cheveux longs — Mi-longs';
+
+  @override
+  String get avatarOptLongHairShavedSides => 'Cheveux longs — Tempes rasées';
+
+  @override
+  String get avatarOptLongHairMiaWallace => 'Cheveux longs — Mia Wallace';
+
+  @override
+  String get avatarOptLongHairStraight => 'Cheveux longs — Raides';
+
+  @override
+  String get avatarOptLongHairStraight2 => 'Cheveux longs — Raides 2';
+
+  @override
+  String get avatarOptLongHairStraightStrand => 'Cheveux longs — Mèche raide';
+
+  @override
+  String get avatarOptShortHairDreads01 => 'Cheveux courts — Dreadlocks 1';
+
+  @override
+  String get avatarOptShortHairDreads02 => 'Cheveux courts — Dreadlocks 2';
+
+  @override
+  String get avatarOptShortHairFrizzle => 'Cheveux courts — Frisottis';
+
+  @override
+  String get avatarOptShortHairShaggyMullet =>
+      'Cheveux courts — Mulet ébouriffé';
+
+  @override
+  String get avatarOptShortHairShortCurly => 'Cheveux courts — Bouclés courts';
+
+  @override
+  String get avatarOptShortHairShortFlat => 'Cheveux courts — Plats';
+
+  @override
+  String get avatarOptShortHairShortRound => 'Cheveux courts — Arrondis';
+
+  @override
+  String get avatarOptShortHairShortWaved => 'Cheveux courts — Ondulés courts';
+
+  @override
+  String get avatarOptShortHairSides => 'Cheveux courts — Sur les côtés';
+
+  @override
+  String get avatarOptShortHairTheCaesar => 'Cheveux courts — César';
+
+  @override
+  String get avatarOptShortHairTheCaesarSidePart =>
+      'Cheveux courts — César avec raie';
+
+  @override
+  String get avatarOptBlank => 'Aucun';
+
+  @override
+  String get avatarOptKurt => 'Lunettes Kurt';
+
+  @override
+  String get avatarOptPrescription01 => 'Lunettes de vue 1';
+
+  @override
+  String get avatarOptPrescription02 => 'Lunettes de vue 2';
+
+  @override
+  String get avatarOptRound => 'Lunettes rondes';
+
+  @override
+  String get avatarOptSunglasses => 'Lunettes de soleil';
+
+  @override
+  String get avatarOptWayfarers => 'Wayfarers';
+
+  @override
+  String get avatarOptBeardMedium => 'Barbe moyenne';
+
+  @override
+  String get avatarOptBeardLight => 'Barbe légère';
+
+  @override
+  String get avatarOptBeardMagestic => 'Barbe majestueuse';
+
+  @override
+  String get avatarOptMoustacheFancy => 'Moustache raffinée';
+
+  @override
+  String get avatarOptMoustacheMagnum => 'Moustache Magnum';
+
+  @override
+  String get avatarOptBlazerShirt => 'Blazer et chemise';
+
+  @override
+  String get avatarOptBlazerSweater => 'Blazer et pull';
+
+  @override
+  String get avatarOptCollarSweater => 'Pull à col';
+
+  @override
+  String get avatarOptGraphicShirt => 'Chemise à motif';
+
+  @override
+  String get avatarOptHoodie => 'Sweat à capuche';
+
+  @override
+  String get avatarOptOverall => 'Salopette';
+
+  @override
+  String get avatarOptShirtCrewNeck => 'Chemise col rond';
+
+  @override
+  String get avatarOptShirtScoopNeck => 'Chemise col échancré';
+
+  @override
+  String get avatarOptShirtVNeck => 'Chemise col en V';
+
+  @override
+  String get avatarOptBlue01 => 'Bleu 1';
+
+  @override
+  String get avatarOptBlue02 => 'Bleu 2';
+
+  @override
+  String get avatarOptBlue03 => 'Bleu 3';
+
+  @override
+  String get avatarOptGray01 => 'Gris 1';
+
+  @override
+  String get avatarOptGray02 => 'Gris 2';
+
+  @override
+  String get avatarOptHeather => 'Chiné';
+
+  @override
+  String get avatarOptPastelBlue => 'Bleu pastel';
+
+  @override
+  String get avatarOptPastelGreen => 'Vert pastel';
+
+  @override
+  String get avatarOptPastelOrange => 'Orange pastel';
+
+  @override
+  String get avatarOptPastelRed => 'Rouge pastel';
+
+  @override
+  String get avatarOptPastelYellow => 'Jaune pastel';
+
+  @override
+  String get avatarOptPink => 'Rose';
+
+  @override
+  String get avatarOptWhite => 'Blanc';
+
+  @override
+  String get avatarOptClose => 'Fermés';
+
+  @override
+  String get avatarOptCry => 'En pleurs';
+
+  @override
+  String get avatarOptDefault => 'Par défaut';
+
+  @override
+  String get avatarOptDizzy => 'Étourdis';
+
+  @override
+  String get avatarOptEyeRoll => 'Yeux au ciel';
+
+  @override
+  String get avatarOptHappy => 'Joyeux';
+
+  @override
+  String get avatarOptHearts => 'Yeux en cœur';
+
+  @override
+  String get avatarOptSide => 'Regard de côté';
+
+  @override
+  String get avatarOptSquint => 'Plissés';
+
+  @override
+  String get avatarOptSurprised => 'Surpris';
+
+  @override
+  String get avatarOptWink => 'Clin d\'œil';
+
+  @override
+  String get avatarOptWinkWacky => 'Clin d\'œil loufoque';
+
+  @override
+  String get avatarOptAngry => 'En colère';
+
+  @override
+  String get avatarOptAngryNatural => 'En colère (naturel)';
+
+  @override
+  String get avatarOptDefaultNatural => 'Par défaut (naturel)';
+
+  @override
+  String get avatarOptFlatNatural => 'Plat (naturel)';
+
+  @override
+  String get avatarOptRaisedExcited => 'Relevés, excités';
+
+  @override
+  String get avatarOptRaisedExcitedNatural => 'Relevés, excités (naturel)';
+
+  @override
+  String get avatarOptSadConcerned => 'Triste et inquiet';
+
+  @override
+  String get avatarOptSadConcernedNatural => 'Triste et inquiet (naturel)';
+
+  @override
+  String get avatarOptUnibrowNatural => 'Sourcils joints (naturel)';
+
+  @override
+  String get avatarOptUpDown => 'Haut et bas';
+
+  @override
+  String get avatarOptUpDownNatural => 'Haut et bas (naturel)';
+
+  @override
+  String get avatarOptConcerned => 'Inquiet';
+
+  @override
+  String get avatarOptDisbelief => 'Incrédule';
+
+  @override
+  String get avatarOptEating => 'En train de manger';
+
+  @override
+  String get avatarOptGrimace => 'Grimace';
+
+  @override
+  String get avatarOptSad => 'Triste';
+
+  @override
+  String get avatarOptScreamOpen => 'Cri';
+
+  @override
+  String get avatarOptSerious => 'Sérieux';
+
+  @override
+  String get avatarOptSmile => 'Sourire';
+
+  @override
+  String get avatarOptTongue => 'Langue tirée';
+
+  @override
+  String get avatarOptTwinkle => 'Pétillant';
+
+  @override
+  String get avatarOptVomit => 'Vomissement';
 
   @override
   String get avatarTabMouth => 'Bouche';
@@ -4449,6 +5151,11 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String roomsPackRequiresMaxPlayers(int count) {
+    return 'Ce pack ne peut être joué que par $count joueurs. Passez les joueurs en trop en spectateurs ou retirez-les pour démarrer.';
+  }
+
+  @override
   String get roomsPendingEllipsis => 'En attente…';
 
   @override
@@ -4472,6 +5179,9 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get roomsPermManageSettings => 'Gérer les paramètres de la salle';
+
+  @override
+  String get roomsPermSetSpectator => 'Passer des joueurs en spectateurs';
 
   @override
   String get roomsPermMuteChat => 'Couper le chat';
@@ -4573,6 +5283,39 @@ class AppLocalizationsFr extends AppLocalizations {
   String get sharedReactionIconsTab => 'Icônes';
 
   @override
+  String get sharedReactionPickIconTitle => 'Choisir une réaction';
+
+  @override
+  String get sharedReactionPickAvatarTitle => 'Choisir une réaction d\'avatar';
+
+  @override
+  String get sharedReactionCategoryPopular => 'Populaire';
+
+  @override
+  String get sharedReactionCategoryLove => 'Amour';
+
+  @override
+  String get sharedReactionCategoryFunny => 'Drôle';
+
+  @override
+  String get sharedReactionCategoryShock => 'Choc';
+
+  @override
+  String get sharedReactionCategoryCelebration => 'Célébration';
+
+  @override
+  String get sharedReactionCategorySocial => 'Social';
+
+  @override
+  String get sharedReactionCategoryMoody => 'Humeur';
+
+  @override
+  String get gameResultSkipped => 'Passé';
+
+  @override
+  String get gameResultDidNotRespond => 'N\'a pas répondu à temps';
+
+  @override
   String sharedJoinRequestFailed(String error) {
     return 'Échec : $error';
   }
@@ -4632,6 +5375,19 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get sharedReject => 'Rejeter';
+
+  @override
+  String get sharedRemoveSpectator => 'Retirer le statut de spectateur';
+
+  @override
+  String get sharedSetSpectator => 'Passer en spectateur';
+
+  @override
+  String get sharedSetSpectatorBody =>
+      'Ce joueur ne comptera plus comme joueur actif et ne pourra plus jouer son tour, mais pourra toujours regarder. Vous pouvez annuler cela à tout moment.';
+
+  @override
+  String get sharedSetSpectatorTitle => 'Passer en spectateur';
 
   @override
   String get sharedRoomMembers => 'Membres de la salle';
@@ -4765,6 +5521,27 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get friendsBlock => 'Bloquer';
+
+  @override
+  String get friendsReport => 'Signaler';
+
+  @override
+  String get friendsReportAndBlock => 'Signaler et bloquer';
+
+  @override
+  String get friendsReportUserTitle => 'Signaler l\'utilisateur';
+
+  @override
+  String get friendsReportHint => 'Aidez-nous à garder la communauté sûre.';
+
+  @override
+  String get friendsReportReasonHarassment => 'Harcèlement';
+
+  @override
+  String get friendsReportReasonImpersonation => 'Usurpation d\'identité';
+
+  @override
+  String get friendsReportReasonUnderage => 'Utilisateur mineur';
 
   @override
   String get friendsBlocked => 'Bloqué';
@@ -5122,6 +5899,33 @@ class AppLocalizationsFr extends AppLocalizations {
       'Vous avez déjà une demande de suppression en cours d\'examen.';
 
   @override
+  String get settingsCancelAccountDeletion =>
+      'Annuler la suppression du compte';
+
+  @override
+  String get settingsCancelAccountDeletionHint =>
+      'Votre compte restera actif si vous annulez avant son traitement.';
+
+  @override
+  String get settingsCancelAccountDeletionDialogTitle =>
+      'Annuler la demande de suppression ?';
+
+  @override
+  String get settingsCancelAccountDeletionDialogMessage =>
+      'Votre compte restera actif et rien ne sera supprimé.';
+
+  @override
+  String get settingsCancelAccountDeletionConfirm => 'Annuler la demande';
+
+  @override
+  String get settingsAccountDeletionCancelled =>
+      'Votre demande de suppression de compte a été annulée.';
+
+  @override
+  String get settingsCancelAccountDeletionFailed =>
+      'Impossible d\'annuler votre demande. Elle a peut-être déjà été traitée — veuillez réessayer ou contacter le support.';
+
+  @override
   String get aboutUsTitle => 'À propos de nous';
 
   @override
@@ -5129,14 +5933,17 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get aboutUsDescription =>
-      'Jma3a est une application de jeux de société multijoueurs — jouez à Action ou Vérité, Je n\'ai jamais et des jeux de mèmes avec vos amis et votre famille, à tout moment, n\'importe où.';
+      'Jma3a est une plateforme sociale de jeux de société multijoueurs développée et détenue par MOUJ TECH. Jouez à Action ou Vérité, Je n\'ai jamais et des jeux de mèmes avec vos amis et votre famille, créez et partagez vos propres packs, construisez votre profil et, en tant que Créateur Vérifié, gagnez de l\'argent grâce aux packs que vous publiez.';
 
   @override
   String get aboutUsCompanySectionTitle => 'Entreprise';
 
   @override
   String get aboutUsCompanyInfo =>
-      'Jma3a est développé et exploité par l\'équipe Jma3a.';
+      'Jma3a est développé et détenu par MOUJ TECH. MOUJ TECH est responsable du développement, des fonctionnalités et de l\'exploitation continue de l\'application, y compris les packs créés par la communauté, les outils du Créateur Vérifié, Premium et Premium Plus, ainsi que le portefeuille de gains des créateurs.';
+
+  @override
+  String get moujTechDevelopedBy => 'Développé par MOUJ TECH';
 
   @override
   String get aboutUsContactTitle => 'Contact';
@@ -5167,63 +5974,71 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get privacyPolicyIntro =>
-      'Cette politique de confidentialité explique quelles informations Jma3a collecte et comment elles sont utilisées. Ceci est un contenu provisoire — il sera remplacé par la politique légale complète.';
+      'Cette politique de confidentialité explique quelles informations l\'application Jma3a collecte, comment elles sont utilisées, et les choix qui s\'offrent à vous. Elle décrit les fonctionnalités réelles et actuelles de l\'application. Certains détails juridiques propres à la société MOUJ TECH (comme son adresse enregistrée et ses canaux de contact officiels) sont encore en cours de finalisation et seront ajoutés ici dès qu\'ils seront disponibles — cela ne change rien à ce qui est décrit ci-dessous sur la manière dont l\'application elle-même traite vos informations.';
 
   @override
   String get privacySectionInfoCollected => 'Informations que nous collectons';
 
   @override
   String get privacySectionInfoCollectedBody =>
-      'Contenu provisoire — décrit les informations de compte, les données d\'utilisation et le contenu que vous créez dans l\'application.';
+      'Informations de compte : l\'adresse e-mail avec laquelle vous vous inscrivez, ainsi que votre nom d\'utilisateur, nom affiché, biographie et avatar (photo importée ou avatar généré). Authentification : votre mot de passe est géré par notre fournisseur d\'authentification et ne nous est jamais visible en texte clair ; la connexion utilise aussi des codes de vérification à usage unique envoyés à votre e-mail. Activité et données sociales : les salons et parties que vous rejoignez ou animez, vos actions en jeu, vos scores et séries, les messages de chat envoyés dans les salons, ainsi que vos amis, abonnés et tout compte que vous bloquez. Achats et activité de créateur : les packs que vous achetez ou publiez, votre statut de Créateur Vérifié, le solde de votre portefeuille et l\'historique des paiements, et — si vous commandez un pack physique — le nom, le numéro de téléphone et la zone de livraison que vous fournissez pour cette commande. Signalements : si vous signalez un pack, nous enregistrons le motif et les détails que vous ajoutez. Demandes de suppression de compte : si vous demandez la suppression de votre compte, nous enregistrons le motif choisi et le statut de la demande. Informations sur l\'appareil et l\'application : la version et le numéro de build de l\'application, ainsi que des informations de base sur la plateforme (Android ou iOS), utilisées pour assurer le bon fonctionnement de l\'application et vérifier les mises à jour requises.';
 
   @override
   String get privacySectionHowUsed => 'Comment nous utilisons vos informations';
 
   @override
   String get privacySectionHowUsedBody =>
-      'Contenu provisoire — décrit comment les informations collectées sont utilisées pour fournir et améliorer l\'application.';
+      'Nous utilisons vos informations pour faire fonctionner les fonctionnalités essentielles de l\'application : créer et sécuriser votre compte, vous mettre en relation avec des salons et des parties, afficher votre profil et vos statistiques aux autres joueurs et amis comme prévu par chaque fonctionnalité, traiter les achats de packs et les paiements des créateurs, livrer les commandes de packs physiques que vous demandez, examiner les signalements et les demandes de suppression de compte, et envoyer les notifications décrites ci-dessous. Nous n\'utilisons aucun outil d\'analyse ou de suivi publicitaire tiers dans cette application. Nous ne vendons pas vos informations.';
 
   @override
   String get privacySectionNotifications => 'Notifications';
 
   @override
   String get privacySectionNotificationsBody =>
-      'Contenu provisoire — décrit les notifications push et la gestion de vos préférences.';
+      'Jma3a envoie des notifications pour des événements tels que les invitations à jouer, l\'activité des salons, les demandes d\'amis et les messages. L\'envoi des notifications push est géré via OneSignal, un service de notification tiers ; certaines notifications sont également planifiées directement sur votre appareil. Vous pouvez gérer les autorisations de notification à tout moment depuis les paramètres système de votre appareil.';
 
   @override
   String get privacySectionPurchases => 'Achats';
 
   @override
   String get privacySectionPurchasesBody =>
-      'Contenu provisoire — décrit la gestion des achats intégrés et des abonnements.';
+      'Certains packs sont payants, et Premium/Premium Plus sont des abonnements payants. Les Créateurs Vérifiés peuvent publier des packs et en tirer des revenus via un portefeuille intégré à l\'application. Jma3a ne collecte ni ne stocke directement les détails complets de votre carte de paiement ; les paiements sont traités via les moyens de paiement proposés au moment du règlement. Les enregistrements d\'achats et de paiements (montants, identifiants de pack/abonnement et statut) sont conservés dans le cadre de votre compte et de votre historique de créateur.';
 
   @override
   String get privacySectionUserContent => 'Contenu généré par l\'utilisateur';
 
   @override
   String get privacySectionUserContentBody =>
-      'Contenu provisoire — décrit la propriété et la gestion des packs, cartes et autres contenus que vous créez.';
+      'Les packs, cartes et autres contenus que vous créez et publiez peuvent être visibles par d\'autres utilisateurs selon la fonctionnalité utilisée pour les créer (par exemple, un pack publié dans la marketplace). Les messages de chat que vous envoyez dans un salon sont visibles par les autres membres de ce salon. Vous êtes responsable du contenu que vous choisissez de créer et de partager.';
 
   @override
   String get privacySectionAccountDeletion => 'Suppression du compte';
 
   @override
   String get privacySectionAccountDeletionBody =>
-      'Contenu provisoire — décrit comment demander la suppression du compte et ce qu\'il advient de vos données.';
+      'Vous pouvez demander la suppression de votre compte depuis les Paramètres. Cela soumet une demande pour examen — votre compte n\'est pas supprimé immédiatement. Tant que la demande est en attente, vous pouvez l\'annuler depuis les Paramètres et votre compte reste actif. Une fois la demande acceptée et traitée, la suppression est irréversible, et votre profil, vos packs, le solde de votre portefeuille et votre historique de jeu sont définitivement supprimés.';
+
+  @override
+  String get privacySectionThirdParty => 'Services tiers';
+
+  @override
+  String get privacySectionThirdPartyBody =>
+      'Jma3a s\'appuie sur un nombre restreint de services tiers pour fonctionner : notre base de données backend et notre fournisseur d\'authentification, un espace de stockage cloud pour les images que vous importez (comme les avatars et les couvertures de packs), et OneSignal pour les notifications push. Ces prestataires ne traitent les données que dans la mesure nécessaire pour fournir leur service à Jma3a.';
 
   @override
   String get privacySectionContact => 'Nous contacter';
 
   @override
-  String get privacySectionContactBody =>
-      'Contenu provisoire — coordonnées pour les questions relatives à la confidentialité.';
+  String privacySectionContactBody(String email) {
+    return 'Pour toute question concernant cette politique de confidentialité ou vos informations, contactez-nous à $email.';
+  }
 
   @override
   String get termsConditionsTitle => 'Conditions d\'utilisation';
 
   @override
   String get termsConditionsIntro =>
-      'Ces Conditions d\'utilisation régissent votre utilisation de Jma3a, une application de jeux sociaux multijoueurs. En créant un compte ou en utilisant l\'application, vous acceptez ces Conditions.';
+      'Ces Conditions d\'utilisation régissent votre utilisation de Jma3a, une application de jeux sociaux multijoueurs développée et exploitée par MOUJ TECH. En créant un compte ou en utilisant l\'application, vous acceptez ces Conditions.';
 
   @override
   String get termsSectionAccount => 'Comptes';
@@ -5533,6 +6348,10 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get packIssueTerms => 'Acceptez les conditions de création de pack';
+
+  @override
+  String get packIssuePlayerRange =>
+      'Le nombre maximum de joueurs doit être au moins égal au minimum';
 
   @override
   String get packTermsAgreePrefix => 'J\'accepte les ';

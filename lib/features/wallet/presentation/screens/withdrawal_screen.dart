@@ -128,7 +128,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
             isSuccess:   true,
             title:       context.l10n.walletWithdrawalSubmittedTitle,
             subtitle:    context.l10n.walletWithdrawalSubmittedSubtitle(
-              result.withdrawal?.formattedAmount ?? '',
+              result.withdrawal?.formattedAmount(context.l10n.walletCurrencyShort) ?? '',
             ),
             icon:        Icons.schedule_rounded,
             iconColor:   AppColors.infoBlue,
@@ -258,7 +258,8 @@ class _AmountStepState extends State<_AmountStep> {
                       Text(context.l10n.walletAvailableEarnings,
                           style: theme.textTheme.labelSmall?.copyWith(
                               color: theme.colorScheme.onSurfaceVariant)),
-                      Text(widget.wallet.formattedEarningsBalance,
+                      Text(widget.wallet.formattedEarningsBalance(
+                          context.l10n.walletCurrencyShort),
                           style: theme.textTheme.titleMedium?.copyWith(
                               fontWeight: FontWeight.w700)),
                     ],
@@ -279,10 +280,10 @@ class _AmountStepState extends State<_AmountStep> {
               textInputAction: TextInputAction.next,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText:   '0',
-                suffixText: 'MRU',
-                prefixIcon: Icon(Icons.money_rounded),
+                suffixText: context.l10n.walletCurrencyShort,
+                prefixIcon: const Icon(Icons.money_rounded),
               ),
               validator: (v) {
                 final n = int.tryParse(v?.replaceAll(',', '') ?? '0') ?? 0;
@@ -301,7 +302,7 @@ class _AmountStepState extends State<_AmountStep> {
               children: [500, 1000, 2000, 5000]
                   .where((a) => a <= balance)
                   .map((a) => ActionChip(
-                        label: Text('$a MRU'),
+                        label: Text('$a ${context.l10n.walletCurrencyShort}'),
                         onPressed: () => setState(() =>
                             widget.amountCtrl.text = a.toString()),
                         visualDensity: VisualDensity.compact,
@@ -416,14 +417,14 @@ class _ConfirmStep extends StatelessWidget {
                 _ConfirmRow(label: context.l10n.walletMethodLabel,   value: method.name),
                 _ConfirmRow(label: context.l10n.walletPhoneLabel,    value: phone),
                 _ConfirmRow(label: context.l10n.amountLabel,
-                    value: '$amountMru MRU',
+                    value: '$amountMru ${context.l10n.walletCurrencyShort}',
                     valueStyle: TextStyle(
                         color:      AppColors.errorRed,
                         fontWeight: FontWeight.w800,
                         fontSize:   18)),
                 const Divider(height: 24),
                 _ConfirmRow(label: context.l10n.walletBalanceAfter,
-                    value: '$balanceAfter MRU',
+                    value: '$balanceAfter ${context.l10n.walletCurrencyShort}',
                     valueStyle: TextStyle(
                         color: balanceAfter < 0
                             ? AppColors.errorRed

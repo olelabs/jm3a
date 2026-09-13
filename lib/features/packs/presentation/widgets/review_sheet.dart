@@ -14,8 +14,8 @@ class ReviewSheet extends StatefulWidget {
     required this.onSubmit,
   });
 
-  final String  packId;
-  final int?    myRating;
+  final String packId;
+  final int? myRating;
   final Future<void> Function(String content, int? rating) onSubmit;
 
   @override
@@ -24,7 +24,7 @@ class ReviewSheet extends StatefulWidget {
 
 class _ReviewSheetState extends State<ReviewSheet> {
   final _ctrl = TextEditingController();
-  int  _rating = 0;
+  int _rating = 0;
   bool _isSubmitting = false;
 
   @override
@@ -45,43 +45,57 @@ class _ReviewSheetState extends State<ReviewSheet> {
 
     return Container(
       decoration: BoxDecoration(
-        color:        theme.colorScheme.surface,
+        color: theme.colorScheme.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       padding: EdgeInsets.fromLTRB(
-          24, 12, 24, MediaQuery.viewInsetsOf(context).bottom + 24),
+        24,
+        12,
+        24,
+        MediaQuery.viewInsetsOf(context).bottom + 24,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Center(
             child: Container(
-              width: 36, height: 4,
+              width: 36,
+              height: 4,
               decoration: BoxDecoration(
-                color:        theme.colorScheme.outlineVariant,
-                borderRadius: BorderRadius.circular(2)),
+                color: theme.colorScheme.outlineVariant,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
           ),
           const SizedBox(height: 20),
 
-          Text(context.l10n.packWriteReview,
-              style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w700)),
+          Text(
+            context.l10n.packWriteReview,
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
           const SizedBox(height: 20),
 
           // Star rating
           Row(
-            children: List.generate(5, (i) => GestureDetector(
-              onTap: () => setState(() => _rating = i + 1),
-              child: Padding(
-                padding: const EdgeInsets.only(right: 6),
-                child: Icon(
-                  i < _rating ? Icons.star_rounded : Icons.star_outline_rounded,
-                  size: 36,
-                  color: AppColors.amberOrangeLight,
+            children: List.generate(
+              5,
+              (i) => GestureDetector(
+                onTap: () => setState(() => _rating = i + 1),
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: Icon(
+                    i < _rating
+                        ? Icons.star_rounded
+                        : Icons.star_outline_rounded,
+                    size: 36,
+                    color: AppColors.amberOrangeLight,
+                  ),
                 ),
               ),
-            )),
+            ),
           ),
           const SizedBox(height: 16),
 
@@ -97,7 +111,7 @@ class _ReviewSheetState extends State<ReviewSheet> {
           const SizedBox(height: 20),
 
           JButton(
-            label:     context.l10n.packSubmitReview,
+            label: context.l10n.packSubmitReview,
             isLoading: _isSubmitting,
             onPressed: () async {
               final text = _ctrl.text.trim();
@@ -127,8 +141,14 @@ class ReportPackSheet extends StatefulWidget {
     required this.onSubmit,
   });
 
-  final String  packId;
-  final Future<void> Function(String reason, String? details) onSubmit;
+  final String packId;
+
+  /// Returns whether the report was actually submitted — see
+  /// _ReportPackSheetState's submit handler: only a true result pops the
+  /// sheet, so a duplicate/failed attempt (PackProvider.reportPack's own
+  /// duplicate guard, or a genuine network failure) leaves the sheet open
+  /// with feedback instead of silently vanishing either way.
+  final Future<bool> Function(String reason, String? details) onSubmit;
 
   @override
   State<ReportPackSheet> createState() => _ReportPackSheetState();
@@ -138,6 +158,7 @@ class _ReportPackSheetState extends State<ReportPackSheet> {
   String? _reason;
   final _detailsCtrl = TextEditingController();
   bool _isSubmitting = false;
+  bool _submitFailed = false;
 
   List<(String, String)> _reasons(BuildContext context) => [
     ('spam', context.l10n.packReportReasonSpam),
@@ -159,42 +180,57 @@ class _ReportPackSheetState extends State<ReportPackSheet> {
 
     return Container(
       decoration: BoxDecoration(
-        color:        theme.colorScheme.surface,
+        color: theme.colorScheme.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       padding: EdgeInsets.fromLTRB(
-          24, 12, 24, MediaQuery.viewInsetsOf(context).bottom + 24),
+        24,
+        12,
+        24,
+        MediaQuery.viewInsetsOf(context).bottom + 24,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Center(
             child: Container(
-              width: 36, height: 4,
+              width: 36,
+              height: 4,
               decoration: BoxDecoration(
-                color:        theme.colorScheme.outlineVariant,
-                borderRadius: BorderRadius.circular(2)),
+                color: theme.colorScheme.outlineVariant,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
           ),
           const SizedBox(height: 20),
 
-          Text(context.l10n.packReportPack,
-              style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w700, color: AppColors.errorRed)),
+          Text(
+            context.l10n.packReportPack,
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: AppColors.errorRed,
+            ),
+          ),
           const SizedBox(height: 8),
-          Text(context.l10n.packReportHint,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant)),
+          Text(
+            context.l10n.packReportHint,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
           const SizedBox(height: 16),
 
-          ..._reasons(context).map((r) => RadioListTile<String>(
-            title: Text(r.$2),
-            value: r.$1,
-            groupValue: _reason,
-            onChanged: (v) => setState(() => _reason = v),
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-          )),
+          ..._reasons(context).map(
+            (r) => RadioListTile<String>(
+              title: Text(r.$2),
+              value: r.$1,
+              groupValue: _reason,
+              onChanged: (v) => setState(() => _reason = v),
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+            ),
+          ),
 
           const SizedBox(height: 8),
 
@@ -207,19 +243,55 @@ class _ReportPackSheetState extends State<ReportPackSheet> {
               counterText: '',
             ),
           ),
+          if (_submitFailed) ...[
+            const SizedBox(height: 8),
+            Text(
+              context.l10n.packReportFailed,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: AppColors.errorRed,
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
 
           JButton(
-            label:      context.l10n.packSubmitReport,
-            isLoading:  _isSubmitting,
+            label: context.l10n.packSubmitReport,
+            isLoading: _isSubmitting,
             isDestructive: true,
-            onPressed: _reason == null ? null : () async {
-              setState(() => _isSubmitting = true);
-              await widget.onSubmit(
-                _reason!, _detailsCtrl.text.trim().isEmpty
-                    ? null : _detailsCtrl.text.trim());
-              if (mounted) Navigator.pop(context);
-            },
+            // item 11 fix — the ROOT CAUSE of duplicate submissions here:
+            // this condition previously only checked `_reason == null`, so
+            // a tap that landed before the very next frame's rebuild (the
+            // one that would have shown isLoading:true) was never actually
+            // blocked. Now also gated on `_isSubmitting` directly, so a
+            // rapid second tap during the same in-flight submission is a
+            // guaranteed no-op regardless of frame timing — the other half
+            // of this protection is PackProvider.reportPack's own
+            // synchronous, persisted duplicate guard (see its doc comment),
+            // which is what actually stops "close the sheet, reopen it,
+            // submit again" and every other non-rapid-tap vector.
+            onPressed: (_reason == null || _isSubmitting)
+                ? null
+                : () async {
+                    setState(() {
+                      _isSubmitting = true;
+                      _submitFailed = false;
+                    });
+                    final ok = await widget.onSubmit(
+                      _reason!,
+                      _detailsCtrl.text.trim().isEmpty
+                          ? null
+                          : _detailsCtrl.text.trim(),
+                    );
+                    if (!mounted) return;
+                    if (ok) {
+                      Navigator.pop(context);
+                    } else {
+                      setState(() {
+                        _isSubmitting = false;
+                        _submitFailed = true;
+                      });
+                    }
+                  },
           ),
         ],
       ),
@@ -239,7 +311,7 @@ class PackRatingWidget extends StatefulWidget {
   });
 
   final String packId;
-  final int    myRating;
+  final int myRating;
 
   /// Returns whether the write actually succeeded — the widget rolls its
   /// optimistic star selection back to the previous value on false rather
@@ -263,7 +335,7 @@ class _PackRatingWidgetState extends State<PackRatingWidget> {
   void initState() {
     super.initState();
     _selected = widget.myRating;
-    _hover    = widget.myRating;
+    _hover = widget.myRating;
   }
 
   @override
@@ -275,7 +347,7 @@ class _PackRatingWidgetState extends State<PackRatingWidget> {
     // rolled back locally) never drifts from what the server actually has.
     if (oldWidget.myRating != widget.myRating) {
       _selected = widget.myRating;
-      _hover    = widget.myRating;
+      _hover = widget.myRating;
     }
   }
 
@@ -317,9 +389,12 @@ class _PackRatingWidgetState extends State<PackRatingWidget> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(context.l10n.packYourRating,
-            style: context.textTheme.labelLarge?.copyWith(
-                color: context.colorScheme.onSurfaceVariant)),
+        Text(
+          context.l10n.packYourRating,
+          style: context.textTheme.labelLarge?.copyWith(
+            color: context.colorScheme.onSurfaceVariant,
+          ),
+        ),
         const SizedBox(height: 6),
         Row(
           children: List.generate(5, (i) {
@@ -328,7 +403,7 @@ class _PackRatingWidgetState extends State<PackRatingWidget> {
               onTap: _isSubmitting ? null : () => _rate(i + 1),
               child: MouseRegion(
                 onEnter: (_) => setState(() => _hover = i + 1),
-                onExit:  (_) => setState(() => _hover = _selected),
+                onExit: (_) => setState(() => _hover = _selected),
                 child: Padding(
                   padding: const EdgeInsets.only(right: 4),
                   child: Icon(
@@ -346,17 +421,23 @@ class _PackRatingWidgetState extends State<PackRatingWidget> {
             padding: const EdgeInsets.only(top: 4),
             child: Row(
               children: [
-                Text(context.l10n.packYouRatedThis(_selected),
-                    style: context.textTheme.bodySmall?.copyWith(
-                        color: context.colorScheme.onSurfaceVariant)),
+                Text(
+                  context.l10n.packYouRatedThis(_selected),
+                  style: context.textTheme.bodySmall?.copyWith(
+                    color: context.colorScheme.onSurfaceVariant,
+                  ),
+                ),
                 if (widget.onUnrated != null) ...[
                   const SizedBox(width: 8),
                   GestureDetector(
                     onTap: _isSubmitting ? null : _unrate,
-                    child: Text(context.l10n.packRemoveRating,
-                        style: context.textTheme.bodySmall?.copyWith(
-                            color: AppColors.errorRed,
-                            fontWeight: FontWeight.w600)),
+                    child: Text(
+                      context.l10n.packRemoveRating,
+                      style: context.textTheme.bodySmall?.copyWith(
+                        color: AppColors.errorRed,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                 ],
               ],

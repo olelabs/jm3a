@@ -73,7 +73,8 @@ class FriendsProvider extends BaseProvider {
   bool get exploreLoadingMore => _exploreLoadingMore;
   bool get exploreHasMore => _exploreHasMore;
   bool get exploreFailed => _exploreFailed;
-  bool hasSentExploreRequest(String userId) => _exploreSentRequestIds.contains(userId);
+  bool hasSentExploreRequest(String userId) =>
+      _exploreSentRequestIds.contains(userId);
 
   // Online friends sorted by status (inGame > online > offline)
   List<FriendEntity> get onlineFriends =>
@@ -300,8 +301,7 @@ class FriendsProvider extends BaseProvider {
             AppLogger.debug('FriendsProvider: friendship UPDATE (requester)');
             _loadSentRequests(userId);
             _loadFriends(userId);
-            final addresseeId =
-                payload.newRecord['addressee_id'] as String?;
+            final addresseeId = payload.newRecord['addressee_id'] as String?;
             final status = payload.newRecord['status'] as String?;
             if (addresseeId != null && status != null) {
               final parsed = FriendshipStatus.values.firstWhere(
@@ -391,11 +391,24 @@ class FriendsProvider extends BaseProvider {
     if (result == null) {
       _exploreFailed = true;
     } else {
-      _explorePeople = result;
+      // Item 8 — never show an incomplete account in Discover Friends.
+      // Item 1 (current pass) — Jma3a Official must never appear in
+      // Discover at all, full stop; no special-cased rendering, just
+      // excluded outright. Both are enforced client-side even if
+      // explore_people() itself doesn't already exclude them (see
+      // ExplorePerson.isDiscoverable's own doc comment — this repo cannot
+      // verify the RPC's server-side filtering without a live database, so
+      // this client-side pass is the safest available protection
+      // regardless). Applied AFTER pagination is computed from the raw
+      // `result` (cursor/hasMore still reflect what the server actually
+      // returned) — filtering only affects what's rendered, so a page that
+      // was entirely non-discoverable accounts doesn't wrongly look like
+      // "no more results" instead of loading the next page.
       _exploreCursor = result.isEmpty ? null : result.last.rankPosition;
       // A short page means we've reached the end of the discovery pool —
       // avoids one extra round trip that would just come back empty.
       _exploreHasMore = result.length >= 20;
+      _explorePeople = result.where((p) => p.isDiscoverable).toList();
     }
     notifyListeners();
   }
@@ -404,7 +417,8 @@ class FriendsProvider extends BaseProvider {
   /// keyset cursor (see explore_people()'s own pagination contract) —
   /// never an offset, so scrolling can't duplicate/skip a candidate.
   Future<void> loadMoreExplorePeople() async {
-    if (_exploreLoadingMore || !_exploreHasMore || _exploreCursor == null) return;
+    if (_exploreLoadingMore || !_exploreHasMore || _exploreCursor == null)
+      return;
     _exploreLoadingMore = true;
     notifyListeners();
     final result = await runAsync(
@@ -416,9 +430,14 @@ class FriendsProvider extends BaseProvider {
     );
     _exploreLoadingMore = false;
     if (result != null) {
-      _explorePeople = [..._explorePeople, ...result];
+      // Same item-1/item-8 filtering as loadExplorePeople — see its doc
+      // comment.
       if (result.isNotEmpty) _exploreCursor = result.last.rankPosition;
       _exploreHasMore = result.length >= 20;
+      _explorePeople = [
+        ..._explorePeople,
+        ...result.where((p) => p.isDiscoverable),
+      ];
     }
     notifyListeners();
   }
@@ -529,6 +548,29 @@ class FriendsProvider extends BaseProvider {
       _following.removeWhere((f) => f.userId == targetId);
       _followers.removeWhere((f) => f.userId == targetId);
       await loadBlockedUsers();
+      success = true;
+    }, setLoading: false);
+    return success;
+  }
+
+  /// Item 9 — reports a user's profile. Mirrors [blockUser]'s shape;
+  /// unlike blockUser this never mutates the friends/following lists —
+  /// reporting someone doesn't imply blocking them (that's the separate
+  /// "Report & Block" action, which calls both).
+  Future<bool> reportUser({
+    required String targetUserId,
+    required String reason,
+    String? details,
+  }) async {
+    if (currentUserId == null) return false;
+    var success = false;
+    await runAsync(() async {
+      await _repo.reportUser(
+        targetUserId: targetUserId,
+        reporterId: currentUserId!,
+        reason: reason,
+        details: details,
+      );
       success = true;
     }, setLoading: false);
     return success;

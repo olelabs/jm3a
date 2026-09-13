@@ -21,10 +21,64 @@ import 'app_logger.dart';
 /// shows the normal lobby instead of flashing the "Preparing" placeholder
 /// (see RoomProvider.markReturnedToLobby). Optional so callers without a
 /// provider still work.
+///
+/// [isOwner] — ROOT CAUSE this parameter exists to fix: the room owner was
+/// being sent to the app's global Home screen instead of their own room's
+/// lobby. That only happens via the `else` branch below, reached whenever
+/// [roomProvider] is null (an acknowledged, real case — see
+/// app_router.dart's `extra['roomProvider']` comment: a reconnect/deep-link
+/// re-entry into the game route never had a live RoomProvider to pass
+/// through) or its `room` hasn't loaded yet. In that branch the ONLY
+/// remaining signal is a `roomStillExists` network probe of `deleted_at` —
+/// appropriate for a normal player, who genuinely can be kicked or have
+/// their room deleted while away, but wrong for the owner: this codebase
+/// already establishes elsewhere (see lobby_screen.dart's "OWNER INVARIANT"
+/// comment) that the room's owner can never be legitimately removed from
+/// their own room, and ending a game never itself deletes it. Racing a
+/// probe that can read a stale/still-closing row (e.g. a server-side
+/// cleanup job's away/return-timer bookkeeping) was turning that transient
+/// state into a permanent trip to Home for the one person who should always
+/// be able to get back to their own lobby deterministically. For the
+/// confirmed owner this now skips the probe entirely — LobbyScreen's own
+/// (more complete) initialization already handles the genuinely-impossible
+/// case of the owner's own room having vanished.
+///
+/// Re-entrancy guard: none of the three "Go to Lobby" buttons (Tod/Meme/NHIE
+/// end screens) disable themselves while this is in flight, so a fast double
+/// tap can invoke this twice concurrently. Two overlapping calls would each
+/// independently write room status, call markReturnedToLobby(), and — worse —
+/// call context.go() to the same destination twice, which fires two separate
+/// router rebuilds of the (reused, not recreated) LobbyScreen in quick
+/// succession instead of one. [_navigatingToLobby] makes the second
+/// concurrent call a no-op instead; it is always cleared in `finally`, so a
+/// failed/aborted attempt never leaves the button permanently inert.
+bool _navigatingToLobby = false;
+
 Future<void> goToLobbyOrHome(
   BuildContext context,
   String roomId, {
   RoomProvider? roomProvider,
+  bool isOwner = false,
+}) async {
+  if (_navigatingToLobby) return;
+  _navigatingToLobby = true;
+  try {
+    await _goToLobbyOrHome(
+      context,
+      roomId,
+      roomProvider: roomProvider,
+      isOwner: isOwner,
+    );
+  } finally {
+    _navigatingToLobby = false;
+  }
+}
+
+Future<void> _goToLobbyOrHome(
+  BuildContext context,
+  String roomId, {
+  RoomProvider? roomProvider,
+  bool isOwner = false,
 }) async {
   // AUTHORITATIVE room context. The live RoomProvider is the lobby that
   // started/joined this game and survives underneath the pushed game route;
@@ -34,13 +88,18 @@ Future<void> goToLobbyOrHome(
   // this client read it — i.e. it IS a legitimate member — so it returns
   // there unconditionally.
   final liveRoom = roomProvider?.room;
-  final targetRoomId = (liveRoom?.id.isNotEmpty ?? false) ? liveRoom!.id : roomId;
+  final targetRoomId = (liveRoom?.id.isNotEmpty ?? false)
+      ? liveRoom!.id
+      : roomId;
 
   final bool canReturn;
   if (liveRoom != null) {
     canReturn = true;
   } else if (targetRoomId.isEmpty) {
     canReturn = false;
+  } else if (isOwner) {
+    // See [isOwner]'s doc comment above — deterministic, no probe.
+    canReturn = true;
   } else {
     // No live provider (defensive) — fall back to a terminal-deleted probe.
     // A keep-game-closed room (closed_at set, deleted_at NULL) is very much

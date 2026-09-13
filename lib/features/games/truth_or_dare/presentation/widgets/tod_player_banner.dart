@@ -404,8 +404,8 @@ class TodPlayerBanner extends StatelessWidget {
                       color: AppColors.truthColor,
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: const Text(
-                      '⚡ YOUR TURN',
+                    child: Text(
+                      context.l10n.todYourTurnBadge,
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 10,
@@ -416,7 +416,7 @@ class TodPlayerBanner extends StatelessWidget {
                   )
                 else
                   Text(
-                    "It's their turn",
+                    context.l10n.todTheirTurn,
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                       fontWeight: FontWeight.w600,

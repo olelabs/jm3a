@@ -7,6 +7,7 @@ import '../../../../core/extensions/context_ext.dart';
 import '../../../../core/providers/auth_provider.dart';
 import '../../../../core/router/route_names.dart';
 import '../../../../shared/widgets/buttons/j_button.dart';
+import '../../../../shared/widgets/mouj_tech_brand.dart';
 
 /// Password recovery entry point: identifier → OTP → new password.
 ///
@@ -100,9 +101,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         ),
       );
     } else {
-      context.showErrorSnackBar(
-        errorMessage ?? context.l10n.errorUnexpected,
-      );
+      context.showErrorSnackBar(errorMessage ?? context.l10n.errorUnexpected);
     }
   }
 
@@ -198,6 +197,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     child: Text(l10n.authBackToLogin),
                   ),
                 ).animate(delay: 280.ms).fadeIn(),
+
+                const MoujTechBrand(size: MoujTechBrandSize.compact),
               ],
             ),
           ),

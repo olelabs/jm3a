@@ -1,7 +1,8 @@
-
 import 'dart:async';
+import 'dart:io';
 import 'package:jma3a/core/utils/app_logger.dart';
 import 'package:jma3a/features/rooms/domain/room_entity.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -36,11 +37,14 @@ import '../widgets/chat_panel.dart';
 import '../widgets/game_settings_sheet.dart';
 import '../widgets/member_tile.dart';
 import '../widgets/moderation_sheet.dart';
+import '../widgets/room_share_card.dart';
+import '../../../../shared/widgets/qr/qr_reveal_sheets.dart';
 import '../../../../shared/widgets/join_requests_panel.dart';
 
 String _permissionLabel(BuildContext context, String key) => switch (key) {
   ModeratorPermission.acceptJoins => context.l10n.roomsPermAcceptJoins,
-  ModeratorPermission.acceptSpectators => context.l10n.roomsPermAcceptSpectators,
+  ModeratorPermission.acceptSpectators =>
+    context.l10n.roomsPermAcceptSpectators,
   ModeratorPermission.acceptRejoins => context.l10n.roomsPermAcceptRejoins,
   ModeratorPermission.advanceTurn => context.l10n.roomsPermAdvanceTurn,
   ModeratorPermission.skipTurn => context.l10n.roomsPermSkipTurn,
@@ -48,6 +52,7 @@ String _permissionLabel(BuildContext context, String key) => switch (key) {
   ModeratorPermission.muteChat => context.l10n.roomsPermMuteChat,
   ModeratorPermission.mutePlayers => context.l10n.roomsPermMutePlayers,
   ModeratorPermission.manageSettings => context.l10n.roomsPermManageSettings,
+  ModeratorPermission.setSpectator => context.l10n.roomsPermSetSpectator,
   ModeratorPermission.endGame => context.l10n.roomsPermEndGame,
   ModeratorPermission.startGame => context.l10n.roomsPermStartGame,
   _ => key,
@@ -190,7 +195,8 @@ class _LobbyScreenState extends State<LobbyScreen>
       presenceService: sl.presenceService,
       cacheService: sl.roomCacheService,
       currentUserId: auth.currentUser!.id,
-      currentDisplayName: auth.currentUser!.displayName ?? context.l10n.packPlayer,
+      currentDisplayName:
+          auth.currentUser!.displayName ?? context.l10n.packPlayer,
       currentAvatarUrl: auth.currentUser!.avatarUrl,
     );
 
@@ -698,54 +704,52 @@ class _LobbyScreenState extends State<LobbyScreen>
             .firstOrNull;
       } catch (_) {}
 
-      _pushGameRoute(
-        '${RouteNames.home}/room/${r.id}/game',
-        {
-          'config': GameConfig(
-            maxRounds: room.settings.maxRounds,
-            turnTimerSeconds: room.settings.turnTimerSeconds,
-            allowSkip: room.settings.allowSkip,
-            allowSpicy: r.allowSpicy,
-            enablePunishments: room.settings.enablePunishments,
-            punishmentSource: room.settings.punishmentSource,
-            suggestedPunishments: pack?.suggestedPunishments,
-            proofVisibilityPolicy: room.settings.proofVisibilityPolicy,
-            proofViewSeconds: room.settings.proofViewSeconds,
-            proofReplayMode: room.settings.proofReplayMode,
-            // Item 18.2 root-cause fix: this reactive navigation path is
-            // what actually pushes EVERY client (owner's own first
-            // navigation included) into the game screen — it previously
-            // omitted these two entirely, so TruthOrDareEngine was always
-            // constructed with GameConfig's forceDareMode='unlimited'
-            // default no matter what the host chose in the pre-game
-            // sheet. Now durable in room.settings (see
-            // migration_2026_tod_force_dare_persistence.sql) instead of
-            // only living in the one-shot game_started broadcast payload
-            // RoomProvider._handleGameStarted already discarded.
-            forceDareMode: room.settings.forceDareMode,
-            maxTruths: room.settings.maxTruths,
-            packId: r.packId,
-            language: r.language,
-          ),
-          'playerIds': room.members
-              .where((m) => !m.isSpectator)
-              .map((m) => m.userId)
-              .toList(),
-          'displayNames': displayNames,
-          'packId': r.packId ?? '',
-          'packCoverUrl': pack?.coverImageUrl ?? '',
-          'isOwner': room.isOwner,
-          'isModerator': room.isOwner
-              ? false
-              : (room.currentMember?.isModerator ?? false),
-          'isSpectator': room.isOwner
-              ? false
-              : (room.currentMember?.isSpectator ?? false),
-          'gameType': gameType,
-          'isNewGameStart': isNewGameStart,
-          'roomProvider': room,
-        },
-      );
+      _pushGameRoute('${RouteNames.home}/room/${r.id}/game', {
+        'config': GameConfig(
+          maxRounds: room.settings.maxRounds,
+          turnTimerSeconds: room.settings.turnTimerSeconds,
+          allowSkip: room.settings.allowSkip,
+          allowSpicy: r.allowSpicy,
+          enablePunishments: room.settings.enablePunishments,
+          punishmentSource: room.settings.punishmentSource,
+          suggestedPunishments: pack?.suggestedPunishments,
+          proofVisibilityPolicy: room.settings.proofVisibilityPolicy,
+          proofViewSeconds: room.settings.proofViewSeconds,
+          proofReplayMode: room.settings.proofReplayMode,
+          // Item 18.2 root-cause fix: this reactive navigation path is
+          // what actually pushes EVERY client (owner's own first
+          // navigation included) into the game screen — it previously
+          // omitted these two entirely, so TruthOrDareEngine was always
+          // constructed with GameConfig's forceDareMode='unlimited'
+          // default no matter what the host chose in the pre-game
+          // sheet. Now durable in room.settings (see
+          // migration_2026_tod_force_dare_persistence.sql) instead of
+          // only living in the one-shot game_started broadcast payload
+          // RoomProvider._handleGameStarted already discarded.
+          forceDareMode: room.settings.forceDareMode,
+          maxTruths: room.settings.maxTruths,
+          honestyVoteEnabled: room.settings.honestyVoteEnabled,
+          packId: r.packId,
+          language: r.language,
+        ),
+        'playerIds': room.members
+            .where((m) => !m.isSpectator)
+            .map((m) => m.userId)
+            .toList(),
+        'displayNames': displayNames,
+        'packId': r.packId ?? '',
+        'packCoverUrl': pack?.coverImageUrl ?? '',
+        'isOwner': room.isOwner,
+        'isModerator': room.isOwner
+            ? false
+            : (room.currentMember?.isModerator ?? false),
+        'isSpectator': room.isOwner
+            ? false
+            : (room.currentMember?.isSpectator ?? false),
+        'gameType': gameType,
+        'isNewGameStart': isNewGameStart,
+        'roomProvider': room,
+      });
     });
   }
 
@@ -802,7 +806,8 @@ class _LobbyScreenState extends State<LobbyScreen>
   Widget _build(BuildContext ctx, RoomProvider room) {
     if (room.connectionState == RoomConnectionState.failed &&
         !room.isInitialized) {
-      final errorMsg = room.failure?.message ?? context.l10n.errorConnectionFailed;
+      final errorMsg =
+          room.failure?.message ?? context.l10n.errorConnectionFailed;
       return Scaffold(
         appBar: AppBar(),
         body: ErrorView(
@@ -970,63 +975,63 @@ class _LobbyScreenState extends State<LobbyScreen>
         steps: _lobbyTutorialSteps(room),
         enabled: room.isInitialized && room.isConnected,
         child: Scaffold(
-        appBar: _LobbyAppBar(
-          room: room,
-          tabs: _tabs,
-          onLeave: _leaveRoom,
-          onCloseRoom: _closeRoom,
-          onReopenRoom: _reopenRoom,
-          manageShowcaseKey: _lobbyManageKey,
-        ),
-        body: Column(
-          children: [
-            if (room.connectionState != RoomConnectionState.connected &&
-                room.connectionState != RoomConnectionState.connecting)
-              _ConnectionBanner(
-                state: room.connectionState,
-                onRetry: room.retryConnection,
+          appBar: _LobbyAppBar(
+            room: room,
+            tabs: _tabs,
+            onLeave: _leaveRoom,
+            onCloseRoom: _closeRoom,
+            onReopenRoom: _reopenRoom,
+            manageShowcaseKey: _lobbyManageKey,
+          ),
+          body: Column(
+            children: [
+              if (room.connectionState != RoomConnectionState.connected &&
+                  room.connectionState != RoomConnectionState.connecting)
+                _ConnectionBanner(
+                  state: room.connectionState,
+                  onRetry: room.retryConnection,
+                ),
+              if ((room.room?.status == RoomStatus.inGame ||
+                      room.room?.status == RoomStatus.paused) &&
+                  room.room?.gameType != null)
+                // "Rejoin" is a manual nudge for the exact same check
+                // _syncGameRoute already runs reactively — not a second,
+                // independent decision to navigate, and not a second builder
+                // of the game route's extras. See _syncGameRoute's doc
+                // comment for why nothing else is allowed to be either.
+                _RejoinBanner(room: room, onRejoin: _syncGameRoute),
+              Expanded(
+                child: TabBarView(
+                  controller: _tabs,
+                  physics: const NeverScrollableScrollPhysics(),
+                  children: [
+                    _LobbyTab(room: room),
+                    ChatPanel(room: room),
+                  ],
+                ),
               ),
-            if ((room.room?.status == RoomStatus.inGame ||
-                    room.room?.status == RoomStatus.paused) &&
-                room.room?.gameType != null)
-              // "Rejoin" is a manual nudge for the exact same check
-              // _syncGameRoute already runs reactively — not a second,
-              // independent decision to navigate, and not a second builder
-              // of the game route's extras. See _syncGameRoute's doc
-              // comment for why nothing else is allowed to be either.
-              _RejoinBanner(room: room, onRejoin: _syncGameRoute),
-            Expanded(
-              child: TabBarView(
-                controller: _tabs,
-                physics: const NeverScrollableScrollPhysics(),
-                children: [
-                  _LobbyTab(room: room),
-                  ChatPanel(room: room),
-                ],
+              _BottomActionBar(
+                room: room,
+                startShowcaseKey: _lobbyStartKey,
+                readyShowcaseKey: _lobbyReadyKey,
+                wasInActiveSession:
+                    _sessionPlayerIds == null ||
+                    _sessionPlayerIds!.contains(
+                      context.read<AuthProvider>().currentUser?.id,
+                    ),
+                onLeave: _leaveRoom,
+                markFreshStart: () => _pendingFreshStart = true,
+                syncGameRoute: _syncGameRoute,
+                setPreparingLock: _setPreparingLock,
+                // "Continue Game" is just a manual nudge for the exact same
+                // check _syncGameRoute already runs reactively — not a
+                // second, independent decision to navigate. Its own guard
+                // (_navigatedToGame) makes this a no-op if a route is
+                // already active/in-flight.
+                onContinueGame: _syncGameRoute,
               ),
-            ),
-            _BottomActionBar(
-              room: room,
-              startShowcaseKey: _lobbyStartKey,
-              readyShowcaseKey: _lobbyReadyKey,
-              wasInActiveSession:
-                  _sessionPlayerIds == null ||
-                  _sessionPlayerIds!.contains(
-                    context.read<AuthProvider>().currentUser?.id,
-                  ),
-              onLeave: _leaveRoom,
-              markFreshStart: () => _pendingFreshStart = true,
-              syncGameRoute: _syncGameRoute,
-              setPreparingLock: _setPreparingLock,
-              // "Continue Game" is just a manual nudge for the exact same
-              // check _syncGameRoute already runs reactively — not a
-              // second, independent decision to navigate. Its own guard
-              // (_navigatedToGame) makes this a no-op if a route is
-              // already active/in-flight.
-              onContinueGame: _syncGameRoute,
-            ),
-          ],
-        ),
+            ],
+          ),
         ),
       ),
     );
@@ -1141,7 +1146,8 @@ class _LobbyScreenState extends State<LobbyScreen>
 
       final myId = context.read<AuthProvider>().currentUser?.id ?? '';
       final displayName =
-          context.read<AuthProvider>().currentUser?.displayName ?? context.l10n.defaultPlayerName;
+          context.read<AuthProvider>().currentUser?.displayName ??
+          context.l10n.defaultPlayerName;
       try {
         await sl.realtimeService.broadcastRoomEvent(widget.roomId, {
           'type': 'player_left',
@@ -1192,9 +1198,7 @@ class _LobbyScreenState extends State<LobbyScreen>
       }
     } catch (e) {
       if (mounted) {
-        context.showErrorSnackBar(
-          e is Failure ? e.message : e.toString(),
-        );
+        context.showErrorSnackBar(e is Failure ? e.message : e.toString());
       }
     }
   }
@@ -1248,6 +1252,7 @@ class _LobbyAppBar extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback onLeave;
   final VoidCallback onCloseRoom;
   final VoidCallback onReopenRoom;
+
   /// Tutorial highlight target for the owner-only Close/Reopen control.
   final GlobalKey? manageShowcaseKey;
 
@@ -1354,7 +1359,9 @@ class _LobbyAppBar extends StatelessWidget implements PreferredSizeWidget {
               final requests = snap.data ?? [];
               if (requests.isEmpty) return const SizedBox.shrink();
               return IconButton(
-                tooltip: context.l10n.lobbySpectatorRequestCount(requests.length),
+                tooltip: context.l10n.lobbySpectatorRequestCount(
+                  requests.length,
+                ),
                 icon: Badge(
                   label: Text('\${requests.length}'),
                   child: const Icon(
@@ -1404,13 +1411,22 @@ class _ConnectionIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (label, color) = switch (state) {
-      RoomConnectionState.connected => (context.l10n.roomsConnLive, AppColors.successGreen),
+      RoomConnectionState.connected => (
+        context.l10n.roomsConnLive,
+        AppColors.successGreen,
+      ),
       RoomConnectionState.reconnecting => (
         context.l10n.roomsConnReconnecting,
         AppColors.warningAmber,
       ),
-      RoomConnectionState.recovering => (context.l10n.roomsConnSyncing, AppColors.infoBlue),
-      RoomConnectionState.failed => (context.l10n.roomsConnDisconnected, AppColors.errorRed),
+      RoomConnectionState.recovering => (
+        context.l10n.roomsConnSyncing,
+        AppColors.infoBlue,
+      ),
+      RoomConnectionState.failed => (
+        context.l10n.roomsConnDisconnected,
+        AppColors.errorRed,
+      ),
       _ => (context.l10n.roomsConnConnecting, AppColors.textTertiaryLight),
     };
 
@@ -1637,7 +1653,10 @@ class _LobbyTab extends StatelessWidget {
         Row(
           children: [
             Text(
-              context.l10n.roomsPlayers(playerCount, room.room?.maxPlayers ?? 6),
+              context.l10n.roomsPlayers(
+                playerCount,
+                room.room?.maxPlayers ?? 6,
+              ),
               style: theme.textTheme.labelLarge?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -1683,10 +1702,9 @@ class _LobbyTab extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          ...spectators
-              .asMap()
-              .entries
-              .map((e) => memberTile(e.value, players.length + e.key)),
+          ...spectators.asMap().entries.map(
+            (e) => memberTile(e.value, players.length + e.key),
+          ),
         ],
       ],
     );
@@ -1726,7 +1744,14 @@ class _LobbyTab extends StatelessWidget {
                 member.displayName,
                 style: const TextStyle(fontWeight: FontWeight.w700),
               ),
-              subtitle: Text(member.isSpectator ? '👁 Spectator' : '🎮 Player'),
+              // Reuses the same localized status strings the fuller admin
+              // member-management sheet already uses (sharedStatusSpectator/
+              // sharedStatusPlaying) — no second, untranslated copy.
+              subtitle: Text(
+                member.isSpectator
+                    ? ctx.l10n.sharedStatusSpectator
+                    : ctx.l10n.sharedStatusPlaying,
+              ),
             ),
             const Divider(),
             _FriendRequestButton(
@@ -1891,6 +1916,54 @@ Widget _maybeShowcase(
   );
 }
 
+/// Item 5 (room share pass) — assembles [RoomShareCardData] from data
+/// already loaded for this exact lobby screen (RoomProvider's own
+/// room/members, PackProvider's own cached pack list — the SAME
+/// `allPacks.where((p) => p.id == r?.packId).firstOrNull` lookup
+/// `_BottomActionBar.build`'s own "Start Game" gating already uses a few
+/// lines below). Nothing here is fetched specially for sharing, and
+/// nothing is fabricated: if the room or the inviter's own member row
+/// isn't available yet, this returns null and the share flow falls back
+/// to a plain text-only share (see the "Share invite link" button's own
+/// onPressed) rather than ever inventing placeholder data.
+RoomShareCardData? buildRoomShareCardData(
+  BuildContext context,
+  RoomProvider room,
+) {
+  final r = room.room;
+  if (r == null) return null;
+  final me = room.currentMember;
+  if (me == null) return null;
+
+  // Item 5 (real-device report) — this must be the ROOM's own selected
+  // language (r.language), not the inviter's own device locale: the
+  // share card describes what's actually configured IN the room, which
+  // every invitee sees the same way regardless of the inviter's own
+  // phone language.
+  final packName = (r.packId?.isNotEmpty ?? false)
+      ? context
+            .read<PackProvider>()
+            .allPacks
+            .where((p) => p.id == r.packId)
+            .firstOrNull
+            ?.titleFor(r.language)
+      : null;
+
+  return RoomShareCardData(
+    roomName: r.name,
+    coverEmoji: r.coverEmoji,
+    maxPlayers: r.maxPlayers,
+    gameType: r.gameType,
+    packName: packName,
+    inviterDisplayName: me.displayName,
+    inviterAvatarUrl: me.avatarUrl,
+    inviterAvatarConfig: me.avatarConfig,
+    inviterIsPremium: me.isPremium,
+    inviterHonestyPoints: me.honestyPoints,
+    inviterGeneralScore: me.generalScore,
+  );
+}
+
 class _BottomActionBar extends StatelessWidget {
   const _BottomActionBar({
     required this.room,
@@ -1904,6 +1977,7 @@ class _BottomActionBar extends StatelessWidget {
     this.readyShowcaseKey,
   });
   final RoomProvider room;
+
   /// Tutorial targets: the host's Start Game button and the player's Ready
   /// toggle. Only the one actually rendered for the current role is ever
   /// highlighted (see _LobbyScreenState._lobbyTutorialSteps).
@@ -1944,13 +2018,22 @@ class _BottomActionBar extends StatelessWidget {
     // already be cached since the owner selected it moments earlier via
     // the pack list in game_settings_sheet.dart.
     final selectedPack = hasPack
-        ? context.watch<PackProvider>().allPacks
+        ? context
+              .watch<PackProvider>()
+              .allPacks
               .where((p) => p.id == r?.packId)
               .firstOrNull
         : null;
     final eligibleCount = room.eligiblePlayers.length;
     final notEnoughPlayers =
         selectedPack != null && eligibleCount < selectedPack.minPlayers;
+    // Item 4 — the symmetric upper-bound check. Only ACTIVE (non-spectator)
+    // players count, same as notEnoughPlayers above and the RPC-side
+    // check this mirrors (create_game_session's v_eligible_count) — a
+    // room with extra members already set as spectators is never blocked.
+    final maxPlayers = selectedPack?.maxPlayers;
+    final tooManyPlayers =
+        selectedPack != null && maxPlayers != null && eligibleCount > maxPlayers;
     final hasReconnecting = room.members.any(
       (m) => m.isDisconnected && !m.leftDefinitively,
     );
@@ -1958,12 +2041,22 @@ class _BottomActionBar extends StatelessWidget {
     String? blockedReason;
     if (notEnoughPlayers) {
       blockedReason = l10n.roomsPackRequiresMinPlayers(selectedPack.minPlayers);
+    } else if (tooManyPlayers) {
+      // Tells the admin exactly what to do — reduce active players or use
+      // the EXISTING spectator system — never auto-kicks or auto-picks who
+      // becomes a spectator.
+      blockedReason = l10n.roomsPackRequiresMaxPlayers(maxPlayers);
     } else if (hasReconnecting) {
       blockedReason = l10n.roomsWaitingForReconnecting;
     }
 
     final canStart =
-        hasPack && allReady && hasEnough && !notEnoughPlayers && !hasReconnecting;
+        hasPack &&
+        allReady &&
+        hasEnough &&
+        !notEnoughPlayers &&
+        !tooManyPlayers &&
+        !hasReconnecting;
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
@@ -2007,8 +2100,13 @@ class _BottomActionBar extends StatelessWidget {
                   // session. The debounce guard in _onStartGame is the second
                   // line of defense.
                   onPressed: canStart && !room.isStartingGame
-                      ? _onStartGame(context, room, markFreshStart,
-                          syncGameRoute, setPreparingLock)
+                      ? _onStartGame(
+                          context,
+                          room,
+                          markFreshStart,
+                          syncGameRoute,
+                          setPreparingLock,
+                        )
                       : null,
                   icon: Icons.play_arrow_rounded,
                 ),
@@ -2079,6 +2177,33 @@ class _BottomActionBar extends StatelessWidget {
                               builder: (_) => _InviteFriendsSheet(
                                 roomId: r!.id,
                                 inviteCode: r.inviteCode!,
+                                // Item 5 (room share pass) — built HERE
+                                // (not inside the sheet) since RoomProvider/
+                                // PackProvider aren't guaranteed reachable
+                                // via Provider lookup from a
+                                // showModalBottomSheet builder (it attaches
+                                // to the root Navigator/overlay, outside
+                                // this local widget subtree — see
+                                // _ModerationSheet's own explicit
+                                // ChangeNotifierProvider.value re-wrap just
+                                // above for the same reason). All real,
+                                // already-available data — see
+                                // buildRoomShareCardData's own doc comment.
+                                shareData: buildRoomShareCardData(
+                                  context,
+                                  room,
+                                ),
+                                // Item 7 (QR codes) — same "can't reach
+                                // RoomProvider from inside the sheet"
+                                // reasoning as shareData above: pass the
+                                // already-available room state in
+                                // directly instead.
+                                isOwner: room.isOwner,
+                                isPrivate: r.isPrivate,
+                                isClosed: r.isClosed,
+                                isFull: r.isFull,
+                                roomName: r.name,
+                                roomCoverEmoji: r.coverEmoji,
                               ),
                             )
                           : null,
@@ -2124,7 +2249,12 @@ class _BottomActionBar extends StatelessWidget {
       room.setStartingGame(true);
       try {
         await _doStartGame(
-          ctx, room, markFreshStart, syncGameRoute, setPreparingLock);
+          ctx,
+          room,
+          markFreshStart,
+          syncGameRoute,
+          setPreparingLock,
+        );
       } catch (e, st) {
         AppLogger.error(
           'START_GAME failed room=${room.room?.id} '
@@ -2168,203 +2298,201 @@ class _BottomActionBar extends StatelessWidget {
     if (r == null) return;
 
     if (r.packId == null || r.packId!.isEmpty) {
-        ctx.showErrorSnackBar(ctx.l10n.lobbySelectPackBeforeStart);
-        return;
+      ctx.showErrorSnackBar(ctx.l10n.lobbySelectPackBeforeStart);
+      return;
+    }
+
+    String gameType = r.gameType?.toDbString() ?? 'truth_or_dare';
+    PackEntity? startPack;
+    try {
+      final packs = ctx.read<PackProvider>();
+      final cached = packs.allPacks.where((p) => p.id == r.packId).firstOrNull;
+      if (cached != null) {
+        gameType = cached.gameType;
+        startPack = cached;
+      } else {
+        final fetched = await PackRepository.instance.getPackDetail(r.packId!);
+        gameType = fetched.gameType;
+        startPack = fetched;
       }
+    } catch (_) {}
 
-      String gameType = r.gameType?.toDbString() ?? 'truth_or_dare';
-      PackEntity? startPack;
-      try {
-        final packs = ctx.read<PackProvider>();
-        final cached = packs.allPacks
-            .where((p) => p.id == r.packId)
-            .firstOrNull;
-        if (cached != null) {
-          gameType = cached.gameType;
-          startPack = cached;
-        } else {
-          final fetched = await PackRepository.instance.getPackDetail(
-            r.packId!,
-          );
-          gameType = fetched.gameType;
-          startPack = fetched;
-        }
-      } catch (_) {}
-
-      // Backend-enforced pack-per-room rule (requirement: once a pack has
-      // been played in a room, it's unavailable in that room forever,
-      // regardless of which game type plays it) — checked here, once, for
-      // every game mode, BEFORE broadcasting/pushing anything. Previously
-      // this only ever ran deep inside TodGameProvider.initAsOwner, so (a)
-      // NHIE/Meme never enforced it server-side at all — only the picker's
-      // client-side filtering stood in the way, and (b) even for ToD, the
-      // game_started broadcast + room status flip + route push had already
-      // happened by the time the rejection came back, stranding every
-      // other player mid-navigation into a game that was about to error
-      // out for the owner alone.
-      if (ctx.mounted) {
-        final myId = ctx.read<AuthProvider>().currentUser?.id;
-        final isPremium =
-            ctx.read<AuthProvider>().currentUser?.isPremiumActive ?? false;
-        if (myId != null) {
-          final checkError = await sl.roomRepository.runGameSessionChecks(
-            userId: myId,
-            roomId: r.id,
-            packId: r.packId!,
-            isPremium: isPremium,
-          );
-          if (checkError == 'pack_already_played') {
-            if (ctx.mounted) {
-              ctx.showErrorSnackBar(ctx.l10n.gameSettingsPackAlreadyPlayed);
-            }
-            return;
+    // Backend-enforced pack-per-room rule (requirement: once a pack has
+    // been played in a room, it's unavailable in that room forever,
+    // regardless of which game type plays it) — checked here, once, for
+    // every game mode, BEFORE broadcasting/pushing anything. Previously
+    // this only ever ran deep inside TodGameProvider.initAsOwner, so (a)
+    // NHIE/Meme never enforced it server-side at all — only the picker's
+    // client-side filtering stood in the way, and (b) even for ToD, the
+    // game_started broadcast + room status flip + route push had already
+    // happened by the time the rejection came back, stranding every
+    // other player mid-navigation into a game that was about to error
+    // out for the owner alone.
+    if (ctx.mounted) {
+      final myId = ctx.read<AuthProvider>().currentUser?.id;
+      final isPremium =
+          ctx.read<AuthProvider>().currentUser?.isPremiumActive ?? false;
+      if (myId != null) {
+        final checkError = await sl.roomRepository.runGameSessionChecks(
+          userId: myId,
+          roomId: r.id,
+          packId: r.packId!,
+          isPremium: isPremium,
+        );
+        if (checkError == 'pack_already_played') {
+          if (ctx.mounted) {
+            ctx.showErrorSnackBar(ctx.l10n.gameSettingsPackAlreadyPlayed);
           }
-        }
-      }
-
-      // Truth or Dare gets a dedicated pre-start setup step — every other
-      // game continues starting exactly as before, untouched by this.
-      TodPreGameConfig? todConfig;
-      if (gameType == 'truth_or_dare') {
-        if (!ctx.mounted) {
-          AppLogger.warning(
-            'START_GAME abort room=${r.id} gameType=$gameType '
-            'reason=ctx_unmounted_before_tod_sheet',
-          );
           return;
         }
-        todConfig = await showTodPreGameConfigSheet(
-          ctx,
-          pack: startPack,
-        );
-        // Host backed out of the sheet without confirming — don't start.
-        if (todConfig == null) return;
-        // Item 18.2 root-cause fix: persist the chosen Force Dare settings
-        // into room.settings (durable, already read by every navigation
-        // into the game screen — see _syncGameRoute's GameConfig
-        // construction below) instead of letting them live only in the
-        // one-shot game_started broadcast, which RoomProvider never
-        // stored anywhere retrievable. Awaited so room.settings already
-        // reflects the new values by the time syncGameRoute() runs below
-        // (updateSetting updates local state synchronously before its own
-        // network round-trip — see RoomProvider.updateSetting).
-        //
-        // Real-device follow-up root-cause fix (player Skip regression /
-        // punishment indicator): this same 18.2 fix only ever persisted
-        // force_dare_mode/max_truths — allowSkip/enablePunishments/
-        // punishmentSource are ALSO chosen right here in this same sheet
-        // (see TodPreGameConfig) and used for this client's own immediate
-        // GameConfig below, but were never added to this persistence
-        // step. Every OTHER navigation into the game screen (every
-        // follower, and this same owner client if it re-navigates via
-        // the reactive path instead of this direct one) rebuilds
-        // GameConfig from room.settings alone — so allowSkip in
-        // particular silently fell back to whatever room.settings.allow
-        // _skip already was (stale/default), never what was just chosen
-        // in this sheet. The engine was never the problem; the setting
-        // simply never reached it for anyone but this one client.
-        await room.updateSetting('force_dare_mode', todConfig.forceDareMode);
-        await room.updateSetting('max_truths', todConfig.maxTruths);
-        await room.updateSetting('allow_skip', todConfig.allowSkip);
-        await room.updateSetting(
-          'enable_punishments',
-          todConfig.enablePunishments,
-        );
-        await room.updateSetting(
-          'punishment_source',
-          todConfig.punishmentSource,
-        );
       }
+    }
+
+    // Truth or Dare gets a dedicated pre-start setup step — every other
+    // game continues starting exactly as before, untouched by this.
+    TodPreGameConfig? todConfig;
+    if (gameType == 'truth_or_dare') {
       if (!ctx.mounted) {
         AppLogger.warning(
           'START_GAME abort room=${r.id} gameType=$gameType '
-          'reason=ctx_unmounted_before_broadcast (this was the regression)',
+          'reason=ctx_unmounted_before_tod_sheet',
         );
         return;
       }
-
-      // Single point where the full-screen "Preparing Game" lock actually
-      // becomes visible — reached only once we're genuinely committed to
-      // starting: past the pack-already-played check, and, for Truth or
-      // Dare, only after its settings sheet was CONFIRMED (todConfig != null
-      // — a cancel returned above and never reaches here). Every other game
-      // has no settings step, so this is effectively immediate for them,
-      // same as before.
-      setPreparingLock(true);
-
-      final displayNames = {
-        for (final m in room.members) m.userId: m.displayName,
-      };
-
-      final config = GameConfig(
-        maxRounds: room.settings.maxRounds,
-        turnTimerSeconds: room.settings.turnTimerSeconds,
-        allowSkip: todConfig?.allowSkip ?? true,
-        allowSpicy: r.allowSpicy,
-        enablePunishments: todConfig?.enablePunishments ?? false,
-        punishmentSource: todConfig?.punishmentSource ?? 'players',
-        suggestedPunishments: startPack?.suggestedPunishments,
-        // Proof visibility/timer are no longer a game-wide default chosen
-        // here — the submitting player picks them per-Dare instead (see
-        // TodCardScreen._showCompleteSheet). These GameConfig fields are
-        // kept (other call sites / the shared Rules sheet still read them)
-        // and sourced from the room's own persisted settings, exactly like
-        // the resume/rejoin GameConfig construction above already does —
-        // no longer overridable by the (now-removed) pre-game sheet fields.
-        proofVisibilityPolicy: room.settings.proofVisibilityPolicy,
-        proofViewSeconds: room.settings.proofViewSeconds,
-        proofReplayMode: room.settings.proofReplayMode,
-        forceDareMode: todConfig?.forceDareMode ?? 'unlimited',
-        maxTruths: todConfig?.maxTruths ?? 2,
-        cardRepetitionMode: todConfig?.cardRepetitionMode ?? 'shuffle',
-        packId: r.packId,
-        language: r.language,
+      todConfig = await showTodPreGameConfigSheet(
+        ctx,
+        pack: startPack,
+        initialAllowSkip: room.settings.allowSkip,
       );
-
-      // Declare intent BEFORE either write below — RoomProvider's own
-      // listener (_handleGameStarted reacts to the broadcast itself, not
-      // just the DB status change, so it can flip _room.status to inGame
-      // and notify locally before either await here even resolves) is
-      // what actually performs the navigation, via _syncGameRoute. This
-      // method never pushes the game route itself — see _syncGameRoute's
-      // doc comment for why nothing else is allowed to.
-      markFreshStart();
-
-      await sl.realtimeService.broadcastGameStarted(r.id, {
-        'game_type': gameType,
-        'pack_id': r.packId,
-        'config': config.toMap(),
-        'player_ids': room.members
-            .where((m) => !m.isSpectator)
-            .map((m) => m.userId)
-            .toList(),
-        'display_names': displayNames,
-      });
-
-      // 'starting', NOT 'in_game' — the room enters the explicit,
-      // DB-backed STARTING_GAME lock. Every non-owner client stays locked
-      // on the "Game Starting" overlay (see build()) until the OWNER's own
-      // game screen confirms create_game_session has genuinely succeeded
-      // and flips this to 'in_game' itself (see each game's initAsOwner /
-      // RoomProvider._handleGameSessionReady) — closing the race where a
-      // player's game screen could previously mount and look for a
-      // session the owner hadn't necessarily created yet.
-      await sl.roomRepository.updateStatus(
-        r.id,
-        RoomStatus.starting,
-        gameType: gameType,
+      // Host backed out of the sheet without confirming — don't start.
+      if (todConfig == null) return;
+      // Item 18.2 root-cause fix: persist the chosen Force Dare settings
+      // into room.settings (durable, already read by every navigation
+      // into the game screen — see _syncGameRoute's GameConfig
+      // construction below) instead of letting them live only in the
+      // one-shot game_started broadcast, which RoomProvider never
+      // stored anywhere retrievable. Awaited so room.settings already
+      // reflects the new values by the time syncGameRoute() runs below
+      // (updateSetting updates local state synchronously before its own
+      // network round-trip — see RoomProvider.updateSetting).
+      //
+      // Real-device follow-up root-cause fix (player Skip regression /
+      // punishment indicator): this same 18.2 fix only ever persisted
+      // force_dare_mode/max_truths — allowSkip/enablePunishments/
+      // punishmentSource are ALSO chosen right here in this same sheet
+      // (see TodPreGameConfig) and used for this client's own immediate
+      // GameConfig below, but were never added to this persistence
+      // step. Every OTHER navigation into the game screen (every
+      // follower, and this same owner client if it re-navigates via
+      // the reactive path instead of this direct one) rebuilds
+      // GameConfig from room.settings alone — so allowSkip in
+      // particular silently fell back to whatever room.settings.allow
+      // _skip already was (stale/default), never what was just chosen
+      // in this sheet. The engine was never the problem; the setting
+      // simply never reached it for anyone but this one client.
+      await room.updateSetting('force_dare_mode', todConfig.forceDareMode);
+      await room.updateSetting('max_truths', todConfig.maxTruths);
+      await room.updateSetting('allow_skip', todConfig.allowSkip);
+      await room.updateSetting(
+        'enable_punishments',
+        todConfig.enablePunishments,
       );
-      AppLogger.info(
-        'START_GAME session-triggers-sent room=${r.id} gameType=$gameType '
-        'status=${room.room?.status} — broadcast + status=starting done, '
-        'awaiting owner initAsOwner/create_game_session',
+      await room.updateSetting('punishment_source', todConfig.punishmentSource);
+    }
+    if (!ctx.mounted) {
+      AppLogger.warning(
+        'START_GAME abort room=${r.id} gameType=$gameType '
+        'reason=ctx_unmounted_before_broadcast (this was the regression)',
       );
+      return;
+    }
 
-      // Direct nudge for promptness — not required for correctness (the
-      // notify from either write above already reaches _onRoomStateChanged
-      // -> _syncGameRoute on its own), same as "Continue Game"/Rejoin
-      // calling the same shared function rather than pushing independently.
-      syncGameRoute();
+    // Single point where the full-screen "Preparing Game" lock actually
+    // becomes visible — reached only once we're genuinely committed to
+    // starting: past the pack-already-played check, and, for Truth or
+    // Dare, only after its settings sheet was CONFIRMED (todConfig != null
+    // — a cancel returned above and never reaches here). Every other game
+    // has no settings step, so this is effectively immediate for them,
+    // same as before.
+    setPreparingLock(true);
+
+    final displayNames = {
+      for (final m in room.members) m.userId: m.displayName,
+    };
+
+    final config = GameConfig(
+      maxRounds: room.settings.maxRounds,
+      turnTimerSeconds: room.settings.turnTimerSeconds,
+      allowSkip: todConfig?.allowSkip ?? true,
+      allowSpicy: r.allowSpicy,
+      enablePunishments: todConfig?.enablePunishments ?? false,
+      punishmentSource: todConfig?.punishmentSource ?? 'players',
+      suggestedPunishments: startPack?.suggestedPunishments,
+      // Proof visibility/timer are no longer a game-wide default chosen
+      // here — the submitting player picks them per-Dare instead (see
+      // TodCardScreen._showCompleteSheet). These GameConfig fields are
+      // kept (other call sites / the shared Rules sheet still read them)
+      // and sourced from the room's own persisted settings, exactly like
+      // the resume/rejoin GameConfig construction above already does —
+      // no longer overridable by the (now-removed) pre-game sheet fields.
+      proofVisibilityPolicy: room.settings.proofVisibilityPolicy,
+      proofViewSeconds: room.settings.proofViewSeconds,
+      proofReplayMode: room.settings.proofReplayMode,
+      forceDareMode: todConfig?.forceDareMode ?? 'unlimited',
+      maxTruths: todConfig?.maxTruths ?? 2,
+      cardRepetitionMode: todConfig?.cardRepetitionMode ?? 'shuffle',
+      // Room Settings-level toggle (not part of the ToD pre-game sheet),
+      // sourced from the room's own persisted settings like
+      // proofVisibilityPolicy above.
+      honestyVoteEnabled: room.settings.honestyVoteEnabled,
+      packId: r.packId,
+      language: r.language,
+    );
+
+    // Declare intent BEFORE either write below — RoomProvider's own
+    // listener (_handleGameStarted reacts to the broadcast itself, not
+    // just the DB status change, so it can flip _room.status to inGame
+    // and notify locally before either await here even resolves) is
+    // what actually performs the navigation, via _syncGameRoute. This
+    // method never pushes the game route itself — see _syncGameRoute's
+    // doc comment for why nothing else is allowed to.
+    markFreshStart();
+
+    await sl.realtimeService.broadcastGameStarted(r.id, {
+      'game_type': gameType,
+      'pack_id': r.packId,
+      'config': config.toMap(),
+      'player_ids': room.members
+          .where((m) => !m.isSpectator)
+          .map((m) => m.userId)
+          .toList(),
+      'display_names': displayNames,
+    });
+
+    // 'starting', NOT 'in_game' — the room enters the explicit,
+    // DB-backed STARTING_GAME lock. Every non-owner client stays locked
+    // on the "Game Starting" overlay (see build()) until the OWNER's own
+    // game screen confirms create_game_session has genuinely succeeded
+    // and flips this to 'in_game' itself (see each game's initAsOwner /
+    // RoomProvider._handleGameSessionReady) — closing the race where a
+    // player's game screen could previously mount and look for a
+    // session the owner hadn't necessarily created yet.
+    await sl.roomRepository.updateStatus(
+      r.id,
+      RoomStatus.starting,
+      gameType: gameType,
+    );
+    AppLogger.info(
+      'START_GAME session-triggers-sent room=${r.id} gameType=$gameType '
+      'status=${room.room?.status} — broadcast + status=starting done, '
+      'awaiting owner initAsOwner/create_game_session',
+    );
+
+    // Direct nudge for promptness — not required for correctness (the
+    // notify from either write above already reaches _onRoomStateChanged
+    // -> _syncGameRoute on its own), same as "Continue Game"/Rejoin
+    // calling the same shared function rather than pushing independently.
+    syncGameRoute();
   }
 
   void _showLobbySettings(BuildContext ctx, RoomProvider room) {
@@ -2561,7 +2689,10 @@ class _RejoinBannerState extends State<_RejoinBanner> {
       await sl.roomRepository.requestGameRejoin(roomId);
       if (mounted) setState(() => _requestStatus = 'pending');
     } catch (e) {
-      if (mounted) context.showErrorSnackBar(context.l10n.roomsFailedToSendRequest(e.toString()));
+      if (mounted)
+        context.showErrorSnackBar(
+          context.l10n.roomsFailedToSendRequest(e.toString()),
+        );
     } finally {
       if (mounted) setState(() => _requesting = false);
     }
@@ -2633,7 +2764,10 @@ class _RejoinBannerState extends State<_RejoinBanner> {
               onPressed: onPressed,
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.tealGreen,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 minimumSize: Size.zero,
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
@@ -2838,7 +2972,9 @@ class _RejoinRequestsPanelState extends State<_RejoinRequestsPanel> {
         ),
         ..._requests.map((req) {
           final profile = req['profiles'] as Map<String, dynamic>? ?? {};
-          final name = profile['display_name'] as String? ?? context.l10n.defaultPlayerName;
+          final name =
+              profile['display_name'] as String? ??
+              context.l10n.defaultPlayerName;
           return Card(
             margin: const EdgeInsets.only(bottom: 8),
             child: ListTile(
@@ -3290,6 +3426,7 @@ class _SpectatorsSheet extends StatelessWidget {
     this.room,
   });
   final List<RoomMemberEntity> spectators;
+
   /// True only for a Premium Plus moderator — controls whether a hidden
   /// (anonymous) spectator's real name/avatar is shown. When false, a hidden
   /// spectator still appears (and is kickable) but as a masked "Anonymous"
@@ -3339,8 +3476,9 @@ class _SpectatorsSheet extends StatelessWidget {
             const SizedBox(height: 4),
             Builder(
               builder: (_) {
-                final hidden =
-                    spectators.where((s) => s.isHiddenSpectator).length;
+                final hidden = spectators
+                    .where((s) => s.isHiddenSpectator)
+                    .length;
                 if (hidden == 0) return const SizedBox.shrink();
                 return Text(
                   context.l10n.lobbyHiddenAnonymousCount(hidden),
@@ -3373,7 +3511,8 @@ class _SpectatorsSheet extends StatelessWidget {
               leading: masked
                   ? CircleAvatar(
                       radius: 18,
-                      backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                      backgroundColor:
+                          theme.colorScheme.surfaceContainerHighest,
                       child: Icon(
                         Icons.visibility_off_rounded,
                         size: 18,
@@ -3514,7 +3653,9 @@ class _FriendRequestButtonState extends State<_FriendRequestButton> {
       if (mounted)
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(context.l10n.lobbyFriendRequestSent(widget.displayName)),
+            content: Text(
+              context.l10n.lobbyFriendRequestSent(widget.displayName),
+            ),
           ),
         );
     } catch (e) {
@@ -3581,8 +3722,31 @@ class _FriendRequestButtonState extends State<_FriendRequestButton> {
 }
 
 class _InviteFriendsSheet extends StatefulWidget {
-  const _InviteFriendsSheet({required this.roomId, required this.inviteCode});
+  const _InviteFriendsSheet({
+    required this.roomId,
+    required this.inviteCode,
+    this.shareData,
+    required this.isOwner,
+    required this.isPrivate,
+    required this.isClosed,
+    required this.isFull,
+    required this.roomName,
+    required this.roomCoverEmoji,
+  });
   final String roomId, inviteCode;
+  final RoomShareCardData? shareData;
+
+  // Item 7 (QR codes) — enough room state to decide canRevealRoomQr and
+  // to render RoomQrSheet, passed in directly rather than read from
+  // RoomProvider inside the sheet (see shareData's own comment at its
+  // call site for why).
+  final bool isOwner;
+  final bool isPrivate;
+  final bool isClosed;
+  final bool isFull;
+  final String roomName;
+  final String roomCoverEmoji;
+
   @override
   State<_InviteFriendsSheet> createState() => _InviteFriendsSheetState();
 }
@@ -3692,6 +3856,55 @@ class _InviteFriendsSheetState extends State<_InviteFriendsSheet> {
     }
   }
 
+  // HTTPS, not jma3a:// — a custom scheme renders as plain, non-tappable
+  // text in WhatsApp/SMS/etc. The https://jma3a.com/join link opens the
+  // app directly via Android App Links / iOS Universal Links when
+  // installed, and falls back to the website (with download prompts)
+  // when it isn't — jma3a:// can't do either of those from inside a
+  // chat app.
+  Future<void> _shareInvite(BuildContext context) async {
+    final myId2 = context.read<AuthProvider>().currentUser?.id ?? '';
+    final code2 = widget.inviteCode;
+    final message = context.l10n.lobbyShareInviteMessage(
+      code2,
+      AppConstants.roomInviteUrl(code: code2, invitedBy: myId2),
+    );
+    final subject = context.l10n.lobbyShareInviteSubject(code2);
+
+    // The rich circular preview card is attached as an image file
+    // alongside the text link — there is no backend/web OG-image
+    // infrastructure to unfurl a link preview automatically, so this
+    // client-rendered PNG is the closest available "rich preview"
+    // without inventing server infrastructure that doesn't exist. Any
+    // failure here (capture, temp-file write) falls back to the
+    // existing plain-text-only share, which must never break.
+    final shareData = widget.shareData;
+    if (shareData != null) {
+      try {
+        final bytes = await captureRoomShareCard(context, shareData);
+        if (bytes != null) {
+          final dir = await getTemporaryDirectory();
+          final file = File('${dir.path}/jma3a_room_invite.png');
+          await file.writeAsBytes(bytes, flush: true);
+          await SharePlus.instance.share(
+            ShareParams(
+              text: message,
+              subject: subject,
+              files: [XFile(file.path)],
+            ),
+          );
+          return;
+        }
+      } catch (e) {
+        AppLogger.warning('Room share card capture failed: $e');
+      }
+    }
+
+    await SharePlus.instance.share(
+      ShareParams(text: message, subject: subject),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = context.theme;
@@ -3758,7 +3971,9 @@ class _InviteFriendsSheetState extends State<_InviteFriendsSheet> {
                   FilledButton.icon(
                     onPressed: () => _inviteSelected(friends),
                     icon: const Icon(Icons.send_rounded, size: 16),
-                    label: Text(context.l10n.lobbyInviteCount(_selected.length)),
+                    label: Text(
+                      context.l10n.lobbyInviteCount(_selected.length),
+                    ),
                     style: FilledButton.styleFrom(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       minimumSize: Size.zero,
@@ -3907,32 +4122,44 @@ class _InviteFriendsSheetState extends State<_InviteFriendsSheet> {
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () {
-                      final myId2 =
-                          context.read<AuthProvider>().currentUser?.id ?? '';
-                      final code2 = widget.inviteCode;
-                      // HTTPS, not jma3a:// — a custom scheme renders as
-                      // plain, non-tappable text in WhatsApp/SMS/etc. The
-                      // https://jma3a.com/join link opens the app directly
-                      // via Android App Links / iOS Universal Links when
-                      // installed, and falls back to the website (with
-                      // download prompts) when it isn't — jma3a:// can't
-                      // do either of those from inside a chat app.
-                      Share.share(
-                        context.l10n.lobbyShareInviteMessage(
-                          code2,
-                          AppConstants.roomInviteUrl(
-                            code: code2,
-                            invitedBy: myId2,
-                          ),
-                        ),
-                        subject: context.l10n.lobbyShareInviteSubject(code2),
-                      );
-                    },
+                    onPressed: () => _shareInvite(context),
                     icon: const Icon(Icons.share_rounded, size: 16),
                     label: Text(context.l10n.lobbyShareInviteLink),
                   ),
                 ),
+                if (canRevealRoomQr(
+                  isOwner: widget.isOwner,
+                  isPrivate: widget.isPrivate,
+                  isClosed: widget.isClosed,
+                  isFull: widget.isFull,
+                )) ...[
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => RoomQrSheet.show(
+                        context,
+                        isOwner: widget.isOwner,
+                        isPrivate: widget.isPrivate,
+                        isClosed: widget.isClosed,
+                        isFull: widget.isFull,
+                        inviteCode: widget.inviteCode,
+                        roomName: widget.roomName,
+                        roomCoverEmoji: widget.roomCoverEmoji,
+                        shareText: context.l10n.lobbyShareInviteMessage(
+                          widget.inviteCode,
+                          AppConstants.roomInviteUrl(
+                            code: widget.inviteCode,
+                            invitedBy:
+                                context.read<AuthProvider>().currentUser?.id ??
+                                '',
+                          ),
+                        ),
+                      ),
+                      icon: const Icon(Icons.qr_code_rounded, size: 16),
+                      label: Text(context.l10n.qrRoomRevealTitle),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

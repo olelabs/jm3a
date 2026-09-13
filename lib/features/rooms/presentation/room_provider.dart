@@ -2613,8 +2613,7 @@ class RoomProvider extends ChangeNotifier {
   /// Whether the owner may keep-game-close the room right now: owner-only,
   /// not already closed, and strictly more than one relevant member present
   /// (the admin-alone rule). Enforced again server-side by the RPC.
-  bool get canCloseRoom =>
-      isOwner && !isRoomClosed && relevantMemberCount > 1;
+  bool get canCloseRoom => isOwner && !isRoomClosed && relevantMemberCount > 1;
 
   /// Whether the owner may reopen a keep-game-closed room right now.
   bool get canReopenRoom => isOwner && isRoomClosed;
@@ -2678,6 +2677,7 @@ class RoomProvider extends ChangeNotifier {
       _isClosingRoom = false;
     }
   }
+
   // Was a separately-tracked Set<String> that duplicated
   // RoomMemberEntity.isMuted (already correctly kept in sync via CDC/the
   // reconciliation poll — see _refreshMembers/_rowToEntity) and only ever
@@ -2718,7 +2718,8 @@ class RoomProvider extends ChangeNotifier {
   /// Granular permission check for the current user — the owner always
   /// passes; a moderator only passes for a permission explicitly listed in
   /// [ModeratorPermission.all] and granted via [updateModeratorPermissions].
-  bool hasPermission(String key) => currentMember?.hasPermission(key) ?? isOwner;
+  bool hasPermission(String key) =>
+      currentMember?.hasPermission(key) ?? isOwner;
 
   /// Same check for an arbitrary member — used by the room owner's game
   /// provider to validate a moderator-delegated action (e.g. "advance
@@ -2733,7 +2734,8 @@ class RoomProvider extends ChangeNotifier {
     return m?.hasPermission(key) ?? (userId == _room?.ownerId);
   }
 
-  bool get canApproveSpectators => hasPermission(ModeratorPermission.acceptSpectators);
+  bool get canApproveSpectators =>
+      hasPermission(ModeratorPermission.acceptSpectators);
   bool get canAcceptJoins => hasPermission(ModeratorPermission.acceptJoins);
   bool get canAcceptRejoins => hasPermission(ModeratorPermission.acceptRejoins);
   bool get canKickPlayers => hasPermission(ModeratorPermission.kickPlayers);
@@ -2741,9 +2743,11 @@ class RoomProvider extends ChangeNotifier {
   bool get canMutePlayers => hasPermission(ModeratorPermission.mutePlayers);
   bool get canAdvanceTurn => hasPermission(ModeratorPermission.advanceTurn);
   bool get canSkipTurn => hasPermission(ModeratorPermission.skipTurn);
-  bool get canManageSettings => hasPermission(ModeratorPermission.manageSettings);
+  bool get canManageSettings =>
+      hasPermission(ModeratorPermission.manageSettings);
   bool get canEndGame => hasPermission(ModeratorPermission.endGame);
   bool get canStartGame => hasPermission(ModeratorPermission.startGame);
+  bool get canSetSpectator => hasPermission(ModeratorPermission.setSpectator);
 
   /// Owner-only: grants moderator status (if needed) and sets [userId]'s
   /// exact permission set; an empty set revokes moderator status entirely.
@@ -2821,9 +2825,9 @@ class RoomProvider extends ChangeNotifier {
             'RoomProvider: terminated a stale mid-game session for '
             'returning owner in room $roomId',
           );
-          _realtime
-              .broadcastGameEnded(roomId, {'reason': 'host_reconnected'})
-              .ignore();
+          _realtime.broadcastGameEnded(roomId, {
+            'reason': 'host_reconnected',
+          }).ignore();
         } else if (recovery?['resumed'] == true) {
           // Host reconnected within the 60s window — recover_owner_room
           // already flipped rooms.status back to in_game itself; tell
@@ -2833,9 +2837,7 @@ class RoomProvider extends ChangeNotifier {
             'RoomProvider: resumed a paused game for returning host in '
             'room $roomId',
           );
-          _realtime
-              .broadcastRoomEvent(roomId, {'type': 'resume'})
-              .ignore();
+          _realtime.broadcastRoomEvent(roomId, {'type': 'resume'}).ignore();
         }
       } catch (e) {
         AppLogger.warning('RoomProvider: recoverOwnerRoom failed: $e');
@@ -2930,13 +2932,11 @@ class RoomProvider extends ChangeNotifier {
           // instead of leaving the admin seeing them stuck as away/gone. Only
           // toggles is_away; never touches left_at, so the reactivation
           // trigger stays out of the way even in a closed room.
-          _repo
-              .setMemberAway(roomId, _currentUserId, away: false)
-              .catchError((e) {
-                AppLogger.warning(
-                  'RoomProvider: resume is_away clear failed: $e',
-                );
-              });
+          _repo.setMemberAway(roomId, _currentUserId, away: false).catchError((
+            e,
+          ) {
+            AppLogger.warning('RoomProvider: resume is_away clear failed: $e');
+          });
         }
       }
 
@@ -3024,13 +3024,13 @@ class RoomProvider extends ChangeNotifier {
             // approved back in. decide_game_rejoin_request's approval path
             // already clears is_away, which is what makes them eligible
             // again once actually accepted — never before.
-            _repo
-                .setMemberAway(roomId, _currentUserId, away: true)
-                .catchError((e) {
-                  AppLogger.warning(
-                    'RoomProvider: arrivedMidGame self is_away mark failed: $e',
-                  );
-                });
+            _repo.setMemberAway(roomId, _currentUserId, away: true).catchError((
+              e,
+            ) {
+              AppLogger.warning(
+                'RoomProvider: arrivedMidGame self is_away mark failed: $e',
+              );
+            });
           }
         } catch (e) {
           AppLogger.warning('RoomProvider: arrivedMidGame check failed: $e');
@@ -3063,10 +3063,7 @@ class RoomProvider extends ChangeNotifier {
         // hasPriorMembership for their own version of this same gap.
         final alreadyMember =
             isActiveParticipant ||
-            await _repo.isActiveMember(
-              userId: _currentUserId,
-              roomId: roomId,
-            );
+            await _repo.isActiveMember(userId: _currentUserId, roomId: roomId);
         if (!alreadyMember) {
           final invited = await _repo.hasValidInvite(
             userId: _currentUserId,
@@ -3424,7 +3421,8 @@ class RoomProvider extends ChangeNotifier {
             column: 'room_id',
             value: roomId,
           ),
-          callback: (payload) => _handleTargetedChatCdcInsert(payload.newRecord),
+          callback: (payload) =>
+              _handleTargetedChatCdcInsert(payload.newRecord),
         )
         .subscribe();
 
@@ -3787,9 +3785,7 @@ class RoomProvider extends ChangeNotifier {
       // doesn't arrive. The primary kicked/banned events (_handleModeration)
       // still fire immediately when the broadcast does arrive — this only
       // ever fires in addition, as a safety net, never instead.
-      final isStillMember = freshMembers.any(
-        (m) => m.userId == _currentUserId,
-      );
+      final isStillMember = freshMembers.any((m) => m.userId == _currentUserId);
       if (wasMember && !isStillMember) _handleSelfNoLongerMember();
       // Every departure path (kick, ban, disconnect timeout, explicit
       // leave, or a purely server-side sweep like cleanupJob.js that never
@@ -3941,10 +3937,7 @@ class RoomProvider extends ChangeNotifier {
       if (member.isHiddenSpectator) continue;
       if (onlineIds.contains(member.userId) && member.isDisconnected) {
         _cancelGracePeriod(member.userId);
-        _updateMember(
-          member.userId,
-          (m) => m.copyWith(isDisconnected: false),
-        );
+        _updateMember(member.userId, (m) => m.copyWith(isDisconnected: false));
         changed = true;
       }
     }
@@ -4043,10 +4036,7 @@ class RoomProvider extends ChangeNotifier {
     if (room == null) return;
     DateTime? lastSeen;
     try {
-      lastSeen = await _repo.getMemberLastSeen(
-        roomId: room.id,
-        userId: userId,
-      );
+      lastSeen = await _repo.getMemberLastSeen(roomId: room.id, userId: userId);
       if (lastSeen != null &&
           DateTime.now().difference(lastSeen) < const Duration(seconds: 25)) {
         AppLogger.debug(
@@ -4118,9 +4108,7 @@ class RoomProvider extends ChangeNotifier {
                   .toList();
             }
           } catch (e) {
-            AppLogger.warning(
-              'RoomProvider: claimRoomOwnership failed: $e',
-            );
+            AppLogger.warning('RoomProvider: claimRoomOwnership failed: $e');
           }
         }
       }
@@ -4335,9 +4323,7 @@ class RoomProvider extends ChangeNotifier {
       );
       _startHostReconnectCountdown();
     } catch (e) {
-      AppLogger.warning(
-        'RoomProvider: pause-for-host-disconnect failed: $e',
-      );
+      AppLogger.warning('RoomProvider: pause-for-host-disconnect failed: $e');
     }
   }
 
@@ -4419,15 +4405,19 @@ class RoomProvider extends ChangeNotifier {
       final sessionId = await _currentActiveSessionId(
         room.id,
       ).timeout(_resumeOpTimeout);
-      AppLogger.info('OWNER_RESUME session_lookup room=${room.id} '
-          'activeSessionId=$sessionId');
+      AppLogger.info(
+        'OWNER_RESUME session_lookup room=${room.id} '
+        'activeSessionId=$sessionId',
+      );
       if (sessionId == null) return;
       // Re-read immediately before the write: another client may have
       // resumed or terminated the room while the awaits above were in
       // flight. Only act if it's still paused.
       if (_room?.status != RoomStatus.paused) {
-        AppLogger.info('OWNER_RESUME abort room=${room.id} '
-            'reason=status_changed_to=${_room?.status}');
+        AppLogger.info(
+          'OWNER_RESUME abort room=${room.id} '
+          'reason=status_changed_to=${_room?.status}',
+        );
         return;
       }
       // Authoritative DB write FIRST (owner-RLS-allowed), then flip local
@@ -4454,9 +4444,7 @@ class RoomProvider extends ChangeNotifier {
       // do NOT resume; the owner is not demonstrably present/reachable. The
       // finally releases the guard and the reconcile loop retries on a
       // later tick once connectivity is genuinely back.
-      AppLogger.warning(
-        'OWNER_RESUME failed room=${room.id} error=$e',
-      );
+      AppLogger.warning('OWNER_RESUME failed room=${room.id} error=$e');
     } finally {
       _ownerSelfResuming = false;
     }
@@ -5184,6 +5172,21 @@ class RoomProvider extends ChangeNotifier {
           _safeNotify();
         }
 
+      case 'set_spectator':
+        // Item 5 — reflects the admin's spectator toggle on every OTHER
+        // connected client (the admin's own client already applied this
+        // locally in setMemberSpectator, same as game_mute/unmute above).
+        if (targetId != null) {
+          _updateMember(targetId, (m) => m.copyWith(isSpectator: true));
+          _safeNotify();
+        }
+
+      case 'unset_spectator':
+        if (targetId != null) {
+          _updateMember(targetId, (m) => m.copyWith(isSpectator: false));
+          _safeNotify();
+        }
+
       case 'pause':
         _room = _room?.copyWith(
           status: RoomStatus.paused,
@@ -5244,10 +5247,11 @@ class RoomProvider extends ChangeNotifier {
       'proof_visibility_selected_user_ids' => _settings.copyWith(
         proofVisibilitySelectedUserIds: (value as List).cast<String>(),
       ),
-      'force_dare_mode' => _settings.copyWith(
-        forceDareMode: value as String,
-      ),
+      'force_dare_mode' => _settings.copyWith(forceDareMode: value as String),
       'max_truths' => _settings.copyWith(maxTruths: (value as num).toInt()),
+      'honesty_vote_enabled' => _settings.copyWith(
+        honestyVoteEnabled: value as bool,
+      ),
       _ => _settings,
     };
     _safeNotify();
@@ -5307,6 +5311,33 @@ class RoomProvider extends ChangeNotifier {
       'duration_seconds': durationSeconds,
     });
     _updateMember(targetUserId, (m) => m.copyWith(isGameMuted: muted));
+    _safeNotify();
+  }
+
+  /// Item 5 — admin/moderator spectator toggle. Reuses the EXISTING
+  /// spectator concept end-to-end: the target's role flips server-side
+  /// (set_room_member_spectator RPC) to/from 'spectator', which is the
+  /// SAME flag [eligiblePlayers], pack min/max enforcement, and turn
+  /// order already read via [RoomMemberEntity.isSpectator] — no second,
+  /// parallel spectator state. Never called automatically; the admin
+  /// picks the target explicitly and can reverse it the same way.
+  Future<void> setMemberSpectator(
+    String targetUserId, {
+    required bool isSpectator,
+  }) async {
+    if (!canSetSpectator || targetUserId == _currentUserId || _room == null) {
+      return;
+    }
+    await _repo.setMemberSpectator(
+      _room!.id,
+      targetUserId,
+      isSpectator: isSpectator,
+    );
+    await _realtime.broadcastModeration(_room!.id, {
+      'type': isSpectator ? 'set_spectator' : 'unset_spectator',
+      'target_user_id': targetUserId,
+    });
+    _updateMember(targetUserId, (m) => m.copyWith(isSpectator: isSpectator));
     _safeNotify();
   }
 
@@ -5400,9 +5431,7 @@ class RoomProvider extends ChangeNotifier {
 
   Future<void> transferOwnership(String newOwnerId) async {
     if (!canTransferOwnership || _room == null) return;
-    final target = _members
-        .where((m) => m.userId == newOwnerId)
-        .firstOrNull;
+    final target = _members.where((m) => m.userId == newOwnerId).firstOrNull;
     // Only a current, non-spectator player may receive game-authority —
     // a spectator becoming owner mid-game would have no way to run the
     // active game's engine. (The server RPC also enforces this, but
@@ -5425,7 +5454,6 @@ class RoomProvider extends ChangeNotifier {
         .toList();
     _safeNotify();
   }
-
 
   Future<void> updateSetting(String field, dynamic value) async {
     if (!canManageSettings || _room == null) return;

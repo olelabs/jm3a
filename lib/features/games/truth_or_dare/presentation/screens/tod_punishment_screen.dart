@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
@@ -182,7 +181,10 @@ class _ProposePhase extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         context.l10n.todEveryoneElsePickingPunishment,
-                        style: const TextStyle(color: Colors.white54, fontSize: 14),
+                        style: const TextStyle(
+                          color: Colors.white54,
+                          fontSize: 14,
+                        ),
                         textAlign: TextAlign.center,
                       ),
                     ],
@@ -229,7 +231,7 @@ class _ProposePhase extends StatelessWidget {
                   maxLength: 200,
                   style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
-                    hintText: 'e.g. "Do 10 push-ups"',
+                    hintText: context.l10n.todPunishmentHint,
                     hintStyle: const TextStyle(color: Colors.white38),
                     filled: true,
                     fillColor: _kNavyLight,
@@ -261,7 +263,10 @@ class _ProposePhase extends StatelessWidget {
                   icon: const Icon(Icons.send_rounded),
                   label: Text(
                     context.l10n.submit,
-                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
+                    ),
                   ),
                 ),
               ],
@@ -310,8 +315,10 @@ class _VotingPhase extends StatelessWidget {
                   children: [
                     Text(
                       isCurrentPlayer
-                          ? '⚡ PICK YOUR PUNISHMENT'
-                          : '⚡ ${_shortName(playerName)} IS CHOOSING…',
+                          ? context.l10n.todPickYourPunishment
+                          : context.l10n.todPlayerIsChoosingPunishment(
+                              _shortName(playerName),
+                            ),
                       style: const TextStyle(
                         color: Colors.white54,
                         fontSize: 11,
@@ -323,8 +330,10 @@ class _VotingPhase extends StatelessWidget {
                     const SizedBox(height: 8),
                     Text(
                       isCurrentPlayer
-                          ? 'Everyone submitted one — pick which you\'ll do.'
-                          : 'Waiting for $playerName to pick one.',
+                          ? context.l10n.todEveryoneSubmittedPickOne
+                          : context.l10n.todWaitingForPlayerToPickOne(
+                              playerName,
+                            ),
                       style: TextStyle(
                         color: _kOrange.withOpacity(0.8),
                         fontSize: 13,

@@ -194,7 +194,9 @@ class _BalanceCard extends StatelessWidget {
               ),
               const SizedBox(width: 6),
               Text(
-                isFrozen ? 'Wallet (Frozen)' : 'Available Balance',
+                isFrozen
+                    ? context.l10n.walletFrozenLabel
+                    : context.l10n.walletAvailableBalanceLabel,
                 style: const TextStyle(
                   color: Colors.white70,
                   fontSize: 13,
@@ -213,7 +215,7 @@ class _BalanceCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            wallet.formattedBalance,
+            wallet.formattedBalance(context.l10n.walletCurrencyShort),
             style: const TextStyle(
               color: Colors.white,
               fontSize: 36,
@@ -247,7 +249,9 @@ class _BalanceCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        wallet.formattedEarningsBalance,
+                        wallet.formattedEarningsBalance(
+                          context.l10n.walletCurrencyShort,
+                        ),
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 18,
@@ -291,8 +295,10 @@ class _BalanceCard extends StatelessWidget {
           autofocus: true,
           decoration: InputDecoration(
             hintText: dialogCtx.l10n.amountLabel,
-            suffixText: 'MRU',
-            helperText: dialogCtx.l10n.walletAvailableAmount(wallet.formattedEarningsBalance),
+            suffixText: dialogCtx.l10n.walletCurrencyShort,
+            helperText: dialogCtx.l10n.walletAvailableAmount(
+              wallet.formattedEarningsBalance(dialogCtx.l10n.walletCurrencyShort),
+            ),
           ),
         ),
         actions: [
@@ -515,7 +521,9 @@ class _PendingDepositTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  context.l10n.walletDepositAmount(deposit.formattedAmount),
+                  context.l10n.walletDepositAmount(
+                    deposit.formattedAmount(context.l10n.walletCurrencyShort),
+                  ),
                   style: const TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 13,
@@ -578,7 +586,9 @@ class _PendingWithdrawalTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  context.l10n.walletWithdrawalAmount(withdrawal.formattedAmount),
+                  context.l10n.walletWithdrawalAmount(
+                    withdrawal.formattedAmount(context.l10n.walletCurrencyShort),
+                  ),
                   style: const TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 13,

@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../../../../core/extensions/context_ext.dart';
@@ -99,8 +98,10 @@ class _TodWaitingOverlayState extends State<TodWaitingOverlay>
                         const SizedBox(height: 14),
                         Text(
                           widget.playerName != null
-                              ? '${widget.playerName} is choosing…'
-                              : 'Waiting for player…',
+                              ? context.l10n.todPlayerIsChoosing(
+                                  widget.playerName!,
+                                )
+                              : context.l10n.todWaitingForPlayerGeneric,
                           style: theme.textTheme.titleSmall?.copyWith(
                             fontWeight: FontWeight.w700,
                             color: theme.colorScheme.onSurface,

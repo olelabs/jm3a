@@ -8,6 +8,8 @@ import '../../../../core/providers/auth_provider.dart';
 import '../../../../core/router/route_names.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/app_logger.dart';
+import '../../../../core/utils/app_version.dart';
+import '../../../../shared/widgets/mouj_tech_brand.dart';
 
 /// App entry screen — shown while session is being restored.
 ///
@@ -23,6 +25,7 @@ class SplashScreen extends StatefulWidget {
 class _SplashScreenState extends State<SplashScreen> {
   bool _showTimeout = false;
   bool _hasNavigated = false;
+  String? _versionText;
 
   @override
   void initState() {
@@ -42,6 +45,10 @@ class _SplashScreenState extends State<SplashScreen> {
         AppLogger.warning('SplashScreen: timeout, forcing navigation');
         setState(() => _showTimeout = true);
       }
+    });
+
+    formattedAppVersion().then((v) {
+      if (mounted) setState(() => _versionText = v);
     });
   }
 
@@ -111,25 +118,99 @@ class _SplashScreenState extends State<SplashScreen> {
               child: _Dot(color: AppColors.truthColor, size: 7, opacity: 0.6),
             ),
 
+            // Ownership + version disclosure — sits below the main splash
+            // composition, never delaying or altering it (no animation
+            // dependency on auth-init timing). Safe-area handling comes
+            // from MoujTechBrand itself; this Column only needs its own
+            // bottom padding since the version line sits below that.
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const MoujTechBrand(
+                    size: MoujTechBrandSize.compact,
+                    padding: EdgeInsets.zero,
+                  ),
+                  if (_versionText != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12, top: 2),
+                      child: Text(
+                        '${context.l10n.settingsVersionLabel} $_versionText',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: 0.2,
+                          color: Colors.white.withOpacity(0.35),
+                        ),
+                      ),
+                    )
+                  else
+                    const SizedBox(height: 12),
+                ],
+              ),
+            ),
+
             Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Logo mark
+                  // Logo mark — item 7 (splash-logo pass): switched from
+                  // jma3a_logo_white.png (a mostly-transparent, dots-only
+                  // mark — ~11% opaque) to jma3a_logo.png, the app's real
+                  // full-color icon (a ~96%-opaque filled rounded square:
+                  // gradient background + dots/smile). Forcing that onto
+                  // a white tint (BlendMode.srcIn) would replace nearly
+                  // every pixel with flat white, leaving only a blank
+                  // rounded square with no visible mark at all — so this
+                  // deliberately renders jma3a_logo.png in its own real
+                  // colors instead of a broken all-white silhouette;
+                  // the wordmark just below (j/a/a already white,
+                  // m/3 accented) is what actually carries "white" here,
+                  // unaffected by this asset swap. The translucent
+                  // frame/padding below was sized for the old
+                  // transparent-background mark — since jma3a_logo.png
+                  // already IS a complete, polished rounded icon, the
+                  // frame is now just a thin glow ring around it instead
+                  // of a background box behind loose shapes.
                   Container(
                         width: 96,
                         height: 96,
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.10),
-                          borderRadius: BorderRadius.circular(28),
+                          borderRadius: BorderRadius.circular(24),
                           border: Border.all(
-                            color: Colors.white.withOpacity(0.14),
-                            width: 1,
+                            color: Colors.white.withOpacity(0.24),
+                            width: 1.5,
                           ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.25),
+                              blurRadius: 16,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
                         ),
-                        child: CustomPaint(
-                          size: const Size(96, 96),
-                          painter: _Jma3aMarkPainter(),
+                        // ClipRRect (not the Container's own clipBehavior)
+                        // so the border/shadow above stay OUTSIDE the
+                        // clip — only the image itself is clipped to a
+                        // slightly smaller radius, nesting cleanly inside
+                        // the 1.5px border line instead of the image's
+                        // own corners poking past it.
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(22.5),
+                          child: Image.asset(
+                            'assets/images/backgrounds/jma3a_logo.png',
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) => const Icon(
+                              Icons.groups_rounded,
+                              size: 48,
+                              color: Colors.white,
+                            ),
+                          ),
                         ),
                       )
                       .animate()
@@ -220,7 +301,9 @@ class _SplashScreenState extends State<SplashScreen> {
                           style: TextButton.styleFrom(
                             foregroundColor: Colors.white,
                           ),
-                          child: Text(context.l10n.authContinueWithoutSigningIn),
+                          child: Text(
+                            context.l10n.authContinueWithoutSigningIn,
+                          ),
                         ),
                       ],
                     ).animate().fadeIn(),
@@ -275,49 +358,4 @@ class _Dot extends StatelessWidget {
       ),
     );
   }
-}
-
-/// Paints the jma3a "group" mark: three overlapping player dots
-/// connected by a smile-like curve, echoing the brand's multiplayer theme.
-class _Jma3aMarkPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final h = size.height;
-
-    final whitePaint = Paint()..color = Colors.white;
-    final whiteSoft = Paint()..color = Colors.white.withOpacity(0.9);
-    final whiteFaint = Paint()..color = Colors.white.withOpacity(0.8);
-
-    // Three player circles (group motif)
-    canvas.drawCircle(Offset(w * 0.34, h * 0.40), w * 0.10, whiteSoft);
-    canvas.drawCircle(Offset(w * 0.56, h * 0.32), w * 0.115, whitePaint);
-    canvas.drawCircle(Offset(w * 0.69, h * 0.49), w * 0.08, whiteFaint);
-
-    // Accent dots
-    canvas.drawCircle(
-      Offset(w * 0.56, h * 0.15),
-      w * 0.028,
-      Paint()..color = const Color(0xFF2DC08A),
-    );
-    canvas.drawCircle(
-      Offset(w * 0.71, h * 0.22),
-      w * 0.022,
-      Paint()..color = const Color(0xFFE8A838),
-    );
-
-    // Connecting curve (smile)
-    final path = Path()
-      ..moveTo(w * 0.28, h * 0.66)
-      ..quadraticBezierTo(w * 0.5, h * 0.80, w * 0.72, h * 0.66);
-    final strokePaint = Paint()
-      ..color = Colors.white.withOpacity(0.9)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = w * 0.034
-      ..strokeCap = StrokeCap.round;
-    canvas.drawPath(path, strokePaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

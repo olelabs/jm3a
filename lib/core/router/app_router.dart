@@ -41,21 +41,66 @@ import '../../features/packs/presentation/screens/pack_detail_screen.dart';
 import '../../features/wallet/presentation/screens/wallet_home_screen.dart';
 import '../../features/friends/presentation/screens/friends_screen.dart';
 import '../../features/friends/presentation/screens/user_profile_screen.dart';
+import '../../features/friends/presentation/screens/username_profile_resolver_screen.dart';
 import '../../features/notifications/presentation/screens/notifications_screen.dart';
 import '../../features/packs/presentation/screens/creator_dashboard_screen.dart';
 import '../../features/packs/presentation/screens/create_pack_screen.dart';
 import '../../features/premium/presentation/premium_screen.dart'; // ✅ restored
 import '../../features/premium/presentation/theme_picker_screen.dart'; // ✅ restored
 import '../../features/premium/presentation/background_color_screen.dart';
+import '../../features/premium/presentation/game_card_color_screen.dart';
 import '../../features/premium/presentation/premium_avatar_service.dart'; // likely needed for avatar picker
 import '../../features/avatar/presentation/avatar_creator_screen.dart'; // ✅ restored
 import '../../features/profile/presentation/screens/creator_recovery_complaint_screen.dart';
 import '../../features/profile/presentation/screens/creator_verification_screen.dart';
 import '../../features/friends/presentation/screens/followers_screen.dart';
 import '../../features/rooms/presentation/screens/join_invite_screen.dart';
+import '../../features/rooms/presentation/screens/qr_scan_screen.dart';
 import '../../shared/screens/home_shell_screen.dart';
 import '../../shared/screens/not_found_screen.dart';
 import '../../deep_links.dart';
+
+/// Every registered `/profile/<literal-segment>` route in this app —
+/// [extractSharedProfileId] must treat all of these as reserved, never as
+/// a shared profile id, or the exact real-device bug this set exists to
+/// prevent recurs for whichever one is missing (see that function's own
+/// doc comment). Add every future static `/profile/*` route here the
+/// moment it's registered below.
+const Set<String> reservedProfilePaths = {
+  '/profile/edit',
+  '/profile/change-username',
+  RouteNames.followers,
+};
+
+/// Real-device root cause (this pass) — `getSocialProfile("followers")`
+/// threw `PostgrestException: invalid input syntax for type uuid:
+/// "followers"`. Trace: `/profile/<id>` is not itself a real GoRoute
+/// (only /profile/edit, /profile/change-username, /profile/followers,
+/// and /user/:userId exist) — this redirect rule exists to turn a raw
+/// `https://jma3a.com/profile/<id>` App Link into `/user/<id>` before
+/// GoRouter tries to match it against any registered route. It used to
+/// treat ANY single unreserved segment after `/profile/` as a shared
+/// profile id — including the app's OWN internal `/profile/followers`
+/// route (RouteNames.followers), which was missing from
+/// [reservedProfilePaths]. So navigating to Followers redirected to
+/// `/user/followers` -> `UserProfileScreen(userId: 'followers')` ->
+/// `getSocialProfile('followers')` -> the UUID column rejected the
+/// literal string "followers".
+///
+/// A pure function (not inlined in the redirect closure) so this exact
+/// collision — and its fix — is independently unit-testable without a
+/// live GoRouter/AuthProvider stack. Returns the shared profile id this
+/// redirect rule would act on, or null if [loc] doesn't match at all
+/// (not a `/profile/...` path, has extra segments, or is empty) OR is
+/// one of [reservedProfilePaths] (an app-internal route, never a shared
+/// profile link).
+String? extractSharedProfileId(String loc) {
+  if (!loc.startsWith('/profile/')) return null;
+  if (reservedProfilePaths.contains(loc)) return null;
+  if (!RegExp(r'^/profile/[^/]+$').hasMatch(loc)) return null;
+  final id = loc.substring('/profile/'.length);
+  return id.isEmpty ? null : id;
+}
 
 class AppRouter {
   AppRouter._();
@@ -162,35 +207,25 @@ class AppRouter {
           ).toString();
         }
 
-        // Profile sharing correction pass — `/profile/<id>` is not itself
-        // a real GoRoute (only /profile/edit, /profile/change-username,
-        // and /user/:userId exist); it only ever reaches `loc` here from
-        // GoRouter's own native cold-start URI parsing of a real
-        // https://jma3a.com/profile/<id> App Link (the warm-app case is
-        // handled separately by AppShell's own DeepLinkService.
-        // profileStream listener, which pushes straight to /user/:userId
-        // and never routes through this raw path at all). Two outcomes:
-        // already authenticated -> redirect straight to /user/:userId
-        // right here; not yet authenticated -> stash it (same shape as
-        // the room-invite rules above) so it survives the auth redirect
-        // below and resumes to the real profile route — never the
-        // generic home screen — once login finishes. Excludes the
-        // existing reserved /profile/edit and /profile/change-username
-        // routes; only a genuine single unreserved segment counts.
-        const reservedProfilePaths = {'/profile/edit', '/profile/change-username'};
-        if (loc.startsWith('/profile/') &&
-            !reservedProfilePaths.contains(loc) &&
-            RegExp(r'^/profile/[^/]+$').hasMatch(loc)) {
-          final userId = loc.substring('/profile/'.length);
-          if (userId.isNotEmpty) {
-            if (auth.isLoggedIn &&
-                !auth.isGuest &&
-                !auth.needsOnboarding &&
-                !auth.isInitializing) {
-              return '/user/$userId';
-            }
-            DeepLinkService.instance.pendingProfile = ProfileLinkPayload(userId: userId);
+        // Profile sharing correction pass — see extractSharedProfileId's
+        // own doc comment (top of file) for the full rationale and the
+        // real-device "followers" collision it was fixed to exclude.
+        // Two outcomes here: already authenticated -> redirect straight
+        // to /user/:userId; not yet authenticated -> stash it (same
+        // shape as the room-invite rules above) so it survives the auth
+        // redirect below and resumes to the real profile route — never
+        // the generic home screen — once login finishes.
+        final sharedProfileId = extractSharedProfileId(loc);
+        if (sharedProfileId != null) {
+          if (auth.isLoggedIn &&
+              !auth.isGuest &&
+              !auth.needsOnboarding &&
+              !auth.isInitializing) {
+            return '/user/$sharedProfileId';
           }
+          DeepLinkService.instance.pendingProfile = ProfileLinkPayload(
+            userId: sharedProfileId,
+          );
         }
 
         final pendingProfile = DeepLinkService.instance.pendingProfile;
@@ -234,7 +269,8 @@ class AppRouter {
           RouteNames.forgotPassword,
         ];
         final isPublic =
-            loc == RouteNames.splash || alwaysPublic.any((r) => loc.startsWith(r));
+            loc == RouteNames.splash ||
+            alwaysPublic.any((r) => loc.startsWith(r));
 
         // App routes that require a full (non‑guest) login
         final appRoutes = [
@@ -243,13 +279,14 @@ class AppRouter {
           RouteNames.wallet,
           RouteNames.notifications,
           RouteNames.offline,
-          '/profile',
+          ...reservedProfilePaths,
           '/user/',
           '/marketplace',
           '/creator',
           RouteNames.premium, // ✅ added premium
           RouteNames.themePicker, // ✅ added theme picker
           RouteNames.backgroundColor,
+          RouteNames.gameCardColor,
           RouteNames.avatarPicker, // ✅ added avatar picker
           RouteNames.avatarCreator, // ✅ added avatar creator
           RouteNames.join,
@@ -261,10 +298,23 @@ class AppRouter {
         // already is, but this early return would otherwise skip it
         // entirely for anyone who already happens to be sitting on (or
         // gets navigated to) an app route, e.g. Home, before finishing
-        // onboarding.
+        // onboarding. Same reasoning extends to isInitializing: without
+        // it, a deep-link push (e.g. DeepLinkService resolving a profile
+        // link on cold start) that lands here in the narrow window where
+        // isLoggedIn/needsOnboarding already read "ready" but
+        // isInitializing hasn't flipped false yet would rubber-stamp
+        // straight through — and for a literal, non-registered location
+        // like the old bare '/profile' prefix used to admit, that meant
+        // GoRouter had nothing left to match and fell through to
+        // errorBuilder (NotFoundScreen) instead of the "still
+        // initializing -> splash" rule below ever getting a chance to
+        // run. Real-device root cause of "native Camera scan -> Screen
+        // not found" — see DeepLinkService/_onProfileLink's own doc
+        // comment (app.dart) for the other half of this fix.
         if (auth.isLoggedIn &&
             !auth.isGuest &&
             !auth.needsOnboarding &&
+            !auth.isInitializing &&
             appRoutes.any((r) => loc.startsWith(r))) {
           return null;
         }
@@ -326,7 +376,8 @@ class AppRouter {
               phoneNumber: args?.phoneNumber,
               isPasswordRecovery: args?.isPasswordRecovery ?? false,
               pendingPassword: args?.pendingPassword,
-              returnToSettingsOnSuccess: args?.returnToSettingsOnSuccess ?? false,
+              returnToSettingsOnSuccess:
+                  args?.returnToSettingsOnSuccess ?? false,
             );
           },
         ),
@@ -340,21 +391,20 @@ class AppRouter {
             final args = state.extra as SetPasswordScreenArgs?;
             return SetPasswordScreen(
               isRecovery: args?.isRecovery ?? false,
-              returnToSettingsOnSuccess: args?.returnToSettingsOnSuccess ?? false,
+              returnToSettingsOnSuccess:
+                  args?.returnToSettingsOnSuccess ?? false,
             );
           },
         ),
         GoRoute(
           path: RouteNames.authPasswordLogin,
-          builder: (_, state) => LoginScreen(
-            prefillIdentifier: state.extra as String?,
-          ),
+          builder: (_, state) =>
+              LoginScreen(prefillIdentifier: state.extra as String?),
         ),
         GoRoute(
           path: RouteNames.forgotPassword,
-          builder: (_, state) => ForgotPasswordScreen(
-            prefillIdentifier: state.extra as String?,
-          ),
+          builder: (_, state) =>
+              ForgotPasswordScreen(prefillIdentifier: state.extra as String?),
         ),
 
         // ---------- Main ----------
@@ -423,7 +473,9 @@ class AppRouter {
                       playerIds: playerIds,
                       playerDisplayNames: displayNames,
                       packId: packId,
-                      packCoverUrl: packCoverUrl.isNotEmpty ? packCoverUrl : null,
+                      packCoverUrl: packCoverUrl.isNotEmpty
+                          ? packCoverUrl
+                          : null,
                       isOwner: isOwner,
                       isModerator: isModerator,
                       isSpectator: isSpectator,
@@ -438,7 +490,9 @@ class AppRouter {
                       playerIds: playerIds,
                       playerDisplayNames: displayNames,
                       packId: packId,
-                      packCoverUrl: packCoverUrl.isNotEmpty ? packCoverUrl : null,
+                      packCoverUrl: packCoverUrl.isNotEmpty
+                          ? packCoverUrl
+                          : null,
                       isOwner: isOwner,
                       isModerator: isModerator,
                       isSpectator: isSpectator,
@@ -451,7 +505,9 @@ class AppRouter {
                       playerIds: playerIds,
                       playerDisplayNames: displayNames,
                       packId: packId,
-                      packCoverUrl: packCoverUrl.isNotEmpty ? packCoverUrl : null,
+                      packCoverUrl: packCoverUrl.isNotEmpty
+                          ? packCoverUrl
+                          : null,
                       isOwner: isOwner,
                       isModerator: isModerator,
                       isSpectator: isSpectator,
@@ -491,6 +547,22 @@ class AppRouter {
           parentNavigatorKey: rootKey,
           builder: (_, state) =>
               UserProfileScreen(userId: state.pathParameters['userId']!),
+        ),
+        // Public profile URL (see AppConstants.publicProfileUrl) — the
+        // ONLY form a profile is ever shared/opened with externally, and
+        // it never carries the internal userId. A genuine registered
+        // route (unlike '/profile/<uuid>' above, which only works via the
+        // synchronous redirect hack because its path collides with this
+        // app's own /profile/edit /profile/change-username routes) so
+        // GoRouter's native App Link URI parsing resolves it directly on
+        // cold start, with no redirect-callback changes needed.
+        GoRoute(
+          path: '/u/:username',
+          name: RouteNames.publicProfile,
+          parentNavigatorKey: rootKey,
+          builder: (_, state) => UsernameProfileResolverScreen(
+            username: state.pathParameters['username']!,
+          ),
         ),
         GoRoute(
           path: '/profile/change-username',
@@ -597,14 +669,23 @@ class AppRouter {
           // color, or the ambient theme's surface), so the picker still
           // opens showing the right color instead of crashing.
           builder: (context, state) {
-            final fallback = AppThemeService.parseHexColor(
-                  context.read<AuthProvider>().currentUser?.themeBackgroundColor,
+            final fallback =
+                AppThemeService.parseHexColor(
+                  context
+                      .read<AuthProvider>()
+                      .currentUser
+                      ?.themeBackgroundColor,
                 ) ??
                 Theme.of(context).colorScheme.surface;
             return BackgroundColorScreen(
               initialColor: state.extra as Color? ?? fallback,
             );
           },
+        ),
+        GoRoute(
+          path: RouteNames.gameCardColor,
+          parentNavigatorKey: rootKey,
+          builder: (_, __) => const GameCardColorScreen(),
         ),
         GoRoute(
           path: RouteNames.avatarPicker,
@@ -638,6 +719,11 @@ class AppRouter {
             code: state.uri.queryParameters['code'] ?? '',
             invitedBy: state.uri.queryParameters['invited_by'],
           ),
+        ),
+        GoRoute(
+          path: RouteNames.scanQr,
+          parentNavigatorKey: rootKey,
+          builder: (_, _) => const QrScanScreen(),
         ),
       ],
 

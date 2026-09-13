@@ -5664,7 +5664,7 @@ class PackRepository extends BaseRepository {
                 card_count, avg_rating, total_ratings, total_purchases,
                 total_plays, version, has_spicy, is_featured, is_promoted,
                 min_age, max_age, gender_restriction, suggested_punishments,
-                min_players, category_id, download_url, published_at, created_at,
+                min_players, max_players, category_id, download_url, published_at, created_at,
                 profiles!creator_id(username, display_name, avatar_url, verification_status, is_official_account)
               ''')
           .eq('status', 'approved')
@@ -5734,7 +5734,7 @@ class PackRepository extends BaseRepository {
                 card_count, avg_rating, total_ratings, total_purchases,
                 total_plays, version, has_spicy, is_featured, is_promoted,
                 min_age, max_age, gender_restriction, suggested_punishments,
-                min_players, category_id, download_url, published_at, created_at,
+                min_players, max_players, category_id, download_url, published_at, created_at,
                 profiles!creator_id(username, display_name, avatar_url, verification_status, is_official_account)
               ''')
           .inFilter('id', orderedIds);
@@ -5759,7 +5759,7 @@ class PackRepository extends BaseRepository {
                 avg_rating, total_ratings, total_purchases, total_plays,
                 version, has_spicy, is_featured, is_promoted,
                 min_age, max_age, gender_restriction, suggested_punishments,
-                min_players, category_id, download_url,
+                min_players, max_players, category_id, download_url,
                 profiles!creator_id(username, display_name, avatar_url, verification_status, is_official_account)
               ''')
           .eq('status', 'approved')
@@ -6421,7 +6421,7 @@ class PackRepository extends BaseRepository {
                 card_count, avg_rating, total_ratings, total_purchases,
                 total_plays, version, has_spicy, is_featured, is_promoted,
                 min_age, max_age, gender_restriction, suggested_punishments,
-                min_players, category_id, download_url, published_at, created_at,
+                min_players, max_players, category_id, download_url, published_at, created_at,
                 profiles!creator_id(username, display_name, avatar_url, verification_status, is_official_account)
               ''')
               .inFilter('id', ids)
@@ -6487,6 +6487,7 @@ class PackRepository extends BaseRepository {
               'category_id': draft.categoryId,
               'has_spicy': draft.allowSpicy,
               'min_players': draft.minPlayers,
+              'max_players': draft.maxPlayers,
               'tags': draft.tags,
               'cover_image_url': draft.coverImageUrl,
               'min_age': draft.minAge,
@@ -6518,6 +6519,7 @@ class PackRepository extends BaseRepository {
               'category_id': draft.categoryId,
               'has_spicy': draft.allowSpicy,
               'min_players': draft.minPlayers,
+              'max_players': draft.maxPlayers,
               'tags': draft.tags,
               'cover_image_url': draft.coverImageUrl,
               'min_age': draft.minAge,
@@ -6826,6 +6828,7 @@ class PackRepository extends BaseRepository {
       maxAge: r['max_age'] as int?,
       genderRestriction: r['gender_restriction'] as String? ?? 'everyone',
       minPlayers: r['min_players'] as int? ?? 2,
+      maxPlayers: r['max_players'] as int?,
       suggestedPunishments:
           (r['suggested_punishments'] as List?)
               ?.map((e) => e.toString())

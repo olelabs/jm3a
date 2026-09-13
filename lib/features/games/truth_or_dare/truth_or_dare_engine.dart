@@ -1593,12 +1593,29 @@ class TruthOrDareEngine implements BaseGameEngine {
     return _state;
   }
 
+  /// [forcePlayerId], when given, advances directly to that player instead
+  /// of the natural next index — used by TodGameProvider's TurnQueue-based
+  /// selection (see turn_queue.dart) so a just-unmuted player rejoins at
+  /// the END of the active rotation rather than their original fixed
+  /// playerOrder slot, and so a newly-muted current player is skipped
+  /// immediately regardless of turn phase. Only honored in circular mode
+  /// and only if the id is actually part of playerOrder — falls back to
+  /// the normal [_nextIndex] computation otherwise (random-mode turn
+  /// order, which reshuffles every lap, is unaffected and out of scope
+  /// for this — its own skip/away handling is unchanged).
   @override
-  TodState advanceTurn() {
+  TodState advanceTurn({String? forcePlayerId}) {
     if (_state.isOver) return _state;
-    final nextIdx = _nextIndex();
+    final forcedIdx = (forcePlayerId != null &&
+            _state.turnOrderMode == TurnOrderMode.circular)
+        ? _state.playerOrder.indexOf(forcePlayerId)
+        : -1;
+    final nextIdx = forcedIdx >= 0 ? forcedIdx : _nextIndex();
     final wrapped =
-        _state.turnOrderMode == TurnOrderMode.circular && nextIdx == 0;
+        _state.turnOrderMode == TurnOrderMode.circular &&
+        (forcedIdx >= 0
+            ? nextIdx <= _state.currentPlayerIndex
+            : nextIdx == 0);
     final newRound = wrapped ? _state.roundNumber + 1 : _state.roundNumber;
     final over = newRound > _state.maxRounds;
     final newQueue =

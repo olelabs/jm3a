@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 
+import '../../../../core/constants/app_constants.dart';
 import '../../../../core/extensions/context_ext.dart';
 import '../../../../core/providers/auth_provider.dart';
 import '../../../../core/router/route_names.dart';
@@ -10,21 +11,12 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../features/avatar/presentation/avatar_creator_screen.dart';
 import '../../../../features/packs/domain/pack_entity.dart';
 import '../../../../shared/widgets/cards/j_card.dart';
+import '../../../../shared/widgets/cards/profile_pack_card.dart';
 import '../../../../shared/widgets/cards/user_avatar.dart';
 import '../../../../shared/widgets/game/responsive_game_text.dart';
-import '../../../../shared/widgets/media/signed_network_image.dart';
+import '../../../../shared/widgets/qr/qr_reveal_sheets.dart';
 import '../../../../shared/utils/profile_share.dart';
 import '../profile_provider.dart';
-
-/// The pack's own title in the viewer's language if available, else in the
-/// pack's declared language, else in whatever language it actually has —
-/// [PackEntity.titleFor] never returns a raw id. Only truly empty title
-/// data (a corrupt/incomplete pack row) falls through to the generic
-/// localized "Pack" placeholder — never the pack's UUID.
-String _displayPackTitle(BuildContext context, PackEntity pack) {
-  final title = pack.titleFor(Localizations.localeOf(context).languageCode);
-  return title.isNotEmpty ? title : context.l10n.defaultPackName;
-}
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -86,6 +78,26 @@ class _ProfileScreenState extends State<ProfileScreen> with RouteAware {
               expandedHeight: 200,
               pinned: true,
               actions: [
+                // Item 7 (QR codes) — reveal the user's own profile QR,
+                // same "username-keyed, never a raw UUID" rule
+                // shareProfile already follows (see AppConstants.
+                // appProfileLink's own doc comment) — only shown once a
+                // username actually exists to encode.
+                if ((user.username ?? '').isNotEmpty)
+                  IconButton(
+                    icon: const Icon(Icons.qr_code_rounded),
+                    tooltip: l10n.qrProfileRevealTitle,
+                    onPressed: () => ProfileQrSheet.show(
+                      context,
+                      username: user.username!,
+                      displayName: user.displayName ?? user.username!,
+                      avatarUrl: user.avatarUrl,
+                      shareText: l10n.profileShareMessage(
+                        user.displayName ?? user.username ?? l10n.packPlayer,
+                        AppConstants.publicProfileUrl(user.username!),
+                      ),
+                    ),
+                  ),
                 IconButton(
                   icon: const Icon(Icons.share_outlined),
                   tooltip: l10n.profileShareAction,
@@ -370,55 +382,29 @@ class _PackSection extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 10),
+        // Item 2 (this pass) fix — ROOT CAUSE of "the name looks detached
+        // from the card": the previous fix put the cover Image and the
+        // title Text in a bare Column with no card container around
+        // either of them — visually just an image with a caption floating
+        // underneath it, not a card. ProfilePackCard (shared with
+        // UserProfileScreen's own packs section — see that widget's own
+        // doc comment) puts both INSIDE one JCard, cover on top with a
+        // subtle Divider marking the boundary before the name section —
+        // the "deliberate card section" the name sits in, not a
+        // background-behind-text overlay and not a separate widget below
+        // the card.
         SizedBox(
-          height: 90,
+          height: 132,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: packs.length,
             separatorBuilder: (_, __) => const SizedBox(width: 10),
             itemBuilder: (ctx, i) {
               final pack = packs[i];
-              return GestureDetector(
+              return ProfilePackCard(
+                pack: pack,
                 onTap: () => AppRouter.router.push(
                   '${RouteNames.marketplace}/pack/${pack.id}',
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    width: 90,
-                    color: theme.colorScheme.surfaceContainerHighest,
-                    alignment: Alignment.bottomCenter,
-                    child: Stack(
-                      alignment: Alignment.bottomCenter,
-                      children: [
-                        if (pack.coverImageUrl != null)
-                          Positioned.fill(
-                            child: SignedNetworkImage(
-                              url: pack.coverImageUrl!,
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 4,
-                          ),
-                          color: Colors.black54,
-                          child: Text(
-                            _displayPackTitle(ctx, pack),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
                 ),
               );
             },
@@ -498,7 +484,10 @@ class _ProfileHeader extends StatelessWidget {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Text('🔥', style: TextStyle(fontSize: 14)),
+                                const Text(
+                                  '🔥',
+                                  style: TextStyle(fontSize: 14),
+                                ),
                                 const SizedBox(width: 4),
                                 Text(
                                   context.l10n.profileStreakDays(currentStreak),
@@ -750,9 +739,10 @@ class _ScoreHeroCardState extends State<_ScoreHeroCard>
     if (!widget.loaded || _lastAnimatedScore == widget.score) return;
     final from = (_lastAnimatedScore ?? 0).toDouble();
     _lastAnimatedScore = widget.score;
-    _value = Tween<double>(begin: from, end: widget.score.toDouble()).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
-    );
+    _value = Tween<double>(
+      begin: from,
+      end: widget.score.toDouble(),
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
     if (MediaQuery.disableAnimationsOf(context)) {
       _controller.value = 1;
     } else {
@@ -901,10 +891,10 @@ class _HonestyBadge extends StatelessWidget {
     final color = !loaded
         ? context.colorScheme.onSurfaceVariant
         : isNegative
-            ? AppColors.dareRed
-            : isZero
-                ? context.colorScheme.onSurfaceVariant
-                : AppColors.nhieGreen;
+        ? AppColors.dareRed
+        : isZero
+        ? context.colorScheme.onSurfaceVariant
+        : AppColors.nhieGreen;
     final display = loaded
         ? '${value > 0 ? '+' : ''}${_groupThousands(value)}'
         : '—';
@@ -981,9 +971,10 @@ class _MiniStatTile extends StatelessWidget {
             const SizedBox(height: 6),
             ResponsiveGameText(
               value != null ? _groupThousands(value!) : '—',
-              style: context.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-              ) ??
+              style:
+                  context.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ) ??
                   const TextStyle(fontWeight: FontWeight.w700),
               minFontSize: 11,
               maxLines: 1,

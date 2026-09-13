@@ -26,6 +26,7 @@ class BrandedStatusView extends StatefulWidget {
     this.footer,
     this.accent = AppColors.brandPurpleMid,
     this.showLoader = true,
+    this.topAction,
   });
 
   final String emoji;
@@ -34,6 +35,14 @@ class BrandedStatusView extends StatefulWidget {
 
   /// Optional live content under the subtitle (e.g. a countdown chip).
   final Widget? footer;
+
+  /// Optional action pinned to the top-left, inside the safe area — kept
+  /// spatially separate from [footer] so it can never end up visually
+  /// underneath/behind a countdown or other live footer content (e.g.
+  /// HostReconnectOverlay's "Leave Game" while waiting for the host).
+  /// Null (the default) renders nothing here, unchanged for every other
+  /// caller of this shared view.
+  final Widget? topAction;
 
   /// Accent used for the badge glow and loader dots.
   final Color accent;
@@ -80,49 +89,79 @@ class _BrandedStatusViewState extends State<BrandedStatusView>
             stops: const [0.0, 0.55, 1.0],
           ),
         ),
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _BreathingBadge(controller: _ctrl, accent: widget.accent, emoji: widget.emoji),
-                  const SizedBox(height: 32),
-                  Text(
-                    widget.title,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.2,
-                    ),
+        child: Stack(
+          children: [
+            SafeArea(
+              child: Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32,
+                    vertical: 24,
                   ),
-                  if (widget.subtitle != null) ...[
-                    const SizedBox(height: 10),
-                    Text(
-                      widget.subtitle!,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.72),
-                        fontSize: 15,
-                        height: 1.35,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _BreathingBadge(
+                        controller: _ctrl,
+                        accent: widget.accent,
+                        emoji: widget.emoji,
                       ),
-                    ),
-                  ],
-                  if (widget.showLoader) ...[
-                    const SizedBox(height: 28),
-                    _ThreeDotLoader(controller: _ctrl, color: widget.accent),
-                  ],
-                  if (widget.footer != null) ...[
-                    const SizedBox(height: 24),
-                    widget.footer!,
-                  ],
-                ],
+                      const SizedBox(height: 32),
+                      Text(
+                        widget.title,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 24,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                      if (widget.subtitle != null) ...[
+                        const SizedBox(height: 10),
+                        Text(
+                          widget.subtitle!,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.72),
+                            fontSize: 15,
+                            height: 1.35,
+                          ),
+                        ),
+                      ],
+                      if (widget.showLoader) ...[
+                        const SizedBox(height: 28),
+                        _ThreeDotLoader(
+                          controller: _ctrl,
+                          color: widget.accent,
+                        ),
+                      ],
+                      if (widget.footer != null) ...[
+                        const SizedBox(height: 24),
+                        widget.footer!,
+                      ],
+                    ],
+                  ),
+                ),
               ),
             ),
-          ),
+            if (widget.topAction != null)
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: SafeArea(
+                  bottom: false,
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Align(
+                      alignment: AlignmentDirectional.topStart,
+                      child: widget.topAction!,
+                    ),
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );
@@ -163,7 +202,10 @@ class _BreathingBadge extends StatelessWidget {
                   Colors.white.withValues(alpha: 0.06),
                 ],
               ),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.14), width: 1.5),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.14),
+                width: 1.5,
+              ),
               boxShadow: [
                 BoxShadow(
                   color: accent.withValues(alpha: 0.30 + t * 0.20),
@@ -187,10 +229,7 @@ class _BreathingBadge extends StatelessWidget {
                 kAnimatedEmojiMap[emoji]!,
                 size: 52,
                 source: AnimatedEmojiSource.asset,
-                errorWidget: Text(
-                  emoji,
-                  style: const TextStyle(fontSize: 52),
-                ),
+                errorWidget: Text(emoji, style: const TextStyle(fontSize: 52)),
               )
             : Text(emoji, style: const TextStyle(fontSize: 52)),
       ),

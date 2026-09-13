@@ -292,6 +292,39 @@ class AppLocalizationsAr extends AppLocalizations {
   String get roomsJoin => 'انضمام';
 
   @override
+  String get qrRoomRevealTitle => 'رمز QR للغرفة';
+
+  @override
+  String get qrRoomRevealInstruction => 'امسح للانضمام إلى هذه الغرفة';
+
+  @override
+  String get qrProfileRevealTitle => 'رمز QR الخاص بي';
+
+  @override
+  String get qrProfileRevealInstruction => 'امسح لعرض ملفي الشخصي';
+
+  @override
+  String get qrClose => 'إغلاق';
+
+  @override
+  String get qrShareLink => 'مشاركة الرابط';
+
+  @override
+  String get qrScanButtonLabel => 'مسح رمز QR';
+
+  @override
+  String get qrScanScreenTitle => 'مسح رمز QR';
+
+  @override
+  String get qrScanInstruction => 'وجّه الكاميرا نحو رمز QR الخاص بـ Jma3a';
+
+  @override
+  String get qrScanInvalidCode => 'هذا ليس رمز QR صالحًا لـ Jma3a';
+
+  @override
+  String get qrScanTryAgain => 'حاول مرة أخرى';
+
+  @override
   String roomsInvitedByName(String name) {
     return 'دعوة من $name';
   }
@@ -384,6 +417,14 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get gameTryAgain => 'حاول مجدداً';
+
+  @override
+  String get gameYourTurn => 'دورك الآن!';
+
+  @override
+  String gamePlayerTurn(String name) {
+    return 'دور $name';
+  }
 
   @override
   String get moderationKick => 'طرد اللاعب';
@@ -518,6 +559,12 @@ class AppLocalizationsAr extends AppLocalizations {
   String get profileGames => 'الألعاب';
 
   @override
+  String get usernameProfileResolving => 'جاري تحميل الملف الشخصي…';
+
+  @override
+  String get usernameProfileNotFound => 'تعذر العثور على هذا الملف الشخصي.';
+
+  @override
   String get profileScore => 'النقاط';
 
   @override
@@ -548,6 +595,9 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get profileFollowers => 'المتابعون';
+
+  @override
+  String get streakAchievementBarrierLabel => 'إنجاز سلسلة';
 
   @override
   String get streakNewTitle => 'سلسلة جديدة!';
@@ -593,6 +643,9 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get gameSettingsRequireApproval => 'يتطلب موافقة للانضمام';
+
+  @override
+  String get gameSettingsHonestyVote => 'تصويت الصدق';
 
   @override
   String get gameSettingsAllowSpectators => 'السماح بالمتفرجين';
@@ -708,6 +761,9 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get leave => 'مغادرة';
+
+  @override
+  String get leaveGame => 'مغادرة اللعبة';
 
   @override
   String get ok => 'حسناً';
@@ -929,6 +985,23 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get lobbyShareInviteLink => 'مشاركة رابط الدعوة';
+
+  @override
+  String roomShareMaxPlayers(int count) {
+    return 'بحد أقصى $count لاعبين';
+  }
+
+  @override
+  String get roomShareInvitedBy => 'دعوة من';
+
+  @override
+  String get roomShareScoreLabel => 'النقاط';
+
+  @override
+  String get roomShareHonestyLabel => 'الصدق';
+
+  @override
+  String get roomShareJoinCta => 'انضم إلى الغرفة';
 
   @override
   String lobbyShareInviteMessage(String code, String link) {
@@ -1452,6 +1525,13 @@ class AppLocalizationsAr extends AppLocalizations {
   String get todCompletedTurn => 'أنهى دوره!';
 
   @override
+  String get todNoAnswerOrProofYet => 'لا يوجد رد أو إثبات لهذا الدور';
+
+  @override
+  String get todSpectatorWatchingLabel =>
+      'تتابع كمشاهد — لا توجد إجراءات متاحة';
+
+  @override
   String get todCustomCardAdded => '✅ تمت إضافة البطاقة المخصصة إلى المجموعة!';
 
   @override
@@ -1470,7 +1550,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get todDifficultyLabel => 'الصعوبة';
 
   @override
-  String get todDoneButton => 'تم! ✅';
+  String get todDoneButton => 'أجب ✅';
 
   @override
   String get todEndGame => 'إنهاء اللعبة';
@@ -1541,6 +1621,32 @@ class AppLocalizationsAr extends AppLocalizations {
   String get todProofVisibilityPickAtLeastOne => 'اختر شخصًا واحدًا على الأقل.';
 
   @override
+  String get todProofViewedLabel => 'تمت مشاهدة الإثبات';
+
+  @override
+  String get todProofTapToViewLabel => '🔒 اضغط لمشاهدة الإثبات';
+
+  @override
+  String get todVoiceProofLabel => 'إثبات صوتي';
+
+  @override
+  String get todImageProofLabel => 'إثبات بالصورة';
+
+  @override
+  String todProofReplayCount(int count) {
+    return '👁 إعادة العرض ($count متبقية)';
+  }
+
+  @override
+  String get todProofNoReplaysLeft => 'لا مزيد من المشاهدات لهذا الإثبات.';
+
+  @override
+  String get todProofNotAllowedToView => 'غير مسموح لك بمشاهدة هذا الإثبات.';
+
+  @override
+  String get todProofOpenFailed => 'تعذر فتح الإثبات — حاول مرة أخرى.';
+
+  @override
   String get todReactLabel => 'التفاعل:';
 
   @override
@@ -1577,6 +1683,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String todPlayerIsChoosing(String name) {
     return '$name يختار…';
   }
+
+  @override
+  String get todWaitingForPlayerGeneric => 'في انتظار اللاعب…';
 
   @override
   String get todTruthChoiceDescription => 'أجب عن سؤال شخصي بصدق.';
@@ -1919,6 +2028,26 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String get todPunishmentHint => 'مثال: \"قم بـ 10 تمارين ضغط\"';
+
+  @override
+  String get todPickYourPunishment => '⚡ اختر عقوبتك';
+
+  @override
+  String todPlayerIsChoosingPunishment(String name) {
+    return '⚡ $name يختار الآن…';
+  }
+
+  @override
+  String get todEveryoneSubmittedPickOne =>
+      'قدّم الجميع عقوبة — اختر ما ستنفذه.';
+
+  @override
+  String todWaitingForPlayerToPickOne(String name) {
+    return 'بانتظار $name لاختيار واحدة.';
+  }
+
+  @override
   String todSubmittedCount(int submitted, int expected) {
     return '$submitted / $expected تم الإرسال';
   }
@@ -1931,6 +2060,12 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get todWaitingChoosingQuestion => 'الحقيقة أم الجرأة؟';
+
+  @override
+  String get todYourTurnBadge => '⚡ دورك';
+
+  @override
+  String get todTheirTurn => 'إنه دورهم';
 
   @override
   String todWinnerWins(String name) {
@@ -2580,6 +2715,15 @@ class AppLocalizationsAr extends AppLocalizations {
   String get walletCurrencyName => 'الأوقية الموريتانية';
 
   @override
+  String get walletCurrencyShort => 'أوقية';
+
+  @override
+  String get walletAvailableBalanceLabel => 'الرصيد المتاح';
+
+  @override
+  String get walletFrozenLabel => 'المحفظة (مجمّدة)';
+
+  @override
   String get walletDeposit => 'إيداع';
 
   @override
@@ -2784,6 +2928,103 @@ class AppLocalizationsAr extends AppLocalizations {
   String get premiumAppThemeTitle => 'مظهر التطبيق';
 
   @override
+  String get appThemeNameJma3a => 'جماعة';
+
+  @override
+  String get appThemeNameMidnight => 'منتصف الليل';
+
+  @override
+  String get appThemeNameClassic => 'كلاسيكي';
+
+  @override
+  String get appThemeNameCandy => 'حلوى';
+
+  @override
+  String get appThemeNameOcean => 'المحيط';
+
+  @override
+  String get appThemeNameForest => 'الغابة';
+
+  @override
+  String get appThemeNameSunset => 'الغروب';
+
+  @override
+  String get appThemeNameLavender => 'لافندر';
+
+  @override
+  String get appThemeNameRose => 'وردة';
+
+  @override
+  String get appThemeNameGalaxy => 'المجرة';
+
+  @override
+  String get appThemeNameNeon => 'نيون';
+
+  @override
+  String get appThemeNameGold => 'ذهبي';
+
+  @override
+  String get appThemeNameCyber => 'سايبر';
+
+  @override
+  String get appThemeNameLava => 'الحمم';
+
+  @override
+  String get appThemeNameAurora => 'الشفق القطبي';
+
+  @override
+  String get appThemeNameBubblegum => 'علكة';
+
+  @override
+  String get appThemeNameCandyPop => 'حلوى فقاعية';
+
+  @override
+  String get appThemeNameDeepSpace => 'الفضاء السحيق';
+
+  @override
+  String get appThemeNameBlossom => 'إزهار';
+
+  @override
+  String get appThemeNameLovestruck => 'مفتون بالحب';
+
+  @override
+  String get premiumGameCardColorTitle => 'لون بطاقة اللعب';
+
+  @override
+  String get premiumGameCardColorHint =>
+      'يُطبَّق على الوجه الأمامي لبطاقات اللعب فقط — يحتفظ الوجه الخلفي بمظهره الخاص.';
+
+  @override
+  String get premiumGameCardColorEmoji => 'لون بطاقة اللعب 🎴';
+
+  @override
+  String get premiumChooseGameCardColor => 'اختر لون بطاقة اللعب';
+
+  @override
+  String get gameCardColorClassicPurple => 'بنفسجي كلاسيكي';
+
+  @override
+  String get gameCardColorMidnightBlue => 'أزرق منتصف الليل';
+
+  @override
+  String get gameCardColorEmberRed => 'أحمر جمري';
+
+  @override
+  String get gameCardColorForestEmerald => 'زمردي الغابة';
+
+  @override
+  String get gameCardColorSunsetOrange => 'برتقالي الغروب';
+
+  @override
+  String get gameCardColorGoldPrestige => 'ذهبي فاخر';
+
+  @override
+  String get gameCardColorRosePink => 'وردي الورد';
+
+  @override
+  String get gameCardColorCyberTeal => 'سماوي سايبر';
+
+  @override
   String get premiumAutoRenewNotice =>
       'تُجدَّد الاشتراكات تلقائياً ما لم يتم إلغاؤها قبل 24 ساعة من التجديد.';
 
@@ -2792,6 +3033,69 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get premiumBackgroundColorTitle => 'لون الخلفية';
+
+  @override
+  String get bgColorWhite => 'أبيض';
+
+  @override
+  String get bgColorWarmWhite => 'أبيض دافئ';
+
+  @override
+  String get bgColorLightGrey => 'رمادي فاتح';
+
+  @override
+  String get bgColorCoolGrey => 'رمادي بارد';
+
+  @override
+  String get bgColorCharcoal => 'فحمي';
+
+  @override
+  String get bgColorSoftBlack => 'أسود ناعم';
+
+  @override
+  String get bgColorCream => 'كريمي';
+
+  @override
+  String get bgColorBeige => 'بيج';
+
+  @override
+  String get bgColorSand => 'رملي';
+
+  @override
+  String get bgColorStone => 'حجري';
+
+  @override
+  String get bgColorSlate => 'أردوازي';
+
+  @override
+  String get bgColorNavyGrey => 'رمادي كحلي';
+
+  @override
+  String get bgColorDeepBlueGrey => 'رمادي أزرق داكن';
+
+  @override
+  String get bgColorForestMist => 'ضباب الغابة';
+
+  @override
+  String get bgColorSage => 'أخضر مريمية';
+
+  @override
+  String get bgColorPaleBlue => 'أزرق باهت';
+
+  @override
+  String get bgColorMistBlue => 'أزرق ضبابي';
+
+  @override
+  String get bgColorLavenderMist => 'ضباب لافندر';
+
+  @override
+  String get bgColorBlush => 'وردي فاتح';
+
+  @override
+  String get bgColorSoftMint => 'نعناعي ناعم';
+
+  @override
+  String get bgColorGraphite => 'غرافيتي';
 
   @override
   String get premiumBlendsIntoTheme =>
@@ -3126,6 +3430,23 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String get packSetMaxPlayersToggle => 'تحديد عدد أقصى للاعبين';
+
+  @override
+  String packMaxPlayersLabel(int count) {
+    return 'الحد الأقصى للاعبين: $count';
+  }
+
+  @override
+  String packMaxPlayersSliderLabel(int count) {
+    return '$count لاعبين';
+  }
+
+  @override
+  String get packNoMaxPlayersHint =>
+      'بلا حد أقصى — يمكن لعبها بأي عدد أكبر من الحد الأدنى';
+
+  @override
   String get packMinimumReached => '✅ تم بلوغ الحد الأدنى';
 
   @override
@@ -3162,6 +3483,9 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get packPickExistingCategory => 'اختر فئة موجودة';
+
+  @override
+  String get roomSettingsCategoryFilterLabel => 'الفئة';
 
   @override
   String packPlayersSliderLabel(int count) {
@@ -3401,6 +3725,17 @@ class AppLocalizationsAr extends AppLocalizations {
   String get packBrowseMarketplaceHint => 'تصفح المتجر للعثور على حزم.';
 
   @override
+  String get packConfirmPurchaseTitle => 'تأكيد الشراء';
+
+  @override
+  String packConfirmPurchaseBody(String name, String price) {
+    return 'أنت على وشك شراء \"$name\" مقابل $price.';
+  }
+
+  @override
+  String get packConfirmPurchaseAction => 'شراء';
+
+  @override
   String packBuyForPrice(int price) {
     return 'شراء مقابل $price أوقية';
   }
@@ -3603,7 +3938,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get packProBadge => '★ برو';
 
   @override
-  String get packOfficialBadge => 'جمعة';
+  String get packOfficialBadge => 'جماعة';
 
   @override
   String get packProcessingEllipsis => 'جارٍ المعالجة…';
@@ -3667,6 +4002,12 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get packReportSubmitted => 'تم إرسال البلاغ.';
+
+  @override
+  String get packReportAlreadySubmitted => 'لقد أبلغت عن هذه الحزمة مسبقًا.';
+
+  @override
+  String get packReportFailed => 'تعذر إرسال بلاغك. حاول مرة أخرى.';
 
   @override
   String get packPromoteYourPack => 'روّج لحزمتك';
@@ -3768,7 +4109,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get packStatusSuspended => 'معلَّق';
 
   @override
-  String get packPlatformManaged => 'تديرها جمعة';
+  String get packPlatformManaged => 'تديرها جماعة';
 
   @override
   String get packSubmitReport => 'إرسال البلاغ';
@@ -3935,6 +4276,361 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get avatarTabHair => 'الشعر';
+
+  @override
+  String get avatarOptTanned => 'أسمر';
+
+  @override
+  String get avatarOptYellow => 'أصفر';
+
+  @override
+  String get avatarOptPale => 'شاحب';
+
+  @override
+  String get avatarOptLight => 'فاتح';
+
+  @override
+  String get avatarOptBrown => 'بني';
+
+  @override
+  String get avatarOptDarkBrown => 'بني داكن';
+
+  @override
+  String get avatarOptBlack => 'أسود';
+
+  @override
+  String get avatarOptAuburn => 'كستنائي';
+
+  @override
+  String get avatarOptBlonde => 'أشقر';
+
+  @override
+  String get avatarOptBlondeGolden => 'أشقر ذهبي';
+
+  @override
+  String get avatarOptBrownDark => 'بني داكن';
+
+  @override
+  String get avatarOptPastelPink => 'وردي باستيل';
+
+  @override
+  String get avatarOptPlatinum => 'بلاتيني';
+
+  @override
+  String get avatarOptRed => 'أحمر';
+
+  @override
+  String get avatarOptSilverGray => 'رمادي فضي';
+
+  @override
+  String get avatarOptNoHair => 'بدون شعر';
+
+  @override
+  String get avatarOptEyepatch => 'رقعة عين';
+
+  @override
+  String get avatarOptHat => 'قبعة';
+
+  @override
+  String get avatarOptHijab => 'حجاب';
+
+  @override
+  String get avatarOptTurban => 'عمامة';
+
+  @override
+  String get avatarOptWinterHat1 => 'قبعة شتوية 1';
+
+  @override
+  String get avatarOptWinterHat2 => 'قبعة شتوية 2';
+
+  @override
+  String get avatarOptWinterHat3 => 'قبعة شتوية 3';
+
+  @override
+  String get avatarOptWinterHat4 => 'قبعة شتوية 4';
+
+  @override
+  String get avatarOptLongHairBigHair => 'شعر طويل - كثيف';
+
+  @override
+  String get avatarOptLongHairBob => 'شعر طويل - بوب';
+
+  @override
+  String get avatarOptLongHairBun => 'شعر طويل - كعكة';
+
+  @override
+  String get avatarOptLongHairCurly => 'شعر طويل - مجعد';
+
+  @override
+  String get avatarOptLongHairCurvy => 'شعر طويل - متموج';
+
+  @override
+  String get avatarOptLongHairDreads => 'شعر طويل - ضفائر';
+
+  @override
+  String get avatarOptLongHairFrida => 'شعر طويل - فريدا';
+
+  @override
+  String get avatarOptLongHairFro => 'شعر طويل - أفرو';
+
+  @override
+  String get avatarOptLongHairFroBand => 'شعر طويل - أفرو بعصابة';
+
+  @override
+  String get avatarOptLongHairNotTooLong => 'شعر طويل - متوسط الطول';
+
+  @override
+  String get avatarOptLongHairShavedSides => 'شعر طويل - جوانب محلوقة';
+
+  @override
+  String get avatarOptLongHairMiaWallace => 'شعر طويل - ميا والاس';
+
+  @override
+  String get avatarOptLongHairStraight => 'شعر طويل - مستقيم';
+
+  @override
+  String get avatarOptLongHairStraight2 => 'شعر طويل - مستقيم 2';
+
+  @override
+  String get avatarOptLongHairStraightStrand => 'شعر طويل - خصلة مستقيمة';
+
+  @override
+  String get avatarOptShortHairDreads01 => 'شعر قصير - ضفائر 1';
+
+  @override
+  String get avatarOptShortHairDreads02 => 'شعر قصير - ضفائر 2';
+
+  @override
+  String get avatarOptShortHairFrizzle => 'شعر قصير - مجعد خفيف';
+
+  @override
+  String get avatarOptShortHairShaggyMullet => 'شعر قصير - موليت أشعث';
+
+  @override
+  String get avatarOptShortHairShortCurly => 'شعر قصير - مجعد قصير';
+
+  @override
+  String get avatarOptShortHairShortFlat => 'شعر قصير - مسطح';
+
+  @override
+  String get avatarOptShortHairShortRound => 'شعر قصير - دائري';
+
+  @override
+  String get avatarOptShortHairShortWaved => 'شعر قصير - متموج قصير';
+
+  @override
+  String get avatarOptShortHairSides => 'شعر قصير - جوانب';
+
+  @override
+  String get avatarOptShortHairTheCaesar => 'شعر قصير - قصة قيصر';
+
+  @override
+  String get avatarOptShortHairTheCaesarSidePart =>
+      'شعر قصير - قيصر بفرقة جانبية';
+
+  @override
+  String get avatarOptBlank => 'بدون';
+
+  @override
+  String get avatarOptKurt => 'نظارة كورت';
+
+  @override
+  String get avatarOptPrescription01 => 'نظارة طبية 1';
+
+  @override
+  String get avatarOptPrescription02 => 'نظارة طبية 2';
+
+  @override
+  String get avatarOptRound => 'نظارة دائرية';
+
+  @override
+  String get avatarOptSunglasses => 'نظارة شمسية';
+
+  @override
+  String get avatarOptWayfarers => 'نظارة ويفيرر';
+
+  @override
+  String get avatarOptBeardMedium => 'لحية متوسطة';
+
+  @override
+  String get avatarOptBeardLight => 'لحية خفيفة';
+
+  @override
+  String get avatarOptBeardMagestic => 'لحية مهيبة';
+
+  @override
+  String get avatarOptMoustacheFancy => 'شارب أنيق';
+
+  @override
+  String get avatarOptMoustacheMagnum => 'شارب ماغنوم';
+
+  @override
+  String get avatarOptBlazerShirt => 'بليزر وقميص';
+
+  @override
+  String get avatarOptBlazerSweater => 'بليزر وسترة';
+
+  @override
+  String get avatarOptCollarSweater => 'سترة بياقة';
+
+  @override
+  String get avatarOptGraphicShirt => 'قميص مطبوع';
+
+  @override
+  String get avatarOptHoodie => 'هودي';
+
+  @override
+  String get avatarOptOverall => 'أفرول';
+
+  @override
+  String get avatarOptShirtCrewNeck => 'قميص برقبة دائرية';
+
+  @override
+  String get avatarOptShirtScoopNeck => 'قميص برقبة واسعة';
+
+  @override
+  String get avatarOptShirtVNeck => 'قميص برقبة V';
+
+  @override
+  String get avatarOptBlue01 => 'أزرق 1';
+
+  @override
+  String get avatarOptBlue02 => 'أزرق 2';
+
+  @override
+  String get avatarOptBlue03 => 'أزرق 3';
+
+  @override
+  String get avatarOptGray01 => 'رمادي 1';
+
+  @override
+  String get avatarOptGray02 => 'رمادي 2';
+
+  @override
+  String get avatarOptHeather => 'هيذر';
+
+  @override
+  String get avatarOptPastelBlue => 'أزرق باستيل';
+
+  @override
+  String get avatarOptPastelGreen => 'أخضر باستيل';
+
+  @override
+  String get avatarOptPastelOrange => 'برتقالي باستيل';
+
+  @override
+  String get avatarOptPastelRed => 'أحمر باستيل';
+
+  @override
+  String get avatarOptPastelYellow => 'أصفر باستيل';
+
+  @override
+  String get avatarOptPink => 'وردي';
+
+  @override
+  String get avatarOptWhite => 'أبيض';
+
+  @override
+  String get avatarOptClose => 'مغلقة';
+
+  @override
+  String get avatarOptCry => 'باكية';
+
+  @override
+  String get avatarOptDefault => 'افتراضي';
+
+  @override
+  String get avatarOptDizzy => 'دائخة';
+
+  @override
+  String get avatarOptEyeRoll => 'تدوير العين';
+
+  @override
+  String get avatarOptHappy => 'سعيدة';
+
+  @override
+  String get avatarOptHearts => 'عيون قلوب';
+
+  @override
+  String get avatarOptSide => 'تنظر جانبًا';
+
+  @override
+  String get avatarOptSquint => 'تحديق';
+
+  @override
+  String get avatarOptSurprised => 'مندهشة';
+
+  @override
+  String get avatarOptWink => 'غمزة';
+
+  @override
+  String get avatarOptWinkWacky => 'غمزة غريبة';
+
+  @override
+  String get avatarOptAngry => 'غاضب';
+
+  @override
+  String get avatarOptAngryNatural => 'غاضب (طبيعي)';
+
+  @override
+  String get avatarOptDefaultNatural => 'افتراضي (طبيعي)';
+
+  @override
+  String get avatarOptFlatNatural => 'مسطح (طبيعي)';
+
+  @override
+  String get avatarOptRaisedExcited => 'مرفوع بحماس';
+
+  @override
+  String get avatarOptRaisedExcitedNatural => 'مرفوع بحماس (طبيعي)';
+
+  @override
+  String get avatarOptSadConcerned => 'حزين قلق';
+
+  @override
+  String get avatarOptSadConcernedNatural => 'حزين قلق (طبيعي)';
+
+  @override
+  String get avatarOptUnibrowNatural => 'حاجب متصل (طبيعي)';
+
+  @override
+  String get avatarOptUpDown => 'أعلى وأسفل';
+
+  @override
+  String get avatarOptUpDownNatural => 'أعلى وأسفل (طبيعي)';
+
+  @override
+  String get avatarOptConcerned => 'قلق';
+
+  @override
+  String get avatarOptDisbelief => 'عدم تصديق';
+
+  @override
+  String get avatarOptEating => 'يأكل';
+
+  @override
+  String get avatarOptGrimace => 'تكشيرة';
+
+  @override
+  String get avatarOptSad => 'حزين';
+
+  @override
+  String get avatarOptScreamOpen => 'صراخ';
+
+  @override
+  String get avatarOptSerious => 'جاد';
+
+  @override
+  String get avatarOptSmile => 'ابتسامة';
+
+  @override
+  String get avatarOptTongue => 'لسان بارز';
+
+  @override
+  String get avatarOptTwinkle => 'بريق';
+
+  @override
+  String get avatarOptVomit => 'تقيؤ';
 
   @override
   String get avatarTabMouth => 'الفم';
@@ -4215,7 +4911,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get notifTypeStreakIncreased => 'سلسلة الأيام';
 
   @override
-  String get notifTypeCreatorPacksTransferred => 'حزم تحت إدارة جمعة';
+  String get notifTypeCreatorPacksTransferred => 'حزم تحت إدارة جماعة';
 
   @override
   String get notifTypeCreatorPrivilegesRemoved => 'إزالة حالة المنشئ';
@@ -4399,6 +5095,11 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String roomsPackRequiresMaxPlayers(int count) {
+    return 'لا يمكن لعب هذه الحزمة إلا بواسطة $count لاعبين. اجعل اللاعبين الإضافيين متفرجين أو أزلهم للبدء.';
+  }
+
+  @override
   String get roomsPendingEllipsis => 'قيد الانتظار…';
 
   @override
@@ -4421,6 +5122,9 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get roomsPermManageSettings => 'إدارة إعدادات الغرفة';
+
+  @override
+  String get roomsPermSetSpectator => 'تحويل اللاعبين إلى متفرجين';
 
   @override
   String get roomsPermMuteChat => 'كتم الدردشة';
@@ -4520,6 +5224,39 @@ class AppLocalizationsAr extends AppLocalizations {
   String get sharedReactionIconsTab => 'أيقونات';
 
   @override
+  String get sharedReactionPickIconTitle => 'اختر تفاعلاً';
+
+  @override
+  String get sharedReactionPickAvatarTitle => 'اختر تعبير الصورة الرمزية';
+
+  @override
+  String get sharedReactionCategoryPopular => 'الأكثر استخداماً';
+
+  @override
+  String get sharedReactionCategoryLove => 'حب';
+
+  @override
+  String get sharedReactionCategoryFunny => 'مضحك';
+
+  @override
+  String get sharedReactionCategoryShock => 'صدمة';
+
+  @override
+  String get sharedReactionCategoryCelebration => 'احتفال';
+
+  @override
+  String get sharedReactionCategorySocial => 'اجتماعي';
+
+  @override
+  String get sharedReactionCategoryMoody => 'مزاجي';
+
+  @override
+  String get gameResultSkipped => 'تم التخطي';
+
+  @override
+  String get gameResultDidNotRespond => 'لم يستجب في الوقت المحدد';
+
+  @override
   String sharedJoinRequestFailed(String error) {
     return 'فشل: $error';
   }
@@ -4577,6 +5314,19 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get sharedReject => 'رفض';
+
+  @override
+  String get sharedRemoveSpectator => 'إلغاء صفة المتفرج';
+
+  @override
+  String get sharedSetSpectator => 'تحويل إلى متفرج';
+
+  @override
+  String get sharedSetSpectatorBody =>
+      'لن يُحتسب هذا اللاعب كلاعب نشط ولن يتمكن من أخذ دوره، لكن يمكنه المشاهدة. يمكنك التراجع عن هذا في أي وقت.';
+
+  @override
+  String get sharedSetSpectatorTitle => 'تحويل إلى متفرج';
 
   @override
   String get sharedRoomMembers => 'أعضاء الغرفة';
@@ -4711,6 +5461,27 @@ class AppLocalizationsAr extends AppLocalizations {
   String get friendsBlock => 'حظر';
 
   @override
+  String get friendsReport => 'إبلاغ';
+
+  @override
+  String get friendsReportAndBlock => 'إبلاغ وحظر';
+
+  @override
+  String get friendsReportUserTitle => 'الإبلاغ عن مستخدم';
+
+  @override
+  String get friendsReportHint => 'ساعدنا في الحفاظ على أمان المجتمع.';
+
+  @override
+  String get friendsReportReasonHarassment => 'تحرش';
+
+  @override
+  String get friendsReportReasonImpersonation => 'انتحال شخصية';
+
+  @override
+  String get friendsReportReasonUnderage => 'مستخدم قاصر';
+
+  @override
   String get friendsBlocked => 'محظور';
 
   @override
@@ -4725,7 +5496,7 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
-  String get friendsOfficialAccount => 'الحساب الرسمي لجمعة';
+  String get friendsOfficialAccount => 'الحساب الرسمي لجماعة';
 
   @override
   String friendsFollowersCount(int count) {
@@ -5056,6 +5827,30 @@ class AppLocalizationsAr extends AppLocalizations {
   String get deleteAccountAlreadyPending => 'لديك بالفعل طلب حذف قيد المراجعة.';
 
   @override
+  String get settingsCancelAccountDeletion => 'إلغاء حذف الحساب';
+
+  @override
+  String get settingsCancelAccountDeletionHint =>
+      'سيبقى حسابك نشطًا إذا ألغيت الطلب قبل معالجته.';
+
+  @override
+  String get settingsCancelAccountDeletionDialogTitle => 'إلغاء طلب الحذف؟';
+
+  @override
+  String get settingsCancelAccountDeletionDialogMessage =>
+      'سيبقى حسابك نشطًا ولن يتم حذف أي شيء.';
+
+  @override
+  String get settingsCancelAccountDeletionConfirm => 'إلغاء الطلب';
+
+  @override
+  String get settingsAccountDeletionCancelled => 'تم إلغاء طلب حذف حسابك.';
+
+  @override
+  String get settingsCancelAccountDeletionFailed =>
+      'تعذر إلغاء طلبك. قد يكون قد تمت معالجته بالفعل — يرجى المحاولة مرة أخرى أو التواصل مع الدعم.';
+
+  @override
   String get aboutUsTitle => 'معلومات عنا';
 
   @override
@@ -5063,13 +5858,17 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get aboutUsDescription =>
-      'جمعة هو تطبيق ألعاب جماعية للحفلات — العب الحقيقة أم الجرأة، لم يسبق لي، وألعاب الميمز مع الأصدقاء والعائلة في أي وقت وأي مكان.';
+      'جماعة هي منصة اجتماعية للألعاب الجماعية متعددة اللاعبين، طورتها وتملكها MOUJ TECH. العب الحقيقة أم الجرأة، لم يسبق لي، وألعاب الميمز مع الأصدقاء والعائلة، وأنشئ وشارك حزمك الخاصة، وابنِ ملفك الشخصي، واربح كصانع محتوى موثّق من الحزم التي تنشرها.';
 
   @override
   String get aboutUsCompanySectionTitle => 'الشركة';
 
   @override
-  String get aboutUsCompanyInfo => 'يتم تطوير وتشغيل جمعة بواسطة فريق جمعة.';
+  String get aboutUsCompanyInfo =>
+      'يتم تطوير وامتلاك جماعة من قبل MOUJ TECH. تتولى MOUJ TECH مسؤولية تطوير التطبيق وميزاته وتشغيله المستمر، بما في ذلك الحزم التي ينشئها المجتمع، وأدوات صانع المحتوى الموثّق، وباقتي Premium وPremium Plus، ومحفظة أرباح صانعي المحتوى.';
+
+  @override
+  String get moujTechDevelopedBy => 'تم التطوير بواسطة MOUJ TECH';
 
   @override
   String get aboutUsContactTitle => 'تواصل معنا';
@@ -5100,63 +5899,71 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get privacyPolicyIntro =>
-      'توضح سياسة الخصوصية هذه المعلومات التي يجمعها تطبيق جمعة وكيفية استخدامها. هذا محتوى مؤقت — سيتم استبداله بالسياسة القانونية الكاملة.';
+      'توضح سياسة الخصوصية هذه المعلومات التي يجمعها تطبيق جماعة، وكيفية استخدامها، والخيارات المتاحة لك. وهي تصف ميزات التطبيق الفعلية الحالية. لا تزال بعض التفاصيل القانونية الخاصة بشركة MOUJ TECH (مثل عنوانها المسجل وقنوات التواصل الرسمية) قيد الإعداد وستُضاف هنا لاحقًا — وهذا لا يغيّر ما هو موضح أدناه حول كيفية تعامل التطبيق نفسه مع معلوماتك.';
 
   @override
   String get privacySectionInfoCollected => 'المعلومات التي نجمعها';
 
   @override
   String get privacySectionInfoCollectedBody =>
-      'محتوى مؤقت — يصف تفاصيل الحساب وبيانات الاستخدام والمحتوى الذي تنشئه داخل التطبيق.';
+      'معلومات الحساب: البريد الإلكتروني الذي تسجّل به، واسم المستخدم والاسم المعروض والسيرة الذاتية والصورة الرمزية التي تختارها (صورة مرفوعة أو صورة رمزية تم إنشاؤها). المصادقة: تتم إدارة كلمة المرور عبر مزوّد المصادقة الخاص بنا ولا تكون مرئية لنا كنص عادي؛ كما يستخدم تسجيل الدخول رموز تحقق لمرة واحدة تُرسل إلى بريدك الإلكتروني. بيانات النشاط والتفاعل الاجتماعي: الغرف والألعاب التي تنضم إليها أو تستضيفها، وإجراءاتك أثناء اللعب، ونتائجك وسلاسل إنجازاتك، ورسائل الدردشة التي ترسلها في غرف اللعب، وقائمة أصدقائك ومتابعيك وأي حسابات تحظرها. المشتريات ونشاط المنشئين: الحزم التي تشتريها أو تنشرها، وحالة \"منشئ موثّق\" الخاصة بك، ورصيد محفظتك وسجل الدفعات، وإذا طلبت حزمة مادية — الاسم ورقم الهاتف ومنطقة التوصيل التي تقدّمها لهذا الطلب. البلاغات: إذا أبلغت عن حزمة، نسجّل السبب وأي تفاصيل تضيفها. طلبات حذف الحساب: إذا طلبت حذف حسابك، نسجّل السبب الذي تختاره وحالة الطلب. معلومات الجهاز والتطبيق: إصدار التطبيق ورقم البناء، ومعلومات أساسية عن النظام الأساسي (Android أو iOS)، تُستخدم للحفاظ على عمل التطبيق بشكل صحيح والتحقق من التحديثات المطلوبة.';
 
   @override
   String get privacySectionHowUsed => 'كيفية استخدام معلوماتك';
 
   @override
   String get privacySectionHowUsedBody =>
-      'محتوى مؤقت — يصف كيفية استخدام المعلومات المجمعة لتقديم التطبيق وتحسينه.';
+      'نستخدم معلوماتك لتشغيل الميزات الأساسية للتطبيق: إنشاء حسابك وتأمينه، وضمّك إلى الغرف والألعاب، وعرض ملفك الشخصي وإحصائياتك للاعبين الآخرين وأصدقائك وفق ما تقصده كل ميزة، ومعالجة مشتريات الحزم ودفعات المنشئين، وتوصيل طلبات الحزم المادية التي تطلبها، ومراجعة البلاغات وطلبات حذف الحساب، وإرسال الإشعارات الموضحة أدناه. لا نستخدم أي أداة تحليلات أو تتبّع إعلاني تابعة لجهة خارجية في هذا التطبيق. نحن لا نبيع معلوماتك.';
 
   @override
   String get privacySectionNotifications => 'الإشعارات';
 
   @override
   String get privacySectionNotificationsBody =>
-      'محتوى مؤقت — يصف الإشعارات الفورية وكيفية إدارة تفضيلاتك.';
+      'يرسل تطبيق جماعة إشعارات لأمور مثل دعوات اللعب ونشاط الغرف وطلبات الصداقة والرسائل. يتم تسليم الإشعارات الفورية عبر OneSignal، وهي خدمة إشعارات تابعة لجهة خارجية؛ كما تتم جدولة بعض الإشعارات مباشرة على جهازك. يمكنك إدارة أذونات الإشعارات في أي وقت من إعدادات النظام في جهازك.';
 
   @override
   String get privacySectionPurchases => 'المشتريات';
 
   @override
   String get privacySectionPurchasesBody =>
-      'محتوى مؤقت — يصف كيفية التعامل مع المشتريات داخل التطبيق والاشتراكات.';
+      'بعض الحزم مدفوعة، وباقتا Premium وPremium Plus هما اشتراكان مدفوعان. يمكن لـ\"المنشئين الموثّقين\" نشر حزم وكسب أرباح منها عبر محفظة داخل التطبيق. لا يقوم تطبيق جماعة بجمع أو تخزين تفاصيل بطاقة الدفع الكاملة الخاصة بك مباشرة؛ تتم معالجة المدفوعات عبر وسائل الدفع المتاحة عند الدفع. تُحفظ سجلات المشتريات والدفعات (المبالغ ومعرّفات الحزم/الاشتراكات والحالة) كجزء من سجل حسابك وسجل نشاطك كمنشئ.';
 
   @override
   String get privacySectionUserContent => 'المحتوى الذي ينشئه المستخدم';
 
   @override
   String get privacySectionUserContentBody =>
-      'محتوى مؤقت — يصف ملكية الحزم والبطاقات والمحتوى الآخر الذي تنشئه والتعامل معها.';
+      'قد تكون الحزم والبطاقات وأي محتوى آخر تنشئه وتنشره مرئيًا للمستخدمين الآخرين وفق الميزة التي استخدمتها لإنشائه (على سبيل المثال، حزمة منشورة في السوق). رسائل الدردشة التي ترسلها في غرفة تكون مرئية لبقية أعضاء تلك الغرفة. أنت مسؤول عن المحتوى الذي تختار إنشاءه ومشاركته.';
 
   @override
   String get privacySectionAccountDeletion => 'حذف الحساب';
 
   @override
   String get privacySectionAccountDeletionBody =>
-      'محتوى مؤقت — يصف كيفية طلب حذف الحساب وما يحدث لبياناتك.';
+      'يمكنك طلب حذف حسابك من الإعدادات. يؤدي هذا إلى تقديم طلب للمراجعة — ولا يُحذف حسابك فورًا. أثناء انتظار مراجعة الطلب، يمكنك إلغاؤه من الإعدادات ويبقى حسابك نشطًا. بمجرد قبول الطلب ومعالجته، لا يمكن التراجع عن الحذف، ويتم حذف ملفك الشخصي وحزمك ورصيد محفظتك وسجل ألعابك نهائيًا.';
+
+  @override
+  String get privacySectionThirdParty => 'الخدمات التابعة لجهات خارجية';
+
+  @override
+  String get privacySectionThirdPartyBody =>
+      'يعتمد تطبيق جماعة على عدد محدود من الخدمات التابعة لجهات خارجية لتشغيله: قاعدة بيانات الخلفية ومزوّد المصادقة، وتخزين سحابي للصور التي ترفعها (مثل الصور الرمزية وأغلفة الحزم)، وخدمة OneSignal للإشعارات الفورية. تعالج هذه الجهات البيانات فقط بالقدر اللازم لتقديم خدماتها لتطبيق جماعة.';
 
   @override
   String get privacySectionContact => 'تواصل معنا';
 
   @override
-  String get privacySectionContactBody =>
-      'محتوى مؤقت — تفاصيل التواصل للأسئلة المتعلقة بالخصوصية.';
+  String privacySectionContactBody(String email) {
+    return 'إذا كانت لديك أسئلة حول سياسة الخصوصية هذه أو معلوماتك، تواصل معنا عبر $email.';
+  }
 
   @override
   String get termsConditionsTitle => 'الشروط والأحكام';
 
   @override
   String get termsConditionsIntro =>
-      'تحكم هذه الشروط والأحكام استخدامك لتطبيق Jma3a، وهو تطبيق ألعاب اجتماعية متعددة اللاعبين. بإنشاء حساب أو استخدام التطبيق، فإنك توافق على هذه الشروط.';
+      'تحكم هذه الشروط والأحكام استخدامك لتطبيق Jma3a، وهو تطبيق ألعاب اجتماعية متعددة اللاعبين تقوم بتطويره وتشغيله MOUJ TECH. بإنشاء حساب أو استخدام التطبيق، فإنك توافق على هذه الشروط.';
 
   @override
   String get termsSectionAccount => 'الحسابات';
@@ -5253,7 +6060,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get accountBannedPermanently =>
-      'تم حظر حسابك نهائيًا من استخدام جمعة.';
+      'تم حظر حسابك نهائيًا من استخدام جماعة.';
 
   @override
   String get appUpdateAvailableTitle => 'يتوفر تحديث';
@@ -5272,7 +6079,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get appUpdateLaterButton => 'لاحقًا';
 
   @override
-  String get appUpdateBannerMessage => 'يتوفر إصدار جديد من تطبيق جمعة.';
+  String get appUpdateBannerMessage => 'يتوفر إصدار جديد من تطبيق جماعة.';
 
   @override
   String get deleteAccountReasonPrompt => 'لماذا تغادر؟';
@@ -5458,6 +6265,10 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get packIssueTerms => 'وافِق على شروط إنشاء الحزمة';
+
+  @override
+  String get packIssuePlayerRange =>
+      'يجب ألا يقل الحد الأقصى للاعبين عن الحد الأدنى';
 
   @override
   String get packTermsAgreePrefix => 'أوافق على ';
@@ -5674,7 +6485,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get authMethodEmailHint => 'name@email.com';
 
   @override
-  String get authSignupTitle => 'انضم إلى جمعة 🎉';
+  String get authSignupTitle => 'انضم إلى جماعة 🎉';
 
   @override
   String get authSignupSubtitle => 'كيف تود التسجيل؟';

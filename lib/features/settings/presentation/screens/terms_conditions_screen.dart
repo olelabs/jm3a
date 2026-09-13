@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/extensions/context_ext.dart';
 import '../../../../shared/widgets/cards/j_card.dart';
+import '../../../../shared/widgets/mouj_tech_brand.dart';
 
 /// Terms & Conditions — mirrors PrivacyPolicyScreen's own
 /// _PolicySection/l10n-driven structure so future copy edits stay a pure
@@ -79,6 +80,7 @@ class TermsConditionsScreen extends StatelessWidget {
             body: l10n.termsSectionContactBody(l10n.aboutUsContactEmail),
             isLast: true,
           ),
+          const MoujTechBrand(),
         ],
       ),
     );

@@ -10,10 +10,13 @@ import '../../core/theme/app_colors.dart';
 /// for how duplicates are prevented) — this widget itself has no
 /// deduplication logic of its own, it just renders whatever event it's
 /// given.
-Future<void> showStreakAchievementDialog(BuildContext context, StreakAchievementEvent event) {
+Future<void> showStreakAchievementDialog(
+  BuildContext context,
+  StreakAchievementEvent event,
+) {
   return showGeneralDialog<void>(
     context: context,
-    barrierLabel: 'streak-achievement',
+    barrierLabel: context.l10n.streakAchievementBarrierLabel,
     barrierDismissible: true,
     barrierColor: Colors.black54,
     transitionDuration: const Duration(milliseconds: 260),
@@ -24,7 +27,10 @@ Future<void> showStreakAchievementDialog(BuildContext context, StreakAchievement
       if (MediaQuery.disableAnimationsOf(context)) {
         return FadeTransition(opacity: animation, child: child);
       }
-      final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutBack);
+      final curved = CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOutBack,
+      );
       return FadeTransition(
         opacity: animation,
         child: ScaleTransition(scale: curved, child: child),
@@ -58,9 +64,16 @@ class _StreakAchievementDialog extends StatelessWidget {
               colors: [AppColors.darkElevated, AppColors.darkSurface],
             ),
             borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: AppColors.brandOrangeMid.withValues(alpha: 0.4), width: 1.5),
+            border: Border.all(
+              color: AppColors.brandOrangeMid.withValues(alpha: 0.4),
+              width: 1.5,
+            ),
             boxShadow: [
-              BoxShadow(color: AppColors.brandOrangeMid.withValues(alpha: 0.25), blurRadius: 40, spreadRadius: 4),
+              BoxShadow(
+                color: AppColors.brandOrangeMid.withValues(alpha: 0.25),
+                blurRadius: 40,
+                spreadRadius: 4,
+              ),
             ],
           ),
           child: Column(
@@ -69,18 +82,24 @@ class _StreakAchievementDialog extends StatelessWidget {
               Text('🔥', style: const TextStyle(fontSize: 56)),
               const SizedBox(height: 16),
               Text(
-                isNew ? l10n.streakNewTitle : l10n.streakExtendedTitle(event.streakCount),
+                isNew
+                    ? l10n.streakNewTitle
+                    : l10n.streakExtendedTitle(event.streakCount),
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                    ),
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
               const SizedBox(height: 10),
               Text(
-                isNew ? l10n.streakNewBody : l10n.streakExtendedBody(event.streakCount),
+                isNew
+                    ? l10n.streakNewBody
+                    : l10n.streakExtendedBody(event.streakCount),
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white70),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
               ),
               const SizedBox(height: 24),
               SizedBox(
@@ -90,12 +109,17 @@ class _StreakAchievementDialog extends StatelessWidget {
                     backgroundColor: AppColors.brandOrangeMid,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                   ),
                   onPressed: () => Navigator.of(context).maybePop(),
                   child: Text(
                     isNew ? l10n.streakNewCta : l10n.streakExtendedCta,
-                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                    ),
                   ),
                 ),
               ),

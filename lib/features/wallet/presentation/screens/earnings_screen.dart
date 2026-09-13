@@ -110,17 +110,17 @@ class _EarningsScreenState extends State<EarningsScreen> {
                 children: [
                   _EarningStatCard(
                       label: ctx.l10n.walletEarningsTotal,
-                      value: earnings.formatted,
+                      value: earnings.formatted(ctx.l10n.walletCurrencyShort),
                       icon:  '📈',
                       color: AppColors.successGreen),
                   _EarningStatCard(
                       label: ctx.l10n.walletEarningsThisMonth,
-                      value: earnings.thisMonthFormatted,
+                      value: earnings.thisMonthFormatted(ctx.l10n.walletCurrencyShort),
                       icon:  '📅',
                       color: AppColors.infoBlue),
                   _EarningStatCard(
                       label: ctx.l10n.pendingLabel,
-                      value: earnings.pendingFormatted,
+                      value: earnings.pendingFormatted(ctx.l10n.walletCurrencyShort),
                       icon:  '⏳',
                       color: AppColors.warningAmber),
                   _EarningStatCard(
@@ -154,7 +154,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
                           Text(ctx.l10n.walletAvailableForWithdrawal,
                               style: TextStyle(
                                   fontWeight: FontWeight.w600, fontSize: 13)),
-                          Text(earnings.availableFormatted,
+                          Text(earnings.availableFormatted(ctx.l10n.walletCurrencyShort),
                               style: const TextStyle(
                                   color:      AppColors.successGreen,
                                   fontSize:   22,

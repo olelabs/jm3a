@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../../../shared/widgets/game/dishonest_reasons_panel.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
@@ -11,7 +12,7 @@ import 'package:jma3a/features/games/presentation/widgets/game_screen_security_g
 import 'package:jma3a/features/rooms/domain/room_entity.dart';
 import 'package:jma3a/features/rooms/presentation/room_provider.dart';
 import 'package:jma3a/features/settings/presentation/screen_security_service.dart';
-import 'package:jma3a/shared/widgets/center_reaction_overlay.dart';
+import 'package:jma3a/shared/widgets/animated_reaction_overlay.dart';
 import 'package:jma3a/shared/widgets/game_rules_sheet.dart';
 import 'package:jma3a/shared/widgets/no_active_players_banner.dart';
 import 'package:jma3a/shared/widgets/join_requests_panel.dart';
@@ -246,21 +247,52 @@ class _TodGameScreenState extends State<TodGameScreen> {
     final rp = widget.roomProvider;
     final state = _provider.state;
     if (rp == null || !_provider.isOwner || state == null) return;
+    final toMarkReturned = <String>[];
+    final toMarkAway = <String>[];
+    final mutedIds = <String>{};
     for (final id in state.playerOrder) {
       final member = rp.members.where((m) => m.userId == id).firstOrNull;
-      // A game-muted player must NOT lose their turn: muting parks the turn
-      // on them (blocked — they can't submit), it does not skip them. So a
-      // mute must never route through markPlayerAway/force-advance here.
-      // Only a genuinely-absent player (disconnected) is marked away; the
-      // provider's own _turnSkipIds keeps muted players in the rotation.
+      // Disconnection and game-mute are two SEPARATE eligibility signals:
+      // "away" here means genuinely absent (disconnected) only — mute has
+      // its own dedicated transition handling below (syncMutedPlayers),
+      // which force-advances from ANY turn phase (not just choosingType,
+      // the way markPlayerAway's own force-advance is scoped) and places
+      // a returning (unmuted) player at the end of the active rotation
+      // rather than resuming their original fixed-order slot. Muting no
+      // longer "parks" the turn blocked on the muted player — see
+      // TodGameProvider.syncMutedPlayers's own doc comment.
       final isPresent = member != null && !member.isDisconnected;
       final isAway = _provider.awayPlayerIds.contains(id);
       if (isPresent && isAway) {
-        _provider.markPlayerReturned(id);
+        toMarkReturned.add(id);
       } else if (!isPresent && !isAway) {
+        toMarkAway.add(id);
+      }
+      if (member?.isGameMuted ?? false) mutedIds.add(id);
+    }
+    _provider.syncMutedPlayers(mutedIds);
+    if (toMarkReturned.isEmpty && toMarkAway.isEmpty) return;
+
+    // Real-device crash fix ("Tried to build dirty widget in the wrong
+    // build scope" when a non-admin player leaves) — this method runs
+    // synchronously as a raw listener callback on BOTH
+    // widget.roomProvider and _provider itself (see initState below), so
+    // calling straight into _provider — a SEPARATE ChangeNotifier — here
+    // risked a reentrant cross-provider notify chain nested inside the
+    // caller's own notifyListeners() dispatch (RoomProvider's, most
+    // often, since membership changes are what usually trigger this).
+    // Deferred to the next frame instead; markPlayerAway/markPlayerReturned
+    // are both idempotent, so if the state has already resolved itself by
+    // the time this runs, it's simply a no-op.
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      for (final id in toMarkReturned) {
+        _provider.markPlayerReturned(id);
+      }
+      for (final id in toMarkAway) {
         _provider.markPlayerAway(id);
       }
-    }
+    });
   }
 
   @override
@@ -471,8 +503,23 @@ class _TodGameScreenState extends State<TodGameScreen> {
           final name =
               p['display_name'] as String? ?? context.l10n.defaultPlayerName;
           final leavingId = p['user_id'] as String?;
+          // Real-device crash fix ("Tried to build dirty widget in the
+          // wrong build scope" when a non-admin player leaves) — this
+          // realtime callback runs synchronously, in the same call stack
+          // as RoomProvider's own 'player_left' handling on the SAME
+          // channel event (RealtimeService fans one event out to both
+          // listeners back-to-back — see RealtimeService._fanOut). Calling
+          // into _provider (a SEPARATE ChangeNotifier from RoomProvider)
+          // synchronously from here risked a reentrant cross-provider
+          // notify chain nested inside RoomProvider's own notifyListeners()
+          // dispatch. Deferred to the next frame instead — imperceptible
+          // to the user, and markPlayerAway is now idempotent (see its own
+          // doc comment) so this can never double-apply even if
+          // _syncAwayFromPresence also reacts to the same departure.
           if (leavingId != null) {
-            _provider.markPlayerAway(leavingId, forGood: true);
+            SchedulerBinding.instance.addPostFrameCallback((_) {
+              if (mounted) _provider.markPlayerAway(leavingId, forGood: true);
+            });
           }
           // The "fewer than 2 active players left -> end the game" check
           // previously lived here, computed from this screen's own
@@ -764,7 +811,7 @@ class _TodGameScreenState extends State<TodGameScreen> {
             child: ChangeNotifierProvider.value(
               value: _provider,
               child: Consumer<TodGameProvider>(
-                builder: (ctx, game, _) => CenterReactionOverlay(
+                builder: (ctx, game, _) => AnimatedReactionOverlay(
                   reactions: (game.state?.currentReactions ?? const [])
                       .map((r) => (emoji: r.emoji, ts: r.ts, userId: r.userId))
                       .toList(),
@@ -883,7 +930,7 @@ class _TodGameScreenState extends State<TodGameScreen> {
       return Scaffold(
         appBar: AppBar(leading: BackButton(onPressed: leaveToLobby)),
         body: ErrorView(
-          message: game.error ?? 'Failed to load game',
+          message: game.error ?? ctx.l10n.errorUnexpected,
           onRetry: () => ctx.go(RouteNames.home),
         ),
       );
@@ -918,6 +965,7 @@ class _TodGameScreenState extends State<TodGameScreen> {
           ctx,
           widget.roomId,
           roomProvider: widget.roomProvider,
+          isOwner: widget.isOwner,
         ),
       );
     }
@@ -1056,164 +1104,231 @@ class _TodGameScaffoldState extends State<_TodGameScaffold> {
     final state = widget.state;
     final game = widget.game;
 
-    if (_showHistory) {
-      return Scaffold(
-        appBar: AppBar(
-          leading: BackButton(
-            onPressed: () => setState(() => _showHistory = false),
-          ),
-          title: Text(context.l10n.todHistoryRoundsCount(state.history.length)),
-        ),
-        body: _HistoryPanel(
-          history: state.history,
-          displayNames: widget.displayNames,
-          game: game,
-        ),
-      );
-    }
-
+    // Item 2 (real-device report: iOS "History" red-screen crash) —
+    // TWO successive fixes now live here, both explained below.
+    //
+    // Fix #1 (previous pass): the History view used to be an early
+    // `return` BEFORE/OUTSIDE the ScreenTutorial(...) wrapper, so
+    // opening it fully UNMOUNTED ScreenTutorial (and its child
+    // ShowCaseWidget) whenever a first-time tour was still active/
+    // settling — showcaseview's own overlay rebuild is several
+    // addPostFrameCallback hops deferred, and if the tour's target was
+    // gone by the time that deferred callback ran, showcaseview threw
+    // an uncaught LateInitializationError. The fix made History an
+    // INNER swap of ScreenTutorial's own `child:` (a ternary between
+    // the History Scaffold and the main-game PopScope/Scaffold) so
+    // ScreenTutorial itself stayed mounted.
+    //
+    // Fix #2 (this pass) — a NEW regression fix #1 itself introduced:
+    // showcaseview's Showcase widget (wrapping TodHud via
+    // tutorialShowcase(_hudShowcaseKey, ...) below) has its own,
+    // ALWAYS-ACTIVE side effect completely independent of whether a
+    // tour is running: AnchoredOverlay/OverlayBuilder
+    // (showcaseview/src/layout_overlays.dart) inserts a real
+    // OverlayEntry into the app's ROOT Overlay the whole time TodHud's
+    // Showcase wrapper is mounted, whose builder closure captures the
+    // LOCAL BuildContext from deep inside this screen's own subtree.
+    // Fix #1's ternary made ScreenTutorial (a stable ancestor
+    // InheritedWidget host, via its child ShowCaseWidget's
+    // _InheritedShowCaseView) survive while ONLY the target's subtree
+    // (PopScope -> ... -> Showcase -> AnchoredOverlay -> OverlayBuilder)
+    // got torn down as a widget-TYPE swap (Scaffold vs PopScope at the
+    // same position) — a partial subtree removal underneath a
+    // surviving ancestor, with that overlay/portal side effect
+    // straddling the boundary. That is exactly the shape of Flutter's
+    // `InheritedElement.debugDeactivated` / `_dependents.isEmpty`
+    // assertion (framework.dart) — a dependent's cleanup racing an
+    // Overlay-inserted subtree it doesn't own.
+    //
+    // Real fix: never tear the main-game subtree (and therefore
+    // TodHud's Showcase wrapper) down at all when History opens — keep
+    // it permanently mounted, only COVERED by an opaque History overlay
+    // on top, exactly matching Meme's own History implementation
+    // (meme_game_screen.dart's Stack — see its own identical comment)
+    // and directly analogous to how NHIE's separate ScreenTutorial
+    // ALREADY avoids this by never removing ScreenTutorial itself. This
+    // eliminates the whole Element-lifecycle hazard class by
+    // construction — nothing about the target/Showcase/Overlay chain
+    // is ever deactivated or reactivated by toggling History, so there
+    // is no partial-teardown race left for showcaseview's portal to
+    // collide with. ScreenTutorial's own liveness check (added the
+    // previous pass) remains as defense-in-depth for any OTHER scenario
+    // that does genuinely unmount a step's target.
     return ScreenTutorial(
       tutorialId: TutorialIds.todIntro,
       steps: [_hudShowcaseKey],
-      child: PopScope(
-        // Kept as a redundant route-pop blocker only; the actual back ACTION is
-        // handled once, centrally, by GameScreenSecurityGate via _handleGameBack
-        // (registered above) — so a system back fires the quit dialog exactly
-        // once, and sub-views the old handler couldn't see are covered too.
-        canPop: false,
-        onPopInvoked: (_) {},
-        child: Scaffold(
-          appBar: AppBar(
-            // Solid brand-purple so it flows straight into TodHud's own
-            // purple-to-blue gradient below it — one continuous "party" chrome
-            // instead of the system-themed AppBar it used to be.
-            backgroundColor: AppColors.brandPurpleDark,
-            foregroundColor: Colors.white,
-            elevation: 0,
-            systemOverlayStyle: SystemUiOverlayStyle.light,
-            automaticallyImplyLeading: false,
-            title: const Text(''),
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back),
-              onPressed: () => _showLeaveDialog(context, game, state),
-            ),
-            actions: [
-              Consumer<TodGameProvider>(
-                builder: (_, g, __) => Stack(
-                  alignment: Alignment.topRight,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.chat_bubble_outline_rounded),
-                      onPressed: () {
-                        g.clearUnreadChat();
-                        showModalBottomSheet(
-                          context: context,
-                          isScrollControlled: true,
-                          backgroundColor: Colors.transparent,
-                          builder: (_) => GameChatSheet(
-                            listenable: g,
-                            messagesOf: () => g.chatMessages,
-                            myId: g.currentUserId,
-                            title: context.l10n.todChatTitle,
-                            onSend: (text, {replyTo}) =>
-                                g.sendChat(text, replyTo: replyTo),
-                            memberOf: g.roomProvider?.memberById,
-                            isPremiumPlus:
-                                context
-                                    .read<AuthProvider>()
-                                    .currentUser
-                                    ?.isPremiumPlusActive ??
-                                false,
-                            participants: g.gameParticipants,
-                            onSendTargeted:
-                                (
-                                  text, {
-                                  required recipientIds,
-                                  required recipientNames,
-                                  replyTo,
-                                }) => g.sendTargetedChat(
-                                  text,
-                                  recipientIds: recipientIds,
-                                  recipientNames: recipientNames,
-                                  replyTo: replyTo,
-                                ),
+      child: Stack(
+        children: [
+          PopScope(
+            // Kept as a redundant route-pop blocker only; the actual back ACTION is
+            // handled once, centrally, by GameScreenSecurityGate via _handleGameBack
+            // (registered above) — so a system back fires the quit dialog exactly
+            // once, and sub-views the old handler couldn't see are covered too.
+            canPop: false,
+            onPopInvoked: (_) {},
+            child: Scaffold(
+              appBar: AppBar(
+                // Solid brand-purple so it flows straight into TodHud's own
+                // purple-to-blue gradient below it — one continuous "party" chrome
+                // instead of the system-themed AppBar it used to be.
+                backgroundColor: AppColors.brandPurpleDark,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                systemOverlayStyle: SystemUiOverlayStyle.light,
+                automaticallyImplyLeading: false,
+                title: const Text(''),
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: () => _showLeaveDialog(context, game, state),
+                ),
+                actions: [
+                  Consumer<TodGameProvider>(
+                    builder: (_, g, __) => Stack(
+                      alignment: Alignment.topRight,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.chat_bubble_outline_rounded),
+                          onPressed: () {
+                            g.clearUnreadChat();
+                            showModalBottomSheet(
+                              context: context,
+                              isScrollControlled: true,
+                              backgroundColor: Colors.transparent,
+                              builder: (_) => GameChatSheet(
+                                listenable: g,
+                                messagesOf: () => g.chatMessages,
+                                myId: g.currentUserId,
+                                title: context.l10n.todChatTitle,
+                                onSend: (text, {replyTo}) =>
+                                    g.sendChat(text, replyTo: replyTo),
+                                memberOf: g.roomProvider?.memberById,
+                                isPremiumPlus:
+                                    context
+                                        .read<AuthProvider>()
+                                        .currentUser
+                                        ?.isPremiumPlusActive ??
+                                    false,
+                                participants: g.gameParticipants,
+                                onSendTargeted:
+                                    (
+                                      text, {
+                                      required recipientIds,
+                                      required recipientNames,
+                                      replyTo,
+                                    }) => g.sendTargetedChat(
+                                      text,
+                                      recipientIds: recipientIds,
+                                      recipientNames: recipientNames,
+                                      replyTo: replyTo,
+                                    ),
+                              ),
+                            );
+                          },
+                        ),
+                        if (g.unreadChat > 0)
+                          Positioned(
+                            top: 8,
+                            right: 8,
+                            child: Container(
+                              width: 8,
+                              height: 8,
+                              decoration: const BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
                           ),
-                        );
-                      },
+                      ],
                     ),
-                    if (g.unreadChat > 0)
-                      Positioned(
-                        top: 8,
-                        right: 8,
-                        child: Container(
-                          width: 8,
-                          height: 8,
-                          decoration: const BoxDecoration(
-                            color: Colors.red,
-                            shape: BoxShape.circle,
+                  ),
+                  if (state.history.isNotEmpty)
+                    IconButton(
+                      icon: const Icon(Icons.history_rounded),
+                      tooltip: context.l10n.sharedHistoryTooltip,
+                      onPressed: () => setState(() => _showHistory = true),
+                    ),
+                  RulesButton(
+                    gameType: GameType.truthOrDare,
+                    config: game.config,
+                  ),
+                ],
+              ),
+              body: SafeArea(
+                child: Column(
+                  children: [
+                    tutorialShowcase(
+                      context: context,
+                      showcaseKey: _hudShowcaseKey,
+                      title: context.l10n.tutTodTitle,
+                      description: context.l10n.tutTodBody,
+                      child: TodHud(
+                        state: state,
+                        game: game,
+                        displayNames: widget.displayNames,
+                      ),
+                    ),
+                    Expanded(
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 300),
+                        transitionBuilder: (child, anim) => FadeTransition(
+                          opacity: anim,
+                          child: SlideTransition(
+                            position:
+                                Tween<Offset>(
+                                  begin: const Offset(0, 0.05),
+                                  end: Offset.zero,
+                                ).animate(
+                                  CurvedAnimation(
+                                    parent: anim,
+                                    curve: Curves.easeOutCubic,
+                                  ),
+                                ),
+                            child: child,
+                          ),
+                        ),
+                        child: KeyedSubtree(
+                          key: ValueKey(
+                            '${state.phase}-${state.currentPlayerId}',
+                          ),
+                          child: _phaseWidget(
+                            context,
+                            game,
+                            widget.displayNames,
+                            state,
                           ),
                         ),
                       ),
+                    ),
                   ],
                 ),
               ),
-              if (state.history.isNotEmpty)
-                IconButton(
-                  icon: const Icon(Icons.history_rounded),
-                  tooltip: context.l10n.sharedHistoryTooltip,
-                  onPressed: () => setState(() => _showHistory = true),
-                ),
-              RulesButton(gameType: GameType.truthOrDare, config: game.config),
-            ],
-          ),
-          body: SafeArea(
-            child: Column(
-              children: [
-                tutorialShowcase(
-                  context: context,
-                  showcaseKey: _hudShowcaseKey,
-                  title: context.l10n.tutTodTitle,
-                  description: context.l10n.tutTodBody,
-                  child: TodHud(
-                    state: state,
-                    game: game,
-                    displayNames: widget.displayNames,
-                  ),
-                ),
-                Expanded(
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 300),
-                    transitionBuilder: (child, anim) => FadeTransition(
-                      opacity: anim,
-                      child: SlideTransition(
-                        position:
-                            Tween<Offset>(
-                              begin: const Offset(0, 0.05),
-                              end: Offset.zero,
-                            ).animate(
-                              CurvedAnimation(
-                                parent: anim,
-                                curve: Curves.easeOutCubic,
-                              ),
-                            ),
-                        child: child,
-                      ),
-                    ),
-                    child: KeyedSubtree(
-                      key: ValueKey('${state.phase}-${state.currentPlayerId}'),
-                      child: _phaseWidget(
-                        context,
-                        game,
-                        widget.displayNames,
-                        state,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
             ),
           ),
-        ),
+          // History overlay (item 2 fix #2, see the doc comment above
+          // this Stack) — a COVER, not a replacement: the main-game
+          // PopScope/Scaffold above is never removed from the tree, so
+          // TodHud's Showcase wrapper (and its always-active
+          // AnchoredOverlay/OverlayBuilder side effect) is never torn
+          // down by toggling History.
+          if (_showHistory)
+            Positioned.fill(
+              child: Scaffold(
+                appBar: AppBar(
+                  leading: BackButton(
+                    onPressed: () => setState(() => _showHistory = false),
+                  ),
+                  title: Text(
+                    context.l10n.todHistoryRoundsCount(state.history.length),
+                  ),
+                ),
+                body: _HistoryPanel(
+                  history: state.history,
+                  displayNames: widget.displayNames,
+                  game: game,
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -1446,13 +1561,14 @@ class _HistoryPanelState extends State<_HistoryPanel> {
                       _ProofWatchedBadge(watchedBy: round.proofWatchedBy),
                       const SizedBox(height: 4),
                       _ReplayCountBadge(
-                        replays: switch (
-                            round.turnStartedAt != null
-                                ? _viewStats[round.turnStartedAt!]
-                                : null) {
+                        replays: switch (round.turnStartedAt != null
+                            ? _viewStats[round.turnStartedAt!]
+                            : null) {
                           final stats? =>
-                            (stats.totalViews - stats.distinctViewers)
-                                .clamp(0, 1 << 30),
+                            (stats.totalViews - stats.distinctViewers).clamp(
+                              0,
+                              1 << 30,
+                            ),
                           null => 0,
                         },
                       ),
@@ -1494,8 +1610,9 @@ class _HistoryPanelState extends State<_HistoryPanel> {
                     if (round.playerId == widget.game.currentUserId)
                       DishonestReasonsPanel(
                         key: ValueKey('history_dishonest_${round.roundNumber}'),
-                        fetch: () => widget.game
-                            .getDishonestReasonsForRound(round.roundNumber),
+                        fetch: () => widget.game.getDishonestReasonsForRound(
+                          round.roundNumber,
+                        ),
                       ),
                   ],
                 ),

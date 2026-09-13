@@ -9,6 +9,7 @@ import '../../../core/providers/base_provider.dart';
 import '../../../core/services/streak_achievement_service.dart';
 import '../../../core/utils/app_logger.dart';
 import '../../auth/domain/entities/user_entity.dart';
+import '../../friends/data/friends_repository.dart';
 import '../../packs/data/pack_repository.dart';
 import '../data/profile_repository.dart';
 
@@ -21,8 +22,8 @@ class ProfileProvider extends BaseProvider {
   ProfileProvider({
     required ProfileRepository profileRepository,
     required AuthProvider authProvider,
-  })  : _repository = profileRepository,
-        _authProvider = authProvider;
+  }) : _repository = profileRepository,
+       _authProvider = authProvider;
 
   final ProfileRepository _repository;
   final AuthProvider _authProvider;
@@ -73,7 +74,8 @@ class ProfileProvider extends BaseProvider {
   // [consumeStreakAchievement], which must happen before the next
   // notifyListeners a caller could observe, or the dialog would re-fire.
   StreakAchievementEvent? _pendingStreakAchievement;
-  StreakAchievementEvent? get pendingStreakAchievement => _pendingStreakAchievement;
+  StreakAchievementEvent? get pendingStreakAchievement =>
+      _pendingStreakAchievement;
 
   void consumeStreakAchievement() {
     _pendingStreakAchievement = null;
@@ -83,10 +85,29 @@ class ProfileProvider extends BaseProvider {
     _stats = newStats;
     final userId = _authProvider.currentUser?.id;
     if (userId == null) return;
-    _pendingStreakAchievement = await StreakAchievementService.instance.checkForNewAchievement(
-      userId: userId,
-      currentStreak: newStats.currentStreak,
-    );
+    // Item 4 (this pass) — the followers count shown on this profile's
+    // stats tile must be the SAME source of truth as FollowersScreen's own
+    // list (both now read the live `follows` table via
+    // FriendsRepository.getFollowersCount/getFollowers), not the separate
+    // profiles_public.followers_count column this used to come from — see
+    // getFollowersCount's own doc comment for why that mismatch is exactly
+    // the kind of thing that makes "Followers" look broken even when the
+    // list itself works. Best-effort: a transient failure here just keeps
+    // whichever count getProfileStats already returned rather than
+    // blocking the rest of this refresh.
+    try {
+      final followersCount = await FriendsRepository.instance.getFollowersCount(
+        userId,
+      );
+      _stats = _stats.copyWith(followersCount: followersCount);
+    } catch (e) {
+      AppLogger.warning('ProfileProvider: getFollowersCount failed: $e');
+    }
+    _pendingStreakAchievement = await StreakAchievementService.instance
+        .checkForNewAchievement(
+          userId: userId,
+          currentStreak: newStats.currentStreak,
+        );
   }
 
   RealtimeChannel? _followsChannel;
@@ -227,7 +248,7 @@ class ProfileProvider extends BaseProvider {
 
   // ── Username change ────────────────────────────────────────────────────────
   Future<({bool success, String? errorMessage, int? daysRemaining})>
-      changeUsername(String newUsername) async {
+  changeUsername(String newUsername) async {
     _isChangingUsername = true;
     _lastFailure = null;
     notifyListeners();

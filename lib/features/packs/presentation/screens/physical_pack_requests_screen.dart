@@ -90,7 +90,8 @@ class _PhysicalPackRequestsScreenState
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            '${r['price_mru']} MRU · ${r['city']}, ${r['country']}',
+                            '${context.l10n.packPriceMru((r['price_mru'] as num).toInt())} · '
+                            '${r['city']}, ${r['country']}',
                             style: Theme.of(context).textTheme.bodySmall
                                 ?.copyWith(
                                   color: Theme.of(

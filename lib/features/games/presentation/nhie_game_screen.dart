@@ -12,21 +12,20 @@ import 'package:animated_emoji/animated_emoji.dart';
 import '../../../shared/widgets/overlays/branded_status_view.dart';
 import '../../../shared/widgets/game/away_presence_snackbar_listener.dart';
 import '../../../shared/widgets/game/game_chat_sheet.dart';
-import '../../../shared/widgets/game/game_card_background.dart';
 import '../../../shared/widgets/game/game_over_podium.dart';
+import '../../../shared/widgets/game/player_result_tile.dart';
 import '../../../shared/widgets/game/responsive_game_text.dart';
-import '../../../shared/widgets/animated_reaction_overlay.dart'
-    show kAnimatedEmojiMap;
 import '../game_session_messages.dart';
 import 'package:jma3a/core/router/app_router.dart';
 import 'package:jma3a/features/games/engine/base_game_engine.dart';
+import 'package:jma3a/features/games/engine/turn_queue.dart';
 import 'package:jma3a/features/games/presentation/widgets/game_screen_security_gate.dart';
 import 'package:jma3a/features/games/never_have_i_ever/never_have_i_ever_engine.dart';
 import 'package:jma3a/features/games/truth_or_dare/data/tod_repository.dart';
 import 'package:jma3a/features/games/truth_or_dare/domain/tod_models.dart';
 import 'package:jma3a/features/rooms/domain/room_entity.dart';
 import 'package:jma3a/features/rooms/presentation/room_provider.dart';
-import 'package:jma3a/shared/widgets/center_reaction_overlay.dart';
+import 'package:jma3a/shared/widgets/animated_reaction_overlay.dart';
 import 'package:jma3a/shared/widgets/game_rules_sheet.dart';
 import 'package:jma3a/shared/widgets/no_active_players_banner.dart';
 import 'package:jma3a/shared/widgets/join_requests_panel.dart';
@@ -38,6 +37,7 @@ import '../../../../core/extensions/context_ext.dart';
 import '../../../../core/services/app_tutorial_service.dart';
 import '../../../../shared/widgets/cards/honesty_score_line.dart';
 import '../../../../shared/widgets/game/dishonest_reasons_panel.dart';
+import '../../../../shared/widgets/game/game_flip_card.dart';
 import '../../../../shared/widgets/game/honesty_vote_buttons.dart';
 import '../../../../shared/widgets/tutorial/screen_tutorial.dart';
 import '../../../../core/data/honesty_vote_repository.dart';
@@ -46,6 +46,7 @@ import '../../../../core/router/route_names.dart';
 import '../../../../core/services/realtime_service.dart';
 import '../../../../core/services/targeted_chat_listener.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/app_logger.dart';
 import '../../../../core/utils/game_end_navigation.dart';
 
@@ -151,10 +152,7 @@ class NhieGameProvider extends ChangeNotifier {
   List<RoomMemberEntity> get gameParticipants =>
       roomProvider?.members
           .where(
-            (m) =>
-                m.userId != _userId &&
-                !m.isSpectator &&
-                !m.leftDefinitively,
+            (m) => m.userId != _userId && !m.isSpectator && !m.leftDefinitively,
           )
           .toList() ??
       const [];
@@ -238,6 +236,56 @@ class NhieGameProvider extends ChangeNotifier {
   String _error = '';
   final Set<String> _awayPlayerIds = {};
   final Set<String> _readyForNext = {};
+
+  /// Turn-selection policy — see turn_queue.dart (shared with
+  /// TodGameProvider/MemeGameProvider). Lazily (re)built whenever the
+  /// current playerOrder's id set differs from what it already reflects
+  /// — NHIE re-establishes/restores its engine from several call sites
+  /// (fresh start, resume, host-migration reconnect, DB resync), so a
+  /// lazy getter is more robust here than trying to seed it at every one
+  /// of those individually; playerOrder itself is still fixed for the
+  /// life of the session, so in practice this only ever builds once.
+  TurnQueue? _turnQueueCache;
+  TurnQueue get _turnQueue {
+    final order = state?.playerOrder ?? const <String>[];
+    final cached = _turnQueueCache;
+    final sameIds =
+        cached != null &&
+        cached.order.length == order.length &&
+        cached.order.toSet().containsAll(order);
+    if (!sameIds) _turnQueueCache = TurnQueue(order);
+    return _turnQueueCache!;
+  }
+
+  /// Ids this provider currently believes are game-muted — the "last
+  /// known" side of [syncMutedPlayers]'s edge detection.
+  final Set<String> _knownMutedIds = {};
+
+  /// Reconciles the CURRENT set of game-muted player ids against what
+  /// this provider last knew — see TodGameProvider.syncMutedPlayers's
+  /// identical rationale. NHIE has no concept of the current
+  /// (revealer) player being mid-action the way ToD does (every player,
+  /// revealer included, votes independently — see never_have_i_ever_
+  /// engine.dart's _handleVote, gated only on playerOrder membership,
+  /// never currentPlayerId), so unlike ToD this never needs to force an
+  /// immediate turn-advance: a muted id's own vote is already auto-
+  /// filled (see _autoFillAwayPlayers, which already treats isGameMuted
+  /// exactly like away), and the NEXT round's revealer selection simply
+  /// excludes them (via _turnQueue.nextEligible in ownerAdvanceTurn). A
+  /// newly-unmuted id rejoins the active rotation at the END via
+  /// [TurnQueue.markReturned] — never their original fixed-order slot.
+  void syncMutedPlayers(Set<String> mutedIds) {
+    final newlyMuted = mutedIds.difference(_knownMutedIds);
+    final newlyUnmuted = _knownMutedIds.difference(mutedIds);
+    if (newlyMuted.isEmpty && newlyUnmuted.isEmpty) return;
+    _knownMutedIds
+      ..clear()
+      ..addAll(mutedIds);
+    for (final id in newlyUnmuted) {
+      _turnQueue.markReturned(id);
+    }
+    _safeNotify();
+  }
 
   // ── Game session ready barrier ──────────────────────────────────────
   // See TodGameProvider's identical block for the full root-cause
@@ -1446,6 +1494,7 @@ class NhieGameProvider extends ChangeNotifier {
       responseKey: 'round:${s.roundNumber}',
     );
   }
+
   bool _advancing = false;
 
   Future<void> ownerAdvanceTurn({bool force = false}) async {
@@ -1458,7 +1507,22 @@ class NhieGameProvider extends ChangeNotifier {
     try {
       _readyForNext.clear();
       _myReadyIntent = false;
-      _engine!.advanceTurn();
+      // Next revealer, per the shared TurnQueue policy (see
+      // turn_queue.dart / syncMutedPlayers's own doc comment): skips
+      // every currently-ineligible id (away, disconnected, or
+      // game-muted) and places a just-unmuted id at the END of the
+      // active rotation rather than their original fixed-order slot.
+      // Falls back to the engine's own natural next-index if there's no
+      // current player yet (shouldn't happen post-init) or nobody is
+      // eligible at all — NHIE's round always advances regardless (see
+      // NeverHaveIEverEngine.advanceTurn's own doc comment on the
+      // unconditional per-call round increment), so unlike ToD this
+      // never blocks the advance itself, only which id becomes revealer.
+      final currentId = state?.currentPlayerId;
+      final nextId = currentId != null
+          ? _turnQueue.nextEligible(currentId, _effectiveAwayIds)
+          : null;
+      _engine!.advanceTurn(forcePlayerId: nextId);
       _autoFillAwayPlayers();
       if (_engine!.isGameOver) _loadState = NhieLoadState.gameOver;
       _syncTimer();
@@ -2554,19 +2618,28 @@ class _NhieGameScreenState extends State<NhieGameScreen> {
     final rp = widget.roomProvider;
     final state = _provider.state;
     if (rp == null || !_provider.isOwner || state == null) return;
+    final mutedIds = <String>{};
     for (final id in state.playerOrder) {
       final member = rp.members.where((m) => m.userId == id).firstOrNull;
-      // A muted player is exactly as ineligible for a turn as a
-      // disconnected one — see TodGameScreen's identical fix.
-      final isPresent =
-          member != null && !member.isDisconnected && !member.isGameMuted;
+      // Disconnection and game-mute are two separate eligibility
+      // signals: "away" here means genuinely absent (disconnected) only
+      // — mute has its own dedicated transition handling
+      // (_provider.syncMutedPlayers) below, which reorders the active
+      // turn rotation on unmute (rejoin at the end, never the original
+      // fixed-order slot) rather than a plain resume-in-place the way a
+      // reconnecting disconnected player gets. _durableAwayIds still
+      // separately folds isGameMuted in for ready-checks/action-blocking
+      // purposes — unaffected by this split.
+      final isPresent = member != null && !member.isDisconnected;
       final isAway = _provider.awayPlayerIds.contains(id);
       if (isPresent && isAway) {
         _provider.markPlayerReturned(id);
       } else if (!isPresent && !isAway) {
         _provider.markPlayerAway(id);
       }
+      if (member?.isGameMuted ?? false) mutedIds.add(id);
     }
+    _provider.syncMutedPlayers(mutedIds);
   }
 
   void _onRoomOwnershipChanged() {
@@ -2758,7 +2831,7 @@ class _NhieGameScreenState extends State<NhieGameScreen> {
             child: ChangeNotifierProvider.value(
               value: _provider,
               child: Consumer<NhieGameProvider>(
-                builder: (ctx, game, _) => CenterReactionOverlay(
+                builder: (ctx, game, _) => AnimatedReactionOverlay(
                   reactions: (game.state?.reactions ?? const [])
                       .map(
                         (r) => (emoji: r.sticker, ts: r.ts, userId: r.userId),
@@ -3035,681 +3108,757 @@ class _GameBodyState extends State<_GameBody> {
     return ScreenTutorial(
       tutorialId: TutorialIds.nhieIntro,
       steps: [_nhieShowcaseKey],
-      child: PopScope(
-        // Redundant route-pop blocker only; the back ACTION is handled once by
-        // GameScreenSecurityGate via _handleGameBack (registered above), which
-        // also covers the history sub-view. See the TOD screen's matching note.
-        canPop: false,
-        onPopInvokedWithResult: (didPop, _) {},
-        child: Scaffold(
-          resizeToAvoidBottomInset: true,
-          appBar: AppBar(
-            // Solid brand-green chrome flowing into _NhieHud's own gradient
-            // below it, mirroring ToD's purple/blue party chrome — same
-            // continuous-chrome pattern, NHIE's own color identity. Actions
-            // (chat/history/rules) and back navigation are unchanged.
-            backgroundColor: _kNhieDeep,
-            foregroundColor: Colors.white,
-            elevation: 0,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back),
-              onPressed: () => nhieShowLeaveDialog(
-                context,
-                roomId: widget.roomId,
-                isOwners: widget.isOwner,
-                game: widget.game,
-                displayName:
-                    widget.displayNames[Supabase
-                            .instance
-                            .client
-                            .auth
-                            .currentUser
-                            ?.id ??
-                        ''] ??
-                    context.l10n.defaultPlayerName,
-              ),
-            ),
-            title: Text(
-              context.l10n.todRoundBadge(state.roundNumber, state.maxRounds),
-            ),
-            actions: [
-              // Item 4 — same shared in-game chat ToD already had, now
-              // available in NHIE too. showModalBottomSheet is its own
-              // Navigator route, so it already gets a working system-back
-              // dismissal for free (no extra back-guard branch needed, same
-              // as ToD's own chat button).
-              Consumer<NhieGameProvider>(
-                builder: (_, g, __) => Stack(
-                  alignment: Alignment.topRight,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.chat_bubble_outline_rounded),
-                      onPressed: () {
-                        g.clearUnreadChat();
-                        showModalBottomSheet(
-                          context: context,
-                          isScrollControlled: true,
-                          backgroundColor: Colors.transparent,
-                          builder: (_) => GameChatSheet(
-                            listenable: g,
-                            messagesOf: () => g.chatMessages,
-                            myId: g.userId,
-                            title: context.l10n.todChatTitle,
-                            onSend: (text, {replyTo}) =>
-                                g.sendChat(text, replyTo: replyTo),
-                            memberOf: g.roomProvider?.memberById,
-                            isPremiumPlus:
-                                context
-                                    .read<AuthProvider>()
-                                    .currentUser
-                                    ?.isPremiumPlusActive ??
-                                false,
-                            participants: g.gameParticipants,
-                            onSendTargeted:
-                                (
-                                  text, {
-                                  required recipientIds,
-                                  required recipientNames,
-                                  replyTo,
-                                }) => g.sendTargetedChat(
-                                  text,
-                                  recipientIds: recipientIds,
-                                  recipientNames: recipientNames,
-                                  replyTo: replyTo,
-                                ),
+      child: Stack(
+        children: [
+          PopScope(
+            // Redundant route-pop blocker only; the back ACTION is handled once by
+            // GameScreenSecurityGate via _handleGameBack (registered above), which
+            // also covers the history sub-view. See the TOD screen's matching note.
+            canPop: false,
+            onPopInvokedWithResult: (didPop, _) {},
+            child: Scaffold(
+              resizeToAvoidBottomInset: true,
+              appBar: AppBar(
+                // Solid brand-green chrome flowing into _NhieHud's own gradient
+                // below it, mirroring ToD's purple/blue party chrome — same
+                // continuous-chrome pattern, NHIE's own color identity. Actions
+                // (chat/history/rules) and back navigation are unchanged.
+                backgroundColor: _kNhieDeep,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: () => nhieShowLeaveDialog(
+                    context,
+                    roomId: widget.roomId,
+                    isOwners: widget.isOwner,
+                    game: widget.game,
+                    displayName:
+                        widget.displayNames[Supabase
+                                .instance
+                                .client
+                                .auth
+                                .currentUser
+                                ?.id ??
+                            ''] ??
+                        context.l10n.defaultPlayerName,
+                  ),
+                ),
+                title: Text(
+                  context.l10n.todRoundBadge(
+                    state.roundNumber,
+                    state.maxRounds,
+                  ),
+                ),
+                actions: [
+                  // Item 4 — same shared in-game chat ToD already had, now
+                  // available in NHIE too. showModalBottomSheet is its own
+                  // Navigator route, so it already gets a working system-back
+                  // dismissal for free (no extra back-guard branch needed, same
+                  // as ToD's own chat button).
+                  Consumer<NhieGameProvider>(
+                    builder: (_, g, __) => Stack(
+                      alignment: Alignment.topRight,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.chat_bubble_outline_rounded),
+                          onPressed: () {
+                            g.clearUnreadChat();
+                            showModalBottomSheet(
+                              context: context,
+                              isScrollControlled: true,
+                              backgroundColor: Colors.transparent,
+                              builder: (_) => GameChatSheet(
+                                listenable: g,
+                                messagesOf: () => g.chatMessages,
+                                myId: g.userId,
+                                title: context.l10n.todChatTitle,
+                                onSend: (text, {replyTo}) =>
+                                    g.sendChat(text, replyTo: replyTo),
+                                memberOf: g.roomProvider?.memberById,
+                                isPremiumPlus:
+                                    context
+                                        .read<AuthProvider>()
+                                        .currentUser
+                                        ?.isPremiumPlusActive ??
+                                    false,
+                                participants: g.gameParticipants,
+                                onSendTargeted:
+                                    (
+                                      text, {
+                                      required recipientIds,
+                                      required recipientNames,
+                                      replyTo,
+                                    }) => g.sendTargetedChat(
+                                      text,
+                                      recipientIds: recipientIds,
+                                      recipientNames: recipientNames,
+                                      replyTo: replyTo,
+                                    ),
+                              ),
+                            );
+                          },
+                        ),
+                        if (g.unreadChat > 0)
+                          Positioned(
+                            top: 8,
+                            right: 8,
+                            child: Container(
+                              width: 8,
+                              height: 8,
+                              decoration: const BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
                           ),
-                        );
-                      },
+                      ],
                     ),
-                    if (g.unreadChat > 0)
-                      Positioned(
-                        top: 8,
-                        right: 8,
-                        child: Container(
-                          width: 8,
-                          height: 8,
-                          decoration: const BoxDecoration(
-                            color: Colors.red,
-                            shape: BoxShape.circle,
-                          ),
+                  ),
+                  if (state.history.isNotEmpty)
+                    IconButton(
+                      icon: const Icon(Icons.history_rounded),
+                      onPressed: () =>
+                          setState(() => _showHistory = !_showHistory),
+                    ),
+                  RulesButton(
+                    gameType: GameType.neverHaveIEver,
+                    config: widget.game.config,
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(right: 12),
+                    child: Center(
+                      child: Text(
+                        context.l10n.nhieDrinksTotal(
+                          state.scores.values.fold(0, (a, b) => a + b),
+                        ),
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
-                  ],
-                ),
-              ),
-              if (state.history.isNotEmpty)
-                IconButton(
-                  icon: const Icon(Icons.history_rounded),
-                  onPressed: () => setState(() => _showHistory = !_showHistory),
-                ),
-              RulesButton(
-                gameType: GameType.neverHaveIEver,
-                config: widget.game.config,
-              ),
-              Padding(
-                padding: const EdgeInsets.only(right: 12),
-                child: Center(
-                  child: Text(
-                    context.l10n.nhieDrinksTotal(
-                      state.scores.values.fold(0, (a, b) => a + b),
                     ),
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
+                  ),
+                ],
+              ),
+              // Item 2 (real-device report: iOS "History" red-screen crash)
+              // — this body used to conditionally SWAP between
+              // _HistoryPanel and this tutorialShowcase(_nhieShowcaseKey)-
+              // wrapped content, tearing the showcase target down whenever
+              // History opened while ScreenTutorial (an ancestor,
+              // unconditionally wrapping this whole Scaffold) stayed
+              // mounted — the exact partial-subtree-teardown-under-a-
+              // surviving-ancestor hazard explained in full at this
+              // screen's own build() (see the matching fix/comment in
+              // tod_game_screen.dart, applied identically here). Now always
+              // built (never removed); the History overlay is a separate
+              // Stack layer above this Scaffold instead — see below.
+              body: tutorialShowcase(
+                context: context,
+                showcaseKey: _nhieShowcaseKey,
+                title: context.l10n.tutNhieTitle,
+                description: widget.isSpectator
+                    ? context.l10n.tutNhieSpectatorBody
+                    : context.l10n.tutNhieBody,
+                child: SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Round/timer/answered-count HUD — same data as
+                        // before (roundNumber/maxRounds, votes.length/
+                        // activePlayerCount, timerRemaining/timerIsRunning),
+                        // just presented as one continuous party-chrome
+                        // strip instead of a plain centered Text + a
+                        // separately-floating ring. Timer badge only
+                        // renders while g.timerIsRunning — no reserved
+                        // space when the timer is off, same guarantee the
+                        // old Consumer had.
+                        _NhieHud(state: state, game: game),
+                        const SizedBox(height: 12),
+
+                        Expanded(
+                          child: GameFlipCard(
+                            title: context.l10n.gameNameNeverHaveIEverFull,
+                            contentId: state.currentCard?.id,
+                            autoRevealDelay: const Duration(seconds: 1),
+                            frontChild: Text(
+                              state.currentCard?.content ?? '…',
+                              textAlign: TextAlign.center,
+                              style: AppTextStyles.gameCardContent(
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+
+                        if (!hasVoted && state.isVotingOpen) ...[
+                          TextField(
+                            controller: _msgCtrl,
+                            maxLength: 120,
+                            maxLines: 1,
+                            textInputAction: TextInputAction.done,
+                            onSubmitted: (_) =>
+                                FocusScope.of(context).unfocus(),
+                            decoration: InputDecoration(
+                              hintText: context.l10n.nhieAddCommentOptional,
+                              border: OutlineInputBorder(),
+                              isDense: true,
+                              counterText: '',
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          // Item 4 — large, playful, clearly-distinct
+                          // response choices (replacing the previous
+                          // 50px text buttons). The engine is still what
+                          // actually accepts/rejects the vote (see
+                          // NeverHaveIEverEngine._handleVote) — this is
+                          // presentation only.
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _NhieResponseButton(
+                                  label: context.l10n.nhieIHave,
+                                  emoji: '✋',
+                                  color: AppColors.errorRed,
+                                  onTap: () => game.vote(
+                                    true,
+                                    message: _msgCtrl.text.trim(),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _NhieResponseButton(
+                                  label: context.l10n.nhieNever,
+                                  emoji: '❌',
+                                  color: _kNhieVivid,
+                                  onTap: () => game.vote(
+                                    false,
+                                    message: _msgCtrl.text.trim(),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ] else if (!allVoted && hasVoted) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  _kNhieVivid.withValues(alpha: 0.14),
+                                  _kNhieVivid.withValues(alpha: 0.04),
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: _kNhieVivid.withValues(alpha: 0.3),
+                              ),
+                            ),
+                            child: Column(
+                              children: [
+                                // Item 4 — the player's own choice, shown
+                                // as a large animated icon the moment
+                                // it's recorded, while still waiting on
+                                // the rest of the table.
+                                _NhieChoiceRevealIcon(
+                                  haveI:
+                                      state.voteEntries[game.userId]?.haveI ??
+                                      false,
+                                ),
+                                const SizedBox(height: 10),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const SizedBox(
+                                      width: 14,
+                                      height: 14,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Text(
+                                      context.l10n.nhieWaitingCount(
+                                        state.voteEntries.length,
+                                        game.activePlayerCount,
+                                      ),
+                                      style: theme.textTheme.bodyMedium,
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ).animate().fadeIn().slideY(begin: 0.04, end: 0),
+                        ] else if (allVoted) ...[
+                          // Item 5 (result-screen pass) — visually
+                          // prominent completion state, matching the
+                          // same chip Meme's results screen uses.
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: ResultCompletionChip(
+                                responded: state.voteEntries.length,
+                                total: state.playerOrder
+                                    .where(
+                                      (id) => !game.awayPlayerIds.contains(id),
+                                    )
+                                    .length,
+                              ),
+                            ),
+                          ),
+                          // Item 1/4/5 — a player who never responded
+                          // before the timer closed the round (no entry
+                          // in voteEntries) still reaches this same
+                          // results/ready-for-next-round state as
+                          // everyone else — this banner is purely
+                          // informational, not a dead end the way the
+                          // old standalone "Time's Up" screen was.
+                          if (!hasVoted)
+                            Container(
+                              margin: const EdgeInsets.only(bottom: 10),
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              decoration: BoxDecoration(
+                                color: AppColors.warningAmber.withValues(
+                                  alpha: 0.12,
+                                ),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: AppColors.warningAmber.withValues(
+                                    alpha: 0.4,
+                                  ),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Text(
+                                    '⏱️',
+                                    style: TextStyle(fontSize: 18),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    context.l10n.nhieTimedOut,
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ).animate().fadeIn(),
+                          DishonestReasonsPanel(
+                            fetch: game.getMyDishonestReasons,
+                            key: ValueKey(
+                              'nhie_dishonest_${state.roundNumber}',
+                            ),
+                          ),
+                          // Flexible (not Expanded) so this list only
+                          // takes the room left after the card above —
+                          // scrolls internally instead of overflowing
+                          // when many players have responded (item 12).
+                          //
+                          // Item 4/5 (result-screen pass) — this now
+                          // iterates the round's full active roster
+                          // (state.playerOrder, minus away/disconnected
+                          // players), not just state.voteEntries.keys.
+                          // A player who never voted before the timer
+                          // closed the round previously had NO row at
+                          // all here (see PlayerResultTile's own doc
+                          // comment) — indistinguishable from "this
+                          // screen is still loading". They now get an
+                          // explicit PlayerResultStatus.timedOut row.
+                          // NHIE has no separate Skip action (only a
+                          // timer), so every non-voter here is
+                          // genuinely a timeout, determined from real
+                          // state (absence from voteEntries), never
+                          // from response text.
+                          Flexible(
+                            child: Builder(
+                              builder: (context) {
+                                final respondedIds = state.voteEntries.keys
+                                    .toSet();
+                                final nonResponderIds = state.playerOrder
+                                    .where(
+                                      (id) =>
+                                          !respondedIds.contains(id) &&
+                                          !game.awayPlayerIds.contains(id),
+                                    )
+                                    .toList();
+                                final respondedTiles = state.voteEntries.entries
+                                    .toList()
+                                    .asMap()
+                                    .entries
+                                    .map((indexed) {
+                                      final i = indexed.key;
+                                      final e = indexed.value;
+                                      final isMe = e.key == game.userId;
+                                      final color = e.value.haveI
+                                          ? AppColors.errorRed
+                                          : _kNhieVivid;
+                                      final member = nhieRoomMemberFor(
+                                        game,
+                                        e.key,
+                                      );
+                                      return PlayerResultTile(
+                                            key: ValueKey('nhie_r_${e.key}'),
+                                            avatarUrl: member?.avatarUrl,
+                                            avatarConfig: member?.avatarConfig,
+                                            isPremium:
+                                                member?.isPremium ?? false,
+                                            displayName: _name(e.key),
+                                            status:
+                                                PlayerResultStatus.responded,
+                                            isViewer: isMe,
+                                            accentColor: _kNhieVivid,
+                                            responseContent: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                HonestyScoreLine(
+                                                  honestyPoints:
+                                                      member?.honestyPoints ??
+                                                      0,
+                                                  generalScore:
+                                                      member?.generalScore ?? 0,
+                                                  iconSize: 10,
+                                                ),
+                                                const SizedBox(height: 4),
+                                                Container(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 10,
+                                                        vertical: 5,
+                                                      ),
+                                                  decoration: BoxDecoration(
+                                                    color: color.withValues(
+                                                      alpha: 0.14,
+                                                    ),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          999,
+                                                        ),
+                                                  ),
+                                                  child: Text(
+                                                    e.value.haveI
+                                                        ? '✋ ${context.l10n.nhieIHave}'
+                                                        : '❌ ${context.l10n.nhieNever}',
+                                                    style: TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                      fontSize: 12,
+                                                      color: color,
+                                                    ),
+                                                  ),
+                                                ),
+                                                if (e.value.message.isNotEmpty)
+                                                  // Item 18.3 — this IS the
+                                                  // player's response, not
+                                                  // metadata; larger and
+                                                  // stronger than the old
+                                                  // muted bodySmall italic,
+                                                  // scaling down only if
+                                                  // genuinely long.
+                                                  Padding(
+                                                    padding:
+                                                        const EdgeInsets.only(
+                                                          top: 4,
+                                                        ),
+                                                    child: ResponsiveGameText(
+                                                      context.l10n
+                                                          .todQuotedResponse(
+                                                            e.value.message,
+                                                          ),
+                                                      maxLines: 3,
+                                                      style:
+                                                          theme
+                                                              .textTheme
+                                                              .bodyMedium
+                                                              ?.copyWith(
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w600,
+                                                                color: theme
+                                                                    .colorScheme
+                                                                    .onSurface,
+                                                              ) ??
+                                                          const TextStyle(
+                                                            fontSize: 15,
+                                                            fontWeight:
+                                                                FontWeight.w600,
+                                                          ),
+                                                    ),
+                                                  ),
+                                              ],
+                                            ),
+                                            trailing:
+                                                (game
+                                                        .config
+                                                        ?.honestyVoteEnabled ??
+                                                    true)
+                                                ? CompactHonestyVoteButtons(
+                                                    voterId: game.userId,
+                                                    targetUserId: e.key,
+                                                    participantIds:
+                                                        state.playerOrder,
+                                                    responseKey:
+                                                        'round:${state.roundNumber}',
+                                                    hasVoted: game.hasVotedHonesty(
+                                                      'round:${state.roundNumber}',
+                                                      e.key,
+                                                    ),
+                                                    onVote:
+                                                        game.castHonestyVote,
+                                                  )
+                                                : null,
+                                          )
+                                          .animate(delay: (i * 50).ms)
+                                          .fadeIn()
+                                          .slideX(begin: 0.03, end: 0);
+                                    });
+                                final nonResponderTiles = nonResponderIds.map((
+                                  id,
+                                ) {
+                                  final member = nhieRoomMemberFor(game, id);
+                                  return PlayerResultTile(
+                                    key: ValueKey('nhie_nr_$id'),
+                                    avatarUrl: member?.avatarUrl,
+                                    avatarConfig: member?.avatarConfig,
+                                    isPremium: member?.isPremium ?? false,
+                                    displayName: _name(id),
+                                    status: PlayerResultStatus.timedOut,
+                                    isViewer: id == game.userId,
+                                    accentColor: _kNhieVivid,
+                                  ).animate().fadeIn();
+                                });
+                                return ListView(
+                                  padding: const EdgeInsets.only(bottom: 6),
+                                  children:
+                                      [...respondedTiles, ...nonResponderTiles]
+                                          .map(
+                                            (w) => Padding(
+                                              padding: const EdgeInsets.only(
+                                                bottom: 6,
+                                              ),
+                                              child: w,
+                                            ),
+                                          )
+                                          .toList(),
+                                );
+                              },
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          if (game.canAdvanceTurnHere) ...[
+                            if (!game.allPlayersVoted)
+                              Text(
+                                context.l10n.nhieAnsweredCount(
+                                  game.votedCount,
+                                  game.activePlayerCount,
+                                ),
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                                textAlign: TextAlign.center,
+                              )
+                            else if (!game.allOthersReady)
+                              Text(
+                                context.l10n.nhieWaitingForPlayersReady,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            const SizedBox(height: 6),
+                            SizedBox(
+                              height: 46,
+                              child: FilledButton(
+                                onPressed:
+                                    (game.allPlayersVoted &&
+                                        game.allOthersReady)
+                                    ? () => game.requestAdvanceTurn()
+                                    : null,
+                                child: Text(context.l10n.nhieNextCard),
+                              ),
+                            ),
+                            if (game.isOwner)
+                              Builder(
+                                builder: (ctx) {
+                                  final isPremium =
+                                      ctx
+                                          .read<AuthProvider>()
+                                          .currentUser
+                                          ?.isPremium ??
+                                      false;
+                                  if (!isPremium)
+                                    return const SizedBox.shrink();
+                                  return TextButton.icon(
+                                    onPressed: () =>
+                                        _showAddCustomCardSheet(ctx, game),
+                                    icon: const Icon(
+                                      Icons.add_card_outlined,
+                                      size: 16,
+                                    ),
+                                    label: Text(
+                                      ctx.l10n.todAddCustomCardButton,
+                                    ),
+                                    style: TextButton.styleFrom(
+                                      foregroundColor:
+                                          theme.colorScheme.primary,
+                                    ),
+                                  );
+                                },
+                              ),
+                          ] else if (widget.isSpectator)
+                            Text(
+                              context.l10n.todSpectatingWaitingHost,
+                              textAlign: TextAlign.center,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            )
+                          else if (game.hasMarkedReady)
+                            Text(
+                              context.l10n.todReadyWaitingHost,
+                              textAlign: TextAlign.center,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: AppColors.tealGreen,
+                              ),
+                            )
+                          else
+                            SizedBox(
+                              height: 46,
+                              child: FilledButton(
+                                onPressed: game.markReadyForNext,
+                                child: Text(context.l10n.nhieReadyForNextRound),
+                              ),
+                            ),
+                        ],
+
+                        const SizedBox(height: 8),
+                        if (reactionTally.isNotEmpty ||
+                            avatarReactions.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 4),
+                            child: Wrap(
+                              spacing: 6,
+                              runSpacing: 4,
+                              children: [
+                                // Emoji reactions: aggregated with a count.
+                                for (final e in reactionTally.entries)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 3,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: theme
+                                          .colorScheme
+                                          .surfaceContainerHighest,
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        ReactionDisplay(value: e.key, size: 13),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          '${e.value}',
+                                          style: const TextStyle(fontSize: 11),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                // Avatar reactions: one per reactor, each using
+                                // the REACTOR's own avatar config.
+                                for (final r in avatarReactions)
+                                  Container(
+                                    padding: const EdgeInsets.all(2),
+                                    decoration: BoxDecoration(
+                                      color: theme
+                                          .colorScheme
+                                          .surfaceContainerHighest,
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: ReactionDisplay(
+                                      value: r.sticker,
+                                      size: 13,
+                                      avatarConfig: game.roomProvider
+                                          ?.memberById(r.userId)
+                                          ?.avatarConfig,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        EmojiReactionRow(
+                          reactionsByEmoji: const {},
+                          // Real-device bug: reacting before this player
+                          // has actually voted was interactive and
+                          // reachable. EmojiReactionRow already hides its
+                          // picker entry points whenever alreadyReacted is
+                          // true (see Sticker.dart) — reusing that exact
+                          // mechanism means "hasn't voted yet" simply
+                          // looks like "nothing to react with yet", and
+                          // reverts to the normal alreadyReacted-only
+                          // behavior the instant hasVoted flips true. The
+                          // engine's own voteEntries guard (see
+                          // NeverHaveIEverEngine._handleReaction) remains
+                          // the authoritative enforcement — this is only
+                          // the matching UI-side prevention.
+                          alreadyReacted: hasReacted || !hasVoted,
+                          onReact: game.sendReaction,
+                          useAvatarMode:
+                              context
+                                  .read<AuthProvider>()
+                                  .currentUser
+                                  ?.isPremiumActive ??
+                              false,
+                          ownAvatarConfig: context
+                              .read<AuthProvider>()
+                              .currentUser
+                              ?.avatarConfig,
+                        ),
+                        const SizedBox(height: 8),
+                      ],
                     ),
                   ),
                 ),
               ),
-            ],
+            ),
           ),
-          body: _showHistory
-              ? _HistoryPanel(
+          // History overlay (item 2 fix) — a COVER, not a replacement:
+          // the main-game PopScope/Scaffold above is never removed
+          // from the tree, so _nhieShowcaseKey's tutorialShowcase
+          // target (and its always-active showcaseview Overlay/portal
+          // side effect) is never torn down by toggling History. See
+          // this screen's own build()-start comment and
+          // tod_game_screen.dart's matching fix for the full
+          // explanation.
+          if (_showHistory)
+            Positioned.fill(
+              child: Scaffold(
+                appBar: AppBar(
+                  leading: BackButton(
+                    onPressed: () => setState(() => _showHistory = false),
+                  ),
+                  title: Text(context.l10n.nhieGameHistoryTitle),
+                ),
+                body: _HistoryPanel(
                   history: state.history,
                   displayNames: widget.displayNames,
                   onClose: () => setState(() => _showHistory = false),
                   avatarConfigResolver: (uid) =>
                       widget.game.roomProvider?.memberById(uid)?.avatarConfig,
-                )
-              : tutorialShowcase(
-                  context: context,
-                  showcaseKey: _nhieShowcaseKey,
-                  title: context.l10n.tutNhieTitle,
-                  description: widget.isSpectator
-                      ? context.l10n.tutNhieSpectatorBody
-                      : context.l10n.tutNhieBody,
-                  child: SafeArea(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          // Round/timer/answered-count HUD — same data as
-                          // before (roundNumber/maxRounds, votes.length/
-                          // activePlayerCount, timerRemaining/timerIsRunning),
-                          // just presented as one continuous party-chrome
-                          // strip instead of a plain centered Text + a
-                          // separately-floating ring. Timer badge only
-                          // renders while g.timerIsRunning — no reserved
-                          // space when the timer is off, same guarantee the
-                          // old Consumer had.
-                          _NhieHud(state: state, game: game),
-                          const SizedBox(height: 12),
-
-                          Expanded(
-                            child: _NhieCardFace(
-                              content: state.currentCard?.content ?? '…',
-                              imageUrl: widget.packCoverUrl,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-
-                          if (!hasVoted && state.isVotingOpen) ...[
-                            TextField(
-                              controller: _msgCtrl,
-                              maxLength: 120,
-                              maxLines: 1,
-                              textInputAction: TextInputAction.done,
-                              onSubmitted: (_) =>
-                                  FocusScope.of(context).unfocus(),
-                              decoration: InputDecoration(
-                                hintText: context.l10n.nhieAddCommentOptional,
-                                border: OutlineInputBorder(),
-                                isDense: true,
-                                counterText: '',
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            // Item 4 — large, playful, clearly-distinct
-                            // response choices (replacing the previous
-                            // 50px text buttons). The engine is still what
-                            // actually accepts/rejects the vote (see
-                            // NeverHaveIEverEngine._handleVote) — this is
-                            // presentation only.
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: _NhieResponseButton(
-                                    label: context.l10n.nhieIHave,
-                                    emoji: '✋',
-                                    color: AppColors.errorRed,
-                                    onTap: () => game.vote(
-                                      true,
-                                      message: _msgCtrl.text.trim(),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: _NhieResponseButton(
-                                    label: context.l10n.nhieNever,
-                                    emoji: '❌',
-                                    color: _kNhieVivid,
-                                    onTap: () => game.vote(
-                                      false,
-                                      message: _msgCtrl.text.trim(),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ] else if (!allVoted && hasVoted) ...[
-                            Container(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    _kNhieVivid.withValues(alpha: 0.14),
-                                    _kNhieVivid.withValues(alpha: 0.04),
-                                  ],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: _kNhieVivid.withValues(alpha: 0.3),
-                                ),
-                              ),
-                              child: Column(
-                                children: [
-                                  // Item 4 — the player's own choice, shown
-                                  // as a large animated icon the moment
-                                  // it's recorded, while still waiting on
-                                  // the rest of the table.
-                                  _NhieChoiceRevealIcon(
-                                    haveI:
-                                        state.voteEntries[game.userId]?.haveI ??
-                                        false,
-                                  ),
-                                  const SizedBox(height: 10),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      const SizedBox(
-                                        width: 14,
-                                        height: 14,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Text(
-                                        context.l10n.nhieWaitingCount(
-                                          state.voteEntries.length,
-                                          game.activePlayerCount,
-                                        ),
-                                        style: theme.textTheme.bodyMedium,
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ).animate().fadeIn().slideY(begin: 0.04, end: 0),
-                          ] else if (allVoted) ...[
-                            // Item 1/4/5 — a player who never responded
-                            // before the timer closed the round (no entry
-                            // in voteEntries) still reaches this same
-                            // results/ready-for-next-round state as
-                            // everyone else — this banner is purely
-                            // informational, not a dead end the way the
-                            // old standalone "Time's Up" screen was.
-                            if (!hasVoted)
-                              Container(
-                                margin: const EdgeInsets.only(bottom: 10),
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 10,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.warningAmber.withValues(
-                                    alpha: 0.12,
-                                  ),
-                                  borderRadius: BorderRadius.circular(14),
-                                  border: Border.all(
-                                    color: AppColors.warningAmber.withValues(
-                                      alpha: 0.4,
-                                    ),
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    const Text(
-                                      '⏱️',
-                                      style: TextStyle(fontSize: 18),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      context.l10n.nhieTimedOut,
-                                      style: theme.textTheme.bodySmall
-                                          ?.copyWith(
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                    ),
-                                  ],
-                                ),
-                              ).animate().fadeIn(),
-                            DishonestReasonsPanel(
-                              fetch: game.getMyDishonestReasons,
-                              key: ValueKey('nhie_dishonest_${state.roundNumber}'),
-                            ),
-                            // Flexible (not Expanded) so this list only
-                            // takes the room left after the card above —
-                            // scrolls internally instead of overflowing
-                            // when many players have responded (item 12).
-                            Flexible(
-                              child: ListView(
-                                children: state.voteEntries.entries.toList().asMap().entries.map((
-                                  indexed,
-                                ) {
-                                  final i = indexed.key;
-                                  final e = indexed.value;
-                                  final isMe = e.key == game.userId;
-                                  final color = e.value.haveI
-                                      ? AppColors.errorRed
-                                      : _kNhieVivid;
-                                  return Container(
-                                        margin: const EdgeInsets.only(
-                                          bottom: 6,
-                                        ),
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                          vertical: 10,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: theme
-                                              .colorScheme
-                                              .surfaceContainerHighest,
-                                          borderRadius: BorderRadius.circular(
-                                            14,
-                                          ),
-                                          border: isMe
-                                              ? Border.all(
-                                                  color: _kNhieVivid,
-                                                  width: 1.4,
-                                                )
-                                              : null,
-                                        ),
-                                        child: Row(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                children: [
-                                                  Text(
-                                                    _name(e.key),
-                                                    style: theme
-                                                        .textTheme
-                                                        .bodyMedium
-                                                        ?.copyWith(
-                                                          fontWeight:
-                                                              FontWeight.w600,
-                                                          color: isMe
-                                                              ? _kNhieVivid
-                                                              : null,
-                                                        ),
-                                                  ),
-                                                  Padding(
-                                                    padding:
-                                                        const EdgeInsets.only(
-                                                          top: 2,
-                                                        ),
-                                                    child: HonestyScoreLine(
-                                                      honestyPoints:
-                                                          nhieRoomMemberFor(
-                                                            game,
-                                                            e.key,
-                                                          )?.honestyPoints ??
-                                                          0,
-                                                      generalScore:
-                                                          nhieRoomMemberFor(
-                                                            game,
-                                                            e.key,
-                                                          )?.generalScore ??
-                                                          0,
-                                                      iconSize: 10,
-                                                    ),
-                                                  ),
-                                                  if (e
-                                                      .value
-                                                      .message
-                                                      .isNotEmpty)
-                                                    // Item 18.3 — this
-                                                    // IS the player's
-                                                    // response, not
-                                                    // metadata; larger
-                                                    // and stronger than
-                                                    // the old muted
-                                                    // bodySmall italic,
-                                                    // scaling down only
-                                                    // if genuinely long.
-                                                    Padding(
-                                                      padding:
-                                                          const EdgeInsets.only(
-                                                            top: 2,
-                                                          ),
-                                                      child: ResponsiveGameText(
-                                                        context.l10n
-                                                            .todQuotedResponse(
-                                                              e.value.message,
-                                                            ),
-                                                        maxLines: 3,
-                                                        style:
-                                                            theme
-                                                                .textTheme
-                                                                .bodyMedium
-                                                                ?.copyWith(
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .w600,
-                                                                  color: theme
-                                                                      .colorScheme
-                                                                      .onSurface,
-                                                                ) ??
-                                                            const TextStyle(
-                                                              fontSize: 15,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .w600,
-                                                            ),
-                                                      ),
-                                                    ),
-                                                ],
-                                              ),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            Container(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 10,
-                                                    vertical: 5,
-                                                  ),
-                                              decoration: BoxDecoration(
-                                                color: color.withValues(
-                                                  alpha: 0.14,
-                                                ),
-                                                borderRadius:
-                                                    BorderRadius.circular(999),
-                                              ),
-                                              child: Text(
-                                                e.value.haveI
-                                                    ? '✋ ${context.l10n.nhieIHave}'
-                                                    : '❌ ${context.l10n.nhieNever}',
-                                                style: TextStyle(
-                                                  fontWeight: FontWeight.w700,
-                                                  fontSize: 12,
-                                                  color: color,
-                                                ),
-                                              ),
-                                            ),
-                                            CompactHonestyVoteButtons(
-                                              voterId: game.userId,
-                                              targetUserId: e.key,
-                                              participantIds:
-                                                  state.playerOrder,
-                                              responseKey:
-                                                  'round:${state.roundNumber}',
-                                              hasVoted: game.hasVotedHonesty(
-                                                'round:${state.roundNumber}',
-                                                e.key,
-                                              ),
-                                              onVote: game.castHonestyVote,
-                                            ),
-                                          ],
-                                        ),
-                                      )
-                                      .animate(delay: (i * 50).ms)
-                                      .fadeIn()
-                                      .slideX(begin: 0.03, end: 0);
-                                }).toList(),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            if (game.canAdvanceTurnHere) ...[
-                              if (!game.allPlayersVoted)
-                                Text(
-                                  context.l10n.nhieAnsweredCount(
-                                    game.votedCount,
-                                    game.activePlayerCount,
-                                  ),
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: theme.colorScheme.onSurfaceVariant,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                )
-                              else if (!game.allOthersReady)
-                                Text(
-                                  context.l10n.nhieWaitingForPlayersReady,
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: theme.colorScheme.onSurfaceVariant,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              const SizedBox(height: 6),
-                              SizedBox(
-                                height: 46,
-                                child: FilledButton(
-                                  onPressed:
-                                      (game.allPlayersVoted &&
-                                          game.allOthersReady)
-                                      ? () => game.requestAdvanceTurn()
-                                      : null,
-                                  child: Text(context.l10n.nhieNextCard),
-                                ),
-                              ),
-                              if (game.isOwner)
-                                Builder(
-                                  builder: (ctx) {
-                                    final isPremium =
-                                        ctx
-                                            .read<AuthProvider>()
-                                            .currentUser
-                                            ?.isPremium ??
-                                        false;
-                                    if (!isPremium)
-                                      return const SizedBox.shrink();
-                                    return TextButton.icon(
-                                      onPressed: () =>
-                                          _showAddCustomCardSheet(ctx, game),
-                                      icon: const Icon(
-                                        Icons.add_card_outlined,
-                                        size: 16,
-                                      ),
-                                      label: Text(
-                                        ctx.l10n.todAddCustomCardButton,
-                                      ),
-                                      style: TextButton.styleFrom(
-                                        foregroundColor:
-                                            theme.colorScheme.primary,
-                                      ),
-                                    );
-                                  },
-                                ),
-                            ] else if (widget.isSpectator)
-                              Text(
-                                context.l10n.todSpectatingWaitingHost,
-                                textAlign: TextAlign.center,
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                ),
-                              )
-                            else if (game.hasMarkedReady)
-                              Text(
-                                context.l10n.todReadyWaitingHost,
-                                textAlign: TextAlign.center,
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: AppColors.tealGreen,
-                                ),
-                              )
-                            else
-                              SizedBox(
-                                height: 46,
-                                child: FilledButton(
-                                  onPressed: game.markReadyForNext,
-                                  child: Text(
-                                    context.l10n.nhieReadyForNextRound,
-                                  ),
-                                ),
-                              ),
-                          ],
-
-                          const SizedBox(height: 8),
-                          if (reactionTally.isNotEmpty ||
-                              avatarReactions.isNotEmpty)
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 4),
-                              child: Wrap(
-                                spacing: 6,
-                                runSpacing: 4,
-                                children: [
-                                  // Emoji reactions: aggregated with a count.
-                                  for (final e in reactionTally.entries)
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 3,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: theme
-                                            .colorScheme
-                                            .surfaceContainerHighest,
-                                        borderRadius: BorderRadius.circular(20),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          ReactionDisplay(
-                                            value: e.key,
-                                            size: 13,
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            '${e.value}',
-                                            style: const TextStyle(
-                                              fontSize: 11,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  // Avatar reactions: one per reactor, each using
-                                  // the REACTOR's own avatar config.
-                                  for (final r in avatarReactions)
-                                    Container(
-                                      padding: const EdgeInsets.all(2),
-                                      decoration: BoxDecoration(
-                                        color: theme
-                                            .colorScheme
-                                            .surfaceContainerHighest,
-                                        borderRadius: BorderRadius.circular(20),
-                                      ),
-                                      child: ReactionDisplay(
-                                        value: r.sticker,
-                                        size: 13,
-                                        avatarConfig: game.roomProvider
-                                            ?.memberById(r.userId)
-                                            ?.avatarConfig,
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ),
-                          EmojiReactionRow(
-                            reactionsByEmoji: const {},
-                            // Real-device bug: reacting before this player
-                            // has actually voted was interactive and
-                            // reachable. EmojiReactionRow already hides its
-                            // picker entry points whenever alreadyReacted is
-                            // true (see Sticker.dart) — reusing that exact
-                            // mechanism means "hasn't voted yet" simply
-                            // looks like "nothing to react with yet", and
-                            // reverts to the normal alreadyReacted-only
-                            // behavior the instant hasVoted flips true. The
-                            // engine's own voteEntries guard (see
-                            // NeverHaveIEverEngine._handleReaction) remains
-                            // the authoritative enforcement — this is only
-                            // the matching UI-side prevention.
-                            alreadyReacted: hasReacted || !hasVoted,
-                            onReact: game.sendReaction,
-                            useAvatarMode:
-                                context
-                                    .read<AuthProvider>()
-                                    .currentUser
-                                    ?.isPremiumActive ??
-                                false,
-                            ownAvatarConfig: context
-                                .read<AuthProvider>()
-                                .currentUser
-                                ?.avatarConfig,
-                          ),
-                          const SizedBox(height: 8),
-                        ],
-                      ),
-                    ),
-                  ),
                 ),
-        ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -4053,162 +4202,6 @@ class _NhieTimerBadgeState extends State<_NhieTimerBadge> {
           end: 1.08,
           duration: 500.ms,
           curve: Curves.easeInOut,
-        );
-  }
-}
-
-/// Item 7/8/16 — NHIE's premium prompt-card centerpiece: mirrors ToD's own
-/// `_CardFace` (image background + gradient scrim + shimmer texture +
-/// glossy highlight + ambient glow) but with NHIE's own green identity, and
-/// resolves its background through the one shared [GameCardBackground]
-/// (pack cover → jma3a_card_cover_playful.png → flat color) instead of
-/// duplicating that fallback chain inline. Content/scoring are untouched —
-/// this only renders `content`, it never computes it.
-class _NhieCardFace extends StatelessWidget {
-  const _NhieCardFace({required this.content, required this.imageUrl});
-  final String content;
-  final String? imageUrl;
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-          borderRadius: BorderRadius.circular(28),
-          child: Container(
-            width: double.infinity,
-            constraints: const BoxConstraints.expand(),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(28),
-              border: Border.all(
-                color: _kNhieVivid.withValues(alpha: 0.55),
-                width: 1.5,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: _kNhieVivid.withValues(alpha: 0.30),
-                  blurRadius: 40,
-                  spreadRadius: -4,
-                  offset: const Offset(0, 14),
-                ),
-                BoxShadow(
-                  color: _kNhieDeep.withValues(alpha: 0.38),
-                  blurRadius: 24,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Stack(
-              children: [
-                Positioned.fill(
-                  child: GameCardBackground(
-                    imageUrl: imageUrl,
-                    fallbackColor: _kNhieDeep,
-                  ),
-                ),
-                Positioned.fill(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          _kNhieDeep.withValues(alpha: 0.50),
-                          const Color(0xFF0D1B2A).withValues(alpha: 0.68),
-                        ],
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                      ),
-                    ),
-                  ),
-                ),
-                // Glossy top-left sheen — same "lacquered card" cue ToD's own
-                // card face uses.
-                const Positioned.fill(
-                  child: IgnorePointer(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [Color(0x24FFFFFF), Color(0x00FFFFFF)],
-                          stops: [0.0, 0.5],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(26),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 7,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Text('🙊', style: TextStyle(fontSize: 14)),
-                            const SizedBox(width: 6),
-                            Text(
-                              context.l10n.nhieCardTitle,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 1.0,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 18),
-                      Flexible(
-                        child: SingleChildScrollView(
-                          child:
-                              Text(
-                                    content,
-                                    textAlign: TextAlign.center,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 22,
-                                      fontWeight: FontWeight.w700,
-                                      height: 1.45,
-                                      shadows: [
-                                        Shadow(
-                                          color: Colors.black54,
-                                          blurRadius: 8,
-                                        ),
-                                      ],
-                                    ),
-                                  )
-                                  .animate(key: ValueKey(content))
-                                  .fadeIn(duration: 320.ms),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        )
-        // Reveal entrance — pop in, then a light sweep, same cue ToD's own
-        // card face uses for "freshly dealt."
-        .animate(key: ValueKey(content))
-        .scale(
-          begin: const Offset(0.94, 0.94),
-          end: const Offset(1, 1),
-          duration: 300.ms,
-          curve: Curves.easeOutBack,
-        )
-        .shimmer(
-          delay: 260.ms,
-          duration: 800.ms,
-          color: Colors.white.withValues(alpha: 0.2),
         );
   }
 }
@@ -4611,6 +4604,7 @@ class _GameOverScreenState extends State<_GameOverScreen> {
                     context,
                     widget.roomId,
                     roomProvider: widget.game.roomProvider,
+                    isOwner: widget.game.isOwner,
                   ),
                   child: Text(context.l10n.gameBackToRoom),
                 ),

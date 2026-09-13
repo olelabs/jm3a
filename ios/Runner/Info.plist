@@ -2,21 +2,6 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>Used to record voice proof for game challenges</string>
-	<key>CFBundleURLTypes</key>
-	<array>
-		<dict>
-			<key>CFBundleTypeRole</key>
-			<string>Editor</string>
-			<key>CFBundleURLName</key>
-			<string>com.innovate.jma3a</string>
-			<key>CFBundleURLSchemes</key>
-			<array>
-				<string>jma3a</string>
-			</array>
-		</dict>
-	</array>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
@@ -37,10 +22,56 @@
 	<string>$(FLUTTER_BUILD_NAME)</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.innovate.jma3a</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>jma3a</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<!-- Flutter's own engine-level deep-link routing defaults to ON when
+	     this key is absent (see FlutterSharedApplication.isFlutterDeepLinkingEnabled
+	     in the iOS engine — nil Info.plist value reads as enabled). With
+	     it on, EVERY incoming Universal Link/custom-scheme URL is ALSO
+	     sent straight to the framework as a raw `pushRouteInformation`
+	     call (GoRouter's default platform-route handling) — a second,
+	     completely independent navigation, alongside the one
+	     DeepLinkService/AppRouter's own pendingProfile/pendingInvite
+	     mechanism already performs (see deep_links.dart, app.dart's
+	     _onProfileLink/_onInvite, app_router.dart's redirect resume
+	     logic). The app_links plugin (AppLinksIosPlugin.swift) always
+	     returns `false` from its own continueUserActivity/openURL
+	     delegate methods — it only OBSERVES the link for its own
+	     stream, it never tells the engine "handled" — so this fallback
+	     fires for every single deep link regardless. On a cold launch
+	     this races harmlessly behind DeepLinkService's own faster
+	     pendingProfile-resume redirect; on a WARM/backgrounded resume
+	     (app already running, scanned again via the native Camera) it
+	     doesn't race behind anything — it independently `.go()`s
+	     GoRouter straight to `/u/<username>` (UsernameProfileResolverScreen,
+	     "Loading profile…") on top of/instead of whatever
+	     DeepLinkService's own push already did, and that screen's own
+	     internal hand-off to the real profile is what a Back press was
+	     re-triggering, repeatedly. DeepLinkService's own cold/warm
+	     handling (app_links' getInitialLink()/uriLinkStream) does NOT
+	     depend on this key at all, so disabling Flutter's redundant
+	     fallback leaves the app's ONE actual deep-link path unaffected. -->
+	<key>FlutterDeepLinkingEnabled</key>
+	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Used to scan a room or profile QR code</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Used to record voice proof for game challenges</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
@@ -75,15 +106,13 @@
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>UISupportedInterfaceOrientations~ipad</key>
 	<array>
-		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationPortraitUpsideDown</string>
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
 	</array>
 </dict>
 </plist>

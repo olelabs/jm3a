@@ -5,6 +5,7 @@ import '../../../../core/services/image_cache_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/cards/j_card.dart';
 import '../../../../shared/widgets/cards/pack_cover_fallback.dart';
+import '../../../../shared/widgets/cards/user_avatar.dart';
 import '../../domain/pack_entity.dart';
 
 /// The pack's own title in the viewer's language if available, else in the
@@ -181,10 +182,50 @@ class PackCard extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
+                // Item 12 — creator avatar + name, shown right on the card
+                // so the buyer never has to open the pack first to see who
+                // made it. Reuses UserAvatar (the app's one standard
+                // avatar widget, already falling back to initials when
+                // creatorAvatarUrl is null) and the same PackEntity fields
+                // the marketplace query already fetches — no extra query.
+                // A missing creatorName (a corrupt/incomplete row) falls
+                // back to the generic localized label rather than
+                // fabricating one, mirroring _displayTitle's own rule
+                // above.
+                if (pack.creatorName != null || pack.creatorAvatarUrl != null) ...[
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      UserAvatar(
+                        avatarUrl: pack.creatorAvatarUrl,
+                        displayName: pack.creatorName,
+                        size: 14,
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          pack.creatorName ?? context.l10n.packCreator,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: 3),
                 Row(
                   children: [
-                    // Rating
+                    // Rating — item 11: also surfaces the rating COUNT
+                    // (already fetched via PackEntity.totalRatings, same
+                    // query as avgRating) rather than just the average, so
+                    // a buyer can tell "4.8 from 2 people" apart from
+                    // "4.8 from 200". avgRating == 0 (never rated yet)
+                    // deliberately shows nothing here rather than a
+                    // misleading "0.0" — the existing, correct empty state
+                    // for a pack with no ratings.
                     if (pack.avgRating > 0) ...[
                       Icon(
                         Icons.star_rounded,
@@ -193,7 +234,9 @@ class PackCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 2),
                       Text(
-                        pack.avgRating.toStringAsFixed(1),
+                        pack.totalRatings > 0
+                            ? '${pack.avgRating.toStringAsFixed(1)} (${pack.totalRatings})'
+                            : pack.avgRating.toStringAsFixed(1),
                         style: theme.textTheme.labelSmall?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
                         ),

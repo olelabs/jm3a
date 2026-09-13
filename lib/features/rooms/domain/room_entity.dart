@@ -4397,6 +4397,14 @@ abstract final class ModeratorPermission {
   static const endGame = 'end_game';
   static const startGame = 'start_game';
 
+  // Item 5 — lets a delegated moderator (not just the room owner, who
+  // always passes has_room_permission unconditionally) toggle a member
+  // between player and spectator via set_room_member_spectator. Distinct
+  // from acceptSpectators, which only gates approving a member's OWN
+  // request to become a spectator, not an admin proactively reassigning
+  // someone else.
+  static const setSpectator = 'set_spectator';
+
   // start_game/end_game are intentionally excluded — both are hard
   // owner-only now (see create_game_session and the ToD end-game path),
   // never delegable to a moderator. The string constants above stay
@@ -4411,6 +4419,7 @@ abstract final class ModeratorPermission {
     muteChat,
     mutePlayers,
     manageSettings,
+    setSpectator,
   ];
 }
 
@@ -4677,6 +4686,7 @@ class RoomSettingsEntity extends Equatable {
     this.proofVisibilitySelectedUserIds = const [],
     this.forceDareMode = 'unlimited',
     this.maxTruths = 2,
+    this.honestyVoteEnabled = true,
   });
 
   final int turnTimerSeconds;
@@ -4708,6 +4718,15 @@ class RoomSettingsEntity extends Equatable {
   final String forceDareMode;
   final int maxTruths;
 
+  /// Whether the honesty-vote mechanic (CompactHonestyVoteButtons/
+  /// _HonestyVoteRow — the shared cast_honesty_vote flow used
+  /// identically by ToD, NHIE, and Meme Game) is active in this room.
+  /// Defaults to true: honesty voting was previously ALWAYS on with no
+  /// way to disable it, so a true default preserves existing behavior
+  /// for every room that already exists (no migration should silently
+  /// turn this off for rooms created before it existed).
+  final bool honestyVoteEnabled;
+
   RoomSettingsEntity copyWith({
     int? turnTimerSeconds,
     bool? allowSkip,
@@ -4726,6 +4745,7 @@ class RoomSettingsEntity extends Equatable {
     List<String>? proofVisibilitySelectedUserIds,
     String? forceDareMode,
     int? maxTruths,
+    bool? honestyVoteEnabled,
   }) => RoomSettingsEntity(
     turnTimerSeconds: turnTimerSeconds ?? this.turnTimerSeconds,
     allowSkip: allowSkip ?? this.allowSkip,
@@ -4747,6 +4767,7 @@ class RoomSettingsEntity extends Equatable {
         proofVisibilitySelectedUserIds ?? this.proofVisibilitySelectedUserIds,
     forceDareMode: forceDareMode ?? this.forceDareMode,
     maxTruths: maxTruths ?? this.maxTruths,
+    honestyVoteEnabled: honestyVoteEnabled ?? this.honestyVoteEnabled,
   );
 
   Map<String, dynamic> toMap() => {
@@ -4767,6 +4788,7 @@ class RoomSettingsEntity extends Equatable {
     'proof_visibility_selected_user_ids': proofVisibilitySelectedUserIds,
     'force_dare_mode': forceDareMode,
     'max_truths': maxTruths,
+    'honesty_vote_enabled': honestyVoteEnabled,
   };
 
   static RoomSettingsEntity fromMap(
@@ -4793,6 +4815,7 @@ class RoomSettingsEntity extends Equatable {
     allowAnonymousSpectators: m['allow_anonymous_spectators'] as bool? ?? true,
     forceDareMode: m['force_dare_mode'] as String? ?? 'unlimited',
     maxTruths: (m['max_truths'] as num?)?.toInt() ?? 2,
+    honestyVoteEnabled: m['honesty_vote_enabled'] as bool? ?? true,
   );
 
   @override
@@ -4814,6 +4837,7 @@ class RoomSettingsEntity extends Equatable {
     proofVisibilitySelectedUserIds,
     forceDareMode,
     maxTruths,
+    honestyVoteEnabled,
   ];
 }
 

@@ -966,22 +966,55 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Rebinds [AuthRepository.restoreSession]'s result to this method's OWN
+  /// explicitly-declared return type before it's ever raced against
+  /// [initialize]'s `.timeout()`. Without this wrapper, `.timeout()`'s
+  /// generic type parameter binds to the AWAITED FUTURE'S OWN reified
+  /// runtime type argument — which, for a Future built from a record
+  /// literal made of non-null locals (the shape most mocks in this
+  /// codebase's test suite naturally produce, e.g. `(session, user)`
+  /// where neither is null), is the NARROWER `Future<(Session,
+  /// UserEntity)>`, not the interface's declared `Future<(Session?,
+  /// UserEntity?)>`. That mismatch made `.timeout()`'s `onTimeout: () =>
+  /// (null, null)` throw a spurious TypeError at runtime — caught by
+  /// [initialize]'s own catch block, logged as "session restore failed,"
+  /// and silently treated as logged-out. `await`ing here unwraps the
+  /// value and this `async` function's own declared return type governs
+  /// the NEW Future it constructs, decoupling `.timeout()` from whatever
+  /// narrower type the repository (or a mock) actually produced.
+  Future<(Session?, UserEntity?)> _restoreSession() async =>
+      await _authRepository.restoreSession();
+
   Future<void> initialize() async {
     _isInitializing = true;
     notifyListeners();
 
-    Timer(const Duration(seconds: 5), () {
-      if (_isInitializing) {
-        AppLogger.warning(
-          'AuthProvider initialization timeout - forcing completion',
-        );
-        _isInitializing = false;
-        notifyListeners();
-      }
-    });
-
     try {
-      final result = await _authRepository.restoreSession();
+      // Splash-flash fix (real-device report): this used to be a
+      // SEPARATE, uncancelled Timer(5s) racing this same await — if a
+      // real device's network was slow enough that restoreSession()
+      // (which does an actual profile fetch, not just a local session
+      // check) took longer than 5s, the timer fired FIRST and forced
+      // _isInitializing=false with _session/_currentUser still null,
+      // which the router read as "confirmed logged out" and redirected
+      // to Login — then, a moment later, restoreSession() would finally
+      // resolve with the real (logged-in) result and notifyListeners()
+      // again, bouncing Login -> Home. Two independent async paths each
+      // racing to set _isInitializing/notify was the actual bug; a
+      // .timeout() on the SAME awaited future guarantees
+      // _isInitializing only ever flips once, atomically together with
+      // whichever result (real or fallback) actually won, so the router
+      // can never observe a "not initializing, not logged in" state
+      // that isn't final.
+      final result = await _restoreSession().timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          AppLogger.warning(
+            'AuthProvider initialization timeout - forcing completion',
+          );
+          return (null, null);
+        },
+      );
       _session = result.$1;
       _currentUser = result.$2;
     } on SuspendedFailure catch (f) {
@@ -1075,19 +1108,21 @@ class AuthProvider extends ChangeNotifier {
   /// notifying an intermediate "verified, password not applied yet"
   /// state that a naive "verify, then separately call setPassword from
   /// the screen" sequence would otherwise briefly produce.
-  Future<({
-    bool success,
-    // True the moment the OTP itself is verified, independent of
-    // [success] — lets the caller distinguish "the code was wrong/
-    // expired" (otpVerified: false) from "the code was right, but
-    // applying pendingPassword afterward failed" (otpVerified: true,
-    // success: false). Conflating the two would misroute a plain wrong-
-    // OTP retry as a password-application failure, or vice versa.
-    bool otpVerified,
-    String? errorMessage,
-    int? attemptsRemaining,
-    bool passwordApplied,
-  })>
+  Future<
+    ({
+      bool success,
+      // True the moment the OTP itself is verified, independent of
+      // [success] — lets the caller distinguish "the code was wrong/
+      // expired" (otpVerified: false) from "the code was right, but
+      // applying pendingPassword afterward failed" (otpVerified: true,
+      // success: false). Conflating the two would misroute a plain wrong-
+      // OTP retry as a password-application failure, or vice versa.
+      bool otpVerified,
+      String? errorMessage,
+      int? attemptsRemaining,
+      bool passwordApplied,
+    })
+  >
   verifyOtp(String email, String otp, {String? pendingPassword}) async {
     _isVerifyingOtp = true;
     _error = null;

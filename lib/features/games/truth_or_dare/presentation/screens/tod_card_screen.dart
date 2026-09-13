@@ -1,7 +1,7 @@
-
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -15,9 +15,11 @@ import 'package:jma3a/Sticker.dart';
 import '../../../../../core/extensions/context_ext.dart';
 import '../../../../../core/providers/auth_provider.dart';
 import '../../../../../core/theme/app_colors.dart';
+import '../../../../../core/theme/app_text_styles.dart';
 import '../../../../../core/utils/app_logger.dart';
 import '../../../../../shared/widgets/buttons/j_button.dart';
 import '../../../../../shared/widgets/cards/user_avatar.dart';
+import '../../../../../shared/widgets/game/game_flip_card.dart';
 import '../../../../../shared/widgets/overlays/confirm_dialog.dart';
 import '../../../../avatar/presentation/avatar_creator_screen.dart';
 import '../../../../../../core/services/image_cache_service.dart';
@@ -69,6 +71,32 @@ RoomMemberEntity? todRoomMemberFor(TodGameProvider game, String userId) {
   return null;
 }
 
+/// Item 3 (ToD full-width pass) — computes the card box BOTH of ToD's
+/// GameFlipCard call sites use (the pre-selection Truth/Dare choice
+/// screen and the revealed-card screen): full available width (capped
+/// at [maxWidth] for tablets, mirroring GameFlipCard.maxWidth's own
+/// default ceiling) paired with the full available height exactly as
+/// before — never one DERIVED from the other via GameFlipCard's fixed
+/// portrait [GameFlipCard.aspectRatio] (0.68), which is what made the
+/// card's rendered width always less than the actually-available width
+/// (this Expanded region's height is almost always the tighter
+/// constraint, so `height * 0.68` was reliably narrower than the real
+/// available width). [aspectRatio] is the real ratio between the two,
+/// meant to be passed straight to `GameFlipCard.aspectRatioOverride` so
+/// its OWN internal sizing agrees with this box instead of re-deriving a
+/// narrower width from the stale fixed ratio. A top-level, pure,
+/// independently-testable function — no BuildContext/provider needed.
+({double width, double height, double aspectRatio}) todFullWidthCardBox(
+  BoxConstraints constraints, {
+  double maxWidth = 520.0,
+}) {
+  final width = math.min(maxWidth, constraints.maxWidth);
+  final height = constraints.maxHeight.isFinite
+      ? constraints.maxHeight
+      : width / GameFlipCard.aspectRatio;
+  return (width: width, height: height, aspectRatio: width / height);
+}
+
 /// Wraps [TodPlayerBanner] so it rebuilds live whenever [game.roomProvider]
 /// changes (e.g. RoomProvider's profiles-CDC-triggered member refresh
 /// after an honesty vote) — via a direct Listenable subscription, not
@@ -108,11 +136,14 @@ class TodRoomMemberBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final rp = game.roomProvider;
     if (rp == null) return _banner();
-    return ListenableBuilder(listenable: rp, builder: (context, _) => _banner());
+    return ListenableBuilder(
+      listenable: rp,
+      builder: (context, _) => _banner(),
+    );
   }
 }
 
-class TodCardScreen extends StatelessWidget {
+class TodCardScreen extends StatefulWidget {
   const TodCardScreen({
     super.key,
     required this.state,
@@ -125,14 +156,36 @@ class TodCardScreen extends StatelessWidget {
   final Map<String, String> displayNames;
 
   @override
+  State<TodCardScreen> createState() => _TodCardScreenState();
+}
+
+class _TodCardScreenState extends State<TodCardScreen> {
+  // Stable for the lifetime of this screen so GameFlipCard's own flip
+  // animation (and its AnimationController) survives the choosingType ->
+  // readingCard/awaitingResult swap between _ChoiceView and _CardView —
+  // two structurally different widgets that would otherwise tear the
+  // card down and restart it mid-flip. GlobalKey reparenting is what
+  // lets the SAME card element move across that swap intact. A new turn
+  // legitimately gets a brand-new card on the back: once neither
+  // _ChoiceView nor _CardView is on screen (_AwaitingView's turn), no
+  // widget claims this key, so Flutter disposes the old element and the
+  // next _ChoiceView creates a fresh one.
+  final GlobalKey _cardKey = GlobalKey();
+
+  @override
   Widget build(BuildContext context) {
+    final state = widget.state;
+    final game = widget.game;
+    final displayNames = widget.displayNames;
     return switch (state.phase) {
       TodTurnPhase.choosingType => _ChoiceView(
+        cardKey: _cardKey,
         state: state,
         game: game,
         displayNames: displayNames,
       ),
       TodTurnPhase.readingCard => _CardView(
+        cardKey: _cardKey,
         state: state,
         game: game,
         displayNames: displayNames,
@@ -143,24 +196,46 @@ class TodCardScreen extends StatelessWidget {
         displayNames: displayNames,
       ),
       TodTurnPhase.awaitingResult => _CardView(
+        cardKey: _cardKey,
         state: state,
         game: game,
         displayNames: displayNames,
       ),
-      _ => _ChoiceView(state: state, game: game, displayNames: displayNames),
+      _ => _ChoiceView(
+        cardKey: _cardKey,
+        state: state,
+        game: game,
+        displayNames: displayNames,
+      ),
     };
   }
 }
 
-class _ChoiceView extends StatelessWidget {
+class _ChoiceView extends StatefulWidget {
   const _ChoiceView({
+    required this.cardKey,
     required this.state,
     required this.game,
     required this.displayNames,
   });
+  final Key cardKey;
   final TodState state;
   final TodGameProvider game;
   final Map<String, String> displayNames;
+
+  @override
+  State<_ChoiceView> createState() => _ChoiceViewState();
+}
+
+class _ChoiceViewState extends State<_ChoiceView> {
+  // Guards against a rapid double-tap firing two 'tod_choice' actions
+  // before state.phase has a chance to move away from choosingType (and
+  // therefore before the Truth/Dare buttons would otherwise naturally
+  // disappear on their own). Reset for free every new turn: a fresh
+  // _ChoiceView instance (and State) is created each time TodCardScreen
+  // returns to choosingType, since the phase in between was some OTHER
+  // widget type (_CardView/_AwaitingView), not another _ChoiceView.
+  bool _locked = false;
 
   // Mirrors TruthOrDareEngine._onChoice's own Force Dare check exactly —
   // this is display-only (a stale/tampered client sending 'truth' anyway
@@ -168,113 +243,234 @@ class _ChoiceView extends StatelessWidget {
   // but the UI must still reflect it: "Truth hidden or disabled, only
   // Dare available" while a limit is in effect.
   bool _isForcedDare() {
-    final forceDareMode = game.config?.forceDareMode ?? 'unlimited';
-    final maxTruths = game.config?.maxTruths ?? 2;
+    final forceDareMode = widget.game.config?.forceDareMode ?? 'unlimited';
+    final maxTruths = widget.game.config?.maxTruths ?? 2;
     return switch (forceDareMode) {
       'per_player' =>
-        (state.truthCountByPlayer[state.currentPlayerId] ?? 0) >= maxTruths,
-      'per_turn' => state.globalTruthStreak >= maxTruths,
+        (widget.state.truthCountByPlayer[widget.state.currentPlayerId] ?? 0) >=
+            maxTruths,
+      'per_turn' => widget.state.globalTruthStreak >= maxTruths,
       _ => false,
     };
+  }
+
+  void _choose(Future<void> Function() action) {
+    if (_locked) return;
+    setState(() => _locked = true);
+    action();
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = context.theme;
+    final state = widget.state;
+    final game = widget.game;
     final isMyTurn = game.isMyTurn;
     final playerName =
-        displayNames[state.currentPlayerId] ??
-        'Player ${state.currentPlayerId.substring(0, 4)}';
+        widget.displayNames[state.currentPlayerId] ??
+        context.l10n.todDefaultPlayerNumbered(
+          state.currentPlayerId.substring(0, 4),
+        );
     final forcedDare = _isForcedDare();
 
-    return Stack(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            children: [
-              TodRoomMemberBanner(
-                game: game,
-                playerId: state.currentPlayerId,
-                playerName: playerName,
-                playerOrder: state.playerOrder,
-                isMyTurn: isMyTurn,
-              ),
-              const Spacer(),
-              Text(
-                isMyTurn
-                    ? context.l10n.todChooseYourChallenge
-                    : context.l10n.todPlayerIsChoosing(playerName),
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-                textAlign: TextAlign.center,
-              ).animate().fadeIn().slideY(begin: 0.08, end: 0),
-              if (isMyTurn && forcedDare) ...[
-                const SizedBox(height: 10),
-                // Styled as an intentional "locked" chip rather than a
-                // greyed-out caption — the engine forced this, so the UI
-                // should read as a deliberate twist, not a disabled state.
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 7,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.dareColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: AppColors.dareColor.withValues(alpha: 0.35),
+    // Card-stack composition: the card is the BACK layer (fully sized
+    // inside its own bounded box, computed against BOTH available width
+    // AND height — see the LayoutBuilder below, and GameFlipCard's own
+    // matching height-bound fix), the prompt/buttons are the FOREGROUND
+    // layer, overlapping the card's lower portion on a translucent panel
+    // so they read as the interactive control layer while the card
+    // (title/logo/border/glow) stays visible around and above them —
+    // never a separate Column sibling that could push the card taller
+    // than the available Expanded region actually has (the original
+    // overflow: the card's height was derived from width alone, with no
+    // upper bound from the space the banner+prompt+buttons above/below it
+    // were simultaneously claiming).
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: [
+          TodRoomMemberBanner(
+            game: game,
+            playerId: state.currentPlayerId,
+            playerName: playerName,
+            playerOrder: state.playerOrder,
+            isMyTurn: isMyTurn,
+          ),
+          const SizedBox(height: 16),
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                // Item 3 (ToD full-width pass) — see
+                // todFullWidthCardBox's own doc comment for the full
+                // reasoning.
+                final box = todFullWidthCardBox(constraints);
+                final width = box.width;
+                final height = box.height;
+                return Center(
+                  child: SizedBox(
+                    width: width,
+                    height: height,
+                    child: Stack(
+                      children: [
+                        GameFlipCard(
+                          key: widget.cardKey,
+                          title: context.l10n.gameNameTruthOrDare,
+                          frontChild: const SizedBox.shrink(),
+                          maxWidth: width,
+                          aspectRatioOverride: box.aspectRatio,
+                        ),
+                        Positioned(
+                          left: 0,
+                          right: 0,
+                          bottom: height * 0.04,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.32),
+                                borderRadius: BorderRadius.circular(24),
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      isMyTurn
+                                          ? context.l10n.todChooseYourChallenge
+                                          : context.l10n.todPlayerIsChoosing(
+                                              playerName,
+                                            ),
+                                      style: theme.textTheme.headlineSmall
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w700,
+                                            color: Colors.white,
+                                          ),
+                                      textAlign: TextAlign.center,
+                                    ).animate().fadeIn().slideY(
+                                      begin: 0.08,
+                                      end: 0,
+                                    ),
+                                    if (isMyTurn && forcedDare) ...[
+                                      const SizedBox(height: 10),
+                                      // Styled as an intentional "locked"
+                                      // chip rather than a greyed-out
+                                      // caption — the engine forced this,
+                                      // so the UI should read as a
+                                      // deliberate twist, not a disabled
+                                      // state.
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 14,
+                                          vertical: 7,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.dareColor.withValues(
+                                            alpha: 0.18,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            20,
+                                          ),
+                                          border: Border.all(
+                                            color: AppColors.dareColor
+                                                .withValues(alpha: 0.45),
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Text(
+                                              '🔒',
+                                              style: TextStyle(fontSize: 13),
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Flexible(
+                                              child: Text(
+                                                context.l10n.todForcedDareHint,
+                                                style: theme.textTheme.bodySmall
+                                                    ?.copyWith(
+                                                      color:
+                                                          AppColors.dareColor,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                    ),
+                                                textAlign: TextAlign.center,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ).animate().fadeIn().scale(
+                                        begin: const Offset(0.9, 0.9),
+                                      ),
+                                    ],
+                                    const SizedBox(height: 16),
+                                    if (isMyTurn) ...[
+                                      AnimatedOpacity(
+                                        opacity: _locked ? 0.55 : 1,
+                                        duration: const Duration(
+                                          milliseconds: 200,
+                                        ),
+                                        child: Column(
+                                          children: [
+                                            if (!forcedDare) ...[
+                                              _ChoiceButton(
+                                                    label:
+                                                        context.l10n.todTruth,
+                                                    emoji: '🤔',
+                                                    color: AppColors.truthColor,
+                                                    description: context
+                                                        .l10n
+                                                        .todTruthChoiceDescription,
+                                                    onTap: _locked
+                                                        ? null
+                                                        : () => _choose(
+                                                            game.chooseTruth,
+                                                          ),
+                                                  )
+                                                  .animate(delay: 80.ms)
+                                                  .fadeIn()
+                                                  .slideX(begin: -0.08, end: 0),
+                                              const SizedBox(height: 16),
+                                            ],
+                                            _ChoiceButton(
+                                                  label: context.l10n.todDare,
+                                                  emoji: '🔥',
+                                                  color: AppColors.dareColor,
+                                                  description: context
+                                                      .l10n
+                                                      .todDareChoiceDescription,
+                                                  onTap: _locked
+                                                      ? null
+                                                      : () => _choose(
+                                                          game.chooseDare,
+                                                        ),
+                                                )
+                                                .animate(delay: 140.ms)
+                                                .fadeIn()
+                                                .slideX(begin: 0.08, end: 0),
+                                          ],
+                                        ),
+                                      ),
+                                    ] else
+                                      _ChoiceWaiting(
+                                        playerName: playerName,
+                                        packCoverUrl: game.packCoverUrl,
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text('🔒', style: TextStyle(fontSize: 13)),
-                      const SizedBox(width: 6),
-                      Flexible(
-                        child: Text(
-                          context.l10n.todForcedDareHint,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: AppColors.dareColor,
-                            fontWeight: FontWeight.w700,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ],
-                  ),
-                ).animate().fadeIn().scale(begin: const Offset(0.9, 0.9)),
-              ],
-              const SizedBox(height: 40),
-              if (isMyTurn) ...[
-                if (!forcedDare) ...[
-                  _ChoiceButton(
-                    label: context.l10n.todTruth,
-                    emoji: '🤔',
-                    color: AppColors.truthColor,
-                    description: context.l10n.todTruthChoiceDescription,
-                    onTap: game.chooseTruth,
-                  ).animate(delay: 80.ms).fadeIn().slideX(begin: -0.08, end: 0),
-                  const SizedBox(height: 16),
-                ],
-                _ChoiceButton(
-                  label: context.l10n.todDare,
-                  emoji: '🔥',
-                  color: AppColors.dareColor,
-                  description: context.l10n.todDareChoiceDescription,
-                  onTap: game.chooseDare,
-                ).animate(delay: 140.ms).fadeIn().slideX(begin: 0.08, end: 0),
-              ] else
-                _ChoiceWaiting(
-                  playerName: playerName,
-                  packCoverUrl: game.packCoverUrl,
-                ),
-              const Spacer(),
-            ],
+                );
+              },
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -292,21 +488,23 @@ class _ChoiceWaiting extends StatelessWidget {
         // visual, not the pack artwork — makes the wait feel social
         // rather than a generic loading state.
         Container(
-          padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: context.colorScheme.primary.withOpacity(0.25),
-              width: 2,
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: context.colorScheme.primary.withOpacity(0.25),
+                  width: 2,
+                ),
+              ),
+              child: UserAvatar(size: 64, displayName: playerName),
+            )
+            .animate(onPlay: (c) => c.repeat(reverse: true))
+            .scaleXY(
+              begin: 1.0,
+              end: 1.05,
+              duration: 900.ms,
+              curve: Curves.easeInOut,
             ),
-          ),
-          child: UserAvatar(size: 64, displayName: playerName),
-        ).animate(onPlay: (c) => c.repeat(reverse: true)).scaleXY(
-          begin: 1.0,
-          end: 1.05,
-          duration: 900.ms,
-          curve: Curves.easeInOut,
-        ),
         const SizedBox(height: 14),
         const _PulsingDots(),
         const SizedBox(height: 12),
@@ -354,19 +552,23 @@ class _PulsingDots extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: List.generate(3, (i) {
         return Container(
-          width: 8,
-          height: 8,
-          margin: const EdgeInsets.symmetric(horizontal: 3),
-          decoration: BoxDecoration(
-            color: context.colorScheme.primary,
-            shape: BoxShape.circle,
-          ),
-        ).animate(onPlay: (c) => c.repeat(), delay: (i * 160).ms).scaleXY(
-          begin: 0.6,
-          end: 1.0,
-          duration: 480.ms,
-          curve: Curves.easeInOut,
-        ).then().scaleXY(begin: 1.0, end: 0.6, duration: 480.ms);
+              width: 8,
+              height: 8,
+              margin: const EdgeInsets.symmetric(horizontal: 3),
+              decoration: BoxDecoration(
+                color: context.colorScheme.primary,
+                shape: BoxShape.circle,
+              ),
+            )
+            .animate(onPlay: (c) => c.repeat(), delay: (i * 160).ms)
+            .scaleXY(
+              begin: 0.6,
+              end: 1.0,
+              duration: 480.ms,
+              curve: Curves.easeInOut,
+            )
+            .then()
+            .scaleXY(begin: 1.0, end: 0.6, duration: 480.ms);
       }),
     );
   }
@@ -385,7 +587,11 @@ class _ChoiceButton extends StatefulWidget {
   final String emoji;
   final Color color;
   final String description;
-  final VoidCallback onTap;
+
+  /// Null disables the button (no tap feedback, InkWell inert) — used
+  /// while a choice is being processed so a rapid second tap can't fire
+  /// a second selection.
+  final VoidCallback? onTap;
 
   @override
   State<_ChoiceButton> createState() => _ChoiceButtonState();
@@ -420,98 +626,106 @@ class _ChoiceButtonState extends State<_ChoiceButton> {
         duration: const Duration(milliseconds: 110),
         curve: Curves.easeOut,
         child: DecoratedBox(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.36),
-            blurRadius: 22,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(24),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(24),
-          splashColor: Colors.white.withValues(alpha: 0.18),
-          highlightColor: Colors.white.withValues(alpha: 0.06),
-          child: Ink(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [color, color.withValues(alpha: 0.78)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: color.withValues(alpha: 0.36),
+                blurRadius: 22,
+                offset: const Offset(0, 10),
               ),
+            ],
+          ),
+          child: Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(24),
+            child: InkWell(
+              onTap: onTap,
               borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
-              child: Row(
-                children: [
-                  // Frosted circular emoji badge for a stronger, tactile
-                  // party-game feel.
-                  Container(
-                    width: 64,
-                    height: 64,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white.withValues(alpha: 0.18),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.28),
+              splashColor: Colors.white.withValues(alpha: 0.18),
+              highlightColor: Colors.white.withValues(alpha: 0.06),
+              child: Ink(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [color, color.withValues(alpha: 0.78)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.16),
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 22,
+                  ),
+                  child: Row(
+                    children: [
+                      // Frosted circular emoji badge for a stronger, tactile
+                      // party-game feel.
+                      Container(
+                        width: 64,
+                        height: 64,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white.withValues(alpha: 0.18),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.28),
+                          ),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          emoji,
+                          style: const TextStyle(fontSize: 34),
+                        ),
                       ),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(emoji, style: const TextStyle(fontSize: 34)),
-                  ),
-                  const SizedBox(width: 18),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          label,
-                          style: const TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.w900,
-                            color: Colors.white,
-                            letterSpacing: 0.3,
-                          ),
+                      const SizedBox(width: 18),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              label,
+                              style: const TextStyle(
+                                fontSize: 28,
+                                fontWeight: FontWeight.w900,
+                                color: Colors.white,
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              description,
+                              style: TextStyle(
+                                fontSize: 13,
+                                height: 1.25,
+                                color: Colors.white.withValues(alpha: 0.9),
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          description,
-                          style: TextStyle(
-                            fontSize: 13,
-                            height: 1.25,
-                            color: Colors.white.withValues(alpha: 0.9),
-                          ),
+                      ),
+                      Container(
+                        width: 34,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white.withValues(alpha: 0.18),
                         ),
-                      ],
-                    ),
+                        child: const Icon(
+                          Icons.arrow_forward_rounded,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                    ],
                   ),
-                  Container(
-                    width: 34,
-                    height: 34,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white.withValues(alpha: 0.18),
-                    ),
-                    child: const Icon(
-                      Icons.arrow_forward_rounded,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           ),
-        ),
-      ),
         ),
       ),
     );
@@ -520,10 +734,12 @@ class _ChoiceButtonState extends State<_ChoiceButton> {
 
 class _CardView extends StatelessWidget {
   const _CardView({
+    required this.cardKey,
     required this.state,
     required this.game,
     required this.displayNames,
   });
+  final Key cardKey;
   final TodState state;
   final TodGameProvider game;
   final Map<String, String> displayNames;
@@ -543,7 +759,9 @@ class _CardView extends StatelessWidget {
     final cardColor = isTruth ? AppColors.truthColor : AppColors.dareColor;
     final playerName =
         displayNames[state.currentPlayerId] ??
-        context.l10n.todDefaultPlayerNumbered(state.currentPlayerId.substring(0, 4));
+        context.l10n.todDefaultPlayerNumbered(
+          state.currentPlayerId.substring(0, 4),
+        );
 
     return Padding(
       padding: const EdgeInsets.all(20),
@@ -567,12 +785,25 @@ class _CardView extends StatelessWidget {
               ).animate().fadeIn(),
             ),
           Expanded(
-            child: _CardFace(
-              card: card,
-              cardColor: cardColor,
-              isSpicy: isSpicy,
-              isTruth: isTruth,
-              coverUrl: game.packCoverUrl,
+            // Item 3 (ToD full-width pass) — see todFullWidthCardBox's
+            // own doc comment for the full reasoning.
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final box = todFullWidthCardBox(constraints);
+                return GameFlipCard(
+                  key: cardKey,
+                  title: context.l10n.gameNameTruthOrDare,
+                  revealed: true,
+                  contentId: card.id,
+                  maxWidth: box.width,
+                  aspectRatioOverride: box.aspectRatio,
+                  frontChild: _TodCardContent(
+                    card: card,
+                    isSpicy: isSpicy,
+                    isTruth: isTruth,
+                  ),
+                );
+              },
             ),
           ),
           const SizedBox(height: 20),
@@ -658,16 +889,25 @@ class _CardView extends StatelessWidget {
     final ctrl = TextEditingController();
     String? imgB64;
     bool attempted = false;
+    // Item: prevent multiple submissions. Set true the instant the submit
+    // button's tap passes validation (before any request is sent) and
+    // only ever cleared again on failure — a success closes this sheet
+    // entirely, so there's no "re-enable" case to handle for that path.
+    // This is the UI-visible half of the guard; completeTurn()'s own
+    // _completingTurn re-entrancy check (TodGameProvider) is the actual
+    // state-level protection a rapid double-tap can't bypass.
+    bool submitting = false;
 
     // Proof visibility: chosen HERE, before the proof is ever submitted —
     // not configurable afterward. Defaults to the room's own
     // proofVisibilityPolicy setting (unchanged behavior for anyone who
     // doesn't touch it), but is now an explicit, per-submission choice.
-    TodProofVisibility selectedVisibility = switch (game.config?.proofVisibilityPolicy) {
-      'players_only' => TodProofVisibility.playersOnly,
-      'spectators_only' => TodProofVisibility.spectatorsOnly,
-      _ => TodProofVisibility.everyone,
-    };
+    TodProofVisibility selectedVisibility =
+        switch (game.config?.proofVisibilityPolicy) {
+          'players_only' => TodProofVisibility.playersOnly,
+          'spectators_only' => TodProofVisibility.spectatorsOnly,
+          _ => TodProofVisibility.everyone,
+        };
     final selectedUserIds = <String>{};
     bool visibilityAttempted = false;
 
@@ -783,7 +1023,9 @@ class _CardView extends StatelessWidget {
                       Row(
                         children: [
                           Text(
-                            isTruth ? ctx.l10n.todTypeTruth : ctx.l10n.todTypeDare,
+                            isTruth
+                                ? ctx.l10n.todTypeTruth
+                                : ctx.l10n.todTypeDare,
                             style: Theme.of(ctx).textTheme.labelLarge?.copyWith(
                               color: isTruth
                                   ? AppColors.truthColor
@@ -920,9 +1162,7 @@ class _CardView extends StatelessWidget {
                                 child: OutlinedButton.icon(
                                   onPressed: () async {
                                     try {
-                                      game.broadcastActivity(
-                                        'uploading_proof',
-                                      );
+                                      game.broadcastActivity('uploading_proof');
                                       final picked = await ImagePicker()
                                           .pickImage(
                                             source: ImageSource.gallery,
@@ -949,7 +1189,9 @@ class _CardView extends StatelessWidget {
                                   onPressed: () => startRecording(setS),
                                   icon: const Icon(Icons.mic_outlined),
                                   label: Text(
-                                    ctx.l10n.todVoiceMaxSeconds(maxRecordSeconds),
+                                    ctx.l10n.todVoiceMaxSeconds(
+                                      maxRecordSeconds,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -996,110 +1238,145 @@ class _CardView extends StatelessWidget {
                       ],
                       const SizedBox(height: 12),
                       FilledButton(
-                        onPressed: () {
-                          if (isTruth && ctrl.text.trim().isEmpty) {
-                            setS(() => attempted = true);
-                            return;
-                          }
-                          // A dare (including a resolved punishment) needs
-                          // SOME meaningful content — a real response or
-                          // proof attached — not neither, closing what was
-                          // previously a fully-optional submission. The
-                          // server-side engine enforces the identical rule
-                          // (see TruthOrDareEngine._onComplete) so a
-                          // modified client sending the broadcast directly
-                          // can't bypass this UI-only check.
-                          if (!isTruth &&
-                              ctrl.text.trim().isEmpty &&
-                              imgB64 == null &&
-                              voiceBytes == null) {
-                            setS(() => attempted = true);
-                            return;
-                          }
-                          // If the group voted a specific proof type
-                          // mandatory for this turn, it must be attached
-                          // regardless of the response text.
-                          final requiredProof =
-                              game.state?.proofVoteState?.winner;
-                          if (requiredProof == TodProofVoteOption.voiceProof &&
-                              voiceBytes == null) {
-                            context.showSnackBar(
-                              ctx.l10n.todProofVoteRequiresVoice,
-                              isError: true,
-                            );
-                            return;
-                          }
-                          if (requiredProof == TodProofVoteOption.imageProof &&
-                              imgB64 == null) {
-                            context.showSnackBar(
-                              ctx.l10n.todProofVoteRequiresImage,
-                              isError: true,
-                            );
-                            return;
-                          }
-                          if (!isTruth &&
-                              selectedVisibility ==
-                                  TodProofVisibility.selectedPlayers &&
-                              selectedUserIds.isEmpty) {
-                            setS(() => visibilityAttempted = true);
-                            return;
-                          }
-                          final voiceB64 = voiceBytes != null
-                              ? base64Encode(voiceBytes!)
-                              : '';
-                          // No proof at all for Truth, or a Dare with just
-                          // voice/no attachment: no viewing timer applies —
-                          // 'once' is the same "no auto-close" default the
-                          // image-timer picker's own 'No limit' option maps
-                          // to, so this is a no-op either way.
-                          final viewMode = (!isTruth && imgB64 != null)
-                              ? selectedViewMode
-                              : TodProofViewMode.once;
-                          final viewSeconds = (!isTruth && imgB64 != null)
-                              ? selectedViewSeconds
-                              : 5;
-                          final visibility = isTruth
-                              ? const TodProofVisibilitySettings()
-                              : TodProofVisibilitySettings(
-                                  visibility: selectedVisibility,
-                                  visibleToIds: selectedUserIds.toList(),
-                                );
-                          recordingTimer?.cancel();
-                          safeDisposeRecorder();
-                          Navigator.of(ctx).pop();
-                          // Purely visual, non-blocking reward moment — does
-                          // not delay or gate the actual submission below.
-                          _showSuccessBurst(context);
-                          game.broadcastActivity('waiting_for_approval');
-                          // Server-authoritative record of THIS turn's proof
-                          // visibility + viewing rules — record_proof_view
-                          // checks this (not the shared broadcast state, and
-                          // not the old room-wide default) so a reconnecting
-                          // viewer can't get a fresh/looser grant just by
-                          // reconnecting. Fire-and-forget: a failure here
-                          // only means record_proof_view falls back to the
-                          // old room-level policy for this turn, it never
-                          // blocks the actual submission below.
-                          if (!isTruth && state.turnStartedAt != null) {
-                            game
-                                .saveProofMetadata(
-                                  turnStartedAt: state.turnStartedAt!,
-                                  visibility: visibility,
-                                  viewMode: viewMode,
-                                  viewSeconds: viewSeconds,
-                                )
-                                .ignore();
-                          }
-                          game.completeTurn(
-                            response: ctrl.text.trim(),
-                            proofImageB64: imgB64 ?? '',
-                            proofVoiceB64: voiceB64,
-                            proofViewSeconds: viewSeconds,
-                            proofViewMode: viewMode,
-                            proofVisibility: visibility,
-                          );
-                        },
-                        child: Text(ctx.l10n.todSubmitCompleteTurn),
+                        onPressed: submitting
+                            ? null
+                            : () async {
+                                if (isTruth && ctrl.text.trim().isEmpty) {
+                                  setS(() => attempted = true);
+                                  return;
+                                }
+                                // A dare (including a resolved punishment) needs
+                                // SOME meaningful content — a real response or
+                                // proof attached — not neither, closing what was
+                                // previously a fully-optional submission. The
+                                // server-side engine enforces the identical rule
+                                // (see TruthOrDareEngine._onComplete) so a
+                                // modified client sending the broadcast directly
+                                // can't bypass this UI-only check.
+                                if (!isTruth &&
+                                    ctrl.text.trim().isEmpty &&
+                                    imgB64 == null &&
+                                    voiceBytes == null) {
+                                  setS(() => attempted = true);
+                                  return;
+                                }
+                                // If the group voted a specific proof type
+                                // mandatory for this turn, it must be attached
+                                // regardless of the response text.
+                                final requiredProof =
+                                    game.state?.proofVoteState?.winner;
+                                if (requiredProof ==
+                                        TodProofVoteOption.voiceProof &&
+                                    voiceBytes == null) {
+                                  context.showSnackBar(
+                                    ctx.l10n.todProofVoteRequiresVoice,
+                                    isError: true,
+                                  );
+                                  return;
+                                }
+                                if (requiredProof ==
+                                        TodProofVoteOption.imageProof &&
+                                    imgB64 == null) {
+                                  context.showSnackBar(
+                                    ctx.l10n.todProofVoteRequiresImage,
+                                    isError: true,
+                                  );
+                                  return;
+                                }
+                                if (!isTruth &&
+                                    selectedVisibility ==
+                                        TodProofVisibility.selectedPlayers &&
+                                    selectedUserIds.isEmpty) {
+                                  setS(() => visibilityAttempted = true);
+                                  return;
+                                }
+                                final voiceB64 = voiceBytes != null
+                                    ? base64Encode(voiceBytes!)
+                                    : '';
+                                // No proof at all for Truth, or a Dare with just
+                                // voice/no attachment: no viewing timer applies —
+                                // 'once' is the same "no auto-close" default the
+                                // image-timer picker's own 'No limit' option maps
+                                // to, so this is a no-op either way.
+                                final viewMode = (!isTruth && imgB64 != null)
+                                    ? selectedViewMode
+                                    : TodProofViewMode.once;
+                                final viewSeconds = (!isTruth && imgB64 != null)
+                                    ? selectedViewSeconds
+                                    : 5;
+                                final visibility = isTruth
+                                    ? const TodProofVisibilitySettings()
+                                    : TodProofVisibilitySettings(
+                                        visibility: selectedVisibility,
+                                        visibleToIds: selectedUserIds.toList(),
+                                      );
+                                // Everything above is pure validation — nothing
+                                // has been sent yet. From here on this tap is
+                                // committed, so lock the button immediately
+                                // (state, not just visuals — see `submitting`'s
+                                // doc comment) before starting any async work,
+                                // and keep the sheet open/disabled until the
+                                // actual result (success or failure) is known.
+                                setS(() => submitting = true);
+                                recordingTimer?.cancel();
+                                safeDisposeRecorder();
+                                game.broadcastActivity('waiting_for_approval');
+                                // Server-authoritative record of THIS turn's proof
+                                // visibility + viewing rules — record_proof_view
+                                // checks this (not the shared broadcast state, and
+                                // not the old room-wide default) so a reconnecting
+                                // viewer can't get a fresh/looser grant just by
+                                // reconnecting. Fire-and-forget: a failure here
+                                // only means record_proof_view falls back to the
+                                // old room-level policy for this turn, it never
+                                // blocks the actual submission below.
+                                if (!isTruth && state.turnStartedAt != null) {
+                                  game
+                                      .saveProofMetadata(
+                                        turnStartedAt: state.turnStartedAt!,
+                                        visibility: visibility,
+                                        viewMode: viewMode,
+                                        viewSeconds: viewSeconds,
+                                      )
+                                      .ignore();
+                                }
+                                try {
+                                  await game.completeTurn(
+                                    response: ctrl.text.trim(),
+                                    proofImageB64: imgB64 ?? '',
+                                    proofVoiceB64: voiceB64,
+                                    proofViewSeconds: viewSeconds,
+                                    proofViewMode: viewMode,
+                                    proofVisibility: visibility,
+                                  );
+                                } catch (_) {
+                                  // Failed while still on this screen: restore
+                                  // the enabled state so the player can retry,
+                                  // instead of leaving them stuck behind a
+                                  // permanently-locked button.
+                                  if (!ctx.mounted) return;
+                                  setS(() => submitting = false);
+                                  context.showSnackBar(
+                                    ctx.l10n.errorUnexpected,
+                                    isError: true,
+                                  );
+                                  return;
+                                }
+                                if (!ctx.mounted) return;
+                                Navigator.of(ctx).pop();
+                                // Purely visual, non-blocking reward moment, only
+                                // once the submission has actually succeeded.
+                                _showSuccessBurst(context);
+                              },
+                        child: submitting
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Text(ctx.l10n.todSubmitCompleteTurn),
                       ),
                       const SizedBox(height: 4),
                       TextButton(
@@ -1143,32 +1420,33 @@ class _CardView extends StatelessWidget {
     entry = OverlayEntry(
       builder: (_) => IgnorePointer(
         child: Center(
-          child: Container(
-            width: 96,
-            height: 96,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: AppColors.successGreen.withValues(alpha: 0.16),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.successGreen.withValues(alpha: 0.35),
-                  blurRadius: 30,
-                  spreadRadius: 4,
-                ),
-              ],
-            ),
-            child: const Text('✅', style: TextStyle(fontSize: 44)),
-          )
-              .animate()
-              .scale(
-                begin: const Offset(0.4, 0.4),
-                end: const Offset(1, 1),
-                duration: 320.ms,
-                curve: Curves.elasticOut,
-              )
-              .then(delay: 400.ms)
-              .fadeOut(duration: 260.ms),
+          child:
+              Container(
+                    width: 96,
+                    height: 96,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.successGreen.withValues(alpha: 0.16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.successGreen.withValues(alpha: 0.35),
+                          blurRadius: 30,
+                          spreadRadius: 4,
+                        ),
+                      ],
+                    ),
+                    child: const Text('✅', style: TextStyle(fontSize: 44)),
+                  )
+                  .animate()
+                  .scale(
+                    begin: const Offset(0.4, 0.4),
+                    end: const Offset(1, 1),
+                    duration: 320.ms,
+                    curve: Curves.elasticOut,
+                  )
+                  .then(delay: 400.ms)
+                  .fadeOut(duration: 260.ms),
         ),
       ),
     );
@@ -1240,8 +1518,7 @@ class _ProofVisibilitySelector extends StatelessWidget {
               label: context.l10n.todProofVisibilityPlayersOnly,
               icon: Icons.groups_rounded,
               isSelected: selected == TodProofVisibility.playersOnly,
-              onTap: () =>
-                  onVisibilityChanged(TodProofVisibility.playersOnly),
+              onTap: () => onVisibilityChanged(TodProofVisibility.playersOnly),
             ),
             _VisibilityChip(
               label: context.l10n.todProofVisibilitySpectatorsOnly,
@@ -1326,9 +1603,7 @@ class _VisibilityChip extends StatelessWidget {
               : theme.colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isSelected
-                ? theme.colorScheme.primary
-                : Colors.transparent,
+            color: isSelected ? theme.colorScheme.primary : Colors.transparent,
             width: 1.6,
           ),
         ),
@@ -1388,9 +1663,7 @@ class _MemberPickChip extends StatelessWidget {
               : theme.colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isSelected
-                ? theme.colorScheme.primary
-                : Colors.transparent,
+            color: isSelected ? theme.colorScheme.primary : Colors.transparent,
             width: 1.6,
           ),
         ),
@@ -1509,232 +1782,47 @@ class _ProofTimerSelector extends StatelessWidget {
   }
 }
 
-class _CardFace extends StatelessWidget {
-  const _CardFace({
+/// The revealed Truth/Dare card's content, laid directly over
+/// GameFlipCard's front artwork (see _CardView) — no gradient/shape
+/// container of its own; the artwork already reads as the card. Reuses
+/// the existing _TypeBadge/_SpicyBadge chips for visual parity with the
+/// pre-card-artwork design.
+class _TodCardContent extends StatelessWidget {
+  const _TodCardContent({
     required this.card,
-    required this.cardColor,
     required this.isSpicy,
     required this.isTruth,
-    this.coverUrl,
   });
 
   final TodCard card;
-  final Color cardColor;
   final bool isSpicy;
   final bool isTruth;
-  final String? coverUrl;
 
   @override
   Widget build(BuildContext context) {
-    final hasCover = coverUrl != null && coverUrl!.isNotEmpty;
-    final cardVisual = ClipRRect(
-      borderRadius: BorderRadius.circular(28),
-      child: Container(
-        width: double.infinity,
-        constraints: const BoxConstraints.expand(),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(28),
-          border: Border.all(color: cardColor.withOpacity(0.55), width: 1.5),
-          boxShadow: [
-            // Wide, soft ambient glow in the card's own color — the "premium
-            // object under a spotlight" depth cue.
-            BoxShadow(
-              color: cardColor.withOpacity(0.30),
-              blurRadius: 40,
-              spreadRadius: -4,
-              offset: const Offset(0, 14),
-            ),
-            BoxShadow(
-              color: cardColor.withOpacity(0.38),
-              blurRadius: 24,
-              offset: const Offset(0, 8),
-            ),
-            BoxShadow(
-              color: Colors.black.withOpacity(0.25),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Stack(
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Positioned.fill(
-              child: hasCover
-                  ? Image.network(
-                      coverUrl!,
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                      height: double.infinity,
-                      errorBuilder: (_, __, ___) => Image.asset(
-                        'assets/images/jma3a_card_background.png',
-                        fit: BoxFit.cover,
-                        width: double.infinity,
-                        height: double.infinity,
-                      ),
-                    )
-                  : Image.asset(
-                      'assets/images/jma3a_card_background.png',
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                      height: double.infinity,
-                      errorBuilder: (_, __, ___) => Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [cardColor, cardColor.withOpacity(0.78)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                        ),
-                      ),
-                    ),
+            _TypeBadge(
+              label: isTruth
+                  ? '🤔  ${context.l10n.todTruth}'
+                  : '🔥  ${context.l10n.todDare}',
             ),
-            Positioned.fill(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      cardColor.withOpacity(0.45),
-                      const Color(0xFF0D1B2A).withOpacity(0.60),
-                    ],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                  ),
-                ),
-              ),
-            ),
-            Positioned.fill(child: CustomPaint(painter: _CardShimmerPainter())),
-            // Glossy top highlight — a soft diagonal sheen suggesting a
-            // lacquered/foil card surface rather than a flat colored panel.
-            Positioned.fill(
-              child: IgnorePointer(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Colors.white.withOpacity(0.14),
-                        Colors.white.withOpacity(0.0),
-                      ],
-                      stops: const [0.0, 0.5],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(28),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      _TypeBadge(label: isTruth ? '🤔  TRUTH' : '🔥  DARE'),
-                      if (isSpicy) ...[const SizedBox(width: 8), _SpicyBadge()],
-                    ],
-                  ),
-                  const Spacer(),
-                  Text(
-                    card.content,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                      height: 1.45,
-                      shadows: [
-                        Shadow(
-                          color: Colors.black54,
-                          blurRadius: 8,
-                          offset: Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                  ).animate().fadeIn(duration: 350.ms),
-                  const Spacer(),
-                ],
-              ),
-            ),
-            Positioned(
-              top: 10,
-              left: 12,
-              child: Opacity(
-                opacity: 0.18,
-                child: Text(
-                  isTruth ? '🤔' : '🔥',
-                  style: const TextStyle(fontSize: 18),
-                ),
-              ),
-            ),
-            Positioned(
-              bottom: 10,
-              right: 12,
-              child: Opacity(
-                opacity: 0.18,
-                child: RotatedBox(
-                  quarterTurns: 2,
-                  child: Text(
-                    isTruth ? '🤔' : '🔥',
-                    style: const TextStyle(fontSize: 18),
-                  ),
-                ),
-              ),
-            ),
+            if (isSpicy) ...[const SizedBox(width: 8), _SpicyBadge()],
           ],
         ),
-      ),
-    )
-        // Reveal entrance: pop in, then a single light sweep across the
-        // face — makes a fresh card feel like it was just dealt, without
-        // looping into something distracting.
-        .animate()
-        .scale(
-          begin: const Offset(0.92, 0.92),
-          end: const Offset(1, 1),
-          duration: 320.ms,
-          curve: Curves.easeOutBack,
-        )
-        .shimmer(
-          delay: 280.ms,
-          duration: 900.ms,
-          color: Colors.white.withOpacity(0.22),
-        );
-
-    if (!isSpicy) return cardVisual;
-
-    // Spicy cards get a slow, low-amplitude glow pulse on top of the base
-    // shadow — a small "this one's hotter" cue, not a new interaction.
-    return cardVisual
-        .animate(onPlay: (c) => c.repeat(reverse: true))
-        .boxShadow(
-          begin: BoxShadow(
-            color: AppColors.spicyColor.withOpacity(0.0),
-            blurRadius: 0,
-            spreadRadius: 0,
-          ),
-          end: BoxShadow(
-            color: AppColors.spicyColor.withOpacity(0.45),
-            blurRadius: 30,
-            spreadRadius: 2,
-          ),
-          duration: 1400.ms,
-          curve: Curves.easeInOut,
-        );
+        const SizedBox(height: 16),
+        Text(
+          card.content,
+          textAlign: TextAlign.center,
+          style: AppTextStyles.gameCardContent(color: Colors.white),
+        ).animate().fadeIn(duration: 350.ms),
+      ],
+    );
   }
-}
-
-class _CardShimmerPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final p = Paint()
-      ..color = Colors.white.withOpacity(0.025)
-      ..strokeWidth = 12
-      ..style = PaintingStyle.stroke;
-    for (double x = -size.height; x < size.width * 2; x += 38)
-      canvas.drawLine(Offset(x, 0), Offset(x + size.height, size.height), p);
-  }
-
-  @override
-  bool shouldRepaint(_) => false;
 }
 
 class _TypeBadge extends StatelessWidget {
@@ -1830,6 +1918,240 @@ class _PeerActivityIndicator extends StatelessWidget {
   }
 }
 
+/// Item 6 (result screen redesign) — the shared "identity + content +
+/// answer + proof" presentation both the player-facing and the
+/// spectator-facing result views are built from (see item 5's own
+/// instruction: "Do not duplicate the entire player result screen just
+/// to hide controls. Create a clear spectator-specific presentation/
+/// state using the existing result data."). Deliberately contains NO
+/// interactive controls of its own (no reactions, no vote buttons, no
+/// honesty vote) — those live in [_AwaitingView] itself, gated on
+/// `isSpectator` there, so this card can be reused as-is by both. Not
+/// private (unlike most of this file's helper widgets) specifically so
+/// it's directly widget-testable for overflow/RTL/width regressions —
+/// see test/tod_result_card_test.dart.
+class TodResultCard extends StatelessWidget {
+  const TodResultCard({
+    super.key,
+    required this.member,
+    required this.displayName,
+    required this.card,
+    required this.response,
+    required this.proofWidget,
+  });
+
+  final RoomMemberEntity? member;
+  final String displayName;
+  final TodCard? card;
+  final String response;
+
+  /// A pre-built [_ProofViewer], or null when no proof exists/is visible
+  /// to the current viewer (TodProofVisibilitySettings.canView already
+  /// decided that upstream — this widget never re-derives that rule).
+  final Widget? proofWidget;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = context.theme;
+    final isTruth = card?.type == TodCardType.truth;
+    final accent = card == null
+        ? AppColors.brandPurpleMid
+        : (isTruth ? AppColors.truthBlue : AppColors.dareColor);
+    final hasAnswerOrProof = response.isNotEmpty || proofWidget != null;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 22),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            accent.withValues(alpha: 0.16),
+            theme.colorScheme.surfaceContainerHighest,
+          ],
+        ),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: accent.withValues(alpha: 0.35), width: 1.4),
+        boxShadow: [
+          BoxShadow(
+            color: accent.withValues(alpha: 0.18),
+            blurRadius: 24,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // ── Identity row — who answered, made visually prominent
+          // without overwhelming the content below it.
+          Row(
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: accent.withValues(alpha: 0.4),
+                      blurRadius: 14,
+                    ),
+                  ],
+                ),
+                child: UserAvatar(
+                  avatarUrl: member?.avatarUrl,
+                  avatarConfig: member?.avatarConfig,
+                  displayName: displayName,
+                  size: 52,
+                  borderWidth: 2,
+                  borderColor: Colors.white,
+                  isPremium: member?.isPremium ?? false,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      displayName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    Text(
+                      context.l10n.todCompletedTurn,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (card != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isTruth
+                            ? Icons.chat_bubble_rounded
+                            : Icons.local_fire_department_rounded,
+                        size: 14,
+                        color: accent,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        isTruth ? context.l10n.todTruth : context.l10n.todDare,
+                        style: TextStyle(
+                          color: accent,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+          if (card != null) ...[
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface.withValues(alpha: 0.55),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Text(
+                card!.content,
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+          if (response.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primaryContainer.withValues(
+                  alpha: 0.45,
+                ),
+                borderRadius: BorderRadius.circular(18),
+                border: Border(
+                  left: BorderSide(color: accent, width: 4),
+                  right: BorderSide.none,
+                ),
+              ),
+              // Item 18.3 (unchanged from before) — the answer itself is
+              // the whole point of this reveal moment, so it gets large/
+              // expressive treatment (scaling down only if genuinely
+              // long) instead of a muted caption.
+              child: ResponsiveGameText(
+                context.l10n.todQuotedResponse(response),
+                textAlign: TextAlign.center,
+                maxLines: 6,
+                style:
+                    theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      fontStyle: FontStyle.italic,
+                    ) ??
+                    const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      fontStyle: FontStyle.italic,
+                    ),
+              ),
+            ),
+          ],
+          if (proofWidget != null) ...[
+            const SizedBox(height: 14),
+            proofWidget!,
+          ],
+          if (!hasAnswerOrProof) ...[
+            const SizedBox(height: 14),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.visibility_off_outlined,
+                  size: 16,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    context.l10n.todNoAnswerOrProofYet,
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class _AwaitingView extends StatelessWidget {
   const _AwaitingView({
     required this.state,
@@ -1905,212 +2227,192 @@ class _AwaitingView extends StatelessWidget {
       reactTally[r.emoji] = (reactTally[r.emoji] ?? 0) + 1;
     }
 
+    // Item 5 (spectator result behavior, real-device report — flagged
+    // important) — the single source of truth for "is the CURRENT
+    // viewer a spectator," reused everywhere below instead of the
+    // playerOrder-membership proxy the bottom actions block already
+    // (correctly, but implicitly) relied on. A spectator must see NO
+    // reaction icons, NO reaction controls, NO vote-for-response
+    // button, and NO honesty-vote controls — see this same expression
+    // already used, correctly, for the proof-visibility check below.
+    final isSpectator = game.roomProvider?.currentMember?.isSpectator ?? false;
+
+    final canViewProof =
+        (state.turnHasVoiceProof || state.turnProofImageB64.isNotEmpty) &&
+        state.turnProofVisibility.canView(game.currentUserId, isSpectator);
+    final proofWidget = canViewProof
+        ? _ProofViewer(
+            imageB64: state.turnHasVoiceProof ? '' : state.turnProofImageB64,
+            voiceB64: state.turnHasVoiceProof ? state.turnProofVoiceB64 : '',
+            myUserId: game.currentUserId,
+            viewedByMap: state.turnProofViewedBy,
+            onOpened: game.markProofViewed,
+            viewMode: state.turnProofViewMode,
+            viewSeconds: state.turnProofViewSeconds,
+            // Premium viewers get one extra replay beyond whatever the
+            // room's own setting allows.
+            isPremium:
+                context.read<AuthProvider>().currentUser?.isPremiumActive ??
+                false,
+            sessionId: game.sessionId,
+            turnStartedAt: state.turnStartedAt,
+          )
+        : null;
+    final honestyEnabled =
+        !kTodDisableHonestyUiForDiagnosis &&
+        (game.config?.honestyVoteEnabled ?? true);
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  AppColors.ownerBadge.withValues(alpha: 0.12),
-                  theme.colorScheme.surfaceContainerHighest,
-                ],
+          TodResultCard(
+                member: game.roomProvider?.memberById(state.currentPlayerId),
+                displayName: _name(state.currentPlayerId),
+                card: state.currentCard,
+                response: state.turnResponse,
+                proofWidget: proofWidget,
+              )
+              .animate()
+              .fadeIn(duration: 320.ms)
+              .slideY(begin: 0.05, end: 0, curve: Curves.easeOut),
+          const SizedBox(height: 18),
+          if (!isSpectator) ...[
+            // Item 6 — reactions now live inside a soft, integrated
+            // panel instead of a bare row floating in the column.
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest.withValues(
+                  alpha: 0.6,
+                ),
+                borderRadius: BorderRadius.circular(18),
               ),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: AppColors.ownerBadge.withValues(alpha: 0.3),
+              child: Builder(
+                builder: (context) {
+                  final myAvatarConfig = context
+                      .watch<AuthProvider>()
+                      .currentUser
+                      ?.avatarConfig;
+                  return EmojiReactionRow(
+                    reactionsByEmoji: reactTally,
+                    // The tally row (reactionsByEmoji) is always shown
+                    // regardless of who's viewing — only the "add a
+                    // reaction" picker is gated on not-already-reacted
+                    // AND not the player whose own turn this is
+                    // (matches the previous inline `!myReacted &&
+                    // !isMyTurn` gate exactly).
+                    alreadyReacted: myReacted || isMyTurn,
+                    onReact: game.reactToResponse,
+                    useAvatarMode:
+                        context
+                            .watch<AuthProvider>()
+                            .currentUser
+                            ?.isPremiumActive ==
+                        true,
+                    ownAvatarConfig: myAvatarConfig,
+                    avatarConfigByValue: {
+                      for (final k in reactTally.keys)
+                        if (AvatarConfig.isAvatarReaction(k)) k: myAvatarConfig,
+                    },
+                  );
+                },
               ),
-            ),
-            child: Column(
-              children: [
-                const Text('🎉', style: TextStyle(fontSize: 44))
-                    .animate()
-                    .scale(
-                      begin: const Offset(0.3, 0.3),
-                      end: const Offset(1, 1),
-                      duration: 500.ms,
-                      curve: Curves.elasticOut,
+            ).animate(delay: 100.ms).fadeIn(),
+            const SizedBox(height: 10),
+            if (!isMyTurn && state.turnResponse.isNotEmpty) ...[
+              if (!myVoted)
+                OutlinedButton.icon(
+                  onPressed: game.voteForResponse,
+                  icon: const Icon(Icons.thumb_up_outlined, size: 16),
+                  label: Text(
+                    context.l10n.todLikedResponseVotes(
+                      state.currentVotes.length,
                     ),
-                const SizedBox(height: 8),
-                Text(
-                  _name(state.currentPlayerId),
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
+                  ),
+                )
+              else
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.successGreen.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    context.l10n.todVotedForResponseTotal(
+                      state.currentVotes.length,
+                    ),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: AppColors.successGreen,
+                    ),
                   ),
                 ),
-                Text(
-                  context.l10n.todCompletedTurn,
-                  style: theme.textTheme.bodySmall?.copyWith(
+              const SizedBox(height: 12),
+            ],
+            if (!isMyTurn && honestyEnabled)
+              _HonestyVoteRow(
+                game: game,
+                targetUserId: state.currentPlayerId,
+                roundNumber: state.roundNumber,
+                participantIds: state.playerOrder,
+              ),
+            if (isMyTurn && honestyEnabled)
+              DishonestReasonsPanel(
+                fetch: game.getMyDishonestReasons,
+                // Keyed on the round (fresh fetch per turn) AND on the
+                // live dishonest-reason generation counter (item:
+                // instant reveal) — a 'dishonest_reason_added' realtime
+                // signal bumps the generation, which changes this Key,
+                // which makes Flutter recreate the panel's State and
+                // re-run its one-shot fetch. No stream/poll inside the
+                // panel itself — see
+                // TodGameProvider.onDishonestReasonAdded.
+                key: ValueKey(
+                  'dishonest_reasons_${state.roundNumber}_'
+                  '${game.dishonestReasonGeneration('round:${state.roundNumber}')}',
+                ),
+              ),
+          ] else
+            // Item 5 — the spectator's replacement for the whole
+            // reactions/vote/honesty block above: a clean, read-only
+            // status line, never the interactive controls themselves
+            // (never even rendered, not just disabled — see this
+            // method's own doc comment on why that's the correct
+            // approach vs. a disabled-looking duplicate).
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest.withValues(
+                  alpha: 0.6,
+                ),
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.visibility_outlined,
+                    size: 16,
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
-                ),
-                if (state.currentCard != null) ...[
-                  const SizedBox(height: 10),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: state.currentCard!.type == TodCardType.truth
-                          ? Colors.blue.withOpacity(0.1)
-                          : Colors.orange.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+                  const SizedBox(width: 8),
+                  Flexible(
                     child: Text(
-                      state.currentCard!.content,
+                      context.l10n.todSpectatorWatchingLabel,
                       textAlign: TextAlign.center,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ),
                 ],
-                if (state.turnResponse.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primaryContainer.withOpacity(
-                        0.4,
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    // Item 18.3 — the answer itself is the whole point of
-                    // this reveal moment, so it gets large/expressive
-                    // treatment (scaling down only if genuinely long)
-                    // instead of the old muted bodyMedium italic.
-                    child: ResponsiveGameText(
-                      context.l10n.todQuotedResponse(state.turnResponse),
-                      textAlign: TextAlign.center,
-                      maxLines: 5,
-                      style: theme.textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            fontStyle: FontStyle.italic,
-                          ) ??
-                          const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w700,
-                            fontStyle: FontStyle.italic,
-                          ),
-                    ),
-                  ),
-                ],
-                if ((state.turnHasVoiceProof ||
-                        state.turnProofImageB64.isNotEmpty) &&
-                    state.turnProofVisibility.canView(
-                      game.currentUserId,
-                      game.roomProvider?.currentMember?.isSpectator ?? false,
-                    )) ...[
-                  const SizedBox(height: 12),
-                  _ProofViewer(
-                    imageB64: state.turnHasVoiceProof
-                        ? ''
-                        : state.turnProofImageB64,
-                    voiceB64: state.turnHasVoiceProof
-                        ? state.turnProofVoiceB64
-                        : '',
-                    myUserId: game.currentUserId,
-                    viewedByMap: state.turnProofViewedBy,
-                    onOpened: game.markProofViewed,
-                    viewMode: state.turnProofViewMode,
-                    viewSeconds: state.turnProofViewSeconds,
-                    // Premium viewers get one extra replay beyond whatever
-                    // the room's own setting allows.
-                    isPremium:
-                        context.read<AuthProvider>().currentUser?.isPremiumActive ??
-                        false,
-                    sessionId: game.sessionId,
-                    turnStartedAt: state.turnStartedAt,
-                  ),
-                ],
-              ],
-            ),
-          ).animate().fadeIn(),
-          const SizedBox(height: 16),
-          Builder(
-            builder: (context) {
-              final myAvatarConfig = context
-                  .watch<AuthProvider>()
-                  .currentUser
-                  ?.avatarConfig;
-              return EmojiReactionRow(
-                reactionsByEmoji: reactTally,
-                // The tally row (reactionsByEmoji) is always shown
-                // regardless of who's viewing — only the "add a reaction"
-                // picker is gated on not-already-reacted AND not the
-                // player whose own turn this is (matches the previous
-                // inline `!myReacted && !isMyTurn` gate exactly).
-                alreadyReacted: myReacted || isMyTurn,
-                onReact: game.reactToResponse,
-                useAvatarMode:
-                    context.watch<AuthProvider>().currentUser?.isPremiumActive ==
-                    true,
-                ownAvatarConfig: myAvatarConfig,
-                avatarConfigByValue: {
-                  for (final k in reactTally.keys)
-                    if (AvatarConfig.isAvatarReaction(k)) k: myAvatarConfig,
-                },
-              );
-            },
-          ),
-          if (reactTally.isNotEmpty || (!myReacted && !isMyTurn))
-            const SizedBox(height: 8),
-          if (!isMyTurn && state.turnResponse.isNotEmpty) ...[
-            if (!myVoted)
-              OutlinedButton.icon(
-                onPressed: game.voteForResponse,
-                icon: const Icon(Icons.thumb_up_outlined, size: 16),
-                label: Text(
-                  context.l10n.todLikedResponseVotes(state.currentVotes.length),
-                ),
-              )
-            else
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.successGreen.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  context.l10n.todVotedForResponseTotal(state.currentVotes.length),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppColors.successGreen,
-                  ),
-                ),
               ),
-            const SizedBox(height: 12),
-          ],
-          if (!isMyTurn && !kTodDisableHonestyUiForDiagnosis)
-            _HonestyVoteRow(
-              game: game,
-              targetUserId: state.currentPlayerId,
-              roundNumber: state.roundNumber,
-              participantIds: state.playerOrder,
-            ),
-          if (isMyTurn && !kTodDisableHonestyUiForDiagnosis)
-            DishonestReasonsPanel(
-              fetch: game.getMyDishonestReasons,
-              // Keyed on the round (fresh fetch per turn) AND on the live
-              // dishonest-reason generation counter (item: instant reveal)
-              // — a 'dishonest_reason_added' realtime signal bumps the
-              // generation, which changes this Key, which makes Flutter
-              // recreate the panel's State and re-run its one-shot fetch.
-              // No stream/poll inside the panel itself — see
-              // TodGameProvider.onDishonestReasonAdded.
-              key: ValueKey(
-                'dishonest_reasons_${state.roundNumber}_'
-                '${game.dishonestReasonGeneration('round:${state.roundNumber}')}',
-              ),
-            ),
+            ).animate(delay: 100.ms).fadeIn(),
+          const SizedBox(height: 14),
           _ScoreSummary(state: state, displayNames: displayNames),
           const SizedBox(height: 20),
           if (game.isOwner || game.canAdvanceTurnHere) ...[
@@ -2127,7 +2429,9 @@ class _AwaitingView extends StatelessWidget {
                         .map(_name)
                         .toList();
                     return Text(
-                      context.l10n.todWaitingForToFinishReading(waitingOn.join(', ')),
+                      context.l10n.todWaitingForToFinishReading(
+                        waitingOn.join(', '),
+                      ),
                       textAlign: TextAlign.center,
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
@@ -2170,7 +2474,8 @@ class _AwaitingView extends StatelessWidget {
                   foregroundColor: AppColors.errorRed,
                 ),
               ),
-          ] else if (!state.playerOrder.contains(game.currentUserId))
+          ] else if (isSpectator ||
+              !state.playerOrder.contains(game.currentUserId))
             Text(
               context.l10n.todSpectatingWaitingHost,
               textAlign: TextAlign.center,
@@ -2468,10 +2773,8 @@ class _ProofViewerState extends State<_ProofViewer> {
   /// Item 2 — see todProofMaxViews (tod_models.dart) for the exact formula
   /// and rationale; kept as a single shared pure function so this display
   /// value and the documented server formula can never drift apart.
-  int get _maxViews => todProofMaxViews(
-    viewMode: widget.viewMode,
-    isPremium: widget.isPremium,
-  );
+  int get _maxViews =>
+      todProofMaxViews(viewMode: widget.viewMode, isPremium: widget.isPremium);
 
   bool get _alreadyViewed =>
       (widget.viewedByMap[widget.myUserId] ?? 0) >= _maxViews;
@@ -2493,10 +2796,10 @@ class _ProofViewerState extends State<_ProofViewer> {
         if (mounted) {
           setState(() => _isOpening = false);
           final message = e.toString().contains('view_limit_exceeded')
-              ? 'No replays left for this proof.'
+              ? context.l10n.todProofNoReplaysLeft
               : e.toString().contains('not_permitted')
-              ? 'You are not allowed to view this proof.'
-              : 'Could not open proof — please try again.';
+              ? context.l10n.todProofNotAllowedToView
+              : context.l10n.todProofOpenFailed;
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(SnackBar(content: Text(message)));
@@ -2517,8 +2820,9 @@ class _ProofViewerState extends State<_ProofViewer> {
           imageB64: widget.imageB64,
           // Only TodProofViewMode.timed actually auto-closes — 'once' and
           // 'replay_once' show with no duration limit, same as before.
-          viewSeconds:
-              widget.viewMode == TodProofViewMode.timed ? widget.viewSeconds : null,
+          viewSeconds: widget.viewMode == TodProofViewMode.timed
+              ? widget.viewSeconds
+              : null,
         ),
       );
     } else if (widget.voiceB64.isNotEmpty) {
@@ -2534,6 +2838,7 @@ class _ProofViewerState extends State<_ProofViewer> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = context.theme;
     final viewed = _alreadyViewed;
     final timesViewed = widget.viewedByMap[widget.myUserId] ?? 0;
     final canReplay = !viewed && timesViewed > 0;
@@ -2541,39 +2846,110 @@ class _ProofViewerState extends State<_ProofViewer> {
     // specific viewer has left, per this specific proof (viewedByMap is
     // already per-viewer; _maxViews already reflects free vs premium).
     final replaysLeft = _maxViews - timesViewed;
+    final isVoice = widget.voiceB64.isNotEmpty;
+
+    // Item 6 (result screen redesign) — "an attractive media section
+    // rather than a plain image widget" / "a polished audio/proof
+    // presentation": this used to be one identical pill for both image
+    // and voice proof. Only the presentation below changed — every
+    // piece of state/logic above (view tracking, the server RPC,
+    // replay counting) is completely untouched.
+    final accent = viewed
+        ? theme.colorScheme.outlineVariant
+        : (isVoice ? AppColors.brandBlueMid : AppColors.brandPurpleMid);
+    final icon = viewed
+        ? Icons.check_circle_rounded
+        : isVoice
+        ? Icons.graphic_eq_rounded
+        : Icons.image_rounded;
+    final label = viewed
+        ? context.l10n.todProofViewedLabel
+        : canReplay
+        ? context.l10n.todProofReplayCount(replaysLeft)
+        : context.l10n.todProofTapToViewLabel;
+
     return GestureDetector(
       onTap: viewed ? null : _open,
       child: Container(
         width: double.infinity,
-        height: 70,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: viewed ? Colors.grey.shade200 : Colors.deepPurple.shade900,
-          borderRadius: BorderRadius.circular(12),
-          border: viewed
+          gradient: viewed
               ? null
-              : Border.all(color: Colors.deepPurple.shade400, width: 1.5),
+              : LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [accent, accent.withValues(alpha: 0.6)],
+                ),
+          color: viewed ? theme.colorScheme.surfaceContainerHighest : null,
+          borderRadius: BorderRadius.circular(18),
+          border: viewed
+              ? Border.all(color: theme.colorScheme.outlineVariant)
+              : null,
+          boxShadow: viewed
+              ? null
+              : [
+                  BoxShadow(
+                    color: accent.withValues(alpha: 0.35),
+                    blurRadius: 16,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
         ),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              viewed ? Icons.check_circle_outline : Icons.remove_red_eye_outlined,
-              color: viewed ? Colors.grey : Colors.white,
-              size: 24,
-            ),
-            const SizedBox(width: 10),
-            Text(
-              viewed
-                  ? 'Proof viewed'
-                  : canReplay
-                  ? '👁 Replay ($replaysLeft left)'
-                  : '🔒 Tap to view proof',
-              style: TextStyle(
-                color: viewed ? Colors.grey.shade600 : Colors.white,
-                fontWeight: FontWeight.w700,
-                fontSize: 13,
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: viewed ? 0.0 : 0.18),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                icon,
+                color: viewed
+                    ? theme.colorScheme.onSurfaceVariant
+                    : Colors.white,
+                size: 22,
               ),
             ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    isVoice
+                        ? context.l10n.todVoiceProofLabel
+                        : context.l10n.todImageProofLabel,
+                    style: TextStyle(
+                      color: viewed
+                          ? theme.colorScheme.onSurfaceVariant
+                          : Colors.white.withValues(alpha: 0.85),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 11,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: viewed
+                          ? theme.colorScheme.onSurfaceVariant
+                          : Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (!viewed)
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: Colors.white,
+                size: 22,
+              ),
           ],
         ),
       ),
@@ -2597,8 +2973,7 @@ class _TimedImageProofDialog extends StatefulWidget {
   final int? viewSeconds;
 
   @override
-  State<_TimedImageProofDialog> createState() =>
-      _TimedImageProofDialogState();
+  State<_TimedImageProofDialog> createState() => _TimedImageProofDialogState();
 }
 
 class _TimedImageProofDialogState extends State<_TimedImageProofDialog> {
@@ -2707,9 +3082,7 @@ class TodCountdownBadgeState extends State<TodCountdownBadge> {
       decoration: BoxDecoration(
         color: Colors.black54,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: urgent ? AppColors.errorRed : Colors.white38,
-        ),
+        border: Border.all(color: urgent ? AppColors.errorRed : Colors.white38),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -2994,7 +3367,10 @@ class _VoicePlayerSheetState extends State<_VoicePlayerSheet> {
           const SizedBox(height: 12),
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: Text(context.l10n.done, style: const TextStyle(color: Colors.white70)),
+            child: Text(
+              context.l10n.done,
+              style: const TextStyle(color: Colors.white70),
+            ),
           ),
         ],
       ),

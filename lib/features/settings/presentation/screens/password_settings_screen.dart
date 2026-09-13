@@ -6,6 +6,7 @@ import '../../../../core/extensions/context_ext.dart';
 import '../../../../core/providers/auth_provider.dart';
 import '../../../../core/router/route_names.dart';
 import '../../../../shared/widgets/buttons/j_button.dart';
+import '../../../../shared/widgets/mouj_tech_brand.dart';
 import '../../../auth/domain/password_validation.dart';
 
 /// Settings → Password & Security.
@@ -43,8 +44,7 @@ class PasswordSettingsScreen extends StatefulWidget {
   const PasswordSettingsScreen({super.key});
 
   @override
-  State<PasswordSettingsScreen> createState() =>
-      _PasswordSettingsScreenState();
+  State<PasswordSettingsScreen> createState() => _PasswordSettingsScreenState();
 }
 
 class _PasswordSettingsScreenState extends State<PasswordSettingsScreen> {
@@ -180,7 +180,8 @@ class _PasswordSettingsScreenState extends State<PasswordSettingsScreen> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final theme = context.theme;
-    final hasPassword = context.watch<AuthProvider>().currentUser?.hasPassword ?? false;
+    final hasPassword =
+        context.watch<AuthProvider>().currentUser?.hasPassword ?? false;
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.passwordSettingsTitle)),
@@ -213,6 +214,8 @@ class _PasswordSettingsScreenState extends State<PasswordSettingsScreen> {
                     ? _buildNewPasswordStep(context)
                     : _buildCurrentPasswordStep(context),
               ),
+
+              const MoujTechBrand(size: MoujTechBrandSize.compact),
             ],
           ),
         ),
@@ -242,9 +245,11 @@ class _PasswordSettingsScreenState extends State<PasswordSettingsScreen> {
               prefixIcon: const Icon(Icons.lock_outline),
               errorText: _currentPasswordError,
               suffixIcon: IconButton(
-                icon: Icon(_obscureCurrent
-                    ? Icons.visibility_outlined
-                    : Icons.visibility_off_outlined),
+                icon: Icon(
+                  _obscureCurrent
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
+                ),
                 tooltip: _obscureCurrent
                     ? l10n.authShowPassword
                     : l10n.authHidePassword,
@@ -259,7 +264,9 @@ class _PasswordSettingsScreenState extends State<PasswordSettingsScreen> {
           Align(
             alignment: AlignmentDirectional.centerStart,
             child: TextButton(
-              onPressed: _isStartingRecovery ? null : _startForgotPasswordRecovery,
+              onPressed: _isStartingRecovery
+                  ? null
+                  : _startForgotPasswordRecovery,
               child: _isStartingRecovery
                   ? SizedBox(
                       width: 16,
@@ -301,9 +308,11 @@ class _PasswordSettingsScreenState extends State<PasswordSettingsScreen> {
               labelText: l10n.passwordSettingsNewLabel,
               prefixIcon: const Icon(Icons.lock_outline),
               suffixIcon: IconButton(
-                icon: Icon(_obscureNew
-                    ? Icons.visibility_outlined
-                    : Icons.visibility_off_outlined),
+                icon: Icon(
+                  _obscureNew
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
+                ),
                 tooltip: _obscureNew
                     ? l10n.authShowPassword
                     : l10n.authHidePassword,
@@ -321,9 +330,11 @@ class _PasswordSettingsScreenState extends State<PasswordSettingsScreen> {
               labelText: l10n.passwordSettingsConfirmLabel,
               prefixIcon: const Icon(Icons.lock_outline),
               suffixIcon: IconButton(
-                icon: Icon(_obscureConfirm
-                    ? Icons.visibility_outlined
-                    : Icons.visibility_off_outlined),
+                icon: Icon(
+                  _obscureConfirm
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
+                ),
                 tooltip: _obscureConfirm
                     ? l10n.authShowPassword
                     : l10n.authHidePassword,

@@ -33,6 +33,7 @@ ExplorePerson _person({
   String? username = 'sara',
   int honestyPoints = 12,
   int generalScore = 340,
+  bool isOfficial = false,
 }) => ExplorePerson(
   userId: id,
   username: username,
@@ -42,6 +43,7 @@ ExplorePerson _person({
   rankPosition: 1,
   totalEligible: 5,
   discoveryPoolSize: 5,
+  isOfficial: isOfficial,
 );
 
 FriendEntity _blockedUser({
@@ -78,10 +80,7 @@ Widget _wrapInList(
       home: Scaffold(
         body: SizedBox(
           width: width,
-          child: ListView(
-            padding: const EdgeInsets.all(16),
-            children: items,
-          ),
+          child: ListView(padding: const EdgeInsets.all(16), children: items),
         ),
       ),
     ),
@@ -187,13 +186,17 @@ void main() {
 
     testWidgets('renders without exception in Arabic RTL', (tester) async {
       await tester.pumpWidget(
-        _wrapInList([
-          ExplorePersonCard(
-            person: _person(displayName: 'سارة', username: 'sara'),
-            hasSentRequest: false,
-            onAddFriend: () {},
-          ),
-        ], width: 360, direction: TextDirection.rtl),
+        _wrapInList(
+          [
+            ExplorePersonCard(
+              person: _person(displayName: 'سارة', username: 'sara'),
+              hasSentRequest: false,
+              onAddFriend: () {},
+            ),
+          ],
+          width: 360,
+          direction: TextDirection.rtl,
+        ),
       );
       await tester.pump();
       expect(tester.takeException(), isNull);
@@ -252,6 +255,61 @@ void main() {
     });
   });
 
+  group('ExplorePersonCard — item 1: Jma3a Official is fully excluded from '
+      'Discover, never specially presented', () {
+    testWidgets(
+      'renders no visible content for the official account — no name, '
+      'no verified badge, no honesty line, no Add Friend action',
+      (tester) async {
+        await tester.pumpWidget(
+          _wrapInList([
+            ExplorePersonCard(
+              person: _person(isOfficial: true, displayName: 'Jma3a Official'),
+              hasSentRequest: false,
+              onAddFriend: () {},
+            ),
+          ]),
+        );
+        await tester.pump();
+
+        expect(tester.takeException(), isNull);
+        expect(find.text('Jma3a Official'), findsNothing);
+        expect(find.text('Add Friend'), findsNothing);
+        expect(find.byIcon(Icons.verified_rounded), findsNothing);
+        // Renders to exactly zero size — the widget collapses to
+        // SizedBox.shrink() rather than a visible (even if inert) card.
+        expect(tester.getSize(find.byType(ListView)).height, greaterThan(0));
+      },
+    );
+
+    testWidgets(
+      'tapping where the official card would have rendered does nothing '
+      '— it is not a visible tap target at all',
+      (tester) async {
+        var taps = 0;
+        await tester.pumpWidget(
+          _wrapInList([
+            ExplorePersonCard(
+              person: _person(isOfficial: true),
+              hasSentRequest: false,
+              onAddFriend: () {},
+              onTap: () => taps++,
+            ),
+          ]),
+        );
+        await tester.pump();
+        // No card renders, so there is nothing to find/tap by type or
+        // text — tapping anywhere in the (empty) list area must not
+        // reach the collapsed card's onTap.
+        await tester.tapAt(
+          tester.getTopLeft(find.byType(ListView)) + const Offset(20, 20),
+        );
+        await tester.pump();
+        expect(taps, 0);
+      },
+    );
+  });
+
   group('BlockedUserCard — real production widget, narrow widths', () {
     for (final width in [320.0, 360.0, 390.0]) {
       testWidgets('renders without exception at ${width}px', (tester) async {
@@ -282,12 +340,16 @@ void main() {
 
     testWidgets('renders without exception in Arabic RTL', (tester) async {
       await tester.pumpWidget(
-        _wrapInList([
-          BlockedUserCard(
-            user: _blockedUser(displayName: 'أحمد', username: 'ahmed'),
-            onUnblock: () {},
-          ),
-        ], width: 360, direction: TextDirection.rtl),
+        _wrapInList(
+          [
+            BlockedUserCard(
+              user: _blockedUser(displayName: 'أحمد', username: 'ahmed'),
+              onUnblock: () {},
+            ),
+          ],
+          width: 360,
+          direction: TextDirection.rtl,
+        ),
       );
       await tester.pump();
       expect(tester.takeException(), isNull);

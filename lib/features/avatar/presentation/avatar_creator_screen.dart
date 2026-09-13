@@ -1,4 +1,3 @@
-
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -159,6 +158,85 @@ class AvatarConfig {
       mouthType: 'Concerned',
       eyebrowType: 'SadConcernedNatural',
       emoji: '🥹',
+    ),
+    // Item 6 (reaction-expansion pass) — 12 new expressions, doubling the
+    // avatar reaction picker. Every eyeType/mouthType/eyebrowType value
+    // below is taken from this screen's OWN existing _eyes/_mouths/
+    // _eyebrows option lists (see below) — no invented Avataaars values —
+    // and each (eyeType, mouthType, eyebrowType) triple is verified
+    // distinct from every triple above so no new key silently renders
+    // identically to an existing one.
+    'love': (
+      eyeType: 'Hearts',
+      mouthType: 'Smile',
+      eyebrowType: 'Default',
+      emoji: '😍',
+    ),
+    'wink': (
+      eyeType: 'Wink',
+      mouthType: 'Twinkle',
+      eyebrowType: 'Default',
+      emoji: '😉',
+    ),
+    'silly': (
+      eyeType: 'WinkWacky',
+      mouthType: 'Tongue',
+      eyebrowType: 'UpDown',
+      emoji: '🤪',
+    ),
+    'dizzy': (
+      eyeType: 'Dizzy',
+      mouthType: 'Disbelief',
+      eyebrowType: 'UpDownNatural',
+      emoji: '😵',
+    ),
+    'sad': (
+      eyeType: 'Side',
+      mouthType: 'Sad',
+      eyebrowType: 'SadConcernedNatural',
+      emoji: '😢',
+    ),
+    'shocked': (
+      eyeType: 'Surprised',
+      mouthType: 'Disbelief',
+      eyebrowType: 'RaisedExcited',
+      emoji: '😱',
+    ),
+    'confident': (
+      eyeType: 'Side',
+      mouthType: 'Serious',
+      eyebrowType: 'RaisedExcitedNatural',
+      emoji: '😏',
+    ),
+    'grumpy': (
+      eyeType: 'EyeRoll',
+      mouthType: 'Grimace',
+      eyebrowType: 'AngryNatural',
+      emoji: '😒',
+    ),
+    'sleepy': (
+      eyeType: 'Close',
+      mouthType: 'Default',
+      eyebrowType: 'FlatNatural',
+      emoji: '😴',
+    ),
+    'starstruck': (
+      eyeType: 'Happy',
+      mouthType: 'Twinkle',
+      eyebrowType: 'RaisedExcited',
+      emoji: '🤩',
+    ),
+    'yum': (
+      eyeType: 'Happy',
+      mouthType: 'Eating',
+      eyebrowType: 'Default',
+      emoji: '😋',
+    ),
+    'unimpressed': (
+      eyeType: 'Side',
+      mouthType: 'Concerned',
+      eyebrowType: 'UnibrowNatural',
+      emoji: '😑',
     ),
   };
 
@@ -517,7 +595,9 @@ class _AvatarCreatorScreenState extends State<AvatarCreatorScreen> {
       setState(() => _saving = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(ok ? context.l10n.avatarSaved : context.l10n.avatarSaveFailed),
+          content: Text(
+            ok ? context.l10n.avatarSaved : context.l10n.avatarSaveFailed,
+          ),
           behavior: SnackBarBehavior.fixed,
           duration: const Duration(seconds: 2),
         ),
@@ -883,10 +963,157 @@ class _OptionRow extends StatelessWidget {
   final String selected;
   final void Function(String) onSelect;
 
+  /// Last-resort fallback ONLY — a raw camelCase avataaars.io API value
+  /// split into English words. Used only if [_localizedOption] doesn't
+  /// recognize the value (should never happen for anything in this
+  /// screen's own _skinColors/_hairColors/_topTypes/etc. lists; kept as a
+  /// safety net, not a substitute for real translation).
   String _humanize(String s) => s
       .replaceAllMapped(RegExp(r'([A-Z])'), (m) => ' ${m[0]}')
       .replaceAllMapped(RegExp(r'\d+'), (m) => ' ${m[0]}')
       .trim();
+
+  /// Item 4 fix — every one of these ChoiceChip labels used to be the raw
+  /// avataaars.io API value (e.g. 'ShortHairShortFlat', 'BrownDark') run
+  /// through [_humanize], which only ever produces English text regardless
+  /// of app locale. This resolves each value to its real EN/AR/FR
+  /// translation. Keyed by the raw value alone (not per-category) since
+  /// these are drawn from disjoint style vocabularies with no meaningful
+  /// case where the same raw string means something different in two
+  /// categories (e.g. 'Default'/'Blank' consistently mean "none/default"
+  /// everywhere they appear; 'Black'/'Red'/'Brown' are the same color name
+  /// whether describing hair, skin, or clothing).
+  String _localizedOption(BuildContext context, String value) {
+    final l10n = context.l10n;
+    return switch (value) {
+      // Skin colors
+      'Tanned' => l10n.avatarOptTanned,
+      'Yellow' => l10n.avatarOptYellow,
+      'Pale' => l10n.avatarOptPale,
+      'Light' => l10n.avatarOptLight,
+      'Brown' => l10n.avatarOptBrown,
+      'DarkBrown' => l10n.avatarOptDarkBrown,
+      'Black' => l10n.avatarOptBlack,
+      // Hair colors (Black/Brown/Red already covered above)
+      'Auburn' => l10n.avatarOptAuburn,
+      'Blonde' => l10n.avatarOptBlonde,
+      'BlondeGolden' => l10n.avatarOptBlondeGolden,
+      'BrownDark' => l10n.avatarOptBrownDark,
+      'PastelPink' => l10n.avatarOptPastelPink,
+      'Platinum' => l10n.avatarOptPlatinum,
+      'Red' => l10n.avatarOptRed,
+      'SilverGray' => l10n.avatarOptSilverGray,
+      // Top types (hair styles / headwear)
+      'NoHair' => l10n.avatarOptNoHair,
+      'Eyepatch' => l10n.avatarOptEyepatch,
+      'Hat' => l10n.avatarOptHat,
+      'Hijab' => l10n.avatarOptHijab,
+      'Turban' => l10n.avatarOptTurban,
+      'WinterHat1' => l10n.avatarOptWinterHat1,
+      'WinterHat2' => l10n.avatarOptWinterHat2,
+      'WinterHat3' => l10n.avatarOptWinterHat3,
+      'WinterHat4' => l10n.avatarOptWinterHat4,
+      'LongHairBigHair' => l10n.avatarOptLongHairBigHair,
+      'LongHairBob' => l10n.avatarOptLongHairBob,
+      'LongHairBun' => l10n.avatarOptLongHairBun,
+      'LongHairCurly' => l10n.avatarOptLongHairCurly,
+      'LongHairCurvy' => l10n.avatarOptLongHairCurvy,
+      'LongHairDreads' => l10n.avatarOptLongHairDreads,
+      'LongHairFrida' => l10n.avatarOptLongHairFrida,
+      'LongHairFro' => l10n.avatarOptLongHairFro,
+      'LongHairFroBand' => l10n.avatarOptLongHairFroBand,
+      'LongHairNotTooLong' => l10n.avatarOptLongHairNotTooLong,
+      'LongHairShavedSides' => l10n.avatarOptLongHairShavedSides,
+      'LongHairMiaWallace' => l10n.avatarOptLongHairMiaWallace,
+      'LongHairStraight' => l10n.avatarOptLongHairStraight,
+      'LongHairStraight2' => l10n.avatarOptLongHairStraight2,
+      'LongHairStraightStrand' => l10n.avatarOptLongHairStraightStrand,
+      'ShortHairDreads01' => l10n.avatarOptShortHairDreads01,
+      'ShortHairDreads02' => l10n.avatarOptShortHairDreads02,
+      'ShortHairFrizzle' => l10n.avatarOptShortHairFrizzle,
+      'ShortHairShaggyMullet' => l10n.avatarOptShortHairShaggyMullet,
+      'ShortHairShortCurly' => l10n.avatarOptShortHairShortCurly,
+      'ShortHairShortFlat' => l10n.avatarOptShortHairShortFlat,
+      'ShortHairShortRound' => l10n.avatarOptShortHairShortRound,
+      'ShortHairShortWaved' => l10n.avatarOptShortHairShortWaved,
+      'ShortHairSides' => l10n.avatarOptShortHairSides,
+      'ShortHairTheCaesar' => l10n.avatarOptShortHairTheCaesar,
+      'ShortHairTheCaesarSidePart' => l10n.avatarOptShortHairTheCaesarSidePart,
+      // Accessories / facial hair (Blank shared by both)
+      'Blank' => l10n.avatarOptBlank,
+      'Kurt' => l10n.avatarOptKurt,
+      'Prescription01' => l10n.avatarOptPrescription01,
+      'Prescription02' => l10n.avatarOptPrescription02,
+      'Round' => l10n.avatarOptRound,
+      'Sunglasses' => l10n.avatarOptSunglasses,
+      'Wayfarers' => l10n.avatarOptWayfarers,
+      'BeardMedium' => l10n.avatarOptBeardMedium,
+      'BeardLight' => l10n.avatarOptBeardLight,
+      'BeardMagestic' => l10n.avatarOptBeardMagestic,
+      'MoustacheFancy' => l10n.avatarOptMoustacheFancy,
+      'MoustacheMagnum' => l10n.avatarOptMoustacheMagnum,
+      // Clothes
+      'BlazerShirt' => l10n.avatarOptBlazerShirt,
+      'BlazerSweater' => l10n.avatarOptBlazerSweater,
+      'CollarSweater' => l10n.avatarOptCollarSweater,
+      'GraphicShirt' => l10n.avatarOptGraphicShirt,
+      'Hoodie' => l10n.avatarOptHoodie,
+      'Overall' => l10n.avatarOptOverall,
+      'ShirtCrewNeck' => l10n.avatarOptShirtCrewNeck,
+      'ShirtScoopNeck' => l10n.avatarOptShirtScoopNeck,
+      'ShirtVNeck' => l10n.avatarOptShirtVNeck,
+      // Clothe colors (Black/Red/Pink covered above)
+      'Blue01' => l10n.avatarOptBlue01,
+      'Blue02' => l10n.avatarOptBlue02,
+      'Blue03' => l10n.avatarOptBlue03,
+      'Gray01' => l10n.avatarOptGray01,
+      'Gray02' => l10n.avatarOptGray02,
+      'Heather' => l10n.avatarOptHeather,
+      'PastelBlue' => l10n.avatarOptPastelBlue,
+      'PastelGreen' => l10n.avatarOptPastelGreen,
+      'PastelOrange' => l10n.avatarOptPastelOrange,
+      'PastelRed' => l10n.avatarOptPastelRed,
+      'PastelYellow' => l10n.avatarOptPastelYellow,
+      'Pink' => l10n.avatarOptPink,
+      'White' => l10n.avatarOptWhite,
+      // Eyes / eyebrows / mouth (Default shared)
+      'Close' => l10n.avatarOptClose,
+      'Cry' => l10n.avatarOptCry,
+      'Default' => l10n.avatarOptDefault,
+      'Dizzy' => l10n.avatarOptDizzy,
+      'EyeRoll' => l10n.avatarOptEyeRoll,
+      'Happy' => l10n.avatarOptHappy,
+      'Hearts' => l10n.avatarOptHearts,
+      'Side' => l10n.avatarOptSide,
+      'Squint' => l10n.avatarOptSquint,
+      'Surprised' => l10n.avatarOptSurprised,
+      'Wink' => l10n.avatarOptWink,
+      'WinkWacky' => l10n.avatarOptWinkWacky,
+      'Angry' => l10n.avatarOptAngry,
+      'AngryNatural' => l10n.avatarOptAngryNatural,
+      'DefaultNatural' => l10n.avatarOptDefaultNatural,
+      'FlatNatural' => l10n.avatarOptFlatNatural,
+      'RaisedExcited' => l10n.avatarOptRaisedExcited,
+      'RaisedExcitedNatural' => l10n.avatarOptRaisedExcitedNatural,
+      'SadConcerned' => l10n.avatarOptSadConcerned,
+      'SadConcernedNatural' => l10n.avatarOptSadConcernedNatural,
+      'UnibrowNatural' => l10n.avatarOptUnibrowNatural,
+      'UpDown' => l10n.avatarOptUpDown,
+      'UpDownNatural' => l10n.avatarOptUpDownNatural,
+      'Concerned' => l10n.avatarOptConcerned,
+      'Disbelief' => l10n.avatarOptDisbelief,
+      'Eating' => l10n.avatarOptEating,
+      'Grimace' => l10n.avatarOptGrimace,
+      'Sad' => l10n.avatarOptSad,
+      'ScreamOpen' => l10n.avatarOptScreamOpen,
+      'Serious' => l10n.avatarOptSerious,
+      'Smile' => l10n.avatarOptSmile,
+      'Tongue' => l10n.avatarOptTongue,
+      'Twinkle' => l10n.avatarOptTwinkle,
+      'Vomit' => l10n.avatarOptVomit,
+      _ => _humanize(value),
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -910,7 +1137,7 @@ class _OptionRow extends StatelessWidget {
                 .map(
                   (opt) => ChoiceChip(
                     label: Text(
-                      _humanize(opt),
+                      _localizedOption(context, opt),
                       style: const TextStyle(fontSize: 12),
                     ),
                     selected: selected == opt,

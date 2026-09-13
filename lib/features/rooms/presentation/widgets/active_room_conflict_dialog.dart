@@ -23,7 +23,7 @@ enum ActiveRoomConflictResult {
 ///
 /// Originally inlined in [RoomBrowserScreen._doCreateRoom]; extracted so the
 /// exact same check + dialog + close sequence can also gate room-invitation
-/// notification taps (see NotificationService._handleRoomInviteTap), instead
+/// notification taps (see NotificationService._handleRoomDeepLinkTap), instead
 /// of that path silently dropping the user into a second room.
 ///
 /// [active] is the result of `RoomRepository.getActiveMembership(userId)`.

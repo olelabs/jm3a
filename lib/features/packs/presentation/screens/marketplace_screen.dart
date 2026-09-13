@@ -68,6 +68,8 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     } else {
       context.read<PackProvider>().loadMoreBrowsePacks(
         gameType: _gameTypeFilter?.toDbString(),
+        categoryId: _categoryFilter,
+        freeOnly: _freeOnly,
       );
     }
   }
@@ -194,17 +196,34 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                     gameTypeFilter: _gameTypeFilter,
                     categoryFilter: _categoryFilter,
                     freeOnly: _freeOnly,
+                    // Item 2 fix — filters must combine as AND, not each
+                    // reset the others: selecting Free then Truth or Dare
+                    // (or vice versa) used to only pass the filter that
+                    // JUST changed, silently dropping whichever one was
+                    // already active (loadBrowsePacks defaults freeOnly
+                    // to false / gameType to null when omitted) — e.g.
+                    // "Free" then "Truth or Dare" showed ALL Truth or
+                    // Dare packs, paid included, because the second call
+                    // never re-passed freeOnly: true. Every filter
+                    // callback now re-sends the FULL current filter set
+                    // (this screen's own _gameTypeFilter/_categoryFilter/
+                    // _freeOnly state), not just the one field it itself
+                    // owns.
                     onGameTypeChanged: (gt) {
                       setState(() => _gameTypeFilter = gt);
                       context.read<PackProvider>().loadBrowsePacks(
                         reset: true,
                         gameType: gt?.toDbString(),
+                        categoryId: _categoryFilter,
+                        freeOnly: _freeOnly,
                       );
                     },
                     onFreeOnlyChanged: (v) {
                       setState(() => _freeOnly = v);
                       context.read<PackProvider>().loadBrowsePacks(
                         reset: true,
+                        gameType: _gameTypeFilter?.toDbString(),
+                        categoryId: _categoryFilter,
                         freeOnly: v,
                       );
                     },

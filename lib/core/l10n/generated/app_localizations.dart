@@ -3412,6 +3412,12 @@ abstract class AppLocalizations {
   /// **'Configure this game before it starts — you won\'t be able to change it once it begins.'**
   String get todConfigSubtitle;
 
+  /// No description provided for @todConfigDaresEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Dares'**
+  String get todConfigDaresEnabled;
+
   /// No description provided for @todConfigForceDareTitle.
   ///
   /// In en, this message translates to:
@@ -5858,6 +5864,12 @@ abstract class AppLocalizations {
   /// **'No stickers available yet'**
   String get packNoStickersAvailable;
 
+  /// No description provided for @packUploadSticker.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload sticker'**
+  String get packUploadSticker;
+
   /// No description provided for @packCardPreviewEmptyTitle.
   ///
   /// In en, this message translates to:
@@ -6913,6 +6925,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Pack purchased! You can now download it.'**
   String get packPurchasedNotice;
+
+  /// No description provided for @packTrialBadgeTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Free trial'**
+  String get packTrialBadgeTooltip;
+
+  /// No description provided for @packTrialCardsRemaining.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{1 trial card left} other{{count} trial cards left}}'**
+  String packTrialCardsRemaining(int count);
+
+  /// No description provided for @packTrialPromptTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enjoying this pack?'**
+  String get packTrialPromptTitle;
+
+  /// No description provided for @packTrialPromptBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve completed your free trial. Purchase the full pack to keep playing.'**
+  String get packTrialPromptBody;
+
+  /// No description provided for @packTrialPurchaseButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Purchase Full Pack'**
+  String get packTrialPurchaseButton;
+
+  /// No description provided for @packTrialEndButton.
+  ///
+  /// In en, this message translates to:
+  /// **'End Trial'**
+  String get packTrialEndButton;
 
   /// No description provided for @packQuantity.
   ///
@@ -8281,6 +8329,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Balance & transactions'**
   String get profileBalanceAndTransactions;
+
+  /// No description provided for @profileAnswerSurvey.
+  ///
+  /// In en, this message translates to:
+  /// **'Answer our survey'**
+  String get profileAnswerSurvey;
+
+  /// No description provided for @profileAnswerSurveyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tell us what you think — it only takes a minute'**
+  String get profileAnswerSurveyHint;
 
   /// No description provided for @profileBioTooLong.
   ///
@@ -9782,6 +9842,18 @@ abstract class AppLocalizations {
   /// **'Official Jma3a Account'**
   String get friendsOfficialAccount;
 
+  /// No description provided for @friendsJma3aFeedHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'Jma3a Feed'**
+  String get friendsJma3aFeedHeader;
+
+  /// No description provided for @friendsAdvertisementsHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'Advertisements'**
+  String get friendsAdvertisementsHeader;
+
   /// No description provided for @friendsFollowersCount.
   ///
   /// In en, this message translates to:
@@ -11258,6 +11330,132 @@ abstract class AppLocalizations {
   /// **'Expires {date}'**
   String officialResponseExpiresOn(String date);
 
+  /// No description provided for @myRequestsTab.
+  ///
+  /// In en, this message translates to:
+  /// **'My Requests'**
+  String get myRequestsTab;
+
+  /// No description provided for @myRequestsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'You haven\'t sent any requests to Jma3a yet'**
+  String get myRequestsEmpty;
+
+  /// No description provided for @myRequestsLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load your requests'**
+  String get myRequestsLoadFailed;
+
+  /// No description provided for @requestTypeAccountDeletion.
+  ///
+  /// In en, this message translates to:
+  /// **'Account deletion'**
+  String get requestTypeAccountDeletion;
+
+  /// No description provided for @requestTypePackReport.
+  ///
+  /// In en, this message translates to:
+  /// **'Pack report'**
+  String get requestTypePackReport;
+
+  /// No description provided for @requestTypeUserReport.
+  ///
+  /// In en, this message translates to:
+  /// **'Report'**
+  String get requestTypeUserReport;
+
+  /// No description provided for @requestTypeCreatorVerification.
+  ///
+  /// In en, this message translates to:
+  /// **'Creator verification'**
+  String get requestTypeCreatorVerification;
+
+  /// No description provided for @requestTypeCreatorRecoveryAppeal.
+  ///
+  /// In en, this message translates to:
+  /// **'Creator recovery appeal'**
+  String get requestTypeCreatorRecoveryAppeal;
+
+  /// No description provided for @requestStatusPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get requestStatusPending;
+
+  /// No description provided for @requestStatusOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get requestStatusOpen;
+
+  /// No description provided for @requestStatusUnderReview.
+  ///
+  /// In en, this message translates to:
+  /// **'Under review'**
+  String get requestStatusUnderReview;
+
+  /// No description provided for @requestStatusApproved.
+  ///
+  /// In en, this message translates to:
+  /// **'Approved'**
+  String get requestStatusApproved;
+
+  /// No description provided for @requestStatusRejected.
+  ///
+  /// In en, this message translates to:
+  /// **'Rejected'**
+  String get requestStatusRejected;
+
+  /// No description provided for @requestStatusResolved.
+  ///
+  /// In en, this message translates to:
+  /// **'Resolved'**
+  String get requestStatusResolved;
+
+  /// No description provided for @requestStatusDismissed.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismissed'**
+  String get requestStatusDismissed;
+
+  /// No description provided for @requestSubmittedOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Sent {date}'**
+  String requestSubmittedOn(String date);
+
+  /// No description provided for @requestAnsweredOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Answered {date}'**
+  String requestAnsweredOn(String date);
+
+  /// No description provided for @reportTargetProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Reported a user'**
+  String get reportTargetProfile;
+
+  /// No description provided for @reportTargetPack.
+  ///
+  /// In en, this message translates to:
+  /// **'Reported a pack'**
+  String get reportTargetPack;
+
+  /// No description provided for @reportTargetRoom.
+  ///
+  /// In en, this message translates to:
+  /// **'Reported a room'**
+  String get reportTargetRoom;
+
+  /// No description provided for @reportTargetChatMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Reported a message'**
+  String get reportTargetChatMessage;
+
   /// No description provided for @walletDepositsUnavailable.
   ///
   /// In en, this message translates to:
@@ -11653,6 +11851,300 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'An account with this phone/email already exists. Please log in.'**
   String get authAccountAlreadyExists;
+
+  /// No description provided for @surveyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Answer our survey'**
+  String get surveyTitle;
+
+  /// No description provided for @surveyIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Help us improve Jma3a — this is completely optional and takes about a minute. Your answers go straight to the team building the app.'**
+  String get surveyIntro;
+
+  /// No description provided for @surveySubmitButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit'**
+  String get surveySubmitButton;
+
+  /// No description provided for @surveyValidationRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please give an overall rating and a recommendation score before submitting.'**
+  String get surveyValidationRequired;
+
+  /// No description provided for @surveySuccessTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Thank you!'**
+  String get surveySuccessTitle;
+
+  /// No description provided for @surveySuccessBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your feedback has been sent to the Jma3a team. We really appreciate it.'**
+  String get surveySuccessBody;
+
+  /// No description provided for @surveyAlreadySubmittedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve already answered this survey'**
+  String get surveyAlreadySubmittedTitle;
+
+  /// No description provided for @surveyAlreadySubmittedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Thanks again for your feedback — we\'re reading every response.'**
+  String get surveyAlreadySubmittedBody;
+
+  /// No description provided for @surveySectionOverall.
+  ///
+  /// In en, this message translates to:
+  /// **'Overall experience'**
+  String get surveySectionOverall;
+
+  /// No description provided for @surveySectionLikes.
+  ///
+  /// In en, this message translates to:
+  /// **'What you like'**
+  String get surveySectionLikes;
+
+  /// No description provided for @surveySectionProblems.
+  ///
+  /// In en, this message translates to:
+  /// **'Problems & annoyances'**
+  String get surveySectionProblems;
+
+  /// No description provided for @surveySectionFuture.
+  ///
+  /// In en, this message translates to:
+  /// **'Future updates'**
+  String get surveySectionFuture;
+
+  /// No description provided for @surveySectionOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open feedback'**
+  String get surveySectionOpen;
+
+  /// No description provided for @surveyQ1Label.
+  ///
+  /// In en, this message translates to:
+  /// **'How would you rate Jma3a overall?'**
+  String get surveyQ1Label;
+
+  /// No description provided for @surveyQ2Label.
+  ///
+  /// In en, this message translates to:
+  /// **'How likely are you to recommend Jma3a to a friend?'**
+  String get surveyQ2Label;
+
+  /// No description provided for @surveyRecommendNotLikely.
+  ///
+  /// In en, this message translates to:
+  /// **'Not likely'**
+  String get surveyRecommendNotLikely;
+
+  /// No description provided for @surveyRecommendVeryLikely.
+  ///
+  /// In en, this message translates to:
+  /// **'Very likely'**
+  String get surveyRecommendVeryLikely;
+
+  /// No description provided for @surveyQ3Label.
+  ///
+  /// In en, this message translates to:
+  /// **'What do you like most about Jma3a?'**
+  String get surveyQ3Label;
+
+  /// No description provided for @surveyQ4Label.
+  ///
+  /// In en, this message translates to:
+  /// **'What annoys or frustrates you most? (select all that apply)'**
+  String get surveyQ4Label;
+
+  /// No description provided for @surveyQ5Label.
+  ///
+  /// In en, this message translates to:
+  /// **'Is anything currently confusing, difficult, slow, or inconvenient?'**
+  String get surveyQ5Label;
+
+  /// No description provided for @surveyQ6Label.
+  ///
+  /// In en, this message translates to:
+  /// **'What would you like us to add or improve next? (select all that apply)'**
+  String get surveyQ6Label;
+
+  /// No description provided for @surveyQ7Label.
+  ///
+  /// In en, this message translates to:
+  /// **'What feature would make you use Jma3a more often?'**
+  String get surveyQ7Label;
+
+  /// No description provided for @surveyQ8Label.
+  ///
+  /// In en, this message translates to:
+  /// **'What would you change about Jma3a if you could?'**
+  String get surveyQ8Label;
+
+  /// No description provided for @surveyQ9Label.
+  ///
+  /// In en, this message translates to:
+  /// **'Anything else you want the Jma3a team to know?'**
+  String get surveyQ9Label;
+
+  /// No description provided for @surveyOtherHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tell us more…'**
+  String get surveyOtherHint;
+
+  /// No description provided for @surveyChoiceTruthOrDare.
+  ///
+  /// In en, this message translates to:
+  /// **'Truth or Dare'**
+  String get surveyChoiceTruthOrDare;
+
+  /// No description provided for @surveyChoiceNhie.
+  ///
+  /// In en, this message translates to:
+  /// **'Never Have I Ever'**
+  String get surveyChoiceNhie;
+
+  /// No description provided for @surveyChoiceMeme.
+  ///
+  /// In en, this message translates to:
+  /// **'Meme Game'**
+  String get surveyChoiceMeme;
+
+  /// No description provided for @surveyChoicePacks.
+  ///
+  /// In en, this message translates to:
+  /// **'Packs marketplace'**
+  String get surveyChoicePacks;
+
+  /// No description provided for @surveyChoiceFriends.
+  ///
+  /// In en, this message translates to:
+  /// **'Friends & social features'**
+  String get surveyChoiceFriends;
+
+  /// No description provided for @surveyChoicePremium.
+  ///
+  /// In en, this message translates to:
+  /// **'Premium features'**
+  String get surveyChoicePremium;
+
+  /// No description provided for @surveyChoiceReputation.
+  ///
+  /// In en, this message translates to:
+  /// **'Honesty points & reputation'**
+  String get surveyChoiceReputation;
+
+  /// No description provided for @surveyChoiceStreaks.
+  ///
+  /// In en, this message translates to:
+  /// **'Streaks'**
+  String get surveyChoiceStreaks;
+
+  /// No description provided for @surveyChoiceOfficialContent.
+  ///
+  /// In en, this message translates to:
+  /// **'Official Jma3a content'**
+  String get surveyChoiceOfficialContent;
+
+  /// No description provided for @surveyChoicePerformance.
+  ///
+  /// In en, this message translates to:
+  /// **'App performance / lag'**
+  String get surveyChoicePerformance;
+
+  /// No description provided for @surveyChoiceBugs.
+  ///
+  /// In en, this message translates to:
+  /// **'Bugs or glitches'**
+  String get surveyChoiceBugs;
+
+  /// No description provided for @surveyChoiceNavigation.
+  ///
+  /// In en, this message translates to:
+  /// **'Confusing navigation'**
+  String get surveyChoiceNavigation;
+
+  /// No description provided for @surveyChoiceNotifications.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many/too few notifications'**
+  String get surveyChoiceNotifications;
+
+  /// No description provided for @surveyChoicePackPrices.
+  ///
+  /// In en, this message translates to:
+  /// **'Pack prices'**
+  String get surveyChoicePackPrices;
+
+  /// No description provided for @surveyChoiceConnection.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection / reconnect issues'**
+  String get surveyChoiceConnection;
+
+  /// No description provided for @surveyChoiceRoomManagement.
+  ///
+  /// In en, this message translates to:
+  /// **'Room/game management'**
+  String get surveyChoiceRoomManagement;
+
+  /// No description provided for @surveyChoiceMoreGames.
+  ///
+  /// In en, this message translates to:
+  /// **'More games'**
+  String get surveyChoiceMoreGames;
+
+  /// No description provided for @surveyChoiceMorePacks.
+  ///
+  /// In en, this message translates to:
+  /// **'More packs / content'**
+  String get surveyChoiceMorePacks;
+
+  /// No description provided for @surveyChoiceMatchmaking.
+  ///
+  /// In en, this message translates to:
+  /// **'Better matchmaking'**
+  String get surveyChoiceMatchmaking;
+
+  /// No description provided for @surveyChoiceVoiceChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice chat'**
+  String get surveyChoiceVoiceChat;
+
+  /// No description provided for @surveyChoiceLeaderboards.
+  ///
+  /// In en, this message translates to:
+  /// **'Leaderboards'**
+  String get surveyChoiceLeaderboards;
+
+  /// No description provided for @surveyChoiceCustomization.
+  ///
+  /// In en, this message translates to:
+  /// **'More customization (avatars/themes)'**
+  String get surveyChoiceCustomization;
+
+  /// No description provided for @surveyChoiceBetterNotifications.
+  ///
+  /// In en, this message translates to:
+  /// **'Improved notifications'**
+  String get surveyChoiceBetterNotifications;
+
+  /// No description provided for @surveyChoiceOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get surveyChoiceOther;
 }
 
 class _AppLocalizationsDelegate

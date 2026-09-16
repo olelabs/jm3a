@@ -245,6 +245,7 @@ import '../../../core/services/presence_service.dart';
 import '../../../core/utils/app_logger.dart';
 import '../../../core/utils/streak_flame.dart';
 import '../../auth/domain/entities/user_entity.dart';
+import '../../notifications/domain/user_request_entity.dart';
 
 class ProfileRepository extends BaseRepository {
   ProfileRepository._();
@@ -653,6 +654,150 @@ class ProfileRepository extends BaseRepository {
       if (_supabase.auth.currentUser?.id == null) return false;
       final result = await _supabase.rpc('cancel_account_deletion_request');
       return result as bool? ?? false;
+    },
+  );
+
+  /// Every request the CURRENT user has submitted to the Jma3a official/
+  /// admin side, newest first, for the "My Requests" tab.
+  ///
+  /// Reads the request tables the user can ALREADY see under their own
+  /// existing RLS policies — `account_deletion_requests: own read`,
+  /// `pack_reports: own read`, `reports: own read`,
+  /// `creator_verifications: own read`,
+  /// `creator_recovery_complaints: own read`. Every one of those filters
+  /// on `auth.uid()`, so this adds no new query surface and no new
+  /// visibility: it only collects, in one place, rows the user's own
+  /// actions created and could already fetch.
+  ///
+  /// Deliberately NOT read here:
+  /// * `moderation_actions` — policy is `no client access` (USING false).
+  /// * `blocked_users` — an immediate action with no status or reviewer;
+  ///   listing it as a "request" would misrepresent it.
+  /// * every admin free-text column (`reports.resolution_note`,
+  ///   `account_deletion_requests.notes`,
+  ///   `creator_recovery_complaints.admin_notes`,
+  ///   `creator_verifications.rejection_reason`). None is written for the
+  ///   requester, and a report's note concerns the person who was
+  ///   reported. The official MESSAGE to the user already has a
+  ///   user-facing channel: the notifications the existing triggers raise,
+  ///   which this same screen lists in its other tabs.
+  ///
+  /// Each source is queried independently and a failing one is skipped
+  /// rather than emptying the whole list — a user with no creator history,
+  /// for instance, still sees their reports.
+  Future<List<UserRequestEntity>> getMyRequests() => guardedCall(
+    operationName: 'getMyRequests',
+    operation: () async {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) throw const AuthFailure();
+
+      Future<List<UserRequestEntity>> source(
+        String label,
+        Future<List<UserRequestEntity>> Function() fetch,
+      ) async {
+        try {
+          return await fetch();
+        } catch (e) {
+          AppLogger.warning('getMyRequests: $label source failed: $e');
+          return const [];
+        }
+      }
+
+      DateTime? at(dynamic v) =>
+          v is String ? DateTime.tryParse(v)?.toLocal() : null;
+
+      final results = await Future.wait([
+        source('account_deletion', () async {
+          final rows = await _supabase
+              .from('account_deletion_requests')
+              .select('id, status, created_at, reviewed_at')
+              .eq('user_id', userId);
+          return [
+            for (final r in rows)
+              UserRequestEntity(
+                id: r['id'] as String,
+                type: UserRequestType.accountDeletion,
+                status: r['status'] as String,
+                submittedAt: at(r['created_at'])!,
+                decidedAt: at(r['reviewed_at']),
+              ),
+          ];
+        }),
+        source('pack_reports', () async {
+          final rows = await _supabase
+              .from('pack_reports')
+              .select('id, status, created_at, resolved_at, packs!pack_id(title)')
+              .eq('reporter_id', userId);
+          return [
+            for (final r in rows)
+              UserRequestEntity(
+                id: r['id'] as String,
+                type: UserRequestType.packReport,
+                status: r['status'] as String,
+                submittedAt: at(r['created_at'])!,
+                decidedAt: at(r['resolved_at']),
+                targetTitleJson: (r['packs'] as Map?)?['title'] is Map
+                    ? Map<String, dynamic>.from(
+                        (r['packs'] as Map)['title'] as Map,
+                      )
+                    : null,
+              ),
+          ];
+        }),
+        source('reports', () async {
+          final rows = await _supabase
+              .from('reports')
+              .select('id, status, target_type, created_at, resolved_at')
+              .eq('reporter_id', userId);
+          return [
+            for (final r in rows)
+              UserRequestEntity(
+                id: r['id'] as String,
+                type: UserRequestType.userReport,
+                status: r['status'] as String,
+                submittedAt: at(r['created_at'])!,
+                decidedAt: at(r['resolved_at']),
+                reportTargetType: r['target_type'] as String?,
+              ),
+          ];
+        }),
+        source('creator_verifications', () async {
+          final rows = await _supabase
+              .from('creator_verifications')
+              .select('id, status, created_at, reviewed_at')
+              .eq('user_id', userId);
+          return [
+            for (final r in rows)
+              UserRequestEntity(
+                id: r['id'] as String,
+                type: UserRequestType.creatorVerification,
+                status: r['status'] as String,
+                submittedAt: at(r['created_at'])!,
+                decidedAt: at(r['reviewed_at']),
+              ),
+          ];
+        }),
+        source('creator_recovery_complaints', () async {
+          final rows = await _supabase
+              .from('creator_recovery_complaints')
+              .select('id, status, created_at, reviewed_at')
+              .eq('user_id', userId);
+          return [
+            for (final r in rows)
+              UserRequestEntity(
+                id: r['id'] as String,
+                type: UserRequestType.creatorRecoveryAppeal,
+                status: r['status'] as String,
+                submittedAt: at(r['created_at'])!,
+                decidedAt: at(r['reviewed_at']),
+              ),
+          ];
+        }),
+      ]);
+
+      return [
+        for (final list in results) ...list,
+      ]..sort((a, b) => b.submittedAt.compareTo(a.submittedAt));
     },
   );
 

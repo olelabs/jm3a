@@ -117,51 +117,67 @@ class _OtpScreenState extends State<OtpScreen> {
   static const _len = 6;
   static const _cooldown = 60;
 
-  final _controllers = List.generate(_len, (_) => TextEditingController());
-  final _focusNodes = List.generate(_len, (_) => FocusNode());
+  // ONE controller and ONE focus node for the WHOLE code — see [_OtpInput]
+  // for why six separate ones were the actual iOS keyboard bug. Both are
+  // created once, here, and never rebuilt: nothing in build() constructs a
+  // controller or a focus node, so no parent rebuild can recreate them.
+  final _codeCtrl = TextEditingController();
+  final _focusNode = FocusNode();
   final _shakeKey = GlobalKey<_ShakeState>();
 
-  int _resendSeconds = _cooldown;
+  // A ValueNotifier rather than setState-backed field: the resend countdown
+  // ticks once a second for a minute, and a setState here rebuilt the entire
+  // screen — including the OTP input — on every tick while the user was
+  // still typing. Only the resend row listens to it now.
+  final _resendSeconds = ValueNotifier<int>(_cooldown);
   Timer? _timer;
   bool _isResending = false;
   bool _hasError = false;
   int? _attemptsRemaining;
+
+  // Defensive re-entrancy guard: auto-submit fires the instant the 6th
+  // digit lands (_onChanged), and the Verify button is separately enabled
+  // by the same 6-digit condition via its own ValueListenableBuilder —
+  // two independent triggers for the same action. Without this, a tap on
+  // Verify landing in the same frame as auto-submit (or a very fast
+  // double-tap) could fire verifyOtp() twice concurrently for the same
+  // code, burning an extra attempt from OTP_MAX_ATTEMPTS for nothing.
+  bool _submitting = false;
 
   @override
   void initState() {
     super.initState();
     _startTimer();
     WidgetsBinding.instance.addPostFrameCallback(
-      (_) => _focusNodes[0].requestFocus(),
+      (_) => _focusNode.requestFocus(),
     );
   }
 
   @override
   void dispose() {
     _timer?.cancel();
-    for (final c in _controllers) c.dispose();
-    for (final f in _focusNodes) f.dispose();
+    _codeCtrl.dispose();
+    _focusNode.dispose();
+    _resendSeconds.dispose();
     super.dispose();
   }
 
   // ── Timer ─────────────────────────────────────────────────────────────────
   void _startTimer() {
-    setState(() => _resendSeconds = _cooldown);
+    _resendSeconds.value = _cooldown;
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (t) {
       if (!mounted) {
         t.cancel();
         return;
       }
-      setState(() {
-        _resendSeconds--;
-        if (_resendSeconds <= 0) t.cancel();
-      });
+      _resendSeconds.value--;
+      if (_resendSeconds.value <= 0) t.cancel();
     });
   }
 
   // ── OTP state ─────────────────────────────────────────────────────────────
-  String get _otp => _controllers.map((c) => c.text).join();
+  String get _otp => _codeCtrl.text;
   bool get _complete => _otp.length == _len;
 
   _OtpContext get _otpContext {
@@ -171,43 +187,77 @@ class _OtpScreenState extends State<OtpScreen> {
   }
 
   void _clearAll() {
-    for (final c in _controllers) c.clear();
-    _focusNodes[0].requestFocus();
+    _codeCtrl.clear();
+    _focusNode.requestFocus();
+  }
+
+  // ── Back navigation ───────────────────────────────────────────────────────
+  //
+  // OtpScreen is always reached via context.go() (never push()) — see
+  // SignupScreen._submit/ForgotPasswordScreen._submit/
+  // PasswordSettingsScreen's own comments for why: a stacked Login/Signup/
+  // Settings screen left underneath would get revalidated by the router's
+  // global redirect the instant OTP verification finishes, racing the
+  // explicit onboarding/set-password navigation _submit() performs above.
+  // That means there is nothing on the Navigator stack for a plain pop()
+  // to return to — this screen must explicitly go() back to whichever
+  // screen it was actually reached from, using the exact same
+  // widget.pendingPassword/isPasswordRecovery/returnToSettingsOnSuccess
+  // args _otpContext already derives for the SUCCESS path, rather than
+  // introducing a second, separate "where did I come from" signal.
+  void _goBack() {
+    switch (_otpContext) {
+      case _OtpContext.signup:
+        // pendingPassword != null: either Signup (password collected
+        // before OTP) or Settings' "remembers my password" update flow —
+        // returnToSettingsOnSuccess tells the two apart, same as _submit's
+        // own success branch above.
+        context.go(
+          widget.returnToSettingsOnSuccess
+              ? RouteNames.passwordSettings
+              : RouteNames.signup,
+        );
+      case _OtpContext.passwordRecovery:
+        // isPasswordRecovery: either Login's "Forgot Password" or
+        // Settings' has_password=false prompt — same distinction.
+        context.go(
+          widget.returnToSettingsOnSuccess
+              ? RouteNames.passwordSettings
+              : RouteNames.authPasswordLogin,
+        );
+      case _OtpContext.none:
+        // Not reachable by any current call site (see _OtpContext.none's
+        // own doc) — Login is the safest default entry point rather than
+        // doing nothing.
+        context.go(RouteNames.authPasswordLogin);
+    }
   }
 
   // ── Input handling ────────────────────────────────────────────────────────
-  void _onChanged(int index, String value) {
-    setState(() => _hasError = false);
-
-    if (value.isEmpty) {
-      if (index > 0) _focusNodes[index - 1].requestFocus();
-      return;
-    }
-
-    // Handle paste: distribute across boxes
-    final digits = value.replaceAll(RegExp(r'\D'), '');
-    if (digits.length > 1) {
-      for (var i = 0; i < _len && i < digits.length; i++) {
-        _controllers[i].text = digits[i];
-      }
-      final next = digits.length.clamp(0, _len - 1);
-      _focusNodes[next].requestFocus();
-      if (_complete) _submit();
-      return;
-    }
-
-    if (index < _len - 1) {
-      _focusNodes[index + 1].requestFocus();
-    } else {
-      _focusNodes[index].unfocus();
-      if (_complete) _submit();
-    }
+  //
+  // Auto-advance, backspace-to-previous-box and paste-distribution are all
+  // implicit now that the code lives in a single field: the caret simply
+  // moves within that one field, and the boxes re-render from its text.
+  // None of it touches focus any more, which is the whole point (see
+  // [_OtpInput]).
+  void _onChanged(String value) {
+    // Only rebuild when the error state genuinely changes. This used to
+    // setState unconditionally on every single keystroke.
+    if (_hasError) setState(() => _hasError = false);
+    if (value.length == _len) _submit();
   }
 
   // ── Submit ────────────────────────────────────────────────────────────────
   Future<void> _submit() async {
-    if (!_complete) return;
-    _focusNodes.forEach((f) => f.unfocus());
+    // Auto-submit (onChanged reaching 6 digits) and the Verify button's own
+    // ValueListenableBuilder are two independent triggers for the same
+    // action — see [_submitting]'s own doc. This is the only await in the
+    // whole function, so clearing the flag the instant it resolves (rather
+    // than in a try/finally around every branch below) is sufficient: every
+    // branch after this point is synchronous.
+    if (!_complete || _submitting) return;
+    _submitting = true;
+    _focusNode.unfocus();
 
     final auth = context.read<AuthProvider>();
     // Auth redesign: signup and the Settings "remembers my password"
@@ -222,6 +272,7 @@ class _OtpScreenState extends State<OtpScreen> {
       _otp,
       pendingPassword: widget.pendingPassword,
     );
+    _submitting = false;
 
     if (!mounted) return;
 
@@ -338,7 +389,7 @@ class _OtpScreenState extends State<OtpScreen> {
 
   // ── Resend ────────────────────────────────────────────────────────────────
   Future<void> _resend() async {
-    if (_resendSeconds > 0 || _isResending) return;
+    if (_resendSeconds.value > 0 || _isResending) return;
     setState(() {
       _isResending = true;
       _hasError = false;
@@ -381,13 +432,23 @@ class _OtpScreenState extends State<OtpScreen> {
     final l10n = context.l10n;
     final theme = context.theme;
 
-    return Scaffold(
-      appBar: AppBar(
-        leading: BackButton(onPressed: () => context.pop()),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
-      body: SafeArea(
+    return PopScope(
+      // Nothing to pop to (see _goBack's own doc) — both the visible
+      // back button and the Android/system back gesture route through
+      // the same explicit _goBack(), matching CreatePackScreen's own
+      // established "app-bar back AND system back both intercepted here"
+      // convention.
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _goBack();
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          leading: BackButton(onPressed: _goBack),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+        ),
+        body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
@@ -427,17 +488,12 @@ class _OtpScreenState extends State<OtpScreen> {
               // OTP boxes
               _ShakeWidget(
                 key: _shakeKey,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: List.generate(
-                    _len,
-                    (i) => _OtpBox(
-                      controller: _controllers[i],
-                      focusNode: _focusNodes[i],
-                      hasError: _hasError,
-                      onChanged: (v) => _onChanged(i, v),
-                    ),
-                  ),
+                child: _OtpInput(
+                  controller: _codeCtrl,
+                  focusNode: _focusNode,
+                  length: _len,
+                  hasError: _hasError,
+                  onChanged: _onChanged,
                 ),
               ).animate(delay: 160.ms).fadeIn().slideY(begin: 0.08, end: 0),
 
@@ -457,25 +513,34 @@ class _OtpScreenState extends State<OtpScreen> {
 
               const SizedBox(height: 28),
 
-              Consumer<AuthProvider>(
-                builder: (_, auth, __) => JButton(
-                  label: l10n.authOtpVerify,
-                  onPressed: _complete ? _submit : null,
-                  isLoading: auth.isVerifyingOtp,
+              // Listens to the code field directly so enabling/disabling the
+              // button doesn't need a screen-wide setState per keystroke.
+              ValueListenableBuilder<TextEditingValue>(
+                valueListenable: _codeCtrl,
+                builder: (_, value, __) => Consumer<AuthProvider>(
+                  builder: (_, auth, __) => JButton(
+                    label: l10n.authOtpVerify,
+                    onPressed: value.text.length == _len ? _submit : null,
+                    isLoading: auth.isVerifyingOtp,
+                  ),
                 ),
               ),
 
               const SizedBox(height: 20),
 
-              // Resend row
+              // Resend row — the only listener on the countdown, so its
+              // per-second tick never reaches the OTP input above.
               Center(
-                child: _resendSeconds > 0
-                    ? _ResendCountdown(seconds: _resendSeconds)
-                    : _ResendButton(
-                        isLoading: _isResending,
-                        onTap: _resend,
-                        label: l10n.authOtpResend,
-                      ),
+                child: ValueListenableBuilder<int>(
+                  valueListenable: _resendSeconds,
+                  builder: (_, seconds, __) => seconds > 0
+                      ? _ResendCountdown(seconds: seconds)
+                      : _ResendButton(
+                          isLoading: _isResending,
+                          onTap: _resend,
+                          label: l10n.authOtpResend,
+                        ),
+                ),
               ),
 
               const MoujTechBrand(size: MoujTechBrandSize.compact),
@@ -483,70 +548,184 @@ class _OtpScreenState extends State<OtpScreen> {
           ),
         ),
       ),
+      ),
     );
   }
 }
 
 // ── Sub-widgets ───────────────────────────────────────────────────────────────
 
-class _OtpBox extends StatelessWidget {
-  const _OtpBox({
+/// The six-digit code entry: ONE real text field, six presentational boxes.
+///
+/// ROOT CAUSE of the iOS "keyboard closes and reopens after every digit"
+/// report. This used to be six separate [TextFormField]s, each with its own
+/// [TextEditingController] and [FocusNode], and `_onChanged` moved focus on
+/// every keystroke (`_focusNodes[index + 1].requestFocus()`). Moving focus
+/// between two distinct text fields tears the platform text-input
+/// connection down and builds a new one (`TextInput.clearClient` followed by
+/// `setClient`/`show`); on iOS that resigns and re-acquires first responder,
+/// which visibly dismisses and re-presents the keyboard — once per digit.
+///
+/// Keeping the whole code in a single field means focus never moves while
+/// typing, so the connection is never torn down and the keyboard simply
+/// stays up. It also removes the failure mode entirely rather than masking
+/// it: there is no re-focus timer, no delay, no post-rebuild
+/// `requestFocus()`. The boxes below are pure presentation rendered from
+/// [controller]'s text and hold no editing state, so a rebuild of this
+/// widget — or of the whole screen — cannot recreate the input, its
+/// controller, or its focus node.
+class _OtpInput extends StatelessWidget {
+  const _OtpInput({
     required this.controller,
     required this.focusNode,
+    required this.length,
     required this.hasError,
     required this.onChanged,
   });
 
   final TextEditingController controller;
   final FocusNode focusNode;
+  final int length;
   final bool hasError;
-  final void Function(String) onChanged;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    // Forces LTR for this whole subtree regardless of the app's ambient
+    // locale-driven Directionality (Arabic runs the rest of the app RTL).
+    // Two concrete things this fixes, not just the cursor:
+    //  1. Row lays its children out along the AMBIENT text direction — in
+    //     RTL that would silently reverse the six boxes' visual order
+    //     (the box for the last-typed digit appearing on the left), even
+    //     though each box's own digit still renders correctly on its own.
+    //  2. The TextField below inherits Directionality for its internal
+    //     cursor/selection movement; explicit LTR keeps that consistent
+    //     even though its text is invisible.
+    return Directionality(
+      textDirection: TextDirection.ltr,
+      child: Stack(
+        children: [
+          AnimatedBuilder(
+            animation: Listenable.merge([controller, focusNode]),
+            builder: (_, __) {
+              final code = controller.text;
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: List.generate(
+                  length,
+                  (i) => _OtpBox(
+                    digit: i < code.length ? code[i] : '',
+                    // The box the next digit will land in.
+                    isActive: focusNode.hasFocus && i == code.length,
+                    hasError: hasError,
+                  ),
+                ),
+              );
+            },
+          ),
+          // Covers the whole row so a tap anywhere on it focuses the field,
+          // exactly as tapping any individual box used to.
+          Positioned.fill(
+            child: TextSelectionTheme(
+              // The field's own text is invisible (the boxes are what's
+              // read), so its caret and selection highlight must be too.
+              data: const TextSelectionThemeData(
+                cursorColor: Colors.transparent,
+                selectionColor: Colors.transparent,
+              ),
+              child: TextField(
+                controller: controller,
+                focusNode: focusNode,
+                keyboardType: TextInputType.number,
+                textDirection: TextDirection.ltr,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(length),
+                ],
+                onChanged: onChanged,
+                showCursor: false,
+                style: const TextStyle(color: Colors.transparent),
+                cursorColor: Colors.transparent,
+                // Deliberately a real, interactive field rather than an
+                // offstage one: long-press paste of a copied code still
+                // works, and pasting all six digits at once now just fills
+                // the single field (the old manual paste-distribution loop
+                // is gone).
+                decoration: const InputDecoration(
+                  // ROOT CAUSE of the stray visible input control: the
+                  // app's global InputDecorationTheme (app_theme.dart) sets
+                  // filled:true/fillColor plus enabledBorder/focusedBorder/
+                  // errorBorder/focusedErrorBorder. Overriding only `border`
+                  // (as this used to) doesn't suppress those — Flutter's
+                  // InputDecoration.applyDefaults() fills each unset
+                  // state-specific border from the theme independently, and
+                  // enabledBorder/focusedBorder/etc. take precedence over
+                  // the generic `border` fallback whenever the theme sets
+                  // them. Every state has to be silenced explicitly for
+                  // this field to render as nothing at all, in every state.
+                  filled: false,
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  errorBorder: InputBorder.none,
+                  focusedErrorBorder: InputBorder.none,
+                  disabledBorder: InputBorder.none,
+                  contentPadding: EdgeInsets.zero,
+                  counterText: '',
+                ),
+                // Typing always appends — with the text invisible there is
+                // no meaningful mid-string caret position to place.
+                onTap: () => controller.selection = TextSelection.collapsed(
+                  offset: controller.text.length,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One presentational digit box. Stateless and input-free by design — see
+/// [_OtpInput].
+class _OtpBox extends StatelessWidget {
+  const _OtpBox({
+    required this.digit,
+    required this.isActive,
+    required this.hasError,
+  });
+
+  final String digit;
+  final bool isActive;
+  final bool hasError;
 
   @override
   Widget build(BuildContext context) {
     final theme = context.theme;
     final errorColor = theme.colorScheme.error;
+    final borderColor = hasError
+        ? errorColor
+        : isActive
+        ? theme.colorScheme.primary
+        : Colors.transparent;
 
-    return SizedBox(
+    return Container(
       width: 46,
       height: 58,
-      child: TextFormField(
-        controller: controller,
-        focusNode: focusNode,
-        keyboardType: TextInputType.number,
-        textAlign: TextAlign.center,
-        maxLength: 6,
-        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-        onChanged: onChanged,
-        decoration: InputDecoration(
-          counterText: '',
-          contentPadding: EdgeInsets.zero,
-          filled: true,
-          fillColor: hasError
-              ? errorColor.withOpacity(0.08)
-              : theme.colorScheme.surfaceContainerHighest,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(
-              color: hasError ? errorColor : Colors.transparent,
-              width: hasError ? 1.5 : 1,
-            ),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(
-              color: hasError ? errorColor : Colors.transparent,
-              width: hasError ? 1.5 : 1,
-            ),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(
-              color: hasError ? errorColor : theme.colorScheme.primary,
-              width: 2,
-            ),
-          ),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: hasError
+            ? errorColor.withValues(alpha: 0.08)
+            : theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: borderColor,
+          width: isActive || hasError ? 2 : 1,
         ),
+      ),
+      child: Text(
+        digit,
         style: theme.textTheme.headlineSmall?.copyWith(
           fontWeight: FontWeight.w700,
           color: hasError ? errorColor : theme.colorScheme.onSurface,

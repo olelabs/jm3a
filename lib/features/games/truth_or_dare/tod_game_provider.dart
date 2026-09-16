@@ -884,6 +884,7 @@ import '../../../core/data/honesty_vote_repository.dart';
 import '../../../core/services/realtime_service.dart';
 import '../../../core/services/targeted_chat_listener.dart';
 import '../../../core/utils/app_logger.dart';
+import '../../packs/domain/pack_trial_state.dart';
 import '../../rooms/domain/room_entity.dart';
 import '../../rooms/presentation/room_provider.dart';
 import '../game_session_messages.dart';
@@ -894,6 +895,23 @@ import 'data/tod_repository.dart';
 import 'domain/tod_models.dart';
 import 'tod_timer_service.dart';
 import 'truth_or_dare_engine.dart';
+
+/// Trial Packs — the pure decision behind the reveal-time guard (fix 2,
+/// real-device bug: the trial gate previously only lived in
+/// ownerAdvanceTurn, one step removed from the actual card reveal).
+///
+/// Whether a 'tod_choice' action (chooseTruth()/chooseDare(), which
+/// reaches TruthOrDareEngine._onChoice and actually reveals the card)
+/// should be allowed through to the engine, given the trial status
+/// already on record. Deliberately reads ONLY the already-recorded
+/// status — it never consumes a trial slot itself. The slot for
+/// whichever card is about to be revealed was already consumed
+/// proactively, before phase could return to choosingType: initAsOwner's
+/// own one-time consume for card 1 on a genuinely new session, or the
+/// immediately preceding ownerAdvanceTurn call's consume for every card
+/// after. Consuming again here would double-count the same card.
+bool todChoiceAllowedByTrial(PackTrialStatus? trialStatus) =>
+    trialStatus == null || trialStatus.state != PackTrialState.exhausted;
 
 enum TodLoadState { idle, loading, ready, error, gameOver }
 
@@ -1072,6 +1090,19 @@ class TodGameProvider extends ChangeNotifier {
   String? _roomId;
   String? get roomId => _roomId;
   String? _sessionId;
+
+  // Trial Packs — server-reported trial state for this session's pack
+  // (see PackRepository.startPackTrial/tryConsumeTrialCard and
+  // migration_2026_pack_trial.sql). Null or state == notTrialPack/owned
+  // means trial gating never applies — the owner-run engine advances
+  // exactly as it always has. Only ever consulted/mutated on the OWNER's
+  // client (initAsOwner/ownerAdvanceTurn below) — this owner-run,
+  // broadcast-relay architecture has no per-follower authoritative path,
+  // so trial usage is keyed to the room owner who actually plays the
+  // pack, not every participant (see this task's own final report for
+  // the multiplayer-ownership discussion).
+  PackTrialStatus? _trialStatus;
+  PackTrialStatus? get trialStatus => _trialStatus;
   bool _isOwner = false;
   String? _packCoverUrl;
 
@@ -1672,6 +1703,30 @@ class TodGameProvider extends ChangeNotifier {
             'session creation: $e',
           );
         }
+      }
+
+      // Trial Packs — claim/refresh this owner's trial for `packId`
+      // (idempotent: safe on every initAsOwner call, new session or
+      // resumed). Best-effort like every other non-critical load in this
+      // method (e.g. loadCustomCards below) — a failure here must never
+      // block the game itself from starting; it just means trial gating
+      // silently doesn't apply this session, same as "not a trial pack."
+      try {
+        _trialStatus = await sl.packRepository.startPackTrial(packId);
+        // A genuinely NEW session (not a reconnect to one already in
+        // progress) is about to show this pack's first card for the
+        // first time — that consumes one trial slot too, exactly like
+        // every subsequent card does in ownerAdvanceTurn below. A RESUME
+        // must NOT re-consume: the card currently on screen already
+        // consumed its slot in the session that originally revealed it.
+        if (!isResuming &&
+            _trialStatus != null &&
+            _trialStatus!.state == PackTrialState.active) {
+          _trialStatus = await sl.packRepository.tryConsumeTrialCard(packId);
+        }
+      } catch (e) {
+        AppLogger.warning('TodGameProvider: trial claim/consume failed: $e');
+        _trialStatus = null;
       }
 
       if (_sessionId != null) {
@@ -2431,6 +2486,32 @@ class TodGameProvider extends ChangeNotifier {
       return;
     }
 
+    // Trial Packs — reveal-time defense-in-depth (fix 2). 'tod_choice' is
+    // what actually reveals a card (_onChoice, via the generic
+    // handleEvent fallthrough below) — the engine's own phase machine
+    // (choosingType only follows init()/a successful advanceTurn(), both
+    // already trial-gated) already prevents reaching this point once
+    // exhausted, but this is an explicit backstop against that indirect
+    // protection ever being bypassed some other way, not a second,
+    // independent trial mechanism.
+    //
+    // This only VERIFIES the already-recorded _trialStatus — it must
+    // NEVER call tryConsumeTrialCard here. The slot for whichever card
+    // is about to be revealed was already consumed proactively, before
+    // phase could return to choosingType: initAsOwner's own one-time
+    // consume for card 1 on a genuinely new session, or the immediately
+    // preceding ownerAdvanceTurn call's consume for every card after —
+    // consuming again here would double-count the same card against the
+    // configured limit.
+    if (action == 'tod_choice' && !todChoiceAllowedByTrial(_trialStatus)) {
+      // Re-notify so the existing trial-exhausted listener
+      // (TodGameScreen._onTrialExhausted) shows the purchase prompt
+      // again if it isn't already up — reuses the same mechanism
+      // ownerAdvanceTurn's own gate already relies on, no new UI path.
+      _safeNotify();
+      return;
+    }
+
     final event = _parseEvent(payload);
     if (event == null) {
       AppLogger.warning('TodGameProvider: unknown action ${payload["action"]}');
@@ -2711,16 +2792,38 @@ class TodGameProvider extends ChangeNotifier {
     return _handleAction({'action': 'tod_ready_next'});
   }
 
+  /// V1 scope restriction (Premium Plus ongoing-game custom cards) —
+  /// injecting a custom card into an ALREADY-ONGOING game is a V2
+  /// feature. addCustomCard below only ever operates on a live/ongoing
+  /// session in the first place (sessionId/engine only exist once the
+  /// game has started), so this single switch disables the whole
+  /// capability for V1 without touching TodRepository.addCustomCard, the
+  /// session_custom_cards table, or TruthOrDareEngine.injectCard — all of
+  /// which stay fully built and correct, ready for V2 to flip this back
+  /// to true.
+  bool get ongoingGameCustomCardInjectionEnabledV1 => false;
+
   Future<({bool success, String? error})> addCustomCard({
     required TodCardType type,
     required String content,
     required TodDifficulty difficulty,
   }) async {
+    if (!ongoingGameCustomCardInjectionEnabledV1) {
+      return (success: false, error: 'feature_unavailable');
+    }
     if (_sessionId == null || _roomId == null) {
       return (success: false, error: 'game_not_started_yet');
     }
     if (!(_engine?.currentState is TodState)) {
       return (success: false, error: 'game_not_ready');
+    }
+    // Custom cards respecting daresEnabled — same rule the normal
+    // question-selection flow already enforces (TruthOrDareEngine.
+    // _onChoice) and TruthOrDareEngine.injectCard itself now also
+    // enforces; kept here too so the rejection happens before the
+    // session_custom_cards DB write, not just at the engine.
+    if (type == TodCardType.dare && !(_config?.daresEnabled ?? true)) {
+      return (success: false, error: 'dares_disabled');
     }
     try {
       final card = await _repo.addCustomCard(
@@ -2796,6 +2899,42 @@ class TodGameProvider extends ChangeNotifier {
         // fabricating a destination.
         return;
       }
+
+      // Trial Packs — the authoritative "may the next card be revealed"
+      // check (task section 14): consult the server BEFORE the engine
+      // ever advances, not just a disabled button. _trialStatus stays
+      // null/notTrialPack/owned for every game that isn't an active,
+      // unowned trial — this is then a pure no-op, identical to
+      // pre-trial behavior. On trial_exhausted, the engine is left
+      // exactly where it was (no card revealed, no state mutated) and
+      // the UI (tod_card_screen.dart) shows the purchase prompt via
+      // trialStatus.isExhausted.
+      if (_trialStatus != null &&
+          _trialStatus!.state != PackTrialState.notTrialPack &&
+          _trialStatus!.state != PackTrialState.owned) {
+        final packId = _config?.packId;
+        if (packId != null) {
+          try {
+            _trialStatus = await sl.packRepository.tryConsumeTrialCard(
+              packId,
+            );
+          } catch (e) {
+            AppLogger.warning(
+              'TodGameProvider: tryConsumeTrialCard failed: $e',
+            );
+            // Fail closed on the honor system, not open — an
+            // indeterminate result must never accidentally grant an
+            // extra unpaid card. The player can retry the advance.
+            _safeNotify();
+            return;
+          }
+          if (_trialStatus!.state == PackTrialState.exhausted) {
+            _safeNotify();
+            return;
+          }
+        }
+      }
+
       _readyForNext.clear();
       _engine!.advanceTurn(forcePlayerId: nextId);
       _state = _engine!.currentState as TodState;
@@ -2806,6 +2945,19 @@ class TodGameProvider extends ChangeNotifier {
     } finally {
       _advancing = false;
     }
+  }
+
+  /// Trial Packs — call once showTrialLimitSheet resolves `true` (a
+  /// confirmed, successful purchase via the existing PackProvider.
+  /// purchasePack flow). Marks this session's pack owned so every
+  /// subsequent advance skips trial gating entirely, then immediately
+  /// continues to the next card from exactly where play stopped — same
+  /// room, same session, same player/turn/scores/settings, nothing
+  /// reset or replayed.
+  Future<void> resumeAfterTrialPurchase() async {
+    _trialStatus = const PackTrialStatus(state: PackTrialState.owned);
+    _safeNotify();
+    await ownerAdvanceTurn();
   }
 
   Future<void> endGame({String reason = 'manual'}) =>

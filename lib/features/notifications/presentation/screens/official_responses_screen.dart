@@ -3,7 +3,11 @@ import 'package:provider/provider.dart';
 
 import '../../../../core/extensions/context_ext.dart';
 import '../../../../shared/widgets/cards/official_response_tile.dart';
+import '../../../../shared/widgets/cards/user_request_tile.dart';
+import '../../../../shared/widgets/overlays/confirm_dialog.dart';
+import '../../../profile/data/profile_repository.dart';
 import '../../domain/official_response_category.dart';
+import '../../domain/user_request_entity.dart';
 import '../notification_provider.dart';
 
 /// Item 3 of the audit — "Jma3a / Official Responses": a dedicated,
@@ -26,8 +30,13 @@ class OfficialResponsesScreen extends StatefulWidget {
 
 class _OfficialResponsesScreenState extends State<OfficialResponsesScreen>
     with SingleTickerProviderStateMixin {
+  // "My Requests" leads, then the four official-response categories: what
+  // the user themselves asked for is the thing they came looking for, and
+  // the official decisions follow. +1 rather than a fifth enum value —
+  // OfficialResponseCategory describes how a NOTIFICATION is bucketed, and
+  // a submitted request is not a notification.
   late final TabController _tabController = TabController(
-    length: OfficialResponseCategory.values.length,
+    length: OfficialResponseCategory.values.length + 1,
     vsync: this,
   );
 
@@ -69,9 +78,12 @@ class _OfficialResponsesScreenState extends State<OfficialResponsesScreen>
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,
-          tabs: OfficialResponseCategory.values
-              .map((c) => Tab(text: _categoryLabel(context, c)))
-              .toList(),
+          tabs: [
+            Tab(text: context.l10n.myRequestsTab),
+            ...OfficialResponseCategory.values.map(
+              (c) => Tab(text: _categoryLabel(context, c)),
+            ),
+          ],
         ),
       ),
       body: Consumer<NotificationProvider>(
@@ -82,18 +94,21 @@ class _OfficialResponsesScreenState extends State<OfficialResponsesScreen>
 
           return TabBarView(
             controller: _tabController,
-            children: OfficialResponseCategory.values.map((category) {
-              final items = all
-                  .where((n) => officialResponseCategoryFor(n) == category)
-                  .toList();
-              return _CategoryList(
-                items: items,
-                languageCode: lang,
-                emptyLabel: context.l10n.officialResponsesEmpty,
-                onRefresh: provider.refresh,
-                onOpen: (n) => _open(context, provider, n),
-              );
-            }).toList(),
+            children: [
+              MyRequestsTab(languageCode: lang),
+              ...OfficialResponseCategory.values.map((category) {
+                final items = all
+                    .where((n) => officialResponseCategoryFor(n) == category)
+                    .toList();
+                return _CategoryList(
+                  items: items,
+                  languageCode: lang,
+                  emptyLabel: context.l10n.officialResponsesEmpty,
+                  onRefresh: provider.refresh,
+                  onOpen: (n) => _open(context, provider, n),
+                );
+              }),
+            ],
           );
         },
       ),
@@ -111,6 +126,135 @@ class _OfficialResponsesScreenState extends State<OfficialResponsesScreen>
     // carries (pack_id/target_id) once a concrete route is agreed for it —
     // this screen's own scope is showing the decision, not building new
     // navigation targets for every notification type.
+  }
+}
+
+/// "My Requests" — everything this user has asked the Jma3a official/admin
+/// side for, and where each request currently stands.
+///
+/// Reads [ProfileRepository.getMyRequests], which is a pure projection over
+/// request tables the user could already read under their own RLS. Nothing
+/// here writes, except the ONE cancellation the backend actually supports
+/// (a still-pending account deletion), which reuses the existing
+/// `cancelAccountDeletionRequest` RPC and the existing Settings
+/// confirmation strings rather than introducing a second cancel path.
+///
+/// Public so a widget test can pump it without the enclosing screen's
+/// NotificationProvider.
+class MyRequestsTab extends StatefulWidget {
+  const MyRequestsTab({super.key, required this.languageCode});
+
+  final String languageCode;
+
+  @override
+  State<MyRequestsTab> createState() => _MyRequestsTabState();
+}
+
+class _MyRequestsTabState extends State<MyRequestsTab> {
+  late Future<List<UserRequestEntity>> _future;
+  bool _cancelling = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = ProfileRepository.instance.getMyRequests();
+  }
+
+  Future<void> _refresh() async {
+    final future = ProfileRepository.instance.getMyRequests();
+    setState(() => _future = future);
+    await future.catchError((_) => <UserRequestEntity>[]);
+  }
+
+  Future<void> _cancelDeletion() async {
+    if (_cancelling) return;
+    final l10n = context.l10n;
+
+    final confirmed = await showConfirmDialog(
+      context: context,
+      title: l10n.settingsCancelAccountDeletionDialogTitle,
+      message: l10n.settingsCancelAccountDeletionDialogMessage,
+      confirmLabel: l10n.settingsCancelAccountDeletionConfirm,
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _cancelling = true);
+    try {
+      final cancelled = await ProfileRepository.instance
+          .cancelAccountDeletionRequest();
+      if (!mounted) return;
+      context.showSnackBar(
+        cancelled
+            ? l10n.settingsAccountDeletionCancelled
+            : l10n.settingsCancelAccountDeletionFailed,
+      );
+    } catch (_) {
+      if (mounted) {
+        context.showErrorSnackBar(l10n.settingsCancelAccountDeletionFailed);
+      }
+    } finally {
+      if (mounted) setState(() => _cancelling = false);
+      // Re-read either way: the RPC returns false (rather than throwing)
+      // when the request is no longer pending, so the real server state is
+      // the only thing worth showing afterwards.
+      if (mounted) await _refresh();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<UserRequestEntity>>(
+      future: _future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final message = snapshot.hasError
+            ? context.l10n.myRequestsLoadFailed
+            : context.l10n.myRequestsEmpty;
+        final requests = snapshot.data ?? const <UserRequestEntity>[];
+
+        if (requests.isEmpty) {
+          return RefreshIndicator(
+            onRefresh: _refresh,
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: [
+                const SizedBox(height: 80),
+                Center(
+                  child: Text(
+                    message,
+                    style: context.textTheme.bodyMedium?.copyWith(
+                      color: context.colorScheme.onSurfaceVariant,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return RefreshIndicator(
+          onRefresh: _refresh,
+          child: ListView.builder(
+            padding: const EdgeInsets.all(16),
+            physics: const AlwaysScrollableScrollPhysics(),
+            itemCount: requests.length,
+            itemBuilder: (context, i) => UserRequestTile(
+              request: requests[i],
+              languageCode: widget.languageCode,
+              // Offered only where the backend can genuinely act on it, and
+              // never while a cancellation is already in flight.
+              onCancel: requests[i].canCancel && !_cancelling
+                  ? _cancelDeletion
+                  : null,
+            ),
+          ),
+        );
+      },
+    );
   }
 }
 

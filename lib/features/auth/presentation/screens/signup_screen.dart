@@ -119,7 +119,12 @@ class _SignupScreenState extends State<SignupScreen> {
     setState(() => _isCheckingAndSending = false);
 
     if (otpSuccess) {
-      context.push(
+      // go(), not push(): see ForgotPasswordScreen's identical navigation
+      // for the full rationale — a stacked Login/Signup screen left
+      // underneath would get revalidated by the router's global redirect
+      // the moment OTP verification finishes, racing the explicit
+      // onboarding/set-password navigation OtpScreen itself performs.
+      context.go(
         RouteNames.authOtp,
         extra: (
           identifier: otpIdentifier,

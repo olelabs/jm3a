@@ -18,6 +18,17 @@ class PackUploadService {
   Future<String> uploadCardImage(File imageFile) =>
       _upload(imageFile, 'card_image', 'image/jpeg');
 
+  /// Meme sticker upload (task item 3 follow-up) — the backend's
+  /// /v1/storage/upload-url already maps 'sticker' to its own Wasabi
+  /// folder (storageRoutes.js FILE_TYPE_MAP), so this reuses the exact
+  /// same presigned-URL + PUT flow as every other upload here, just with
+  /// that file type. The resulting URL is used as CardDraft.imageUrl
+  /// (the existing "pack-owned upload" sticker representation — see
+  /// CardDraft.imageUrl's own doc comment) — sticker_library itself has
+  /// no client-insert RLS policy and stays admin-curated only.
+  Future<String> uploadStickerImage(File imageFile) =>
+      _upload(imageFile, 'sticker', 'image/jpeg');
+
   Future<String> _upload(File file, String fileType, String contentType) async {
     final size = await file.length();
 

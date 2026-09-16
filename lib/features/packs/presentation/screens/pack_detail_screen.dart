@@ -640,45 +640,54 @@ class _CreatorRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        UserAvatar(
-          avatarUrl: pack.creatorAvatarUrl,
-          displayName: pack.creatorName,
-          size: 32,
-          isOfficial: pack.isOfficialCreator,
-        ),
-        const SizedBox(width: 10),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text(
-                  pack.creatorName ?? context.l10n.packCreator,
-                  style: context.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
+    // Navigates through the same already-registered public profile route
+    // every other profile link in the app uses (RouteNames.userProfile,
+    // '/user/:userId') — generic for any creator, official or not; the
+    // official Jma3a profile is reachable this way simply because its
+    // packs' creator_id resolves here like anyone else's.
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () => context.push('/user/${pack.creatorId}'),
+      child: Row(
+        children: [
+          UserAvatar(
+            avatarUrl: pack.creatorAvatarUrl,
+            displayName: pack.creatorName,
+            size: 32,
+            isOfficial: pack.isOfficialCreator,
+          ),
+          const SizedBox(width: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    pack.creatorName ?? context.l10n.packCreator,
+                    style: context.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
-                if (pack.isVerifiedCreator || pack.isOfficialCreator) ...[
-                  const SizedBox(width: 4),
-                  const Icon(
-                    Icons.verified_rounded,
-                    size: 14,
-                    color: AppColors.infoBlue,
-                  ),
+                  if (pack.isVerifiedCreator || pack.isOfficialCreator) ...[
+                    const SizedBox(width: 4),
+                    const Icon(
+                      Icons.verified_rounded,
+                      size: 14,
+                      color: AppColors.infoBlue,
+                    ),
+                  ],
                 ],
-              ],
-            ),
-            Text(
-              context.l10n.packCreatorLabel,
-              style: context.textTheme.bodySmall?.copyWith(
-                color: context.colorScheme.onSurfaceVariant,
               ),
-            ),
-          ],
-        ),
-      ],
+              Text(
+                context.l10n.packCreatorLabel,
+                style: context.textTheme.bodySmall?.copyWith(
+                  color: context.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

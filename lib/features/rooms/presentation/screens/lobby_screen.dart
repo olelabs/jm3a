@@ -729,6 +729,13 @@ class _LobbyScreenState extends State<LobbyScreen>
           forceDareMode: room.settings.forceDareMode,
           maxTruths: room.settings.maxTruths,
           honestyVoteEnabled: room.settings.honestyVoteEnabled,
+          // Item 2 (TOD settings: enable/disable dares) — same
+          // reactive-navigation root cause as forceDareMode's own fix
+          // above: every client (owner's own first navigation included)
+          // reaches the game screen through this path, so daresEnabled
+          // must be sourced from durable room.settings here too, not
+          // just the one-shot game-start payload below.
+          daresEnabled: room.settings.daresEnabled,
           packId: r.packId,
           language: r.language,
         ),
@@ -2363,6 +2370,7 @@ class _BottomActionBar extends StatelessWidget {
         ctx,
         pack: startPack,
         initialAllowSkip: room.settings.allowSkip,
+        initialDaresEnabled: room.settings.daresEnabled,
       );
       // Host backed out of the sheet without confirming — don't start.
       if (todConfig == null) return;
@@ -2393,6 +2401,7 @@ class _BottomActionBar extends StatelessWidget {
       await room.updateSetting('force_dare_mode', todConfig.forceDareMode);
       await room.updateSetting('max_truths', todConfig.maxTruths);
       await room.updateSetting('allow_skip', todConfig.allowSkip);
+      await room.updateSetting('dares_enabled', todConfig.daresEnabled);
       await room.updateSetting(
         'enable_punishments',
         todConfig.enablePunishments,
@@ -2438,6 +2447,7 @@ class _BottomActionBar extends StatelessWidget {
       proofVisibilityPolicy: room.settings.proofVisibilityPolicy,
       proofViewSeconds: room.settings.proofViewSeconds,
       proofReplayMode: room.settings.proofReplayMode,
+      daresEnabled: todConfig?.daresEnabled ?? true,
       forceDareMode: todConfig?.forceDareMode ?? 'unlimited',
       maxTruths: todConfig?.maxTruths ?? 2,
       cardRepetitionMode: todConfig?.cardRepetitionMode ?? 'shuffle',

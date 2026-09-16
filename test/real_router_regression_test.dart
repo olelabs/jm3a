@@ -274,7 +274,7 @@ void main() {
 
         // G: Forgot password -> OTP.
         expect(find.byType(SetPasswordScreen), findsNothing);
-        await tester.enterText(find.byType(TextFormField).first, '123456');
+        await tester.enterText(find.byType(EditableText).first, '123456');
         await tester.pumpAndSettle();
 
         // H: OTP verification -> New Password screen.
@@ -338,7 +338,7 @@ void main() {
         );
         await tester.tap(find.widgetWithText(ElevatedButton, 'Send code'));
         await tester.pumpAndSettle();
-        await tester.enterText(find.byType(TextFormField).first, '123456');
+        await tester.enterText(find.byType(EditableText).first, '123456');
         await tester.pumpAndSettle();
 
         // Not skipped just because this account already has a password —
@@ -445,7 +445,7 @@ void main() {
         );
         await tester.tap(find.widgetWithText(ElevatedButton, 'Send code'));
         await tester.pumpAndSettle();
-        await tester.enterText(find.byType(TextFormField).first, '123456');
+        await tester.enterText(find.byType(EditableText).first, '123456');
         await tester.pumpAndSettle();
 
         expect(find.byType(SetPasswordScreen), findsOneWidget);

@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -8,7 +9,6 @@ import '../../core/services/app_theme_service.dart';
 import '../../core/services/app_tutorial_service.dart';
 import '../widgets/tutorial/screen_tutorial.dart';
 import '../../features/friends/presentation/friends_provider.dart';
-import '../../features/notifications/presentation/notification_provider.dart';
 import '../../features/packs/presentation/pack_provider.dart';
 import '../../features/profile/presentation/profile_provider.dart';
 import '../../features/wallet/presentation/wallet_provider.dart';
@@ -17,6 +17,7 @@ import '../../core/router/app_router.dart';
 import '../../core/router/route_names.dart';
 import '../../features/rooms/presentation/screens/room_browser_screen.dart';
 import '../../shared/widgets/playful_background.dart';
+import '../widgets/navigation/jma3a_bottom_nav_bar.dart';
 import '../../features/friends/presentation/screens/friends_screen.dart';
 import '../../features/packs/presentation/screens/marketplace_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
@@ -91,7 +92,6 @@ class _HomeShellScreenState extends State<HomeShellScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final notifCount = context.watch<NotificationProvider>().unreadCount;
     final friendCount = context.watch<FriendsProvider>().pendingCount;
     final isPremium =
         context.watch<AuthProvider>().currentUser?.isPremiumActive ?? false;
@@ -117,7 +117,39 @@ class _HomeShellScreenState extends State<HomeShellScreen> {
       tutorialId: TutorialIds.homeIntro,
       steps: [_navShowcaseKey],
       child: Scaffold(
+        // Jma3aBottomNavBar is a floating, translucent glass control, not
+        // an opaque bar — without extendBody, Scaffold would reserve its
+        // full-width bounding box as body-free space and paint
+        // scaffoldBackgroundColor there instead, which is exactly the
+        // flat "panel behind the glass" look this was meant to avoid.
+        // With it, PlayfulBackground/page content runs underneath the
+        // whole floating control, visible through its blur and through
+        // the transparent margins around it.
+        extendBody: true,
         body: PlayfulBackground(
+          // The navbar is a true floating OVERLAY, not part of the
+          // layout — IndexedStack (and so every nested Scaffold/page)
+          // gets the FULL, un-shrunk body height, so their scrollable
+          // content's viewport genuinely extends behind the bar and can
+          // show through its glass while scrolling. A Padding here would
+          // instead clip that viewport short of the true bottom edge,
+          // making it impossible for content to ever appear behind the
+          // bar at all.
+          //
+          // Two separate, page-owned concerns build on top of that full
+          // height, both driven by the same Jma3aBottomNavBar.overlayInset:
+          // each page gives its own FloatingActionButton (if any) a
+          // floatingActionButtonLocation: Jma3aBottomNavBar.fabLocation(
+          // context), and gives its own scrollable a trailing bottom
+          // inset — see e.g. RoomBrowserScreen. Neither can be done here
+          // centrally: a FAB's location and a ScrollView's padding are
+          // both properties of the page that owns them, not of this
+          // shell, and — critically — this shell must NOT inject its own
+          // MediaQuery override for this, because Scaffold(extendBody:
+          // true) already adjusts the ambient MediaQuery.padding to
+          // account for this bar's height; stacking another override on
+          // top of that here previously double-counted the bar's own
+          // footprint (see overlayInset's own doc comment).
           child: IndexedStack(index: _index, children: _pages),
         ),
         bottomNavigationBar: Column(
@@ -134,7 +166,7 @@ class _HomeShellScreenState extends State<HomeShellScreen> {
               showcaseKey: _navShowcaseKey,
               title: context.l10n.tutHomeNavTitle,
               description: context.l10n.tutHomeNavBody,
-              child: NavigationBar(
+              child: Jma3aBottomNavBar(
                 selectedIndex: _index,
                 onDestinationSelected: (i) {
                   // Profile persists in the IndexedStack rather than being
@@ -150,51 +182,56 @@ class _HomeShellScreenState extends State<HomeShellScreen> {
                   }
                 },
                 destinations: [
-                  NavigationDestination(
-                    icon: const Icon(Icons.meeting_room_outlined),
-                    selectedIcon: const Icon(Icons.meeting_room_rounded),
+                  Jma3aNavDestination(
+                    icon: Icons.meeting_room_outlined,
+                    selectedIcon: Icons.meeting_room_rounded,
+                    cupertinoIcon: CupertinoIcons.square_grid_2x2,
+                    cupertinoSelectedIcon: CupertinoIcons.square_grid_2x2_fill,
                     label: l10n.navRooms,
                   ),
-                  NavigationDestination(
-                    icon: Badge(
-                      isLabelVisible: friendCount > 0,
-                      label: Text('$friendCount'),
-                      child: const Icon(Icons.people_outline_rounded),
-                    ),
-                    selectedIcon: Badge(
-                      isLabelVisible: friendCount > 0,
-                      label: Text('$friendCount'),
-                      child: const Icon(Icons.people_rounded),
-                    ),
+                  Jma3aNavDestination(
+                    icon: Icons.people_outline_rounded,
+                    selectedIcon: Icons.people_rounded,
+                    cupertinoIcon: CupertinoIcons.person_2,
+                    cupertinoSelectedIcon: CupertinoIcons.person_2_fill,
                     label: l10n.navFriends,
+                    badgeCount: friendCount,
                   ),
-                  NavigationDestination(
-                    icon: const Icon(Icons.store_outlined),
-                    selectedIcon: const Icon(Icons.store_rounded),
+                  Jma3aNavDestination(
+                    icon: Icons.storefront_outlined,
+                    selectedIcon: Icons.storefront_rounded,
+                    cupertinoIcon: CupertinoIcons.bag,
+                    cupertinoSelectedIcon: CupertinoIcons.bag_fill,
                     label: l10n.navMarketplace,
                   ),
-                  NavigationDestination(
-                    icon: Badge(
-                      isLabelVisible: notifCount > 0,
-                      label: Text('$notifCount'),
-                      child: const Icon(Icons.person_outline_rounded),
-                    ),
-                    selectedIcon: Badge(
-                      isLabelVisible: notifCount > 0,
-                      label: Text('$notifCount'),
-                      child: isPremium
-                          ? ShaderMask(
-                              shaderCallback: (bounds) => const LinearGradient(
-                                colors: [Color(0xFFF5A623), Color(0xFFFF6B35)],
-                              ).createShader(bounds),
-                              child: const Icon(
-                                Icons.person_rounded,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Icon(Icons.person_rounded),
-                    ),
+                  Jma3aNavDestination(
+                    icon: Icons.account_circle_outlined,
+                    selectedIcon: Icons.account_circle_rounded,
+                    cupertinoIcon: CupertinoIcons.person_crop_circle,
+                    cupertinoSelectedIcon:
+                        CupertinoIcons.person_crop_circle_fill,
                     label: l10n.navProfile,
+                    // The Profile destination must never carry the
+                    // notification-count badge (unlike Friends' pending-
+                    // request badge above) — notifications remain fully
+                    // intact and are still shown wherever they're
+                    // legitimately surfaced (the Notifications screen
+                    // itself, etc.); this destination simply no longer
+                    // mirrors that count. No badgeCount passed here at all
+                    // (defaults to 0), matching Rooms/Marketplace above.
+                    selectedIconOverride: !isPremium
+                        ? null
+                        : (isIOS) => ShaderMask(
+                            shaderCallback: (bounds) => const LinearGradient(
+                              colors: [Color(0xFFF5A623), Color(0xFFFF6B35)],
+                            ).createShader(bounds),
+                            child: Icon(
+                              isIOS
+                                  ? CupertinoIcons.person_crop_circle_fill
+                                  : Icons.account_circle_rounded,
+                              color: Colors.white,
+                            ),
+                          ),
                   ),
                 ],
               ),

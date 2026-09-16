@@ -138,9 +138,10 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // OtpScreen's boxes support full paste — entering all 6 digits into
-      // the first box distributes them and auto-submits once complete.
-      await tester.enterText(find.byType(TextFormField).first, '123456');
+      // OtpScreen holds the whole code in ONE field (see _OtpInput and
+      // otp_input_stability_test.dart) — entering all 6 digits fills it and
+      // auto-submits once complete.
+      await tester.enterText(find.byType(EditableText).first, '123456');
       await tester.pumpAndSettle();
 
       expect(find.text('ERROR_ROUTE'), findsNothing);

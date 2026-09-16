@@ -2555,6 +2555,73 @@ bool roomJoinExceedsCapacity({
   required int maxPlayers,
 }) => !isOwnerJoining && activePlayers >= maxPlayers;
 
+/// Phase 2 (room invitation semantics) — the full decision table for
+/// [RoomRepository.joinByCode], extracted as a pure function so every
+/// combination is independently unit-testable without a live/mocked
+/// Supabase client (matches this repo's established pattern for
+/// extracting decision logic — see ExplorePerson.isDiscoverable,
+/// canShowFriendRequestAction).
+///
+/// Root cause this replaces: the previous logic skipped the approval
+/// gate whenever a client-supplied `invitedBy` query parameter was
+/// non-null — but that parameter is never verified against a real
+/// room_invites row, and the app's own "Share Invite Link"/QR features
+/// populate it with the SHARER'S OWN id on every generic share, so
+/// `requires_approval` was effectively dead for every real Type-A
+/// (room-creation) invite link. [hasGenuineInvite] replaces it: true
+/// only when a real, live room_invites row exists for this specific
+/// caller (RoomRepository.hasValidInvite, keyed on (roomId, userId) —
+/// notably NOT on invitedBy, so a forged/self-referential invitedBy can
+/// never produce true here).
+enum JoinByCodeAction { directJoin, acceptInvite, requestApproval }
+
+JoinByCodeAction resolveJoinByCodeAction({
+  required bool hasGenuineInvite,
+  required bool requiresApproval,
+  required bool isMidGame,
+  required bool hasPriorMembership,
+}) {
+  // Type B (a genuine, specific admin invite) always bypasses approval —
+  // by design, unchanged, server-authoritative (acceptRoomInvite).
+  if (hasGenuineInvite) return JoinByCodeAction.acceptInvite;
+  // Type A (a bare room-creation code) must never bypass approval.
+  if (requiresApproval) return JoinByCodeAction.requestApproval;
+  // Mirrors RoomProvider.initialize's mid-game "brand-new player" gate —
+  // a stranger with no prior membership must not drop straight into a
+  // live game via a bare code link, even when approval is disabled.
+  if (isMidGame && !hasPriorMembership) return JoinByCodeAction.requestApproval;
+  return JoinByCodeAction.directJoin;
+}
+
+/// Phase 3 (Friends room Join eligibility) — whether a Join button shown
+/// through the Friends/profile UI should ever be offered for a room a
+/// friend is currently in. Deliberately STRICTER than RoomCard's own
+/// tap-gating in the room browser (which intentionally still allows
+/// tapping into a private/approval-gated/full-for-non-owner room to
+/// route into the existing request-to-join flow — that's the whole point
+/// of Browse): here, if ANY condition fails, the Join button must not
+/// render at all rather than lead somewhere that dead-ends in a request.
+/// These are two different products of the same room state, not one
+/// duplicated implementation — see this repo's Phase 3 implementation
+/// notes for why RoomCard is intentionally left unretrofitted.
+///
+/// Reusing tapping through to `/room/:roomId` (unchanged) still goes
+/// through the real, server-enforced RoomProvider.initialize() gating —
+/// this predicate only decides whether the button is SHOWN, never
+/// whether a join is actually allowed to succeed.
+bool isDirectlyJoinableRoom({
+  required bool isOwnedByDisplayedUser,
+  required bool isPublic,
+  required bool hasCapacity,
+  required bool gameStarted,
+  required bool requiresApproval,
+}) =>
+    isOwnedByDisplayedUser &&
+    isPublic &&
+    hasCapacity &&
+    !gameStarted &&
+    !requiresApproval;
+
 class RoomRepository extends BaseRepository {
   final _api = ApiClient.instance;
   RoomRepository._();
@@ -2908,21 +2975,43 @@ class RoomRepository extends BaseRepository {
           .count(CountOption.exact);
       final seatOrder = seatRes.count ?? 0;
 
-      await _supabase.from('room_members').upsert({
-        'room_id': roomId,
-        'user_id': userId,
-        'seat_order': seatOrder,
-        'role': role == 'spectator_anon' ? 'spectator' : role,
-        'is_hidden_spectator': isHiddenSpectator || role == 'spectator_anon',
-        'is_ready': false,
-        'left_at': null,
-        'joined_at': DateTime.now().toIso8601String(),
-      }, onConflict: 'room_id,user_id');
+      try {
+        await _supabase.from('room_members').upsert({
+          'room_id': roomId,
+          'user_id': userId,
+          'seat_order': seatOrder,
+          'role': role == 'spectator_anon' ? 'spectator' : role,
+          'is_hidden_spectator': isHiddenSpectator || role == 'spectator_anon',
+          'is_ready': false,
+          'left_at': null,
+          'joined_at': DateTime.now().toIso8601String(),
+        }, onConflict: 'room_id,user_id');
+      } on PostgrestException catch (e) {
+        // Backstop only — the pre-check above (roomJoinExceedsCapacity)
+        // already rejects the common case with this same friendly
+        // message before ever reaching the database. This only fires on
+        // a genuine race (two joiners for the last seat at once), where
+        // the DB-level capacity trigger (room_members_enforce_capacity,
+        // see supabase/migrations/20260915091000_room_members_capacity_
+        // trigger.sql) raises the same 'room_full' string
+        // acceptRoomInvite already uses — remapped here the same way.
+        if (e.message.contains('room_full')) {
+          throw const ConflictFailure(message: 'Room is full.');
+        }
+        rethrow;
+      }
 
       return room;
     },
   );
 
+  /// [invitedBy] is kept in the signature only for its unrelated,
+  /// non-security use by the calling screens (the "invited by so-and-so"
+  /// banner) — it plays NO role in the approval decision below. See
+  /// [resolveJoinByCodeAction]'s own doc comment for why: it's an
+  /// unverified URL parameter the app's own share/QR UI populates with
+  /// the sharer's own id on every generic link share, so it can never be
+  /// trusted as proof a genuine invite exists.
   Future<RoomEntity> joinByCode({
     required String userId,
     required String inviteCode,
@@ -2956,12 +3045,41 @@ class RoomRepository extends BaseRepository {
         );
       }
 
+      // Real, server-verifiable signal that this specific caller holds a
+      // genuine Type-B (admin) invite for this room — never derived from
+      // the client-supplied invitedBy parameter (see resolveJoinByCodeAction).
+      final hasGenuineInvite = await hasValidInvite(
+        userId: userId,
+        roomId: roomId,
+      );
       final requiresApproval = row['requires_approval'] as bool? ?? false;
-      if (requiresApproval && invitedBy == null) {
-        await requestToJoin(userId: userId, roomId: roomId);
-        throw const PendingApprovalFailure();
+      final isMidGame = status == 'in_game' || status == 'paused';
+      final everMember = isMidGame
+          ? await hasPriorMembership(userId: userId, roomId: roomId)
+          : false; // never queried when it can't affect the outcome
+
+      final action = resolveJoinByCodeAction(
+        hasGenuineInvite: hasGenuineInvite,
+        requiresApproval: requiresApproval,
+        isMidGame: isMidGame,
+        hasPriorMembership: everMember,
+      );
+
+      switch (action) {
+        case JoinByCodeAction.acceptInvite:
+          // Server-authoritative RPC — already validates the invite/ban/
+          // capacity and reconciles any pending join request. Reuses the
+          // SAME row already fetched above (get_room_by_invite_code's
+          // SECURITY DEFINER row has every field _rowToEntity needs) —
+          // never a second, RLS-restricted `rooms` read.
+          await acceptRoomInvite(roomId: roomId);
+          return _rowToEntity(row);
+        case JoinByCodeAction.requestApproval:
+          await requestToJoin(userId: userId, roomId: roomId);
+          throw const PendingApprovalFailure();
+        case JoinByCodeAction.directJoin:
+          return joinRoom(userId: userId, roomId: roomId);
       }
-      return joinRoom(userId: userId, roomId: roomId);
     },
   );
 
@@ -3047,6 +3165,43 @@ class RoomRepository extends BaseRepository {
       return (
         ownerId: row['owner_id'] as String,
         requiresApproval: row['requires_approval'] as bool? ?? false,
+      );
+    },
+  );
+
+  /// Phase 3 (Friends room Join eligibility) — a single light read of
+  /// every field [isDirectlyJoinableRoom] needs, mirroring exactly what
+  /// RoomCard's own tap-gating already reads from `rooms` (same table,
+  /// same shape/cost as [getRoomApprovalInfo] right above) — not a new
+  /// query pattern. Returns null if the room no longer exists.
+  Future<
+    ({
+      String ownerId,
+      bool isPublic,
+      bool requiresApproval,
+      bool hasCapacity,
+      bool gameStarted,
+    })?
+  >
+  getRoomJoinEligibility(String roomId) => guardedCall(
+    operationName: 'getRoomJoinEligibility',
+    operation: () async {
+      final row = await _supabase
+          .from('rooms')
+          .select(
+            'owner_id, visibility, requires_approval, status, current_players, max_players',
+          )
+          .eq('id', roomId)
+          .maybeSingle();
+      if (row == null) return null;
+      return (
+        ownerId: row['owner_id'] as String,
+        isPublic: (row['visibility'] as String? ?? 'public') == 'public',
+        requiresApproval: row['requires_approval'] as bool? ?? false,
+        hasCapacity:
+            (row['current_players'] as int? ?? 0) <
+            (row['max_players'] as int? ?? 6),
+        gameStarted: (row['status'] as String? ?? 'waiting') != 'waiting',
       );
     },
   );

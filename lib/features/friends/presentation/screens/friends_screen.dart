@@ -12,6 +12,7 @@ import '../../../../shared/widgets/cards/j_card.dart';
 import '../../../../shared/widgets/cards/user_avatar.dart';
 import '../../presentation/friends_provider.dart';
 import '../widgets/friend_tile.dart';
+import '../../../../shared/widgets/navigation/jma3a_bottom_nav_bar.dart';
 import 'user_profile_screen.dart';
 
 /// Opens [userId]'s public profile — shared by every tab (Friends,
@@ -120,6 +121,11 @@ class _FriendsScreenState extends State<FriendsScreen>
       builder: (ctx, friends, _) {
         final l10n = ctx.l10n;
         return Scaffold(
+          // Transparent so HomeShellScreen's PlayfulBackground (the
+          // premium animated theme effect) shows through uninterrupted,
+          // all the way to the floating bottom nav bar — matching
+          // RoomBrowserScreen's identical, already-correct setting.
+          backgroundColor: Colors.transparent,
           appBar: AppBar(
             title: Text(l10n.navFriends),
             bottom: TabBar(
@@ -202,7 +208,12 @@ class _FriendsTab extends StatelessWidget {
     final offline = all.where((f) => !friends.isOnline(f.userId)).toList();
 
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.fromLTRB(
+        16,
+        16,
+        16,
+        Jma3aBottomNavBar.overlayInset(context),
+      ),
       children: [
         // Pending incoming requests always sit above the normal friends
         // list — never their own tab (see FriendsScreen's 3-tab layout:
@@ -253,7 +264,14 @@ class _FriendsTab extends StatelessWidget {
                   knownAvatarConfig: e.value.avatarConfig,
                   knownIsPremium: e.value.isPremium,
                 ),
-                onJoinRoom: friends.roomIdOf(e.value.userId) != null
+                // Phase 3 (Friends room Join eligibility) — the button
+                // only appears once a real getRoomJoinEligibility check
+                // (see FriendsProvider.joinEligible/_refreshJoinEligibility)
+                // has actually confirmed the room is directly joinable;
+                // presence's roomId alone is no longer sufficient. Tap
+                // target is unchanged — still the same real, server-
+                // enforced room-join flow.
+                onJoinRoom: friends.joinEligible(e.value.userId)
                     ? () => AppRouter.router.go(
                         '${context.l10n.navRooms}/room/${friends.roomIdOf(e.value.userId)}',
                       )
@@ -578,7 +596,12 @@ class _BlockedTab extends StatelessWidget {
       );
     }
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.fromLTRB(
+        16,
+        16,
+        16,
+        Jma3aBottomNavBar.overlayInset(context),
+      ),
       itemCount: blocked.length,
       itemBuilder: (ctx, i) {
         final user = blocked[i];
@@ -718,7 +741,12 @@ class _ExploreTabState extends State<_ExploreTab> {
     final people = friends.explorePeople;
     return ListView.builder(
       controller: _scrollCtrl,
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+      padding: EdgeInsets.fromLTRB(
+        16,
+        8,
+        16,
+        Jma3aBottomNavBar.overlayInset(context),
+      ),
       itemCount: people.length + (friends.exploreHasMore ? 1 : 0),
       itemBuilder: (ctx, i) {
         if (i >= people.length) {

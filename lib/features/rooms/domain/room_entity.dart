@@ -4687,6 +4687,7 @@ class RoomSettingsEntity extends Equatable {
     this.forceDareMode = 'unlimited',
     this.maxTruths = 2,
     this.honestyVoteEnabled = true,
+    this.daresEnabled = true,
   });
 
   final int turnTimerSeconds;
@@ -4727,6 +4728,14 @@ class RoomSettingsEntity extends Equatable {
   /// turn this off for rooms created before it existed).
   final bool honestyVoteEnabled;
 
+  /// Item 2 (TOD settings: enable/disable dares) — when false, the ToD
+  /// engine must never select/present a Dare card (see
+  /// TruthOrDareEngine._onChoice's own coercion, mirroring exactly how
+  /// forceDareMode's Truth->Dare coercion already works, just the other
+  /// direction). Defaults true so every existing room's behavior is
+  /// unchanged until a host explicitly turns dares off.
+  final bool daresEnabled;
+
   RoomSettingsEntity copyWith({
     int? turnTimerSeconds,
     bool? allowSkip,
@@ -4746,6 +4755,7 @@ class RoomSettingsEntity extends Equatable {
     String? forceDareMode,
     int? maxTruths,
     bool? honestyVoteEnabled,
+    bool? daresEnabled,
   }) => RoomSettingsEntity(
     turnTimerSeconds: turnTimerSeconds ?? this.turnTimerSeconds,
     allowSkip: allowSkip ?? this.allowSkip,
@@ -4768,6 +4778,7 @@ class RoomSettingsEntity extends Equatable {
     forceDareMode: forceDareMode ?? this.forceDareMode,
     maxTruths: maxTruths ?? this.maxTruths,
     honestyVoteEnabled: honestyVoteEnabled ?? this.honestyVoteEnabled,
+    daresEnabled: daresEnabled ?? this.daresEnabled,
   );
 
   Map<String, dynamic> toMap() => {
@@ -4789,6 +4800,7 @@ class RoomSettingsEntity extends Equatable {
     'force_dare_mode': forceDareMode,
     'max_truths': maxTruths,
     'honesty_vote_enabled': honestyVoteEnabled,
+    'dares_enabled': daresEnabled,
   };
 
   static RoomSettingsEntity fromMap(
@@ -4816,6 +4828,7 @@ class RoomSettingsEntity extends Equatable {
     forceDareMode: m['force_dare_mode'] as String? ?? 'unlimited',
     maxTruths: (m['max_truths'] as num?)?.toInt() ?? 2,
     honestyVoteEnabled: m['honesty_vote_enabled'] as bool? ?? true,
+    daresEnabled: m['dares_enabled'] as bool? ?? true,
   );
 
   @override
@@ -4838,6 +4851,7 @@ class RoomSettingsEntity extends Equatable {
     forceDareMode,
     maxTruths,
     honestyVoteEnabled,
+    daresEnabled,
   ];
 }
 

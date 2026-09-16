@@ -8,21 +8,23 @@ import 'package:flutter/material.dart';
 /// PackCard's `_PlaceholderCover`, a DIFFERENT emoji switch inline in
 /// pack_detail_screen.dart's FlexibleSpaceBar) — exactly the "same asset
 /// duplicated inconsistently" the brief warns against. This is now the
-/// one place `jma3a_card_cover_playful.png` is referenced for pack-cover
-/// (as opposed to in-game-card) contexts, mirroring
-/// GameCardBackground's own fallback asset for the in-game case (same
-/// bundled file, deliberately not re-exported from there since that
-/// widget also does the ImageUrlSigner/live-cover resolution this one
-/// intentionally does NOT — callers here already own the "has a real
-/// cover" branch via ImageCacheService for caching, this widget is only
-/// ever the ELSE branch).
+/// one place `jma3a_card_cover.png` (the bundled default pack cover — a
+/// local asset, never uploaded to Wasabi/Supabase just to display it) is
+/// referenced for pack-cover contexts. ImageCacheService's own
+/// placeholder (used by ImageCacheService.packCover's null/error
+/// branches) and _OfficialPackGridTile's cover placeholder both delegate
+/// to this same widget now too, so every pack-cover surface in the app
+/// shows the identical default rather than three different ad hoc
+/// placeholders. Callers here already own the "has a real cover" branch
+/// via ImageCacheService for caching, this widget is only ever the ELSE
+/// branch — it must never be used to render an actual uploaded cover.
 class PackCoverFallback extends StatelessWidget {
   const PackCoverFallback({super.key, this.fit = BoxFit.cover});
 
   final BoxFit fit;
 
   static const _defaultAsset =
-      'assets/images/backgrounds/jma3a_card_cover_playful.png';
+      'assets/images/backgrounds/jma3a_card_cover.png';
 
   @override
   Widget build(BuildContext context) => Image.asset(

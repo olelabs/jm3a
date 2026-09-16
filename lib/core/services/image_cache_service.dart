@@ -2,8 +2,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
+import '../../shared/widgets/cards/pack_cover_fallback.dart';
 import '../config/app_config.dart';
-import '../theme/app_colors.dart';
 import 'image_url_signer.dart';
 
 /// Centralized image caching configuration and factory methods.
@@ -109,42 +109,21 @@ class ImageCacheService {
   }
 
   /// Branded Jma3a cover fallback — shown for a missing/empty cover URL AND
-  /// for any load failure (offline, timeout, 404, invalid URL). A designed,
-  /// on-brand gradient card with the Jma3a mark, never the generic
-  /// broken-image / grey box. Purely local (gradient + a bundled asset), so
-  /// it renders identically whether the device is online or offline.
+  /// for any load failure (offline, timeout, 404, invalid URL). Delegates
+  /// to [PackCoverFallback] — the one shared "no cover uploaded" widget
+  /// every pack-cover surface in the app now renders, so this and
+  /// marketplace/pack-detail's own direct use of it, and
+  /// _OfficialPackGridTile's, all show the identical bundled default
+  /// (jma3a_card_cover.png) instead of three different ad hoc
+  /// placeholders. Purely local (a bundled asset), so it renders
+  /// identically whether the device is online or offline.
   Widget _packPlaceholder(double width, double height, double radius) {
-    // Scale the mark to the smaller side so it never overflows a thin cover.
-    final shortest = width.isFinite && height.isFinite
-        ? (width < height ? width : height)
-        : 96.0;
-    final markSize = shortest.clamp(24.0, 200.0) * 0.42;
-    return Container(
-      width: width,
-      height: height,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(radius),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [AppColors.brandPurpleMid, AppColors.brandBlueMid],
-        ),
-      ),
-      child: Center(
-        child: Image.asset(
-          'assets/images/backgrounds/jma3a_logo_white.png',
-          width: markSize * 1.6,
-          height: markSize * 1.6,
-          fit: BoxFit.contain,
-          opacity: const AlwaysStoppedAnimation(0.92),
-          // Bundled assets don't 404, but guard defensively so a stripped
-          // build still shows an on-brand mark rather than a broken box.
-          errorBuilder: (_, _, _) => Icon(
-            Icons.style_rounded,
-            color: Colors.white.withValues(alpha: 0.92),
-            size: markSize,
-          ),
-        ),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(radius),
+      child: SizedBox(
+        width: width,
+        height: height,
+        child: const PackCoverFallback(),
       ),
     );
   }

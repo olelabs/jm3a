@@ -158,9 +158,14 @@ class _CreatePackScreenState extends State<CreatePackScreen> {
               'languages' => _LanguageStep(draft: _draft, onNext: _nextStep),
               'names_descriptions' => _NamesStep(
                 draft: _draft,
+                isSaving: _isSaving,
                 onNext: _nextStep,
               ),
-              'audience' => _AudienceStep(draft: _draft, onNext: _nextStep),
+              'audience' => _AudienceStep(
+                draft: _draft,
+                isSaving: _isSaving,
+                onNext: _nextStep,
+              ),
               'cards' => _CardsStep(
                 draft: _draft,
                 packId: _savedPackId,
@@ -244,6 +249,18 @@ class _CreatePackScreenState extends State<CreatePackScreen> {
           _draft.pendingCategorySuggestionId!,
         );
       }
+      // Blank-screen-after-Audience fix: this setState (the one that
+      // actually advances _step) previously ran unconditionally, with no
+      // `mounted` guard — unlike every other post-await setState in this
+      // file. Names/Audience's own Continue buttons now disable
+      // themselves via isSaving (see _NamesStep/_AudienceStep below), so
+      // a race that disposes this State mid-save is no longer reachable
+      // through the UI, but this guard is the actual fix: without it, a
+      // disposed State hitting this line throws
+      // "setState() called after dispose()", which Flutter's default
+      // error handling can leave looking exactly like a blank/frozen
+      // screen instead of cleanly no-op'ing.
+      if (!mounted) return;
       setState(() {
         _isSaving = false;
         _step = targetStep;
@@ -255,18 +272,17 @@ class _CreatePackScreenState extends State<CreatePackScreen> {
       // stays null), so there's nothing to keep editing; back out to the
       // dashboard with a clear explanation instead of leaving the wizard
       // stuck on step 0 with no persisted draft under it.
+      if (!mounted) return;
       setState(() => _isSaving = false);
-      if (mounted) {
-        final message = e.code == 'draft_limit_reached'
-            ? context.l10n.packAlreadyHasDraft
-            : e.message;
-        context.showErrorSnackBar(message);
-        if (_savedPackId == null) context.pop();
-      }
+      final message = e.code == 'draft_limit_reached'
+          ? context.l10n.packAlreadyHasDraft
+          : e.message;
+      context.showErrorSnackBar(message);
+      if (_savedPackId == null) context.pop();
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isSaving = false);
-      if (mounted)
-        context.showErrorSnackBar(context.l10n.packFailedToSave(e.toString()));
+      context.showErrorSnackBar(context.l10n.packFailedToSave(e.toString()));
     }
   }
 
@@ -1122,8 +1138,20 @@ class _GeneralInfoStepState extends State<_GeneralInfoStep> {
 
 // ── Step 3: Names & descriptions ────────────────────────────────────────────
 class _NamesStep extends StatefulWidget {
-  const _NamesStep({required this.draft, required this.onNext});
+  const _NamesStep({
+    required this.draft,
+    required this.isSaving,
+    required this.onNext,
+  });
   final PackDraft draft;
+
+  /// Blank-screen-after-Audience fix — mirrors _PublishStep's existing
+  /// isSaving convention. Continue calls onNext, which routes through
+  /// _saveDraft() (an async createPackDraft/updatePackDraft round trip);
+  /// previously nothing disabled this button or showed a spinner while
+  /// that was in flight, so an impatient double-tap could fire it twice
+  /// concurrently.
+  final bool isSaving;
   final VoidCallback onNext;
 
   @override
@@ -1242,6 +1270,7 @@ class _NamesStepState extends State<_NamesStep> {
           JButton(
             label: context.l10n.continueArrow,
             onPressed: draft.hasTitle ? widget.onNext : null,
+            isLoading: widget.isSaving,
             icon: Icons.arrow_forward_rounded,
           ).animate(delay: 120.ms).fadeIn(),
         ],
@@ -1252,8 +1281,17 @@ class _NamesStepState extends State<_NamesStep> {
 
 // ── Step 4: Audience restrictions ───────────────────────────────────────────
 class _AudienceStep extends StatefulWidget {
-  const _AudienceStep({required this.draft, required this.onNext});
+  const _AudienceStep({
+    required this.draft,
+    required this.isSaving,
+    required this.onNext,
+  });
   final PackDraft draft;
+
+  /// Blank-screen-after-Audience fix — see _NamesStep.isSaving's doc
+  /// comment; this is the step immediately reported as leading to a
+  /// blank screen, and shares the exact same unguarded _saveDraft() path.
+  final bool isSaving;
   final VoidCallback onNext;
 
   @override
@@ -1345,6 +1383,7 @@ class _AudienceStepState extends State<_AudienceStep> {
           JButton(
             label: context.l10n.continueArrow,
             onPressed: widget.onNext,
+            isLoading: widget.isSaving,
             icon: Icons.arrow_forward_rounded,
           ).animate(delay: 140.ms).fadeIn(),
         ],
@@ -1354,6 +1393,20 @@ class _AudienceStepState extends State<_AudienceStep> {
 }
 
 // ── Step 5: Cards ─────────────────────────────────────────────────────────────
+
+/// Meme sticker upload follow-up — resolves which of CardDraft.stickerId /
+/// CardDraft.imageUrl a new card should get from the sticker picker's
+/// current selection, mirroring CardDraft.stickerId's own "mutually
+/// exclusive with imageUrl" doc comment (a library pick sets stickerId; an
+/// uploaded sticker, which has no sticker_library row, sets imageUrl
+/// instead). Pure so it's directly unit-testable without pumping the
+/// private _MultiLangCardInput/_StickerPickerSheet widgets.
+({String? stickerId, String? imageUrl}) resolveCardStickerFields({
+  required String? selectedStickerId,
+  required String? selectedStickerUrl,
+}) => selectedStickerId != null
+    ? (stickerId: selectedStickerId, imageUrl: null)
+    : (stickerId: null, imageUrl: selectedStickerUrl);
 
 String _cardTypeEmoji(CardType t) => switch (t) {
   CardType.truth => '🤔',
@@ -1824,24 +1877,28 @@ class _MultiLangCardInputState extends State<_MultiLangCardInput> {
   TextEditingController _ctrlFor(String lang) =>
       _ctrls.putIfAbsent(lang, () => TextEditingController());
 
-  // Item 3 — meme sticker library. Only offered for prompt (meme) cards;
-  // every other card type is unaffected. Selecting a library sticker here
-  // just sets these two fields on the CardDraft constructed in _add() —
-  // the pack-owned upload flow (CardDraft.imageUrl) is untouched and
-  // remains available for a future upload entry point.
+  // Item 3 — meme sticker library, plus (this follow-up) uploading a new
+  // sticker. Only offered for prompt (meme) cards; every other card type
+  // is unaffected. _stickerId is set only for a LIBRARY pick
+  // (sticker_library.id); an uploaded sticker has no library row, so it
+  // sets _stickerUrl alone — _add() below reads that distinction to
+  // decide between CardDraft.stickerId and CardDraft.imageUrl, matching
+  // CardDraft.stickerId's own "mutually exclusive with imageUrl" doc
+  // comment.
   String? _stickerId;
   String? _stickerUrl;
 
   Future<void> _pickSticker() async {
-    final selected = await showModalBottomSheet<StickerEntity>(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => const _StickerPickerSheet(),
-    );
+    final selected =
+        await showModalBottomSheet<({String? stickerId, String? stickerUrl})>(
+          context: context,
+          isScrollControlled: true,
+          builder: (_) => const _StickerPickerSheet(),
+        );
     if (selected != null && mounted) {
       setState(() {
-        _stickerId = selected.id;
-        _stickerUrl = selected.publicUrl;
+        _stickerId = selected.stickerId;
+        _stickerUrl = selected.stickerUrl;
       });
     }
   }
@@ -1884,7 +1941,12 @@ class _MultiLangCardInputState extends State<_MultiLangCardInput> {
     for (final l in langs) {
       card.setContent(l, _ctrlFor(l).text.trim());
     }
-    card.stickerId = _stickerId;
+    final resolved = resolveCardStickerFields(
+      selectedStickerId: _stickerId,
+      selectedStickerUrl: _stickerUrl,
+    );
+    card.stickerId = resolved.stickerId;
+    card.imageUrl = resolved.imageUrl;
     widget.onAdd(card);
     for (final c in _ctrls.values) {
       c.clear();
@@ -1997,7 +2059,15 @@ class _MultiLangCardInputState extends State<_MultiLangCardInput> {
 
 /// Item 3 — browses the centralized sticker library
 /// (PackRepository.getStickerLibrary) for _MultiLangCardInput's sticker
-/// picker button. Pops the chosen StickerEntity, or null if dismissed.
+/// picker button, plus (this follow-up) uploading a brand-new sticker
+/// through the existing pack image-upload architecture (PackUploadService,
+/// the same presigned-Wasabi-URL flow _pickAndUpload/_GeneralInfoStep's
+/// cover upload already use — see PackUploadService.uploadStickerImage's
+/// own doc comment for why no backend/schema change was needed).
+///
+/// Pops `(stickerId: <id>, stickerUrl: <url>)` for a library pick,
+/// `(stickerId: null, stickerUrl: <uploadedUrl>)` for a fresh upload, or
+/// null if dismissed without choosing anything.
 class _StickerPickerSheet extends StatefulWidget {
   const _StickerPickerSheet();
 
@@ -2007,6 +2077,7 @@ class _StickerPickerSheet extends StatefulWidget {
 
 class _StickerPickerSheetState extends State<_StickerPickerSheet> {
   List<StickerEntity>? _stickers;
+  bool _uploading = false;
 
   @override
   void initState() {
@@ -2021,6 +2092,34 @@ class _StickerPickerSheetState extends State<_StickerPickerSheet> {
         });
   }
 
+  Future<void> _uploadNew() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1024,
+      maxHeight: 1024,
+      imageQuality: 85,
+    );
+    if (picked == null || !mounted) return;
+
+    setState(() => _uploading = true);
+    try {
+      final url = await PackUploadService.instance.uploadStickerImage(
+        File(picked.path),
+      );
+      if (mounted) {
+        Navigator.of(
+          context,
+        ).pop((stickerId: null, stickerUrl: url));
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _uploading = false);
+        context.showErrorSnackBar(context.l10n.packUploadFailed(e.toString()));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final stickers = _stickers;
@@ -2030,10 +2129,35 @@ class _StickerPickerSheetState extends State<_StickerPickerSheet> {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text(
-                context.l10n.packChooseSticker,
-                style: Theme.of(context).textTheme.titleMedium,
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      context.l10n.packChooseSticker,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                  ),
+                  // Always offered — including when the library is empty
+                  // (item 6 requirement) — so a creator is never blocked
+                  // from adding a meme prompt's sticker just because the
+                  // admin-curated library has nothing yet.
+                  OutlinedButton.icon(
+                    onPressed: _uploading ? null : _uploadNew,
+                    icon: _uploading
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.upload_rounded, size: 16),
+                    label: Text(
+                      _uploading
+                          ? context.l10n.packUploadingEllipsis
+                          : context.l10n.packUploadSticker,
+                    ),
+                  ),
+                ],
               ),
             ),
             Expanded(
@@ -2054,7 +2178,9 @@ class _StickerPickerSheetState extends State<_StickerPickerSheet> {
                         final s = stickers[i];
                         return InkWell(
                           borderRadius: BorderRadius.circular(12),
-                          onTap: () => Navigator.of(context).pop(s),
+                          onTap: () => Navigator.of(
+                            context,
+                          ).pop((stickerId: s.id, stickerUrl: s.publicUrl)),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(12),
                             child: SignedNetworkImage(

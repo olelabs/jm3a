@@ -5544,8 +5544,10 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/data/base_repository.dart';
 import '../../../core/errors/failures.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/utils/app_logger.dart';
 import '../domain/pack_entity.dart';
 import '../domain/pack_situation_tags.dart';
+import '../domain/pack_trial_state.dart';
 
 export '../domain/pack_entity.dart';
 
@@ -5665,6 +5667,7 @@ class PackRepository extends BaseRepository {
                 total_plays, version, has_spicy, is_featured, is_promoted,
                 min_age, max_age, gender_restriction, suggested_punishments,
                 min_players, max_players, category_id, download_url, published_at, created_at,
+                trial_enabled, trial_card_count,
                 profiles!creator_id(username, display_name, avatar_url, verification_status, is_official_account)
               ''')
           .eq('status', 'approved')
@@ -6007,6 +6010,142 @@ class PackRepository extends BaseRepository {
       final data = response.data as Map<String, dynamic>?;
       final error = data?['error'] as String?;
       if (error != null) throw Exception(error);
+    },
+  );
+
+  // ── Trial Packs (try before purchase) ─────────────────────────────────────
+  // See migration_2026_pack_trial.sql for the DB side: packs.trial_enabled/
+  // trial_card_count, the pack_trial_usage table (RLS: own-row read only,
+  // no client insert/update/delete — every write below goes through a
+  // SECURITY DEFINER RPC, same "no client insert" shape purchasePack's own
+  // pack_purchases already uses), and these three RPCs.
+
+  /// Trial-enabled packs the current user hasn't purchased and hasn't
+  /// already trialed — for the room-settings pack picker only (see
+  /// game_settings_sheet.dart). The RPC reads auth.uid() itself, so this
+  /// can never return another user's eligibility.
+  Future<List<PackEntity>> getEligibleTrialPacks() => guardedCall(
+    operationName: 'getEligibleTrialPacks',
+    operation: () async {
+      final rows = await _supabase.rpc('get_eligible_trial_packs');
+      return (rows as List)
+          .map((r) => _rowToEntity(Map<String, dynamic>.from(r as Map)))
+          .toList();
+    },
+  );
+
+  /// Atomically claims/starts this user's ONE trial for [packId]. Call
+  /// exactly once, when the game actually begins with a trial-eligible
+  /// pack selected — never merely because the pack was displayed/picked.
+  /// Idempotent: calling it again for a trial already in progress just
+  /// returns the existing state, never creates a second trial.
+  Future<PackTrialStatus> startPackTrial(String packId) => guardedCall(
+    operationName: 'startPackTrial',
+    operation: () async {
+      try {
+        final result = await _supabase.rpc(
+          'start_pack_trial',
+          params: {'p_pack_id': packId},
+        );
+        // Defensive against either JSON shape a single-composite-row RPC
+        // could come back as — a bare object, or (like every other
+        // RETURNS TABLE RPC already used in this codebase, e.g.
+        // get_room_by_invite_code) a one-element list. A mis-shaped
+        // response here must never throw: an uncaught exception at game
+        // start would be swallowed by initAsOwner's outer catch, leaving
+        // trialStatus null for the rest of the session and disabling
+        // trial gating entirely instead of just failing this one call.
+        final m = _asSingleRpcRow(result);
+        final cardsPlayed = m['cards_played'] as int? ?? 0;
+        return PackTrialStatus(
+          state: PackTrialState.active,
+          cardsPlayed: cardsPlayed,
+        );
+      } on PostgrestException catch (e) {
+        if (e.message.contains('not_a_trial_pack')) {
+          return const PackTrialStatus();
+        }
+        if (e.message.contains('already_owns_pack')) {
+          return const PackTrialStatus(state: PackTrialState.owned);
+        }
+        rethrow;
+      }
+    },
+  );
+
+  /// Normalizes a single-row RPC response to a plain Map regardless of
+  /// whether Supabase/PostgREST returned it as a bare JSON object or as
+  /// a one-element JSON array (both are valid encodings of "one row" for
+  /// a Postgres function; this project already has proven precedent for
+  /// the list-wrapped shape in room_repository.dart's
+  /// get_room_by_invite_code call). Never throws on a shape mismatch —
+  /// returns an empty map instead, so callers fall back to their own
+  /// defaults rather than propagate a cast exception.
+  Map<String, dynamic> _asSingleRpcRow(dynamic result) {
+    if (result is List) {
+      return result.isEmpty
+          ? const {}
+          : Map<String, dynamic>.from(result.first as Map);
+    }
+    if (result is Map) return Map<String, dynamic>.from(result);
+    return const {};
+  }
+
+  /// The authoritative "may the next card be revealed" check — call
+  /// immediately before advancing to a new card while a trial (unowned)
+  /// pack is selected. Atomically consumes one trial card if the user is
+  /// still within their limit; never lets cards_played exceed
+  /// packs.trial_card_count even under concurrent calls (row-locked
+  /// UPDATE ... WHERE cards_played < trial_card_count in the RPC).
+  Future<PackTrialStatus> tryConsumeTrialCard(String packId) => guardedCall(
+    operationName: 'tryConsumeTrialCard',
+    operation: () async {
+      // TEMPORARY DIAGNOSTIC LOGGING — pinpointing why the first
+      // production call isn't incrementing pack_trial_usage.cards_played
+      // despite start_pack_trial succeeding and the production SQL being
+      // confirmed correct. Safe to remove once the root cause is found.
+      // Uses AppLogger.warning/error deliberately, NOT .debug/.info —
+      // AppLogger's own _logLevel is Level.warning in a non-development
+      // build (see app_logger.dart), so .debug/.info are silently
+      // dropped in production and would never actually be captured here.
+      // Logs packId + response shape/value + exception details only —
+      // no tokens/JWT/credentials anywhere in this call.
+      dynamic result;
+      try {
+        result = await _supabase.rpc(
+          'try_consume_trial_card',
+          params: {'p_pack_id': packId},
+        );
+        AppLogger.warning(
+          'TRIAL_DIAG tryConsumeTrialCard RPC returned packId=$packId '
+          'rawType=${result.runtimeType} rawValue=$result',
+        );
+      } catch (e, st) {
+        AppLogger.error(
+          'TRIAL_DIAG tryConsumeTrialCard RPC THREW packId=$packId '
+          'exceptionType=${e.runtimeType} exceptionMessage=$e',
+          error: e,
+          stackTrace: st,
+        );
+        rethrow;
+      }
+      final row = _asSingleRpcRow(result);
+      AppLogger.warning(
+        'TRIAL_DIAG tryConsumeTrialCard parsed packId=$packId '
+        'rowType=${row.runtimeType} row=$row',
+      );
+      // Fail closed, not open — an empty/mis-shaped row (should never
+      // happen; try_consume_trial_card always RETURN QUERYs exactly one
+      // row on every branch) must never be read as an implicit "allowed".
+      if (row.isEmpty) {
+        return const PackTrialStatus(state: PackTrialState.exhausted);
+      }
+      return PackTrialStatus.fromConsumeResult(
+        allowed: row['allowed'] as bool? ?? false,
+        reason: row['reason'] as String? ?? 'trial_exhausted',
+        cardsPlayed: row['cards_played'] as int? ?? 0,
+        trialCardCount: row['trial_card_count'] as int? ?? 0,
+      );
     },
   );
 
@@ -6835,6 +6974,8 @@ class PackRepository extends BaseRepository {
               .toList() ??
           const [],
       platformManaged: r['platform_managed'] as bool? ?? false,
+      trialEnabled: r['trial_enabled'] as bool? ?? false,
+      trialCardCount: r['trial_card_count'] as int? ?? 0,
     );
   }
 

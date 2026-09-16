@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/di/service_locator.dart';
@@ -12,12 +13,14 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../features/profile/presentation/screens/profile_screen.dart'
     show ProfileStatsSection;
 import '../../../../shared/widgets/buttons/j_button.dart';
+import '../../../../shared/widgets/cards/pack_cover_fallback.dart';
 import '../../../../shared/widgets/cards/profile_pack_card.dart';
 import '../../../../shared/widgets/cards/user_avatar.dart';
 import '../../../../shared/widgets/feedback/error_view.dart';
 import '../../../../shared/widgets/media/signed_network_image.dart';
 import '../../../packs/data/pack_repository.dart';
 import '../../../packs/domain/pack_entity.dart';
+import '../../data/official_content_repository.dart';
 import '../../presentation/friends_provider.dart';
 import '../widgets/online_indicator.dart';
 import '../widgets/report_user_sheet.dart';
@@ -126,6 +129,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   SocialProfile? _profile;
   List<PackEntity> _packs = [];
   List<PackEntity> _mostPlayed = [];
+  List<OfficialContentItem> _officialPosts = [];
+  List<OfficialContentItem> _officialAds = [];
   bool _isLoading = true;
   bool _isActing = false;
   Object? _error;
@@ -199,6 +204,31 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       return;
     }
 
+    // Official content (Jma3a Feed + Advertisements) — fetched
+    // independently of the packs Future.wait below so a content-query
+    // failure can never blank the packs section (or vice versa). Only
+    // attempted for the official account; empty lists for every normal
+    // profile cost nothing since neither is ever rendered outside the
+    // official branch. Item 1 — posts and ads are two separate queries
+    // (type='post' / type='ad' at the DB level, see
+    // OfficialContentRepository), never one fetch split client-side, so
+    // a post can never leak into Advertisements or vice versa.
+    List<OfficialContentItem> officialPosts = [];
+    List<OfficialContentItem> officialAds = [];
+    if (profile.isOfficial) {
+      try {
+        final content = await Future.wait([
+          sl.officialContentRepository.getPosts(),
+          sl.officialContentRepository.getAdvertisements(),
+        ]);
+        officialPosts = content[0];
+        officialAds = content[1];
+      } catch (e) {
+        // Best-effort — the official profile still renders fine with
+        // neither section (see the isNotEmpty guards where they render).
+      }
+    }
+
     try {
       final results = await Future.wait([
         sl.packRepository.getPublicPacksByCreator(widget.userId),
@@ -209,6 +239,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           _profile = profile;
           _packs = results[0];
           _mostPlayed = results[1];
+          _officialPosts = officialPosts;
+          _officialAds = officialAds;
           _isLoading = false;
         });
       }
@@ -219,6 +251,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       if (mounted) {
         setState(() {
           _profile = profile;
+          _officialPosts = officialPosts;
+          _officialAds = officialAds;
           _isLoading = false;
         });
       }
@@ -296,17 +330,50 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _OfficialProfileHeader(p: p).animate().fadeIn(),
-              // Official can be followed like anyone else — only friend
-              // requests are disallowed for this account (server-enforced,
-              // see 20260901090700_block_official_account_friend_requests.sql).
-              // No _FriendshipAction here — that's the one action that must
-              // never be offered for the official profile.
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-                child: _isActing
-                    ? const Center(child: CircularProgressIndicator())
-                    : _FollowAction(profile: p, friends: friends, onAct: _act),
-              ),
+              // Phase 1 (professional brand profile) — Jma3a Official is
+              // presented as a brand/system account, not a player: no
+              // Follow/Unfollow, no friend actions, no reputation stats.
+              // _FollowAction (still used by the normal-user branch below)
+              // and _FriendshipAction are both deliberately absent here.
+              // Item 1 (official content: separate posts from ads) — two
+              // independent sections, each fed by its own type-filtered
+              // query (see _load above) — a post can never appear here
+              // under Advertisements, and an ad can never appear in Jma3a
+              // Feed, since neither list is ever mixed client-side.
+              if (_officialPosts.isNotEmpty) ...[
+                _SectionHeader(
+                  title: context.l10n.friendsJma3aFeedHeader,
+                  emoji: '📣',
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    children: [
+                      for (final post in _officialPosts)
+                        _OfficialContentTile(
+                          item: post,
+                        ).animate().fadeIn(),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+              if (_officialAds.isNotEmpty) ...[
+                _SectionHeader(
+                  title: context.l10n.friendsAdvertisementsHeader,
+                  emoji: '📢',
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    children: [
+                      for (final ad in _officialAds)
+                        _OfficialContentTile(item: ad).animate().fadeIn(),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
               if (_packs.isNotEmpty) ...[
                 _SectionHeader(
                   title: context.l10n.friendsCreatedBy(p.displayName),
@@ -856,16 +923,19 @@ class _OfficialProfileHeader extends StatelessWidget {
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
-          const SizedBox(height: 12),
-          // §5 — the ONLY count an official profile shows: followers.
-          // Never friendsCount/gamesPlayed/generalScore/honestyPoints —
-          // this branch never reaches _StatsRow/_HonestyStatBadge at all.
-          Text(
-            context.l10n.friendsFollowersCount(p.followersCount),
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w700,
+          if (p.bio != null && p.bio!.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Text(
+                p.bio!,
+                style: theme.textTheme.bodyMedium,
+                textAlign: TextAlign.center,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
-          ),
+          ],
           const SizedBox(height: 20),
         ],
       ),
@@ -982,24 +1052,72 @@ class _OfficialPackGridTile extends StatelessWidget {
   }
 }
 
+// Item 5 (default pack cover) — the same shared PackCoverFallback every
+// other pack-cover surface now renders (marketplace, pack detail,
+// creator's pack grid via ImageCacheService.packCover) instead of a
+// separate, official-grid-only emoji placeholder — one consistent
+// default across the whole app.
 class _GridCoverPlaceholder extends StatelessWidget {
   const _GridCoverPlaceholder({required this.pack});
   final PackEntity pack;
   @override
-  Widget build(BuildContext context) => Container(
-    width: double.infinity,
-    color: Theme.of(context).colorScheme.primaryContainer,
-    child: Center(
-      child: Text(
-        pack.gameType == 'truth_or_dare'
-            ? '🎯'
-            : pack.gameType == 'never_have_i_ever'
-            ? '🍹'
-            : '😂',
-        style: const TextStyle(fontSize: 32),
+  Widget build(BuildContext context) => const PackCoverFallback();
+}
+
+/// Phase 1 (professional brand profile) — one row in the official
+/// account's "Jma3a Feed" or "Advertisements" section (item 1: shared by
+/// both, since a post and an ad render identically today — title/body/
+/// date — only the SECTION they're placed under, driven by the query
+/// that fetched them, differs). Styled like _OfficialPackGridTile's
+/// bordered surface (above) for visual consistency within this same
+/// official branch, but a simple stacked title/body/date row rather than
+/// a grid cell — matches OfficialResponseTile's date-formatting
+/// convention (DateFormat.yMMMd(languageCode), see that widget) rather
+/// than inventing a new one.
+class _OfficialContentTile extends StatelessWidget {
+  const _OfficialContentTile({required this.item});
+  final OfficialContentItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = context.theme;
+    final languageCode = Localizations.localeOf(context).languageCode;
+    final dateFmt = DateFormat.yMMMd(languageCode);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
       ),
-    ),
-  );
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            item.title,
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            item.body,
+            style: theme.textTheme.bodyMedium,
+            maxLines: 4,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            dateFmt.format(item.createdAt),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _FriendshipAction extends StatelessWidget {

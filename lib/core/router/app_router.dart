@@ -38,6 +38,7 @@ import '../../features/offline/presentation/screens/offline_game_screen.dart';
 import '../../features/games/engine/base_game_engine.dart';
 import '../../features/games/truth_or_dare/presentation/screens/tod_game_screen.dart';
 import '../../features/packs/presentation/screens/pack_detail_screen.dart';
+import '../../features/survey/presentation/screens/survey_screen.dart';
 import '../../features/wallet/presentation/screens/wallet_home_screen.dart';
 import '../../features/friends/presentation/screens/friends_screen.dart';
 import '../../features/friends/presentation/screens/user_profile_screen.dart';
@@ -101,6 +102,27 @@ String? extractSharedProfileId(String loc) {
   final id = loc.substring('/profile/'.length);
   return id.isEmpty ? null : id;
 }
+
+/// Trial Packs bug fix (root cause A1) — whether the `game` GoRoute's
+/// own `extra` map carried everything a pack-based game (Truth or Dare/
+/// NHIE/Meme — every game type this route builds) actually needs to
+/// start safely. lobby_screen.dart's own `_onStartGame` already refuses
+/// to start a game at all when the room has no pack selected (its own
+/// `if (r.packId == null || r.packId!.isEmpty)` guard), so the one real
+/// caller of this route (lobby_screen.dart:707's `_pushGameRoute`)
+/// always supplies both a real `config` and a non-empty `packId` — a
+/// legitimate game start here is never missing either. A false result
+/// here means this route was entered some other way (GoRouter's `extra`
+/// is NOT restored across app process death / OS state restoration, a
+/// real production scenario) with no way to safely start an owner game:
+/// every trial gate reads `config.packId` (ownerAdvanceTurn) or receives
+/// `packId` as a required init param (initAsOwner), so continuing with
+/// either missing would make trial enforcement a silent, permanent
+/// no-op for the whole session. A pure function (not inlined in the
+/// route builder) so this exact check is independently unit-testable
+/// without a live GoRouter stack.
+bool gameRouteExtrasComplete({required GameConfig? config, required String packId}) =>
+    config != null && packId.isNotEmpty;
 
 class AppRouter {
   AppRouter._();
@@ -277,6 +299,7 @@ class AppRouter {
           RouteNames.home,
           RouteNames.settings,
           RouteNames.wallet,
+          RouteNames.survey,
           RouteNames.notifications,
           RouteNames.offline,
           ...reservedProfilePaths,
@@ -436,21 +459,49 @@ class AppRouter {
               parentNavigatorKey: rootKey,
               builder: (_, state) {
                 final extra = state.extra as Map<String, dynamic>? ?? {};
-                final config =
-                    extra['config'] as GameConfig? ??
-                    const GameConfig(
-                      maxRounds: 10,
-                      turnTimerSeconds: 60,
-                      allowSkip: true,
-                      allowSpicy: false,
-                    );
+                final config = extra['config'] as GameConfig?;
+                final packId = extra['packId'] as String? ?? '';
+
+                // Trial Packs bug fix (root cause A1) — every game this
+                // route can build (ToD/NHIE/Meme, the switch below) is
+                // pack-based: lobby_screen.dart's own _onStartGame
+                // refuses to start a game at all when
+                // r.packId is null/empty (see its own `if (r.packId ==
+                // null || r.packId!.isEmpty)` guard), so a LEGITIMATE
+                // game start via the one real caller of this route
+                // (lobby_screen.dart:707's _pushGameRoute) always
+                // supplies both `config` and a non-empty `packId`. The
+                // previous fallback here —
+                // `extra['config'] as GameConfig? ?? const GameConfig(...)`
+                // with no packId — silently continued into a playable
+                // owner game whenever `extra` was missing/incomplete
+                // (GoRouter's `extra` is NOT restored across app process
+                // death / OS state restoration, a real production
+                // scenario, not just a dev artifact). Every trial gate
+                // reads `_config?.packId` (ownerAdvanceTurn) or receives
+                // `packId` as a required init param (initAsOwner) — a
+                // missing/empty value there makes trial enforcement a
+                // silent, permanent no-op for the whole session. Fail
+                // safely instead: reuse the existing NotFoundScreen
+                // (already this router's own errorBuilder/"route
+                // couldn't be resolved" recovery screen — same "Go Home"
+                // escape hatch, no new UI) rather than ever building an
+                // owner game screen with unenforceable trial state.
+                if (!gameRouteExtrasComplete(config: config, packId: packId)) {
+                  return const NotFoundScreen();
+                }
+                // Non-null by construction: gameRouteExtrasComplete above
+                // already required config != null (the analyzer can't
+                // promote `config` itself through that function-call
+                // boundary).
+                final resolvedConfig = config!;
+
                 final roomId = state.pathParameters['roomId']!;
                 final playerIds =
                     (extra['playerIds'] as List?)?.cast<String>() ?? [];
                 final displayNames =
                     (extra['displayNames'] as Map?)?.cast<String, String>() ??
                     {};
-                final packId = extra['packId'] as String? ?? '';
                 final packCoverUrl = extra['packCoverUrl'] as String? ?? '';
                 final isOwner = extra['isOwner'] as bool? ?? false;
                 final isModerator = extra['isModerator'] as bool? ?? false;
@@ -469,7 +520,7 @@ class AppRouter {
                   child: switch (gameType) {
                     'never_have_i_ever' => NhieGameScreen(
                       roomId: roomId,
-                      config: config,
+                      config: resolvedConfig,
                       playerIds: playerIds,
                       playerDisplayNames: displayNames,
                       packId: packId,
@@ -486,7 +537,7 @@ class AppRouter {
                     ),
                     'meme_game' => MemeGameScreen(
                       roomId: roomId,
-                      config: config,
+                      config: resolvedConfig,
                       playerIds: playerIds,
                       playerDisplayNames: displayNames,
                       packId: packId,
@@ -501,7 +552,7 @@ class AppRouter {
                     ),
                     _ => TodGameScreen(
                       roomId: roomId,
-                      config: config,
+                      config: resolvedConfig,
                       playerIds: playerIds,
                       playerDisplayNames: displayNames,
                       packId: packId,
@@ -575,6 +626,11 @@ class AppRouter {
           path: RouteNames.wallet,
           parentNavigatorKey: rootKey,
           builder: (_, __) => const WalletHomeScreen(),
+        ),
+        GoRoute(
+          path: RouteNames.survey,
+          parentNavigatorKey: rootKey,
+          builder: (_, __) => const SurveyScreen(),
         ),
         GoRoute(
           path: RouteNames.notifications,

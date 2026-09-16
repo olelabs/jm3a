@@ -15,6 +15,7 @@ import '../../../../shared/widgets/cards/profile_pack_card.dart';
 import '../../../../shared/widgets/cards/user_avatar.dart';
 import '../../../../shared/widgets/game/responsive_game_text.dart';
 import '../../../../shared/widgets/qr/qr_reveal_sheets.dart';
+import '../../../../shared/widgets/navigation/jma3a_bottom_nav_bar.dart';
 import '../../../../shared/utils/profile_share.dart';
 import '../profile_provider.dart';
 
@@ -66,6 +67,11 @@ class _ProfileScreenState extends State<ProfileScreen> with RouteAware {
     if (user == null) return const SizedBox.shrink();
 
     return Scaffold(
+      // Transparent so HomeShellScreen's PlayfulBackground (the premium
+      // animated theme effect) shows through uninterrupted, all the way
+      // to the floating bottom nav bar — matching RoomBrowserScreen's
+      // identical, already-correct setting.
+      backgroundColor: Colors.transparent,
       body: RefreshIndicator(
         onRefresh: _onRefresh,
         child: CustomScrollView(
@@ -354,8 +360,42 @@ class _ProfileScreenState extends State<ProfileScreen> with RouteAware {
                     ),
                     onTap: () => AppRouter.router.push(RouteNames.wallet),
                   ).animate(delay: 280.ms).fadeIn(),
+
+                  // Item 5 — optional product-feedback survey. Own
+                  // profile only (this screen has no isOfficial branch
+                  // at all — that split lives in UserProfileScreen for
+                  // viewing someone ELSE's profile), so the official
+                  // account's profile is untouched by construction.
+                  ListTile(
+                    leading: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: AppColors.brandPurpleMid.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(
+                        Icons.forum_outlined,
+                        color: AppColors.brandPurpleMid,
+                        size: 20,
+                      ),
+                    ),
+                    title: Text(l10n.profileAnswerSurvey),
+                    subtitle: Text(l10n.profileAnswerSurveyHint),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    onTap: () => AppRouter.router.push(RouteNames.survey),
+                  ).animate(delay: 290.ms).fadeIn(),
                 ]),
               ),
+            ),
+            // Trailing spacer so the last row can be scrolled fully
+            // above the floating navbar instead of stopping at its
+            // visual top edge.
+            SliverToBoxAdapter(
+              child: SizedBox(height: Jma3aBottomNavBar.overlayInset(context)),
             ),
           ],
         ),

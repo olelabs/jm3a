@@ -33,6 +33,28 @@ import '../../../../../shared/widgets/game/dishonest_reasons_panel.dart';
 import '../../../../../shared/widgets/game/honesty_vote_buttons.dart';
 import '../../../../../shared/widgets/game/responsive_game_text.dart';
 
+/// Custom cards respecting daresEnabled — same rule the normal
+/// question-selection flow already enforces (TruthOrDareEngine._onChoice)
+/// and TruthOrDareEngine.injectCard now also enforces. Pure so the Custom
+/// Card sheet's type-selector logic is directly unit-testable without
+/// pumping the sheet's live TodGameProvider.
+bool isCustomCardTypeAllowed({
+  required TodCardType type,
+  required bool daresEnabled,
+}) => daresEnabled || type != TodCardType.dare;
+
+/// V1 scope restriction — whether the "Add Custom Card" ongoing-game
+/// action should be offered to this owner right now. `featureEnabledV1`
+/// is TodGameProvider.ongoingGameCustomCardInjectionEnabledV1, currently
+/// hardcoded false: even an owner with an active Premium Plus
+/// subscription never sees this action in V1 — flip the provider's flag,
+/// not this predicate, when V2 ships the real feature.
+bool ongoingGameCustomCardActionAvailable({
+  required bool isOwner,
+  required bool isPremium,
+  required bool featureEnabledV1,
+}) => isOwner && isPremium && featureEnabledV1;
+
 /// TEMPORARY DIAGNOSTIC SWITCH — DO NOT SHIP AS true.
 ///
 /// Flip to `true` locally (never commit as `true`) to unmount every
@@ -243,6 +265,12 @@ class _ChoiceViewState extends State<_ChoiceView> {
   // but the UI must still reflect it: "Truth hidden or disabled, only
   // Dare available" while a limit is in effect.
   bool _isForcedDare() {
+    // Item 2 (TOD settings: enable/disable dares) — a forced dare can
+    // never apply when dares are off: the authoritative engine itself
+    // (TruthOrDareEngine._onChoice) coerces any dare back to truth in
+    // that case, so the UI's own "🔒 forced dare" indicator/hidden-Truth
+    // state must never show either — it would be actively wrong.
+    if (!_daresEnabled) return false;
     final forceDareMode = widget.game.config?.forceDareMode ?? 'unlimited';
     final maxTruths = widget.game.config?.maxTruths ?? 2;
     return switch (forceDareMode) {
@@ -253,6 +281,12 @@ class _ChoiceViewState extends State<_ChoiceView> {
       _ => false,
     };
   }
+
+  /// Item 2 (TOD settings: enable/disable dares) — display-only mirror of
+  /// GameConfig.daresEnabled, same pattern as _isForcedDare above. The
+  /// authoritative check lives in TruthOrDareEngine._onChoice; this only
+  /// controls whether the Dare button is offered at all.
+  bool get _daresEnabled => widget.game.config?.daresEnabled ?? true;
 
   void _choose(Future<void> Function() action) {
     if (_locked) return;
@@ -432,22 +466,32 @@ class _ChoiceViewState extends State<_ChoiceView> {
                                                   .slideX(begin: -0.08, end: 0),
                                               const SizedBox(height: 16),
                                             ],
-                                            _ChoiceButton(
-                                                  label: context.l10n.todDare,
-                                                  emoji: '🔥',
-                                                  color: AppColors.dareColor,
-                                                  description: context
-                                                      .l10n
-                                                      .todDareChoiceDescription,
-                                                  onTap: _locked
-                                                      ? null
-                                                      : () => _choose(
-                                                          game.chooseDare,
-                                                        ),
-                                                )
-                                                .animate(delay: 140.ms)
-                                                .fadeIn()
-                                                .slideX(begin: 0.08, end: 0),
+                                            // Item 2 (TOD settings:
+                                            // enable/disable dares) — no
+                                            // Dare card/action offered at
+                                            // all when disabled; the
+                                            // authoritative engine would
+                                            // silently coerce it back to
+                                            // Truth anyway, so not
+                                            // offering the button at all
+                                            // is the correct, honest UI.
+                                            if (_daresEnabled)
+                                              _ChoiceButton(
+                                                    label: context.l10n.todDare,
+                                                    emoji: '🔥',
+                                                    color: AppColors.dareColor,
+                                                    description: context
+                                                        .l10n
+                                                        .todDareChoiceDescription,
+                                                    onTap: _locked
+                                                        ? null
+                                                        : () => _choose(
+                                                            game.chooseDare,
+                                                          ),
+                                                  )
+                                                  .animate(delay: 140.ms)
+                                                  .fadeIn()
+                                                  .slideX(begin: 0.08, end: 0),
                                           ],
                                         ),
                                       ),
@@ -988,7 +1032,16 @@ class _CardView extends StatelessWidget {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setS) {
           return PopScope(
-            onPopInvoked: (_) {
+            // Item 3 (prevent multiple actions while submitting) —
+            // system back / barrier tap / swipe-down-to-dismiss must not
+            // be able to tear down this sheet while a submission is in
+            // flight (previously allowed unconditionally), matching this
+            // app's established PopScope(canPop: false, ...) idiom
+            // (otp_screen.dart, create_pack_screen.dart) for "visible
+            // action AND system back both intercepted the same way".
+            canPop: !submitting,
+            onPopInvokedWithResult: (didPop, _) {
+              if (!didPop) return;
               recordingTimer?.cancel();
               safeDisposeRecorder();
             },
@@ -1044,6 +1097,9 @@ class _CardView extends StatelessWidget {
                       const SizedBox(height: 12),
                       TextField(
                         controller: ctrl,
+                        // Item 3 — the response must not be editable while
+                        // a submission of it is already in flight.
+                        enabled: !submitting,
                         maxLines: 3,
                         maxLength: 300,
                         decoration: InputDecoration(
@@ -1082,7 +1138,9 @@ class _CardView extends StatelessWidget {
                                 top: 4,
                                 right: 4,
                                 child: GestureDetector(
-                                  onTap: () => setS(() => imgB64 = null),
+                                  onTap: submitting
+                                      ? null
+                                      : () => setS(() => imgB64 = null),
                                   child: const CircleAvatar(
                                     radius: 12,
                                     backgroundColor: Colors.black54,
@@ -1129,13 +1187,17 @@ class _CardView extends StatelessWidget {
                                     Icons.play_circle_outline,
                                     color: Colors.purple,
                                   ),
-                                  onPressed: () => showModalBottomSheet(
-                                    context: ctx,
-                                    backgroundColor: Colors.transparent,
-                                    builder: (_) => _VoicePlayerSheet(
-                                      voiceB64: base64Encode(voiceBytes!),
-                                    ),
-                                  ),
+                                  onPressed: submitting
+                                      ? null
+                                      : () => showModalBottomSheet(
+                                          context: ctx,
+                                          backgroundColor: Colors.transparent,
+                                          builder: (_) => _VoicePlayerSheet(
+                                            voiceB64: base64Encode(
+                                              voiceBytes!,
+                                            ),
+                                          ),
+                                        ),
                                 ),
                                 IconButton(
                                   icon: const Icon(
@@ -1143,8 +1205,9 @@ class _CardView extends StatelessWidget {
                                     color: Colors.red,
                                     size: 18,
                                   ),
-                                  onPressed: () =>
-                                      setS(() => voiceBytes = null),
+                                  onPressed: submitting
+                                      ? null
+                                      : () => setS(() => voiceBytes = null),
                                 ),
                               ],
                             ),
@@ -1160,23 +1223,29 @@ class _CardView extends StatelessWidget {
                             children: [
                               Expanded(
                                 child: OutlinedButton.icon(
-                                  onPressed: () async {
-                                    try {
-                                      game.broadcastActivity('uploading_proof');
-                                      final picked = await ImagePicker()
-                                          .pickImage(
-                                            source: ImageSource.gallery,
-                                            imageQuality: 40,
-                                          );
-                                      if (picked != null) {
-                                        final bytes = await picked
-                                            .readAsBytes();
-                                        setS(
-                                          () => imgB64 = base64Encode(bytes),
-                                        );
-                                      }
-                                    } catch (_) {}
-                                  },
+                                  onPressed: submitting
+                                      ? null
+                                      : () async {
+                                          try {
+                                            game.broadcastActivity(
+                                              'uploading_proof',
+                                            );
+                                            final picked = await ImagePicker()
+                                                .pickImage(
+                                                  source: ImageSource.gallery,
+                                                  imageQuality: 40,
+                                                );
+                                            if (picked != null) {
+                                              final bytes = await picked
+                                                  .readAsBytes();
+                                              setS(
+                                                () => imgB64 = base64Encode(
+                                                  bytes,
+                                                ),
+                                              );
+                                            }
+                                          } catch (_) {}
+                                        },
                                   icon: const Icon(
                                     Icons.add_photo_alternate_outlined,
                                   ),
@@ -1186,7 +1255,9 @@ class _CardView extends StatelessWidget {
                               const SizedBox(width: 8),
                               Expanded(
                                 child: OutlinedButton.icon(
-                                  onPressed: () => startRecording(setS),
+                                  onPressed: submitting
+                                      ? null
+                                      : () => startRecording(setS),
                                   icon: const Icon(Icons.mic_outlined),
                                   label: Text(
                                     ctx.l10n.todVoiceMaxSeconds(
@@ -1204,37 +1275,53 @@ class _CardView extends StatelessWidget {
                       // proof at all (item 2).
                       if (!isTruth) ...[
                         const SizedBox(height: 12),
-                        _ProofVisibilitySelector(
-                          selected: selectedVisibility,
-                          selectedUserIds: selectedUserIds,
-                          members: game.roomProvider?.members ?? const [],
-                          currentUserId: game.currentUserId,
-                          showMissingSelectionError:
-                              visibilityAttempted &&
-                              selectedVisibility ==
-                                  TodProofVisibility.selectedPlayers &&
-                              selectedUserIds.isEmpty,
-                          onVisibilityChanged: (v) => setS(() {
-                            selectedVisibility = v;
-                            visibilityAttempted = false;
-                          }),
-                          onToggleUser: (id) => setS(() {
-                            if (!selectedUserIds.remove(id)) {
-                              selectedUserIds.add(id);
-                            }
-                          }),
-                        ),
-                        if (imgB64 != null) ...[
-                          const SizedBox(height: 12),
-                          _ProofTimerSelector(
-                            mode: selectedViewMode,
-                            seconds: selectedViewSeconds,
-                            onChanged: (mode, seconds) => setS(() {
-                              selectedViewMode = mode;
-                              selectedViewSeconds = seconds;
-                            }),
+                        // Item 3 — proof visibility/timer are part of
+                        // "the response" and must not be changeable once
+                        // submission is in flight, same as the text
+                        // field/attachment controls above.
+                        IgnorePointer(
+                          ignoring: submitting,
+                          child: Opacity(
+                            opacity: submitting ? 0.5 : 1,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _ProofVisibilitySelector(
+                                  selected: selectedVisibility,
+                                  selectedUserIds: selectedUserIds,
+                                  members:
+                                      game.roomProvider?.members ?? const [],
+                                  currentUserId: game.currentUserId,
+                                  showMissingSelectionError:
+                                      visibilityAttempted &&
+                                      selectedVisibility ==
+                                          TodProofVisibility.selectedPlayers &&
+                                      selectedUserIds.isEmpty,
+                                  onVisibilityChanged: (v) => setS(() {
+                                    selectedVisibility = v;
+                                    visibilityAttempted = false;
+                                  }),
+                                  onToggleUser: (id) => setS(() {
+                                    if (!selectedUserIds.remove(id)) {
+                                      selectedUserIds.add(id);
+                                    }
+                                  }),
+                                ),
+                                if (imgB64 != null) ...[
+                                  const SizedBox(height: 12),
+                                  _ProofTimerSelector(
+                                    mode: selectedViewMode,
+                                    seconds: selectedViewSeconds,
+                                    onChanged: (mode, seconds) => setS(() {
+                                      selectedViewMode = mode;
+                                      selectedViewSeconds = seconds;
+                                    }),
+                                  ),
+                                ],
+                              ],
+                            ),
                           ),
-                        ],
+                        ),
                       ],
                       const SizedBox(height: 12),
                       FilledButton(
@@ -1380,11 +1467,16 @@ class _CardView extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       TextButton(
-                        onPressed: () {
-                          recordingTimer?.cancel();
-                          safeDisposeRecorder();
-                          Navigator.of(ctx).pop();
-                        },
+                        // Item 3 — Cancel must not be able to tear down
+                        // the sheet mid-submission either (same reasoning
+                        // as the PopScope guard above it never had before).
+                        onPressed: submitting
+                            ? null
+                            : () {
+                                recordingTimer?.cancel();
+                                safeDisposeRecorder();
+                                Navigator.of(ctx).pop();
+                              },
                         child: Text(ctx.l10n.cancel),
                       ),
                     ],
@@ -2450,12 +2542,23 @@ class _AwaitingView extends StatelessWidget {
               ).animate(delay: 250.ms).fadeIn(),
               const SizedBox(height: 6),
             ],
+            // V1 scope restriction — Premium Plus injecting a custom card
+            // into this already-ongoing game is a V2 feature (see
+            // TodGameProvider.ongoingGameCustomCardInjectionEnabledV1's
+            // own doc comment); the isOwner/isPremium checks below are
+            // unchanged, this only adds the V1 gate on top of them.
             if (game.isOwner)
               Builder(
                 builder: (ctx) {
                   final isPremium =
                       ctx.read<AuthProvider>().currentUser?.isPremium ?? false;
-                  if (!isPremium) return const SizedBox.shrink();
+                  if (!ongoingGameCustomCardActionAvailable(
+                    isOwner: game.isOwner,
+                    isPremium: isPremium,
+                    featureEnabledV1: game.ongoingGameCustomCardInjectionEnabledV1,
+                  )) {
+                    return const SizedBox.shrink();
+                  }
                   return TextButton.icon(
                     onPressed: () => _showAddCustomCardSheet(ctx, game),
                     icon: const Icon(Icons.add_card_outlined, size: 16),
@@ -2503,6 +2606,10 @@ class _AwaitingView extends StatelessWidget {
   }
 
   void _showAddCustomCardSheet(BuildContext ctx, TodGameProvider game) {
+    // Custom cards respecting daresEnabled — same source the normal
+    // question-selection flow already reads (RoomSettingsEntity.
+    // daresEnabled via GameConfig), not a second setting.
+    final daresEnabled = game.config?.daresEnabled ?? true;
     TodCardType selectedType = TodCardType.truth;
     TodDifficulty selectedDifficulty = TodDifficulty.mild;
     final ctrl = TextEditingController();
@@ -2562,11 +2669,17 @@ class _AwaitingView extends StatelessWidget {
                       label: Text(sheetCtx.l10n.todTruth),
                       icon: const Icon(Icons.lightbulb_outline),
                     ),
-                    ButtonSegment(
-                      value: TodCardType.dare,
-                      label: Text(sheetCtx.l10n.todDare),
-                      icon: const Icon(Icons.local_fire_department_outlined),
-                    ),
+                    // Dares OFF: the Dare option is not presented as an
+                    // available choice at all, matching this project's
+                    // existing convention for hiding (not just disabling)
+                    // an unavailable choice — see the normal choice
+                    // screen's own Dare button, which does the same.
+                    if (daresEnabled)
+                      ButtonSegment(
+                        value: TodCardType.dare,
+                        label: Text(sheetCtx.l10n.todDare),
+                        icon: const Icon(Icons.local_fire_department_outlined),
+                      ),
                   ],
                   selected: {selectedType},
                   onSelectionChanged: (v) => setS(() => selectedType = v.first),
@@ -2608,6 +2721,19 @@ class _AwaitingView extends StatelessWidget {
                       ? null
                       : () async {
                           if (ctrl.text.trim().length < 5) return;
+                          // Defensive — the segmented button above already
+                          // hides Dare when daresEnabled is false, but
+                          // reject here too in case a Dare somehow reaches
+                          // this point (stale selectedType from before a
+                          // setting change, etc.); addCustomCard below
+                          // would reject it anyway, this just avoids the
+                          // round-trip.
+                          if (!isCustomCardTypeAllowed(
+                            type: selectedType,
+                            daresEnabled: daresEnabled,
+                          )) {
+                            return;
+                          }
                           setS(() => submitting = true);
                           final result = await game.addCustomCard(
                             type: selectedType,

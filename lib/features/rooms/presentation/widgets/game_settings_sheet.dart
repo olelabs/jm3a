@@ -13,6 +13,7 @@ import '../../../packs/data/pack_repository.dart';
 import '../../../packs/domain/pack_situation_tags.dart';
 import '../../../packs/presentation/pack_provider.dart';
 import '../../../packs/presentation/widgets/pack_situation_tag_picker.dart';
+import '../../../../shared/widgets/cards/permium_badge.dart';
 import '../room_provider.dart';
 
 /// The pack's own title in [lang] if available, else in the pack's
@@ -62,6 +63,48 @@ String languageLabel(AppLocalizations l10n, String code) => switch (code) {
 /// every other extracted decision function in this codebase.
 bool packMatchesCategory(PackEntity pack, String? categoryId) =>
     categoryId == null || pack.categoryId == categoryId;
+
+/// Room Settings must always be able to see every approved, non-deleted
+/// pack's free tier across all 3 game types (ToD/NHIE/Meme) — the tab
+/// switcher (`_packTab`) filters this pool client-side with no refetch,
+/// so the pool itself can never be scoped to just one game type.
+///
+/// ROOT CAUSE of "No packs available" regression — this used to be built
+/// from `PackProvider.browsePacks`, a single cache SHARED with (and
+/// overwritten by) the Packs/Marketplace screen's own game-type/category/
+/// free-only filters (marketplace_screen.dart's onGameTypeChanged/
+/// onFreeOnlyChanged, "Item 2" AND-intersection fix). Once that screen's
+/// filters were touched for any game type other than the room's own — or
+/// any combination with zero matches — the shared cache stayed narrowed
+/// to that result, and Room Settings silently inherited it instead of
+/// the real, unfiltered set of approved packs. Fetching directly here,
+/// independent of that cache, is what actually fixes it: no gameType
+/// restriction (every tab still needs its own packs), freeOnly: true for
+/// the browsable tier (owned/purchased packs are added separately from
+/// PackProvider.purchasedPacks/localPacks, which are real ownership
+/// state, not a filtered view). category/language stay unrestricted at
+/// this layer too — those remain purely additive client-side predicates
+/// against the fetched pool (packMatchesCategory / the language check in
+/// _filteredPacks below), so the full intended semantics are Game Type
+/// AND tier/access AND category AND language, where an
+/// inactive/unselected filter imposes no restriction.
+const int roomSettingsBrowsablePacksPerPage = 200;
+
+/// Trial Packs — whether the small trial badge (_PackPickerCard) should
+/// show for a given pack picker tile. Pure so it's directly testable
+/// without pumping the (Supabase-backed) sheet itself: an owned pack
+/// never shows the badge even if trial_enabled is still true on the row
+/// (purchased packs behave as fully normal packs — see task section 15),
+/// and a non-trial pack never shows it regardless of ownership.
+bool packShowsTrialBadge({required bool trialEnabled, required bool isOwned}) =>
+    trialEnabled && !isOwned;
+
+Future<List<PackEntity>> fetchRoomSettingsBrowsablePacks(
+  PackRepository repo,
+) => repo.browsePacks(
+  freeOnly: true,
+  perPage: roomSettingsBrowsablePacksPerPage,
+);
 
 class GameSettingsSheet extends StatefulWidget {
   const GameSettingsSheet({super.key, this.scrollController});
@@ -188,10 +231,27 @@ class _GameSettingsSheetState extends State<GameSettingsSheet> {
   Future<void> _loadPacks() async {
     try {
       final packProvider = context.read<PackProvider>();
+      // See fetchRoomSettingsBrowsablePacks' own doc comment — deliberately
+      // NOT packProvider.browsePacks, which is a cache shared with (and
+      // narrowable by) the Packs/Marketplace screen's own filters.
+      final browsable = await fetchRoomSettingsBrowsablePacks(
+        PackRepository.instance,
+      );
+      // Trial Packs — admin-explicitly-trial-enabled paid packs this user
+      // hasn't purchased and hasn't already trialed (server-enforced, see
+      // get_eligible_trial_packs() in migration_2026_pack_trial.sql — this
+      // is NOT client-side filtering, the RPC itself excludes anything
+      // ineligible). Best-effort like coverage/playedIds below: a failure
+      // here must never block the picker's normal owned/free packs.
+      var trialEligible = <PackEntity>[];
+      try {
+        trialEligible = await PackRepository.instance.getEligibleTrialPacks();
+      } catch (_) {}
       final owned = [
         ...packProvider.purchasedPacks,
         ...packProvider.localPacks,
-        ...packProvider.browsePacks.where((p) => p.isFree),
+        ...browsable,
+        ...trialEligible,
       ];
       final seen = <String>{};
       final unique = owned.where((p) => seen.add(p.id)).toList();
@@ -973,6 +1033,18 @@ class _PackPickerCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = context.l10n;
+    // Trial Packs — badge only while the trial actually applies: an
+    // owned pack (purchased, or gifted/free) behaves as a normal pack
+    // even if an admin left trial_enabled on, per "trial logic must
+    // never interfere with existing purchased-pack behavior."
+    final isOwned = context
+        .watch<PackProvider>()
+        .purchasedPacks
+        .any((p) => p.id == pack.id);
+    final showTrialBadge = packShowsTrialBadge(
+      trialEnabled: pack.trialEnabled,
+      isOwned: isOwned,
+    );
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
@@ -1008,6 +1080,10 @@ class _PackPickerCard extends StatelessWidget {
                     _ => '👥',
                   }, style: const TextStyle(fontSize: 13)),
                 ),
+                if (showTrialBadge) ...[
+                  const SizedBox(width: 4),
+                  const PremiumBadge(size: 12, isTrial: true),
+                ],
                 const Spacer(),
                 if (selected)
                   Icon(

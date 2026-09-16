@@ -3,8 +3,13 @@
 //   account. Mirrors the EXISTING completion criteria
 //   (UserEntity.hasCompletedProfile: `username != null && displayName !=
 //   null`), not a newly-invented definition.
-// - item 1 (this pass): Jma3a Official must be completely excluded from
-//   Discover Friends — not specially presented, not shown at all. See
+// - Discover-inclusion pass: Jma3a Official must appear in Discover Friends
+//   and be followable (from its own UserProfileScreen branch), regardless
+//   of its `hasCompletedProfile` status (it may have no `username` — a
+//   system account's profile-completion semantics differ from a normal
+//   user's). It is still never offered as a friend-request target — that
+//   exclusion moved to ExplorePersonCard (no Add Friend button for
+//   isOfficial rows) rather than being hidden from Discover entirely. See
 //   ExplorePerson.isDiscoverable's own doc comment: this is the actual
 //   predicate FriendsProvider/ExplorePersonCard filter on.
 import 'package:flutter_test/flutter_test.dart';
@@ -58,17 +63,18 @@ void main() {
         expect(_person(username: null).isDiscoverable, isFalse);
       });
 
-      test('false for the official Jma3a account, even with a complete '
-          'profile — item 1: must be fully excluded from Discover, no '
-          'special-cased exemption like the old hasCompletedProfile had', () {
-        expect(_person(isOfficial: true).isDiscoverable, isFalse);
+      test('true for the official Jma3a account with a complete profile — '
+          'Discover-inclusion pass: official accounts must appear in '
+          'Discover so they can be followed', () {
+        expect(_person(isOfficial: true).isDiscoverable, isTrue);
       });
 
-      test('false for the official Jma3a account with no username too — '
-          'excluded either way, not "shown because it is official"', () {
+      test('true for the official Jma3a account with no username too — '
+          'official rows bypass hasCompletedProfile entirely, unlike '
+          'normal accounts', () {
         expect(
           _person(username: null, isOfficial: true).isDiscoverable,
-          isFalse,
+          isTrue,
         );
       });
     },
@@ -208,7 +214,11 @@ void main() {
       expect(corrected[0].isOfficial, isFalse);
       expect(corrected[0].isDiscoverable, isTrue);
       expect(corrected[1].isOfficial, isTrue);
-      expect(corrected[1].isDiscoverable, isFalse);
+      // Discover-inclusion pass: a corrected official row stays
+      // discoverable (it just moved from "hidden entirely" to
+      // "discoverable, but never a friend-request target" — see
+      // ExplorePersonCard for that half of the behavior).
+      expect(corrected[1].isDiscoverable, isTrue);
     });
 
     test('an empty officialIds set returns the list unchanged', () {

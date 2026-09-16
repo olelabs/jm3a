@@ -18,6 +18,7 @@ class TodPreGameConfig {
     required this.enablePunishments,
     required this.punishmentSource,
     required this.allowSkip,
+    required this.daresEnabled,
     required this.forceDareMode,
     required this.maxTruths,
     required this.cardRepetitionMode,
@@ -26,6 +27,13 @@ class TodPreGameConfig {
   final bool enablePunishments;
   final String punishmentSource; // 'pack' | 'players'
   final bool allowSkip;
+
+  /// Item 2 (TOD settings: enable/disable dares) — when false, the game
+  /// contains Truth questions only: TruthOrDareEngine._onChoice coerces
+  /// any Dare selection back to Truth, and the Dare choice button never
+  /// renders. forceDareMode/maxTruths below are meaningless (and hidden
+  /// in this sheet) whenever this is false.
+  final bool daresEnabled;
   final String forceDareMode; // 'unlimited' | 'per_player' | 'per_turn'
   final int maxTruths;
   final String cardRepetitionMode; // 'shuffle' | 'unique'
@@ -48,18 +56,28 @@ Future<TodPreGameConfig?> showTodPreGameConfigSheet(
   // what the room's admin had actually already configured — see this
   // parameter's own doc comment on _TodPreGameConfigSheet.
   bool initialAllowSkip = true,
+  // Item 2 (TOD settings: enable/disable dares) — same "reflect the
+  // room's actual persisted setting" reasoning as initialAllowSkip.
+  bool initialDaresEnabled = true,
 }) {
   return showModalBottomSheet<TodPreGameConfig>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (_) =>
-        _TodPreGameConfigSheet(pack: pack, initialAllowSkip: initialAllowSkip),
+    builder: (_) => _TodPreGameConfigSheet(
+      pack: pack,
+      initialAllowSkip: initialAllowSkip,
+      initialDaresEnabled: initialDaresEnabled,
+    ),
   );
 }
 
 class _TodPreGameConfigSheet extends StatefulWidget {
-  const _TodPreGameConfigSheet({this.pack, this.initialAllowSkip = true});
+  const _TodPreGameConfigSheet({
+    this.pack,
+    this.initialAllowSkip = true,
+    this.initialDaresEnabled = true,
+  });
   final PackEntity? pack;
 
   /// The room's actual currently-persisted allow-skip setting
@@ -67,6 +85,11 @@ class _TodPreGameConfigSheet extends StatefulWidget {
   /// instead of always starting from a hardcoded `true` — see item 3's
   /// own root-cause note at the Allow Skip row below.
   final bool initialAllowSkip;
+
+  /// The room's actual currently-persisted dares-enabled setting
+  /// (RoomSettingsEntity.daresEnabled) — same reasoning as
+  /// initialAllowSkip above.
+  final bool initialDaresEnabled;
 
   @override
   State<_TodPreGameConfigSheet> createState() => _TodPreGameConfigSheetState();
@@ -76,6 +99,7 @@ class _TodPreGameConfigSheetState extends State<_TodPreGameConfigSheet> {
   bool _enablePunishments = false;
   String _punishmentSource = 'players';
   late bool _allowSkip = widget.initialAllowSkip;
+  late bool _daresEnabled = widget.initialDaresEnabled;
   String _forceDareMode = 'unlimited';
   int _maxTruths = 2;
   String _cardRepetitionMode = 'shuffle';
@@ -99,6 +123,7 @@ class _TodPreGameConfigSheetState extends State<_TodPreGameConfigSheet> {
         enablePunishments: _enablePunishments,
         punishmentSource: _hasPackPunishments ? _punishmentSource : 'players',
         allowSkip: _allowSkip,
+        daresEnabled: _daresEnabled,
         forceDareMode: _forceDareMode,
         maxTruths: _maxTruths,
         cardRepetitionMode: _cardRepetitionMode,
@@ -309,56 +334,74 @@ class _TodPreGameConfigSheetState extends State<_TodPreGameConfigSheet> {
                 ),
               ),
 
-              // ── Force Dare rules ─────────────────────────────────────
-              _SectionCard(
-                index: 1,
-                accent: AppColors.dareColor,
-                icon: Icons.local_fire_department_rounded,
-                title: l10n.todConfigForceDareTitle,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SegmentedButton<String>(
-                      segments: [
-                        ButtonSegment(
-                          value: 'unlimited',
-                          label: Text(l10n.todConfigForceDareUnlimited),
-                        ),
-                        ButtonSegment(
-                          value: 'per_player',
-                          label: Text(l10n.todConfigForceDarePerPlayer),
-                        ),
-                        ButtonSegment(
-                          value: 'per_turn',
-                          label: Text(l10n.todConfigForceDarePerTurn),
-                        ),
-                      ],
-                      selected: {_forceDareMode},
-                      onSelectionChanged: (v) =>
-                          setState(() => _forceDareMode = v.first),
-                      style: const ButtonStyle(
-                        visualDensity: VisualDensity.compact,
-                      ),
-                    ),
-                    // Progressive reveal: the truth-limit slider is
-                    // meaningless in Unlimited mode.
-                    if (_forceDareMode != 'unlimited')
-                      Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: SettingsSliderRow(
-                          label: l10n.todConfigMaxTruths,
-                          value: _maxTruths.toDouble(),
-                          display: '$_maxTruths',
-                          min: 1,
-                          max: 10,
-                          divisions: 9,
-                          onChanged: (v) =>
-                              setState(() => _maxTruths = v.round()),
-                        ),
-                      ),
-                  ],
+              // ── Dares — item 2 (TOD settings: enable/disable dares).
+              // When off, the round contains Truth questions only —
+              // enforced authoritatively in TruthOrDareEngine._onChoice,
+              // not just hidden here. Force Dare rules below are
+              // meaningless with dares off (there is nothing left to
+              // force), so that whole section collapses away instead of
+              // offering a control that would do nothing.
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: SettingsSwitchRow(
+                  label: l10n.todConfigDaresEnabled,
+                  icon: Icons.local_fire_department_outlined,
+                  value: _daresEnabled,
+                  onChanged: (v) => setState(() => _daresEnabled = v),
                 ),
               ),
+
+              // ── Force Dare rules ─────────────────────────────────────
+              if (_daresEnabled)
+                _SectionCard(
+                  index: 1,
+                  accent: AppColors.dareColor,
+                  icon: Icons.local_fire_department_rounded,
+                  title: l10n.todConfigForceDareTitle,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SegmentedButton<String>(
+                        segments: [
+                          ButtonSegment(
+                            value: 'unlimited',
+                            label: Text(l10n.todConfigForceDareUnlimited),
+                          ),
+                          ButtonSegment(
+                            value: 'per_player',
+                            label: Text(l10n.todConfigForceDarePerPlayer),
+                          ),
+                          ButtonSegment(
+                            value: 'per_turn',
+                            label: Text(l10n.todConfigForceDarePerTurn),
+                          ),
+                        ],
+                        selected: {_forceDareMode},
+                        onSelectionChanged: (v) =>
+                            setState(() => _forceDareMode = v.first),
+                        style: const ButtonStyle(
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ),
+                      // Progressive reveal: the truth-limit slider is
+                      // meaningless in Unlimited mode.
+                      if (_forceDareMode != 'unlimited')
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: SettingsSliderRow(
+                            label: l10n.todConfigMaxTruths,
+                            value: _maxTruths.toDouble(),
+                            display: '$_maxTruths',
+                            min: 1,
+                            max: 10,
+                            divisions: 9,
+                            onChanged: (v) =>
+                                setState(() => _maxTruths = v.round()),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
 
               // ── Card repetition ──────────────────────────────────────
               _SectionCard(

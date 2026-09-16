@@ -255,60 +255,101 @@ void main() {
     });
   });
 
-  group('ExplorePersonCard — item 1: Jma3a Official is fully excluded from '
-      'Discover, never specially presented', () {
-    testWidgets(
-      'renders no visible content for the official account — no name, '
-      'no verified badge, no honesty line, no Add Friend action',
-      (tester) async {
-        await tester.pumpWidget(
-          _wrapInList([
-            ExplorePersonCard(
-              person: _person(isOfficial: true, displayName: 'Jma3a Official'),
-              hasSentRequest: false,
-              onAddFriend: () {},
-            ),
-          ]),
-        );
-        await tester.pump();
+  group(
+    'ExplorePersonCard — Discover-inclusion pass: Jma3a Official renders '
+    'as a normal discoverable card, but never offers Add Friend',
+    () {
+      testWidgets(
+        'renders the official account\'s name and verified badge, but no '
+        'Add Friend action and no honesty/score line — Phase 1: no '
+        'player-reputation stats on a brand profile',
+        (tester) async {
+          await tester.pumpWidget(
+            _wrapInList([
+              ExplorePersonCard(
+                person: _person(
+                  isOfficial: true,
+                  displayName: 'Jma3a Official',
+                ),
+                hasSentRequest: false,
+                onAddFriend: () {},
+              ),
+            ]),
+          );
+          await tester.pump();
 
-        expect(tester.takeException(), isNull);
-        expect(find.text('Jma3a Official'), findsNothing);
-        expect(find.text('Add Friend'), findsNothing);
-        expect(find.byIcon(Icons.verified_rounded), findsNothing);
-        // Renders to exactly zero size — the widget collapses to
-        // SizedBox.shrink() rather than a visible (even if inert) card.
-        expect(tester.getSize(find.byType(ListView)).height, greaterThan(0));
-      },
-    );
+          expect(tester.takeException(), isNull);
+          expect(find.text('Jma3a Official'), findsOneWidget);
+          expect(find.text('Add Friend'), findsNothing);
+          expect(find.byIcon(Icons.verified_rounded), findsOneWidget);
+          expect(find.byIcon(Icons.handshake_rounded), findsNothing);
+          expect(find.byIcon(Icons.star_rounded), findsNothing);
+        },
+      );
 
-    testWidgets(
-      'tapping where the official card would have rendered does nothing '
-      '— it is not a visible tap target at all',
-      (tester) async {
-        var taps = 0;
-        await tester.pumpWidget(
-          _wrapInList([
-            ExplorePersonCard(
-              person: _person(isOfficial: true),
-              hasSentRequest: false,
-              onAddFriend: () {},
-              onTap: () => taps++,
-            ),
-          ]),
-        );
-        await tester.pump();
-        // No card renders, so there is nothing to find/tap by type or
-        // text — tapping anywhere in the (empty) list area must not
-        // reach the collapsed card's onTap.
-        await tester.tapAt(
-          tester.getTopLeft(find.byType(ListView)) + const Offset(20, 20),
-        );
-        await tester.pump();
-        expect(taps, 0);
-      },
-    );
-  });
+      testWidgets(
+        'a normal (non-official) card still shows its honesty/score line — '
+        'Phase 1 hides stats for official rows only, not everyone',
+        (tester) async {
+          await tester.pumpWidget(
+            _wrapInList([
+              ExplorePersonCard(
+                person: _person(),
+                hasSentRequest: false,
+                onAddFriend: () {},
+              ),
+            ]),
+          );
+          await tester.pump();
+
+          expect(find.byIcon(Icons.handshake_rounded), findsOneWidget);
+          expect(find.byIcon(Icons.star_rounded), findsOneWidget);
+        },
+      );
+
+      testWidgets(
+        'tapping the official card still opens the profile (onTap fires) — '
+        'discoverable and viewable, just never a friend-request target',
+        (tester) async {
+          var taps = 0;
+          await tester.pumpWidget(
+            _wrapInList([
+              ExplorePersonCard(
+                person: _person(isOfficial: true, displayName: 'Jma3a Official'),
+                hasSentRequest: false,
+                onAddFriend: () {},
+                onTap: () => taps++,
+              ),
+            ]),
+          );
+          await tester.pump();
+          await tester.tap(find.text('Jma3a Official'));
+          await tester.pump();
+          expect(taps, 1);
+        },
+      );
+
+      testWidgets(
+        'Add Friend is never offered for the official account even when '
+        'hasSentRequest is false (no Chip either — the action is absent, '
+        'not just relabeled)',
+        (tester) async {
+          await tester.pumpWidget(
+            _wrapInList([
+              ExplorePersonCard(
+                person: _person(isOfficial: true),
+                hasSentRequest: false,
+                onAddFriend: () {},
+              ),
+            ]),
+          );
+          await tester.pump();
+          expect(find.text('Add Friend'), findsNothing);
+          expect(find.byType(Chip), findsNothing);
+        },
+      );
+    },
+  );
 
   group('BlockedUserCard — real production widget, narrow widths', () {
     for (final width in [320.0, 360.0, 390.0]) {

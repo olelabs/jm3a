@@ -1678,10 +1678,24 @@ class TruthOrDareEngine implements BaseGameEngine {
   /// Inject a card into the remaining deck so it can appear during the
   /// current game. Used for premium session-local custom cards — the card
   /// is inserted at a random position to avoid always appearing last.
+  ///
+  /// Custom cards respecting daresEnabled — mirrors _onChoice's own
+  /// dare->truth coercion above: this owner-run engine is the
+  /// authoritative side of this broadcast-relay architecture, so a Dare
+  /// custom card is silently refused here too, not just blocked earlier
+  /// in TodGameProvider.addCustomCard — even if some future caller reaches
+  /// this method directly, a Dare can never actually enter the deck while
+  /// dares are disabled for this room.
   void injectCard(TodCard card) {
+    if (!_config.daresEnabled && card.type == TodCardType.dare) return;
     final pos = _deck.isNotEmpty ? _rng.nextInt(_deck.length) : 0;
     _deck.insert(pos, card);
   }
+
+  /// Test-support only — not read anywhere in production code (this
+  /// pure-Dart engine deliberately has no Flutter/meta dependency to
+  /// bring in @visibleForTesting for a proper annotation).
+  int get deckLength => _deck.length;
 
   // ── Handlers ─────────────────────────────────────────────────────────────
   TodState _onChoice(TodChoiceEvent e) {
@@ -1704,6 +1718,18 @@ class TruthOrDareEngine implements BaseGameEngine {
         _ => false,
       };
       if (overLimit) type = TodCardType.dare;
+    }
+
+    // Item 2 (TOD settings: enable/disable dares) — the actual security
+    // enforcement: mirrors the Force Dare coercion immediately above
+    // (same reasoning — this owner-run engine is the authoritative
+    // side), just the opposite direction. Placed AFTER the forceDareMode
+    // block so daresEnabled always wins: a stale/tampered client
+    // requesting 'dare' directly (or a forceDareMode over-limit that
+    // would otherwise coerce a truth INTO a dare) is silently converted
+    // back to truth whenever dares are disabled for this room.
+    if (!_config.daresEnabled && type == TodCardType.dare) {
+      type = TodCardType.truth;
     }
 
     final card = _draw(type);

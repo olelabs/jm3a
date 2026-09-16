@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/extensions/context_ext.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../features/friends/data/friends_repository.dart'
     show ExplorePerson;
 import 'honesty_score_line.dart';
@@ -37,17 +38,14 @@ class ExplorePersonCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Item 1 (current pass) — Jma3a Official must be completely excluded
-    // from Discover, not specially presented (a prior pass gave it a
-    // dedicated "official account" card here; that has been deliberately
-    // removed per explicit product decision — do not reintroduce it).
-    // Item 8 — an incomplete account must never render as a normal
-    // discoverable user either. ExplorePerson.isDiscoverable covers both.
-    // FriendsProvider.loadExplorePeople already filters both cases out
-    // before they ever reach this widget, but this is the shared,
-    // reusable card every caller renders through — if either case ever
-    // reaches this widget by some other path regardless, it must still
-    // never render (see ExplorePerson.isDiscoverable's own doc comment).
+    // Item 8 — an incomplete (non-official) account must never render as
+    // a normal discoverable user. ExplorePerson.isDiscoverable covers
+    // this (official rows are always discoverable regardless of profile
+    // completion — see that getter's own doc comment). FriendsProvider.
+    // loadExplorePeople already filters this out before it ever reaches
+    // this widget, but this is the shared, reusable card every caller
+    // renders through — if it ever reaches this widget by some other path
+    // regardless, it must still never render.
     if (!person.isDiscoverable) return const SizedBox.shrink();
 
     return JCard(
@@ -59,6 +57,7 @@ class ExplorePersonCard extends StatelessWidget {
           UserAvatar(
             avatarUrl: person.avatarUrl,
             displayName: person.displayName,
+            isOfficial: person.isOfficial,
             size: 48,
           ),
           const SizedBox(width: 12),
@@ -66,13 +65,27 @@ class ExplorePersonCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  person.displayName,
-                  style: context.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        person.displayName,
+                        style: context.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (person.isOfficial) ...[
+                      const SizedBox(width: 4),
+                      const Icon(
+                        Icons.verified_rounded,
+                        size: 16,
+                        color: AppColors.infoBlue,
+                      ),
+                    ],
+                  ],
                 ),
                 if (person.username != null)
                   Text(
@@ -83,57 +96,72 @@ class ExplorePersonCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                const SizedBox(height: 6),
-                HonestyScoreLine(
-                  honestyPoints: person.honestyPoints,
-                  generalScore: person.generalScore,
-                ),
+                // Phase 1 (professional brand profile) — Jma3a Official
+                // shows no player-reputation stats anywhere, including
+                // here: this is a system/brand account, not a player.
+                if (!person.isOfficial) ...[
+                  const SizedBox(height: 6),
+                  HonestyScoreLine(
+                    honestyPoints: person.honestyPoints,
+                    generalScore: person.generalScore,
+                  ),
+                ],
               ],
             ),
           ),
-          const SizedBox(width: 8),
-          // Explicit minimumSize:Size.zero + shrinkWrap tap target — the
-          // app-wide FilledButton theme sets minimumSize:
-          // Size(double.infinity, 52) (for full-width primary CTAs), and
-          // this button is a non-Expanded Row child, which receives an
-          // UNBOUNDED max width from the Row regardless of this
-          // SizedBox's own (height-only) constraint — without this style
-          // override it throws "BoxConstraints forces an infinite width"
-          // the instant a card with an eligible (not yet requested)
-          // person renders.
-          hasSentRequest
-              // ConstrainedBox+ellipsis — "Request Sent" is longer than
-              // "Add Friend", and a Chip's label has no shrink/overflow
-              // protection of its own: at the narrowest reported width
-              // (320px) with a long display name squeezing this column,
-              // the unconstrained label alone was enough to throw
-              // "A RenderFlex overflowed by N pixels" (see
-              // HonestyScoreLine's identical class of bug/fix above it in
-              // this same card).
-              ? Chip(
-                  label: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 90),
-                    child: Text(
-                      context.l10n.exploreRequestSent,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+          // Jma3a Official is discoverable and followable (from its own
+          // profile — see UserProfileScreen's official branch), but is
+          // never a normal friend-request target: the server-side RLS
+          // (20260901090700_block_official_account_friend_requests.sql)
+          // already rejects it, and UserProfileScreen's own
+          // canShowFriendRequestAction already hides this action there —
+          // this card must not offer it either, mirroring that same rule
+          // instead of relying on the RLS rejection alone.
+          if (!person.isOfficial) ...[
+            const SizedBox(width: 8),
+            // Explicit minimumSize:Size.zero + shrinkWrap tap target — the
+            // app-wide FilledButton theme sets minimumSize:
+            // Size(double.infinity, 52) (for full-width primary CTAs), and
+            // this button is a non-Expanded Row child, which receives an
+            // UNBOUNDED max width from the Row regardless of this
+            // SizedBox's own (height-only) constraint — without this style
+            // override it throws "BoxConstraints forces an infinite width"
+            // the instant a card with an eligible (not yet requested)
+            // person renders.
+            hasSentRequest
+                // ConstrainedBox+ellipsis — "Request Sent" is longer than
+                // "Add Friend", and a Chip's label has no shrink/overflow
+                // protection of its own: at the narrowest reported width
+                // (320px) with a long display name squeezing this column,
+                // the unconstrained label alone was enough to throw
+                // "A RenderFlex overflowed by N pixels" (see
+                // HonestyScoreLine's identical class of bug/fix above it in
+                // this same card).
+                ? Chip(
+                    label: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 90),
+                      child: Text(
+                        context.l10n.exploreRequestSent,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    visualDensity: VisualDensity.compact,
+                  )
+                : SizedBox(
+                    height: 34,
+                    child: FilledButton.tonal(
+                      onPressed: onAddFriend,
+                      style: FilledButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: Text(context.l10n.exploreAddFriend),
                     ),
                   ),
-                  visualDensity: VisualDensity.compact,
-                )
-              : SizedBox(
-                  height: 34,
-                  child: FilledButton.tonal(
-                    onPressed: onAddFriend,
-                    style: FilledButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    child: Text(context.l10n.exploreAddFriend),
-                  ),
-                ),
+          ],
         ],
       ),
     );

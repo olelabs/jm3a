@@ -1936,6 +1936,9 @@ class AppLocalizationsFr extends AppLocalizations {
       'Configurez cette partie avant qu\'elle ne commence — vous ne pourrez plus la modifier une fois lancée.';
 
   @override
+  String get todConfigDaresEnabled => 'Actions';
+
+  @override
   String get todConfigForceDareTitle => 'Règles d\'Action forcée';
 
   @override
@@ -3350,6 +3353,9 @@ class AppLocalizationsFr extends AppLocalizations {
       'Aucun autocollant disponible pour le moment';
 
   @override
+  String get packUploadSticker => 'Importer un autocollant';
+
+  @override
   String get packCardPreviewEmptyTitle => 'Pas encore de cartes';
 
   @override
@@ -4004,6 +4010,33 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get packPurchasedNotice =>
       'Pack acheté ! Vous pouvez maintenant le télécharger.';
+
+  @override
+  String get packTrialBadgeTooltip => 'Essai gratuit';
+
+  @override
+  String packTrialCardsRemaining(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count cartes d\'essai restantes',
+      one: '1 carte d\'essai restante',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get packTrialPromptTitle => 'Ce pack vous plaît ?';
+
+  @override
+  String get packTrialPromptBody =>
+      'Votre essai gratuit est terminé. Achetez le pack complet pour continuer à jouer.';
+
+  @override
+  String get packTrialPurchaseButton => 'Acheter le pack complet';
+
+  @override
+  String get packTrialEndButton => 'Terminer l\'essai';
 
   @override
   String get packQuantity => 'Quantité';
@@ -4712,6 +4745,13 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get profileBalanceAndTransactions => 'Solde et transactions';
+
+  @override
+  String get profileAnswerSurvey => 'Répondre à notre sondage';
+
+  @override
+  String get profileAnswerSurveyHint =>
+      'Dites-nous ce que vous en pensez — cela ne prend qu\'une minute';
 
   @override
   String get profileBioTooLong => '280 caractères maximum';
@@ -5560,6 +5600,12 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get friendsOfficialAccount => 'Compte officiel Jma3a';
+
+  @override
+  String get friendsJma3aFeedHeader => 'Fil Jma3a';
+
+  @override
+  String get friendsAdvertisementsHeader => 'Publicités';
 
   @override
   String friendsFollowersCount(int count) {
@@ -6452,6 +6498,74 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get myRequestsTab => 'Mes demandes';
+
+  @override
+  String get myRequestsEmpty =>
+      'Vous n\'avez encore envoyé aucune demande à Jma3a';
+
+  @override
+  String get myRequestsLoadFailed => 'Impossible de charger vos demandes';
+
+  @override
+  String get requestTypeAccountDeletion => 'Suppression du compte';
+
+  @override
+  String get requestTypePackReport => 'Signalement de pack';
+
+  @override
+  String get requestTypeUserReport => 'Signalement';
+
+  @override
+  String get requestTypeCreatorVerification => 'Vérification créateur';
+
+  @override
+  String get requestTypeCreatorRecoveryAppeal => 'Recours créateur';
+
+  @override
+  String get requestStatusPending => 'En attente';
+
+  @override
+  String get requestStatusOpen => 'Ouvert';
+
+  @override
+  String get requestStatusUnderReview => 'En cours d\'examen';
+
+  @override
+  String get requestStatusApproved => 'Approuvée';
+
+  @override
+  String get requestStatusRejected => 'Refusée';
+
+  @override
+  String get requestStatusResolved => 'Traité';
+
+  @override
+  String get requestStatusDismissed => 'Rejeté';
+
+  @override
+  String requestSubmittedOn(String date) {
+    return 'Envoyée le $date';
+  }
+
+  @override
+  String requestAnsweredOn(String date) {
+    return 'Réponse le $date';
+  }
+
+  @override
+  String get reportTargetProfile => 'Utilisateur signalé';
+
+  @override
+  String get reportTargetPack => 'Pack signalé';
+
+  @override
+  String get reportTargetRoom => 'Salon signalé';
+
+  @override
+  String get reportTargetChatMessage => 'Message signalé';
+
+  @override
   String get walletDepositsUnavailable =>
       'Les dépôts sont temporairement indisponibles.';
 
@@ -6670,4 +6784,166 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get authAccountAlreadyExists =>
       'Un compte avec ce numéro/e-mail existe déjà. Veuillez vous connecter.';
+
+  @override
+  String get surveyTitle => 'Répondre à notre sondage';
+
+  @override
+  String get surveyIntro =>
+      'Aidez-nous à améliorer Jma3a — c\'est entièrement facultatif et prend environ une minute. Vos réponses vont directement à l\'équipe qui développe l\'application.';
+
+  @override
+  String get surveySubmitButton => 'Envoyer';
+
+  @override
+  String get surveyValidationRequired =>
+      'Veuillez indiquer une note globale et un score de recommandation avant d\'envoyer.';
+
+  @override
+  String get surveySuccessTitle => 'Merci !';
+
+  @override
+  String get surveySuccessBody =>
+      'Votre avis a été envoyé à l\'équipe Jma3a. Nous vous en sommes très reconnaissants.';
+
+  @override
+  String get surveyAlreadySubmittedTitle =>
+      'Vous avez déjà répondu à ce sondage';
+
+  @override
+  String get surveyAlreadySubmittedBody =>
+      'Merci encore pour votre avis — nous lisons chaque réponse.';
+
+  @override
+  String get surveySectionOverall => 'Expérience générale';
+
+  @override
+  String get surveySectionLikes => 'Ce que vous aimez';
+
+  @override
+  String get surveySectionProblems => 'Problèmes et désagréments';
+
+  @override
+  String get surveySectionFuture => 'Prochaines mises à jour';
+
+  @override
+  String get surveySectionOpen => 'Avis libre';
+
+  @override
+  String get surveyQ1Label =>
+      'Comment évalueriez-vous Jma3a dans l\'ensemble ?';
+
+  @override
+  String get surveyQ2Label =>
+      'Quelle est la probabilité que vous recommandiez Jma3a à un ami ?';
+
+  @override
+  String get surveyRecommendNotLikely => 'Peu probable';
+
+  @override
+  String get surveyRecommendVeryLikely => 'Très probable';
+
+  @override
+  String get surveyQ3Label => 'Qu\'aimez-vous le plus dans Jma3a ?';
+
+  @override
+  String get surveyQ4Label =>
+      'Qu\'est-ce qui vous agace ou vous frustre le plus ? (plusieurs choix possibles)';
+
+  @override
+  String get surveyQ5Label =>
+      'Y a-t-il quelque chose qui vous semble actuellement confus, difficile, lent ou peu pratique ?';
+
+  @override
+  String get surveyQ6Label =>
+      'Que souhaiteriez-vous que nous ajoutions ou améliorions ensuite ? (plusieurs choix possibles)';
+
+  @override
+  String get surveyQ7Label =>
+      'Quelle fonctionnalité vous ferait utiliser Jma3a plus souvent ?';
+
+  @override
+  String get surveyQ8Label =>
+      'Que changeriez-vous à Jma3a si vous le pouviez ?';
+
+  @override
+  String get surveyQ9Label =>
+      'Autre chose que vous voulez faire savoir à l\'équipe Jma3a ?';
+
+  @override
+  String get surveyOtherHint => 'Dites-nous en plus…';
+
+  @override
+  String get surveyChoiceTruthOrDare => 'Action ou Vérité';
+
+  @override
+  String get surveyChoiceNhie => 'Je n\'ai jamais';
+
+  @override
+  String get surveyChoiceMeme => 'Jeu de Mèmes';
+
+  @override
+  String get surveyChoicePacks => 'Marché des packs';
+
+  @override
+  String get surveyChoiceFriends => 'Amis et fonctionnalités sociales';
+
+  @override
+  String get surveyChoicePremium => 'Fonctionnalités Premium';
+
+  @override
+  String get surveyChoiceReputation => 'Points d\'honnêteté et réputation';
+
+  @override
+  String get surveyChoiceStreaks => 'Séries (streaks)';
+
+  @override
+  String get surveyChoiceOfficialContent => 'Contenu officiel Jma3a';
+
+  @override
+  String get surveyChoicePerformance =>
+      'Performances / lenteur de l\'application';
+
+  @override
+  String get surveyChoiceBugs => 'Bugs ou problèmes techniques';
+
+  @override
+  String get surveyChoiceNavigation => 'Navigation confuse';
+
+  @override
+  String get surveyChoiceNotifications => 'Trop ou pas assez de notifications';
+
+  @override
+  String get surveyChoicePackPrices => 'Prix des packs';
+
+  @override
+  String get surveyChoiceConnection => 'Problèmes de connexion / reconnexion';
+
+  @override
+  String get surveyChoiceRoomManagement => 'Gestion des salons/parties';
+
+  @override
+  String get surveyChoiceMoreGames => 'Plus de jeux';
+
+  @override
+  String get surveyChoiceMorePacks => 'Plus de packs / contenu';
+
+  @override
+  String get surveyChoiceMatchmaking => 'Meilleur appariement des joueurs';
+
+  @override
+  String get surveyChoiceVoiceChat => 'Chat vocal';
+
+  @override
+  String get surveyChoiceLeaderboards => 'Classements';
+
+  @override
+  String get surveyChoiceCustomization =>
+      'Plus de personnalisation (avatars/thèmes)';
+
+  @override
+  String get surveyChoiceBetterNotifications => 'Notifications améliorées';
+
+  @override
+  String get surveyChoiceOther => 'Autre';
 }

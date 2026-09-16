@@ -2,11 +2,13 @@ import 'dart:async';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/di/service_locator.dart';
 import '../../../core/providers/base_provider.dart';
 import '../../../core/utils/app_logger.dart';
 import '../../../core/services/presence_service.dart';
 import '../../../core/utils/app_logger.dart';
 import '../../../features/auth/domain/entities/user_entity.dart';
+import '../../rooms/data/room_repository.dart' show isDirectlyJoinableRoom;
 import '../data/friends_repository.dart';
 
 export '../data/friends_repository.dart';
@@ -51,6 +53,14 @@ class FriendsProvider extends BaseProvider {
 
   // Presence: userId → status
   Map<String, UserPresenceStatus> _presenceMap = {};
+
+  // Phase 3 (Friends room Join eligibility) — userId → whether that
+  // friend's current room passes isDirectlyJoinableRoom. Populated
+  // lazily from presence (see _refreshJoinEligibility) rather than
+  // eagerly for every friend, since it needs a real `rooms` read
+  // PresenceService's own payload doesn't carry.
+  final Map<String, bool> _joinEligibilityCache = {};
+  final Set<String> _eligibilityInFlight = {};
 
   // CDC subscription for friendship table
   RealtimeChannel? _friendshipChannel;
@@ -118,6 +128,17 @@ class FriendsProvider extends BaseProvider {
   /// room, if any — null while the friend is only in the room's lobby.
   String? gameTypeOf(String userId) =>
       PresenceService.instance.currentPresence[userId]?.gameType;
+
+  /// Phase 3 (Friends room Join eligibility) — whether the Join button
+  /// should be shown for this friend's current room. Always false until
+  /// a real eligibility check has actually completed for them (see
+  /// _refreshJoinEligibility) — defaulting to "don't show" rather than
+  /// "show", since PresenceService's own roomId/roomStatus alone can
+  /// never prove direct-join eligibility (no capacity/visibility/
+  /// approval data in presence — see isDirectlyJoinableRoom's own doc
+  /// comment). Tapping Join (unchanged) still goes through the real,
+  /// server-enforced room-join flow regardless of this cache.
+  bool joinEligible(String userId) => _joinEligibilityCache[userId] ?? false;
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
 
@@ -330,7 +351,59 @@ class FriendsProvider extends BaseProvider {
     _presenceSub = PresenceService.instance.presenceStream.listen((_) {
       _refreshPresenceMap();
       notifyListeners();
+      _refreshJoinEligibility();
     });
+  }
+
+  /// Phase 3 (Friends room Join eligibility) — recomputes _joinEligibilityCache
+  /// against the CURRENT presence snapshot. Cheap pre-filter first: a
+  /// friend whose presence shows `roomStatus == 'in_game'` (or no room at
+  /// all) already fails isDirectlyJoinableRoom's `!gameStarted`/room-
+  /// presence requirement, so those are resolved to false/removed with NO
+  /// query at all — a `rooms` read is only ever issued for a friend
+  /// currently shown as being in a room's LOBBY, and only once per such
+  /// friend at a time (see _eligibilityInFlight).
+  Future<void> _refreshJoinEligibility() async {
+    final currentlyInLobby = <String, String>{}; // userId -> roomId
+    for (final f in _friends) {
+      final roomId = roomIdOf(f.userId);
+      if (roomId != null && roomStatusOf(f.userId) == 'lobby') {
+        currentlyInLobby[f.userId] = roomId;
+      }
+    }
+
+    // Drop cache entries for anyone no longer shown as being in a lobby —
+    // a stale `true` must never linger after a friend leaves/the game
+    // starts.
+    _joinEligibilityCache.removeWhere(
+      (userId, _) => !currentlyInLobby.containsKey(userId),
+    );
+
+    for (final entry in currentlyInLobby.entries) {
+      final userId = entry.key;
+      final roomId = entry.value;
+      if (_eligibilityInFlight.contains(userId)) continue;
+      _eligibilityInFlight.add(userId);
+      try {
+        final info = await sl.roomRepository.getRoomJoinEligibility(roomId);
+        final eligible =
+            info != null &&
+            isDirectlyJoinableRoom(
+              isOwnedByDisplayedUser: info.ownerId == userId,
+              isPublic: info.isPublic,
+              hasCapacity: info.hasCapacity,
+              gameStarted: info.gameStarted,
+              requiresApproval: info.requiresApproval,
+            );
+        _joinEligibilityCache[userId] = eligible;
+        notifyListeners();
+      } catch (e) {
+        AppLogger.warning('getRoomJoinEligibility failed for $userId: $e');
+        _joinEligibilityCache.remove(userId);
+      } finally {
+        _eligibilityInFlight.remove(userId);
+      }
+    }
   }
 
   /// Single source of truth for deriving _presenceMap: always reads the
@@ -391,15 +464,15 @@ class FriendsProvider extends BaseProvider {
     if (result == null) {
       _exploreFailed = true;
     } else {
-      // Item 8 — never show an incomplete account in Discover Friends.
-      // Item 1 (current pass) — Jma3a Official must never appear in
-      // Discover at all, full stop; no special-cased rendering, just
-      // excluded outright. Both are enforced client-side even if
-      // explore_people() itself doesn't already exclude them (see
-      // ExplorePerson.isDiscoverable's own doc comment — this repo cannot
-      // verify the RPC's server-side filtering without a live database, so
-      // this client-side pass is the safest available protection
-      // regardless). Applied AFTER pagination is computed from the raw
+      // Item 8 — never show an incomplete (non-official) account in
+      // Discover Friends. Jma3a Official is always discoverable (see
+      // ExplorePerson.isDiscoverable's own doc comment) but is filtered
+      // separately from ever being offered a friend request — see
+      // ExplorePersonCard. Enforced client-side even if explore_people()
+      // itself doesn't already exclude incomplete profiles (this repo
+      // cannot verify the RPC's server-side filtering without a live
+      // database, so this client-side pass is the safest available
+      // protection regardless). Applied AFTER pagination is computed from the raw
       // `result` (cursor/hasMore still reflect what the server actually
       // returned) — filtering only affects what's rendered, so a page that
       // was entirely non-discoverable accounts doesn't wrongly look like
@@ -430,8 +503,7 @@ class FriendsProvider extends BaseProvider {
     );
     _exploreLoadingMore = false;
     if (result != null) {
-      // Same item-1/item-8 filtering as loadExplorePeople — see its doc
-      // comment.
+      // Same item-8 filtering as loadExplorePeople — see its doc comment.
       if (result.isNotEmpty) _exploreCursor = result.last.rankPosition;
       _exploreHasMore = result.length >= 20;
       _explorePeople = [

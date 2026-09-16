@@ -5252,6 +5252,7 @@ class RoomProvider extends ChangeNotifier {
       'honesty_vote_enabled' => _settings.copyWith(
         honestyVoteEnabled: value as bool,
       ),
+      'dares_enabled' => _settings.copyWith(daresEnabled: value as bool),
       _ => _settings,
     };
     _safeNotify();

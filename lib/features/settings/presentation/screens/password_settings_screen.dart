@@ -161,7 +161,12 @@ class _PasswordSettingsScreenState extends State<PasswordSettingsScreen> {
     setState(() => _isStartingRecovery = false);
 
     if (success) {
-      context.push(
+      // go(), not push(): see ForgotPasswordScreen's identical navigation
+      // for the full rationale — a stacked Settings screen left underneath
+      // would get revalidated by the router's global redirect the moment
+      // OTP verification finishes, racing the explicit navigation OtpScreen
+      // itself performs afterward.
+      context.go(
         RouteNames.authOtp,
         extra: (
           identifier: otpIdentifier,

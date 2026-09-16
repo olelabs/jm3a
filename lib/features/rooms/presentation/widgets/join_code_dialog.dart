@@ -14,7 +14,11 @@ class JoinCodeDialog extends StatefulWidget {
   /// If set, the dialog pre-fills the code and auto-submits.
   final String? prefillCode;
 
-  /// If set, the player was directly invited by this userId — skip approval.
+  /// Cosmetic only — drives the "invited by so-and-so" banner elsewhere.
+  /// Never used to bypass server-side approval: RoomRepository.joinByCode
+  /// decides that purely from a genuine, verified room_invites row for
+  /// this specific caller (see resolveJoinByCodeAction), never from this
+  /// client-supplied parameter.
   final String? invitedBy;
 
   @override
@@ -59,7 +63,7 @@ class _JoinCodeDialogState extends State<JoinCodeDialog> {
         userId: userId,
         inviteCode: code,
         invitedBy: widget.invitedBy,
-      ); // bypass approval if invited
+      );
       if (mounted) Navigator.pop(context, room);
     } on PendingApprovalFailure {
       if (mounted)

@@ -105,6 +105,7 @@ class GameConfig {
     this.maxTruths = 2,
     this.cardRepetitionMode = 'shuffle',
     this.honestyVoteEnabled = true,
+    this.daresEnabled = true,
   }) : suggestedPunishments = suggestedPunishments ?? const [];
 
   bool get timerEnabled => turnTimerSeconds > 0;
@@ -172,6 +173,16 @@ class GameConfig {
   /// was previously always on).
   final bool honestyVoteEnabled;
 
+  /// Item 2 (TOD settings: enable/disable dares) — when false, only
+  /// meaningful for Truth or Dare: TruthOrDareEngine._onChoice coerces
+  /// any Dare selection back to Truth (mirroring forceDareMode's own
+  /// existing Truth->Dare coercion), and _ChoiceViewState hides the Dare
+  /// button entirely. Meaningless for NHIE/Meme, same as forceDareMode/
+  /// maxTruths already are for them. Sourced from
+  /// RoomSettingsEntity.daresEnabled; defaults true (dares were
+  /// previously always available).
+  final bool daresEnabled;
+
   Map<String, dynamic> toMap() => {
     'max_rounds': maxRounds,
     'turn_timer_secs': turnTimerSeconds,
@@ -190,6 +201,7 @@ class GameConfig {
     'max_truths': maxTruths,
     'card_repetition_mode': cardRepetitionMode,
     'honesty_vote_enabled': honestyVoteEnabled,
+    'dares_enabled': daresEnabled,
   };
 
   static GameConfig fromMap(Map<String, dynamic> m) => GameConfig(
@@ -212,6 +224,7 @@ class GameConfig {
     maxTruths: m['max_truths'] as int? ?? 2,
     cardRepetitionMode: m['card_repetition_mode'] as String? ?? 'shuffle',
     honestyVoteEnabled: m['honesty_vote_enabled'] as bool? ?? true,
+    daresEnabled: m['dares_enabled'] as bool? ?? true,
     turnOrderMode: TurnOrderMode.values.firstWhere(
       (t) => t.name == m['turn_order_mode'],
       orElse: () => TurnOrderMode.circular,

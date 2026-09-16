@@ -22,6 +22,7 @@ import '../widgets/active_room_conflict_dialog.dart';
 import '../widgets/create_room_sheet.dart';
 import '../widgets/join_code_dialog.dart';
 import '../widgets/room_card.dart';
+import '../../../../shared/widgets/navigation/jma3a_bottom_nav_bar.dart';
 import 'closed_rooms_screen.dart';
 
 class RoomBrowserScreen extends StatefulWidget {
@@ -504,6 +505,10 @@ class _RoomBrowserScreenState extends State<RoomBrowserScreen>
             ],
           ),
         ),
+        // Precise ~3px clearance above the floating navbar — see
+        // Jma3aBottomNavBar.fabLocation's own doc comment for why
+        // Scaffold's default FAB locations can't hit that tight a gap.
+        floatingActionButtonLocation: Jma3aBottomNavBar.fabLocation(context),
         floatingActionButton: tutorialShowcase(
           context: context,
           showcaseKey: _createFabKey,
@@ -554,7 +559,16 @@ class _RoomBrowserScreenState extends State<RoomBrowserScreen>
     }
     return ListView.separated(
       controller: _scrollCtrl,
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
+      // Bottom inset kept in sync with the floating navbar's own real
+      // footprint (was a hardcoded guess before) — lets the last room
+      // card be scrolled fully above the bar instead of stopping
+      // wherever the bar happens to visually sit.
+      padding: EdgeInsets.fromLTRB(
+        16,
+        12,
+        16,
+        Jma3aBottomNavBar.overlayInset(context),
+      ),
       itemCount: _rooms.length + (_isLoadingMore ? 1 : 0),
       separatorBuilder: (_, __) => const SizedBox(height: 10),
       itemBuilder: (_, i) {

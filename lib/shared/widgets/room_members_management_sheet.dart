@@ -62,41 +62,15 @@ class RoomMembersManagementSheet extends StatelessWidget {
     }
   }
 
-  /// Item 5 — admin spectator toggle. Only the "make them a spectator"
-  /// direction confirms first (it stops counting them as an active player
-  /// and removes their turns immediately) — reversing it needs no
-  /// confirmation, same asymmetry Kick/Ban (confirm) vs Mute/Unmute (no
-  /// confirm) already establishes in this sheet.
-  Future<void> _toggleSpectator(BuildContext ctx, RoomMemberEntity m) async {
-    if (!m.isSpectator) {
-      final confirmed = await showDialog<bool>(
-        context: ctx,
-        builder: (dCtx) => AlertDialog(
-          title: Text(dCtx.l10n.sharedSetSpectatorTitle),
-          content: Text(dCtx.l10n.sharedSetSpectatorBody),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dCtx).pop(false),
-              child: Text(dCtx.l10n.cancel),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(dCtx).pop(true),
-              child: Text(dCtx.l10n.sharedSetSpectator),
-            ),
-          ],
-        ),
-      );
-      if (confirmed != true || !ctx.mounted) return;
-    }
-    try {
-      await roomProvider.setMemberSpectator(
-        m.userId,
-        isSpectator: !m.isSpectator,
-      );
-    } on Failure catch (e) {
-      if (ctx.mounted) ctx.showErrorSnackBar(e.message);
-    }
-  }
+  // Item 4 (V1: no switch-to-spectator in the active game) — the
+  // confirm-dialog-then-call-setMemberSpectator wrapper that used to live
+  // here (an admin action offered from this active-game sheet) has been
+  // removed for V1, per this file's own doc comment at the (now-removed)
+  // canSetSpectator local above. roomProvider.setMemberSpectator and the
+  // set_room_member_spectator RPC are untouched and still fully callable
+  // — only this active-game UI entry point is gone; a future lobby-side
+  // control can call setMemberSpectator directly (optionally with the
+  // same confirm-before-demoting UX this wrapper used to provide).
 
   // isWaitingForGameApproval takes priority over every other label — a
   // pending rejoin request means nothing else about this member's game
@@ -240,15 +214,20 @@ class RoomMembersManagementSheet extends StatelessWidget {
                             !isMe &&
                             !m.isSpectator &&
                             !isWaitingForGameApproval;
-                        // Item 5 — available for BOTH directions (unlike
-                        // canMute, which excludes spectators since they
-                        // never take turns to mute); the owner can never
-                        // be targeted (mirrors the RPC's own owner-guard).
-                        final canSetSpectator =
-                            roomProvider.canSetSpectator &&
-                            !isMe &&
-                            !m.isOwner &&
-                            !isWaitingForGameApproval;
+                        // Item 4 (V1: no switch-to-spectator in the active
+                        // game) — this sheet (RoomMembersManagementSheet)
+                        // is opened exclusively from the three active-game
+                        // screens via RoomMembersFab (tod/nhie/meme_game_
+                        // screen.dart) — never from the room lobby, which
+                        // has its own separate member list (MemberTile,
+                        // member_tile.dart) that never offered this action
+                        // in the first place. The action itself is
+                        // deliberately not rendered anywhere in this sheet
+                        // for V1 (see the menu Row below) — but
+                        // roomProvider.canSetSpectator/setMemberSpectator
+                        // and the set_room_member_spectator RPC all stay
+                        // fully intact (unchanged authorization, unchanged
+                        // data model) for a future lobby-side entry point.
                         final masked = m.isHiddenSpectator && !canRevealHidden;
                         final shownName = masked
                             ? context.l10n.lobbyAnonymousSpectator
@@ -428,33 +407,10 @@ class RoomMembersManagementSheet extends StatelessWidget {
                                       ),
                                   ],
                                 )
-                              : (canKick || canBan || canMute || canSetSpectator) && !isMe
+                              : (canKick || canBan || canMute) && !isMe
                               ? Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    if (canSetSpectator)
-                                      TextButton(
-                                        style: TextButton.styleFrom(
-                                          foregroundColor: m.isSpectator
-                                              ? Colors.blueGrey
-                                              : Colors.indigo,
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                          ),
-                                          minimumSize: Size.zero,
-                                          tapTargetSize:
-                                              MaterialTapTargetSize.shrinkWrap,
-                                        ),
-                                        onPressed: () =>
-                                            _toggleSpectator(ctx, m),
-                                        child: Text(
-                                          m.isSpectator
-                                              ? context
-                                                    .l10n
-                                                    .sharedRemoveSpectator
-                                              : context.l10n.sharedSetSpectator,
-                                        ),
-                                      ),
                                     if (canMute)
                                       TextButton(
                                         style: TextButton.styleFrom(

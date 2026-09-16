@@ -3,7 +3,9 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../../../core/config/platform_config_provider.dart';
 import '../../../../core/extensions/context_ext.dart';
+import '../../../../core/l10n/generated/app_localizations.dart';
 import '../../../../core/providers/auth_provider.dart';
 import '../../../../core/router/route_names.dart';
 import '../../../../core/router/app_router.dart';
@@ -13,6 +15,7 @@ import '../../../games/engine/base_game_engine.dart';
 import '../pack_provider.dart';
 import '../widgets/pack_card_widget.dart';
 import '../widgets/promoted_packs_carousel.dart';
+import '../../../../shared/widgets/navigation/jma3a_bottom_nav_bar.dart';
 import 'my_packs_screen.dart';
 import 'physical_pack_requests_screen.dart';
 
@@ -104,6 +107,15 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     final isVerified = user?.isVerifiedCreator ?? false;
 
     return Scaffold(
+      // Transparent so HomeShellScreen's PlayfulBackground (the premium
+      // animated theme effect) shows through uninterrupted, all the way
+      // to the floating bottom nav bar — matching RoomBrowserScreen's
+      // identical, already-correct setting.
+      backgroundColor: Colors.transparent,
+      // Precise ~3px clearance above the floating navbar — see
+      // Jma3aBottomNavBar.fabLocation's own doc comment for why
+      // Scaffold's default FAB locations can't hit that tight a gap.
+      floatingActionButtonLocation: Jma3aBottomNavBar.fabLocation(context),
       floatingActionButton: isVerified
           ? FloatingActionButton.extended(
               heroTag: 'marketplace_create_pack_fab',
@@ -158,16 +170,24 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                     ),
                   ]
                 : [
-                    IconButton(
-                      icon: const Icon(Icons.local_shipping_outlined),
-                      tooltip: context.l10n.packMyPhysicalRequests,
-                      onPressed: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const PhysicalPackRequestsScreen(),
+                    // Phase 4B (physical pack requests flag) — same
+                    // PlatformConfigProvider field pack_detail_screen.dart
+                    // already gates its own "Request Physical Copy" button
+                    // with, so both entry points stay in sync under one
+                    // shared flag read rather than a second one.
+                    if (context
+                        .watch<PlatformConfigProvider>()
+                        .physicalPackRequestsEnabled)
+                      IconButton(
+                        icon: const Icon(Icons.local_shipping_outlined),
+                        tooltip: context.l10n.packMyPhysicalRequests,
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const PhysicalPackRequestsScreen(),
+                          ),
                         ),
                       ),
-                    ),
                     IconButton(
                       icon: const Icon(Icons.search_rounded),
                       onPressed: _enterSearchMode,
@@ -300,6 +320,12 @@ class _SearchResultsView extends StatelessWidget {
                   child: Center(child: CircularProgressIndicator()),
                 ),
               ),
+            // Trailing spacer so the last row can be scrolled fully
+            // above the floating navbar instead of stopping at its
+            // visual top edge.
+            SliverToBoxAdapter(
+              child: SizedBox(height: Jma3aBottomNavBar.overlayInset(context)),
+            ),
           ],
         );
       },
@@ -405,7 +431,7 @@ class _BrowseTab extends StatelessWidget {
                 )
               else ...[
                 SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
                   sliver: SliverGrid(
                     delegate: SliverChildBuilderDelegate(
                       (_, i) =>
@@ -440,6 +466,14 @@ class _BrowseTab extends StatelessWidget {
                       child: Center(child: CircularProgressIndicator()),
                     ),
                   ),
+                // Trailing spacer so the last row can be scrolled fully
+                // above the floating navbar instead of stopping at its
+                // visual top edge.
+                SliverToBoxAdapter(
+                  child: SizedBox(
+                    height: Jma3aBottomNavBar.overlayInset(context),
+                  ),
+                ),
               ],
             ],
           ),
@@ -448,6 +482,23 @@ class _BrowseTab extends StatelessWidget {
     );
   }
 }
+
+/// Phase 4A (packs localization) — the localized display label for a
+/// game-type filter chip. Extracted as a pure function (not inlined in
+/// _FilterRow's build) so it's independently unit-testable per locale
+/// without pumping a widget, matching this repo's established pattern
+/// for extracting decision logic. Matches the SAME
+/// context.l10n.gameName* keys already used identically elsewhere for
+/// this exact "short label" use case (e.g. room_share_card.dart,
+/// room_browser_screen.dart, game_settings_sheet.dart) — never
+/// GameType.displayName (base_game_engine.dart), which is hardcoded
+/// English and was the actual bug here. Database/internal identifiers
+/// (GameType.toDbString()) are completely unrelated and untouched.
+String gameTypeFilterLabel(AppLocalizations l10n, GameType gt) => switch (gt) {
+  GameType.truthOrDare => l10n.gameNameTruthOrDare,
+  GameType.neverHaveIEver => l10n.gameNameNeverHaveIEver,
+  GameType.memeGame => l10n.gameNameMeme,
+};
 
 class _FilterRow extends StatelessWidget {
   const _FilterRow({
@@ -489,7 +540,7 @@ class _FilterRow extends StatelessWidget {
             (gt) => Padding(
               padding: const EdgeInsets.only(right: 8),
               child: _FilterChip(
-                label: gt.displayName,
+                label: gameTypeFilterLabel(context.l10n, gt),
                 isSelected: selected == gt,
                 onTap: () => onTypeChanged(selected == gt ? null : gt),
               ),
@@ -573,7 +624,9 @@ class _FeaturedTab extends StatelessWidget {
             slivers: [
               // Promoted banner
               if (promoted.isNotEmpty)
-                SliverToBoxAdapter(child: PromotedPacksCarousel(packs: promoted)),
+                SliverToBoxAdapter(
+                  child: PromotedPacksCarousel(packs: promoted),
+                ),
 
               // Featured grid
               SliverPadding(
@@ -626,6 +679,14 @@ class _FeaturedTab extends StatelessWidget {
                         ),
                   ),
                 ),
+              // Trailing spacer so the last row can be scrolled fully
+              // above the floating navbar instead of stopping at its
+              // visual top edge.
+              SliverToBoxAdapter(
+                child: SizedBox(
+                  height: Jma3aBottomNavBar.overlayInset(context),
+                ),
+              ),
             ],
           ),
         );

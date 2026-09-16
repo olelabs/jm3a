@@ -122,7 +122,12 @@ class MemberTile extends StatelessWidget {
                             ),
                           ),
                           child: const Icon(
-                            Icons.mic_off_rounded,
+                            // This is a chat mute (room.canMuteChat / lobby
+                            // text chat), not voice — a mic icon here
+                            // wrongly implies a voice-chat feature this app
+                            // doesn't have. notifications_off communicates
+                            // "muted" without suggesting audio/voice.
+                            Icons.notifications_off_rounded,
                             size: 8,
                             color: Colors.white,
                           ),
@@ -281,8 +286,14 @@ class MemberTile extends StatelessWidget {
           children: [
             if (onMute != null)
               ListTile(
+                // Chat mute (room.canMuteChat), not voice — see the avatar
+                // badge above for the same reasoning. notifications_active
+                // (tap to unmute) / notifications_off (tap to mute) reads
+                // as "mute/unmute notifications", never microphone/voice.
                 leading: Icon(
-                  member.isMuted ? Icons.mic_rounded : Icons.mic_off_outlined,
+                  member.isMuted
+                      ? Icons.notifications_active_outlined
+                      : Icons.notifications_off_outlined,
                 ),
                 title: Text(member.isMuted ? 'Unmute' : l10n.moderationMute),
                 onTap: () {

@@ -1916,6 +1916,9 @@ class AppLocalizationsAr extends AppLocalizations {
       'قم بتهيئة هذه اللعبة قبل بدئها — لن تتمكن من تغييرها بعد البدء.';
 
   @override
+  String get todConfigDaresEnabled => 'الجرأة';
+
+  @override
   String get todConfigForceDareTitle => 'قواعد إجبار الجرأة';
 
   @override
@@ -3306,6 +3309,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get packNoStickersAvailable => 'لا توجد ملصقات متاحة بعد';
 
   @override
+  String get packUploadSticker => 'رفع ملصق';
+
+  @override
   String get packCardPreviewEmptyTitle => 'لا توجد بطاقات بعد';
 
   @override
@@ -3953,6 +3959,33 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get packPurchasedNotice => 'تم شراء الحزمة! يمكنك الآن تنزيلها.';
+
+  @override
+  String get packTrialBadgeTooltip => 'تجربة مجانية';
+
+  @override
+  String packTrialCardsRemaining(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count بطاقات تجريبية متبقية',
+      one: 'بطاقة تجريبية واحدة متبقية',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get packTrialPromptTitle => 'هل أعجبتك هذه الحزمة؟';
+
+  @override
+  String get packTrialPromptBody =>
+      'لقد أكملت تجربتك المجانية. اشترِ الحزمة الكاملة لمواصلة اللعب.';
+
+  @override
+  String get packTrialPurchaseButton => 'شراء الحزمة الكاملة';
+
+  @override
+  String get packTrialEndButton => 'إنهاء التجربة';
 
   @override
   String get packQuantity => 'الكمية';
@@ -4654,6 +4687,13 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get profileBalanceAndTransactions => 'الرصيد والمعاملات';
+
+  @override
+  String get profileAnswerSurvey => 'أجب على استطلاعنا';
+
+  @override
+  String get profileAnswerSurveyHint =>
+      'أخبرنا برأيك — لا يستغرق الأمر سوى دقيقة';
 
   @override
   String get profileBioTooLong => '280 حرفاً كحد أقصى';
@@ -5497,6 +5537,12 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get friendsOfficialAccount => 'الحساب الرسمي لجماعة';
+
+  @override
+  String get friendsJma3aFeedHeader => 'منشورات جمعة';
+
+  @override
+  String get friendsAdvertisementsHeader => 'الإعلانات';
 
   @override
   String friendsFollowersCount(int count) {
@@ -6371,6 +6417,73 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String get myRequestsTab => 'طلباتي';
+
+  @override
+  String get myRequestsEmpty => 'لم ترسل أي طلب إلى جِمَعَة بعد';
+
+  @override
+  String get myRequestsLoadFailed => 'تعذّر تحميل طلباتك';
+
+  @override
+  String get requestTypeAccountDeletion => 'حذف الحساب';
+
+  @override
+  String get requestTypePackReport => 'الإبلاغ عن حزمة';
+
+  @override
+  String get requestTypeUserReport => 'بلاغ';
+
+  @override
+  String get requestTypeCreatorVerification => 'توثيق صانع المحتوى';
+
+  @override
+  String get requestTypeCreatorRecoveryAppeal => 'تظلّم استعادة صانع المحتوى';
+
+  @override
+  String get requestStatusPending => 'قيد الانتظار';
+
+  @override
+  String get requestStatusOpen => 'مفتوح';
+
+  @override
+  String get requestStatusUnderReview => 'قيد المراجعة';
+
+  @override
+  String get requestStatusApproved => 'تمت الموافقة';
+
+  @override
+  String get requestStatusRejected => 'مرفوض';
+
+  @override
+  String get requestStatusResolved => 'تم الحل';
+
+  @override
+  String get requestStatusDismissed => 'تم الرفض';
+
+  @override
+  String requestSubmittedOn(String date) {
+    return 'أُرسل في $date';
+  }
+
+  @override
+  String requestAnsweredOn(String date) {
+    return 'الرد في $date';
+  }
+
+  @override
+  String get reportTargetProfile => 'بلاغ عن مستخدم';
+
+  @override
+  String get reportTargetPack => 'بلاغ عن حزمة';
+
+  @override
+  String get reportTargetRoom => 'بلاغ عن غرفة';
+
+  @override
+  String get reportTargetChatMessage => 'بلاغ عن رسالة';
+
+  @override
   String get walletDepositsUnavailable => 'الإيداع غير متاح مؤقتًا.';
 
   @override
@@ -6576,4 +6689,158 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get authAccountAlreadyExists =>
       'يوجد حساب بهذا الرقم/البريد الإلكتروني بالفعل. يرجى تسجيل الدخول.';
+
+  @override
+  String get surveyTitle => 'أجب على استطلاعنا';
+
+  @override
+  String get surveyIntro =>
+      'ساعدنا في تحسين جمعة — هذا اختياري تمامًا ويستغرق حوالي دقيقة. تصل إجاباتك مباشرة إلى الفريق الذي يطور التطبيق.';
+
+  @override
+  String get surveySubmitButton => 'إرسال';
+
+  @override
+  String get surveyValidationRequired =>
+      'يرجى تقديم تقييم عام ودرجة توصية قبل الإرسال.';
+
+  @override
+  String get surveySuccessTitle => 'شكرًا لك!';
+
+  @override
+  String get surveySuccessBody =>
+      'تم إرسال ملاحظاتك إلى فريق جمعة. نقدر لك ذلك حقًا.';
+
+  @override
+  String get surveyAlreadySubmittedTitle => 'لقد أجبت بالفعل على هذا الاستطلاع';
+
+  @override
+  String get surveyAlreadySubmittedBody =>
+      'شكرًا لك مرة أخرى على ملاحظاتك — نحن نقرأ كل إجابة.';
+
+  @override
+  String get surveySectionOverall => 'التجربة العامة';
+
+  @override
+  String get surveySectionLikes => 'ما يعجبك';
+
+  @override
+  String get surveySectionProblems => 'المشاكل والإزعاجات';
+
+  @override
+  String get surveySectionFuture => 'التحديثات القادمة';
+
+  @override
+  String get surveySectionOpen => 'ملاحظات مفتوحة';
+
+  @override
+  String get surveyQ1Label => 'كيف تقيّم جمعة بشكل عام؟';
+
+  @override
+  String get surveyQ2Label => 'ما مدى احتمالية أن توصي بجمعة لصديق؟';
+
+  @override
+  String get surveyRecommendNotLikely => 'غير محتمل';
+
+  @override
+  String get surveyRecommendVeryLikely => 'محتمل جدًا';
+
+  @override
+  String get surveyQ3Label => 'ما الذي يعجبك أكثر في جمعة؟';
+
+  @override
+  String get surveyQ4Label => 'ما الذي يزعجك أو يحبطك أكثر؟ (اختر كل ما ينطبق)';
+
+  @override
+  String get surveyQ5Label =>
+      'هل هناك شيء يبدو حاليًا مربكًا أو صعبًا أو بطيئًا أو غير مريح؟';
+
+  @override
+  String get surveyQ6Label =>
+      'ما الذي تود أن نضيفه أو نحسّنه لاحقًا؟ (اختر كل ما ينطبق)';
+
+  @override
+  String get surveyQ7Label => 'ما الميزة التي ستجعلك تستخدم جمعة أكثر؟';
+
+  @override
+  String get surveyQ8Label => 'ما الذي كنت ستغيّره في جمعة لو استطعت؟';
+
+  @override
+  String get surveyQ9Label => 'هل هناك أي شيء آخر تريد أن يعرفه فريق جمعة؟';
+
+  @override
+  String get surveyOtherHint => 'أخبرنا بالمزيد…';
+
+  @override
+  String get surveyChoiceTruthOrDare => 'الحقيقة أم الجرأة';
+
+  @override
+  String get surveyChoiceNhie => 'لم أفعل من قبل';
+
+  @override
+  String get surveyChoiceMeme => 'لعبة الميم';
+
+  @override
+  String get surveyChoicePacks => 'متجر الحزم';
+
+  @override
+  String get surveyChoiceFriends => 'الأصدقاء والميزات الاجتماعية';
+
+  @override
+  String get surveyChoicePremium => 'ميزات بريميوم';
+
+  @override
+  String get surveyChoiceReputation => 'نقاط الصدق والسمعة';
+
+  @override
+  String get surveyChoiceStreaks => 'سلاسل الأيام';
+
+  @override
+  String get surveyChoiceOfficialContent => 'محتوى جمعة الرسمي';
+
+  @override
+  String get surveyChoicePerformance => 'أداء التطبيق / البطء';
+
+  @override
+  String get surveyChoiceBugs => 'أخطاء أو مشاكل تقنية';
+
+  @override
+  String get surveyChoiceNavigation => 'تنقل مربك';
+
+  @override
+  String get surveyChoiceNotifications => 'إشعارات كثيرة جدًا أو قليلة جدًا';
+
+  @override
+  String get surveyChoicePackPrices => 'أسعار الحزم';
+
+  @override
+  String get surveyChoiceConnection => 'مشاكل الاتصال / إعادة الاتصال';
+
+  @override
+  String get surveyChoiceRoomManagement => 'إدارة الغرف/الألعاب';
+
+  @override
+  String get surveyChoiceMoreGames => 'المزيد من الألعاب';
+
+  @override
+  String get surveyChoiceMorePacks => 'المزيد من الحزم / المحتوى';
+
+  @override
+  String get surveyChoiceMatchmaking => 'مطابقة لاعبين أفضل';
+
+  @override
+  String get surveyChoiceVoiceChat => 'الدردشة الصوتية';
+
+  @override
+  String get surveyChoiceLeaderboards => 'لوحات المتصدرين';
+
+  @override
+  String get surveyChoiceCustomization =>
+      'المزيد من التخصيص (الصور الرمزية/السمات)';
+
+  @override
+  String get surveyChoiceBetterNotifications => 'إشعارات محسّنة';
+
+  @override
+  String get surveyChoiceOther => 'أخرى';
 }

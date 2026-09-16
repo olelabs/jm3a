@@ -8275,12 +8275,10 @@ class ExplorePerson {
   /// see that field's own doc comment). This RPC's own eligibility rules
   /// are out of this app's control (server-side, see explore_people.sql),
   /// so this repo cannot assume the official account is excluded from the
-  /// discovery feed. Per current product decision, the official account
-  /// must NEVER appear in Discover at all — see [isDiscoverable], which is
-  /// the actual filter FriendsProvider/ExplorePersonCard apply. This flag
-  /// itself is kept (not removed) because it's still the correct, stable
-  /// identifier for that exclusion — never re-derive "is this official"
-  /// from displayName or any other heuristic. Read defensively
+  /// discovery feed by itself. Never re-derive "is this official" from
+  /// displayName/username or any other heuristic — always this flag (or
+  /// the app_settings id pointer it's cross-checked against, see
+  /// FriendsRepository._fetchOfficialAccountId). Read defensively
   /// (`as bool? ?? false`): if the RPC doesn't return this column at all,
   /// every candidate simply falls back to `isOfficial == false`.
   final bool isOfficial;
@@ -8292,26 +8290,34 @@ class ExplorePerson {
   /// null display_name to '' at the mapping layer, so "empty" here is
   /// treated the same as "was null" there. Deliberately says nothing
   /// about whether the account is official — see [isDiscoverable] for the
-  /// actual "should this ever render in Discover" answer.
+  /// actual "should this ever render in Discover" answer. Official rows
+  /// are NOT required to satisfy this (see [isDiscoverable]) — Jma3a
+  /// Official is a system account, not a normal user, and its
+  /// profile-completion semantics are intentionally different.
   bool get hasCompletedProfile =>
       (username?.trim().isNotEmpty ?? false) && displayName.trim().isNotEmpty;
 
-  /// Whether this candidate should EVER appear anywhere in Discover
-  /// Friends — search results, the ranked list, or any future recommended-
-  /// people surface built on top of [FriendsRepository.explorePeople]. Two
-  /// independent, deliberately separate reasons a row is excluded:
-  /// [isOfficial] (current product decision — see this task's own item 1:
-  /// Jma3a Official must not be presented as a discoverable user at all,
-  /// full stop, not even with special treatment) and an incomplete profile
-  /// (item 8, unchanged). This is deliberately a pure, client-side,
-  /// defensive check (see FriendsProvider.loadExplorePeople/
+  /// Whether this candidate should appear in Discover Friends — search
+  /// results, the ranked list, or any future recommended-people surface
+  /// built on top of [FriendsRepository.explorePeople]. Jma3a Official
+  /// ([isOfficial]) is always discoverable (it must be followable from
+  /// Discover — see UserProfileScreen's own official branch, which already
+  /// offers Follow/Unfollow but never a friend-request action), regardless
+  /// of [hasCompletedProfile] — a system account's profile-completion
+  /// semantics differ from a normal user's (e.g. it may have no
+  /// `username`). Every other candidate still needs a completed profile,
+  /// unchanged from before (item 8). This is deliberately a pure,
+  /// client-side, defensive check (see FriendsProvider.loadExplorePeople/
   /// loadMoreExplorePeople AND ExplorePersonCard's own top-of-build guard
   /// — both apply it, so a stray render path can never slip through):
-  /// whether explore_people() already excludes either case server-side is
-  /// not something this repo can verify without a live database, so
-  /// filtering happens again here regardless, as the safest available
-  /// protection if it doesn't.
-  bool get isDiscoverable => !isOfficial && hasCompletedProfile;
+  /// whether explore_people() already excludes an incomplete/banned/
+  /// deleted profile server-side is not something this repo can verify
+  /// without a live database, so filtering happens again here regardless,
+  /// as the safest available protection if it doesn't. Being discoverable
+  /// does NOT make the official account a normal friend-request target —
+  /// see ExplorePersonCard, which separately suppresses Add Friend for
+  /// [isOfficial] rows.
+  bool get isDiscoverable => isOfficial || hasCompletedProfile;
 
   /// Item 1 (Discover-exclusion re-investigation pass) — used by
   /// [FriendsRepository.explorePeople] to correct a row's [isOfficial]
@@ -8806,16 +8812,26 @@ class FriendsRepository extends BaseRepository {
       }
       if (profile == null) throw Exception('Profile not found');
 
+      // profiles_public (the primary source above) has no
+      // is_official_account column at all, so a row that came from THAT
+      // view (the common case — it only misses entirely when the row is
+      // banned/deleted) never carries this flag, and the official Jma3a
+      // profile would silently fall through to the normal-user branch.
+      // Backfilled here alongside avatar_config/is_premium since it's
+      // exactly the same "missing from profiles_public" gap.
       if (!profile.containsKey('avatar_config') ||
-          !profile.containsKey('is_premium')) {
+          !profile.containsKey('is_premium') ||
+          !profile.containsKey('is_official_account')) {
         final avatarRows = await _supabase
             .from('profiles')
-            .select('avatar_config, is_premium')
+            .select('avatar_config, is_premium, is_official_account')
             .eq('id', targetUserId)
             .limit(1);
         if (avatarRows.isNotEmpty) {
           profile['avatar_config'] = avatarRows.first['avatar_config'];
           profile['is_premium'] = avatarRows.first['is_premium'];
+          profile['is_official_account'] =
+              avatarRows.first['is_official_account'];
         }
       }
 

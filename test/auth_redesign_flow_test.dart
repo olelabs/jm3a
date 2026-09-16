@@ -409,6 +409,48 @@ void main() {
       },
     );
 
+    // Navigation-fix regression: PasswordSettingsScreen's OTP navigation
+    // used to be context.push(RouteNames.authOtp, ...), which left
+    // PasswordSettingsScreen sitting underneath OtpScreen in the Navigator
+    // stack — its Back action revealed Settings instead of OTP being the
+    // sole active authentication step, and (per the same reasoning
+    // ForgotPasswordScreen's own go() call documents) the leftover
+    // PasswordSettingsScreen route stayed live to get needlessly
+    // revalidated by the router's global redirect the moment OTP
+    // verification's notifyListeners() fired. Now context.go(...) — this
+    // proves the REPLACEMENT, not just that OtpScreen is showing (H/I
+    // above already proved that): PasswordSettingsScreen must be gone
+    // entirely, and nothing must be left to pop back to.
+    testWidgets(
+      'navigation fix: OTP replaces PasswordSettingsScreen in the stack '
+      '(go, not push) — Settings is gone, not just hidden underneath',
+      (tester) async {
+        await signIn(_legacyUser.copyWith(hasPassword: false));
+        when(() => repo.sendPhoneOtp('+22212345678')).thenAnswer((_) async => 'legacy-synthetic@phone.jma3a.internal');
+
+        await tester.pumpWidget(_wrapWithRouter(buildRouter(), auth: auth));
+        await tester.pump(const Duration(seconds: 6));
+        await tapForgotPassword(tester);
+
+        expect(find.byType(OtpScreen), findsOneWidget);
+        expect(
+          find.byType(PasswordSettingsScreen),
+          findsNothing,
+          reason: 'push() would have left PasswordSettingsScreen mounted '
+              'underneath OtpScreen in the widget tree; go() replaces the '
+              'whole stack, so it must not exist at all any more',
+        );
+
+        final otpElement = tester.element(find.byType(OtpScreen));
+        expect(
+          Navigator.of(otpElement).canPop(),
+          isFalse,
+          reason: 'OtpScreen must be the ONLY entry in the stack — nothing '
+              'for its Back action to reveal underneath it',
+        );
+      },
+    );
+
     // J/K: OTP verification leads to New Password, never straight back
     // into the app — and creates the account's FIRST password.
     testWidgets(
@@ -426,7 +468,7 @@ void main() {
         await tester.pump(const Duration(seconds: 6));
         await tapForgotPassword(tester);
 
-        await tester.enterText(find.byType(TextFormField).first, '123456');
+        await tester.enterText(find.byType(EditableText).first, '123456');
         await tester.pumpAndSettle();
 
         // J: never Home, never back on PasswordSettingsScreen directly —
@@ -471,7 +513,7 @@ void main() {
         await tester.pump(const Duration(seconds: 6));
         await tapForgotPassword(tester);
 
-        await tester.enterText(find.byType(TextFormField).first, '123456');
+        await tester.enterText(find.byType(EditableText).first, '123456');
         await tester.pumpAndSettle();
         expect(find.byType(SetPasswordScreen), findsOneWidget);
 

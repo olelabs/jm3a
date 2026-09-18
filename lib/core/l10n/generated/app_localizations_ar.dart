@@ -3899,7 +3899,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get packSearchNoResultsHint => 'جرّب اسمًا أو فئة مختلفة.';
 
   @override
-  String get packNoPurchasedPacks => 'لا توجد حزم مشتراة';
+  String get packNoAvailablePacks => 'لا توجد حزم متاحة بعد';
 
   @override
   String get packNoRequestsYet => 'لا توجد طلبات بعد.';
@@ -4166,7 +4166,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get packTabMyPacks => 'حزمي';
 
   @override
-  String get packTabPurchased => 'مشترى';
+  String get packTabMyAvailablePacks => 'حزمي المتاحة';
 
   @override
   String get packTopUpWallet => 'شحن المحفظة';
@@ -4913,6 +4913,9 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get notifTypePackApproved => 'تمت الموافقة على الحزمة';
+
+  @override
+  String get notifTypePackGranted => 'حزمة جديدة';
 
   @override
   String get notifTypePackExpired => 'انتهت صلاحية الحزمة';
@@ -6388,6 +6391,12 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get profileStreakActive => 'السلسلة نشطة';
+
+  @override
+  String get profileMyPlayerId => 'معرّف اللاعب الخاص بي';
+
+  @override
+  String get profilePlayerIdCopied => 'تم نسخ معرّف اللاعب';
 
   @override
   String get profileStreakInactive =>

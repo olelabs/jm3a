@@ -18,7 +18,7 @@
 // pack_tabs_and_situation_filters_test.dart already covering those.
 //
 // THE FIX: game_settings_sheet.dart now fetches its own browsable pool
-// directly via fetchRoomSettingsBrowsablePacks (freeOnly: true, no
+// directly via fetchRoomSettingsBrowsablePacks (free tier, no
 // gameType restriction — every tab still needs its own packs, category/
 // language stay purely additive client-side filters), independent of
 // whatever filter state the Marketplace screen left the shared
@@ -51,9 +51,9 @@ PackEntity _approvedPack(
 );
 
 class _RecordedBrowseCall {
-  _RecordedBrowseCall({required this.gameType, required this.freeOnly});
+  _RecordedBrowseCall({required this.gameType, required this.ownedPackIds});
   final String? gameType;
-  final bool freeOnly;
+  final List<String> ownedPackIds;
 }
 
 /// Mirrors the shared library of approved packs a real Supabase
@@ -71,17 +71,20 @@ class _FakePackRepository implements PackRepository {
     String? query,
     String? gameType,
     String? categoryId,
-    bool freeOnly = false,
+    List<String> ownedPackIds = const [],
     String? language,
     String sortBy = 'avg_rating',
     int page = 0,
     int perPage = 20,
   }) async {
-    calls.add(_RecordedBrowseCall(gameType: gameType, freeOnly: freeOnly));
+    calls.add(
+      _RecordedBrowseCall(gameType: gameType, ownedPackIds: ownedPackIds),
+    );
+    // Mirrors the repository's real free-or-owned rule.
     return _catalog.where((p) {
       if (gameType != null && p.gameType != gameType) return false;
       if (categoryId != null && p.categoryId != categoryId) return false;
-      if (freeOnly && !p.isFree) return false;
+      if (!p.isFree && !ownedPackIds.contains(p.id)) return false;
       return true;
     }).toList();
   }
@@ -142,7 +145,9 @@ void main() {
               'Marketplace screen last narrowed it to a different game '
               'type',
         );
-        expect(repo.calls.single.freeOnly, isTrue);
+        // No owned ids passed => the free tier specifically, which is
+        // what this pool is meant to be.
+        expect(repo.calls.single.ownedPackIds, isEmpty);
       },
     );
 

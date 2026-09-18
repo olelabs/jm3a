@@ -5646,11 +5646,20 @@ class PackRepository extends BaseRepository {
     },
   );
 
+  /// Packs the user can actually USE: free ones, plus the paid ones they
+  /// own. [ownedPackIds] comes from the caller's already-loaded purchase
+  /// list (PackProvider.purchasedPacks), so ownership is applied inside
+  /// the same paged query rather than by post-filtering a page — which
+  /// would silently return short/empty pages.
+  ///
+  /// Replaces the old `freeOnly` toggle: an unowned paid pack is now never
+  /// returned at all, so there is nothing left for a "Free" filter to
+  /// narrow down.
   Future<List<PackEntity>> browsePacks({
     String? query,
     String? gameType,
     String? categoryId,
-    bool freeOnly = false,
+    List<String> ownedPackIds = const [],
     String? language,
     String sortBy = 'avg_rating',
     int page = 0,
@@ -5675,7 +5684,7 @@ class PackRepository extends BaseRepository {
 
       if (gameType != null) q = q.eq('game_type', gameType);
       if (categoryId != null) q = q.eq('category_id', categoryId);
-      if (freeOnly) q = q.eq('price_mru', 0);
+      q = q.or(_usablePacksFilter(ownedPackIds));
       if (language != null && language != 'multi') {
         q = q.or('language.eq.$language,is_multilang.eq.true');
       }
@@ -5702,7 +5711,7 @@ class PackRepository extends BaseRepository {
     required String query,
     String? gameType,
     String? categoryId,
-    bool freeOnly = false,
+    List<String> ownedPackIds = const [],
     String? language,
     int page = 0,
     int perPage = 20,
@@ -5718,7 +5727,10 @@ class PackRepository extends BaseRepository {
           'p_query': trimmed,
           if (gameType != null) 'p_game_type': gameType,
           if (categoryId != null) 'p_category_id': categoryId,
-          'p_free_only': freeOnly,
+          // The RPC's own signature still requires this parameter; the
+          // free-or-owned rule is applied on the row fetch below instead,
+          // since the RPC has no concept of who owns what.
+          'p_free_only': false,
           if (language != null) 'p_language': language,
           'p_page': page,
           'p_per_page': perPage,
@@ -5740,7 +5752,8 @@ class PackRepository extends BaseRepository {
                 min_players, max_players, category_id, download_url, published_at, created_at,
                 profiles!creator_id(username, display_name, avatar_url, verification_status, is_official_account)
               ''')
-          .inFilter('id', orderedIds);
+          .inFilter('id', orderedIds)
+          .or(_usablePacksFilter(ownedPackIds));
 
       // .inFilter doesn't preserve the RPC's relevance order, so
       // re-sort the fetched rows back into it.
@@ -5751,7 +5764,15 @@ class PackRepository extends BaseRepository {
     },
   );
 
-  Future<List<PackEntity>> getFeaturedPacks() => guardedCall(
+  /// Genuinely featured (packs.is_featured = true) AND usable (free or
+  /// owned) — is_featured alone used to have no ownership condition at
+  /// all, so a real, admin-marked-featured PAID pack the user doesn't own
+  /// would still be returned and shown. Same free-or-owned rule as
+  /// browsePacks/searchPacks, applied here too rather than inventing a
+  /// second "featured" mechanism.
+  Future<List<PackEntity>> getFeaturedPacks({
+    List<String> ownedPackIds = const [],
+  }) => guardedCall(
     operationName: 'getFeaturedPacks',
     operation: () async {
       final rows = await _supabase
@@ -5768,13 +5789,22 @@ class PackRepository extends BaseRepository {
           .eq('status', 'approved')
           .eq('is_featured', true)
           .isFilter('deleted_at', null)
+          .or(_usablePacksFilter(ownedPackIds))
           .order('avg_rating', ascending: false)
           .limit(10);
       return rows.map(_rowToEntity).toList();
     },
   );
 
-  Future<List<PackEntity>> getPromotedPacks() => guardedCall(
+  /// Promoted slots (promoted_packs) have the same gap getFeaturedPacks
+  /// had: no ownership condition, so an unowned paid pack currently in an
+  /// active promotion window would be shown. promoted_packs is always a
+  /// small, bounded set (active promotion slots only), so filtering the
+  /// already-fetched rows in Dart is simpler and just as safe as a
+  /// PostgREST embedded-filter here.
+  Future<List<PackEntity>> getPromotedPacks({
+    List<String> ownedPackIds = const [],
+  }) => guardedCall(
     operationName: 'getPromotedPacks',
     operation: () async {
       final rows = await _supabase
@@ -5784,8 +5814,10 @@ class PackRepository extends BaseRepository {
           .gte('ends_at', DateTime.now().toIso8601String())
           .order('position');
 
+      final ownedIds = ownedPackIds.toSet();
       return rows
           .map((r) => _rowToEntity(r['packs'] as Map<String, dynamic>))
+          .where((p) => p.isFree || ownedIds.contains(p.id))
           .toList();
     },
   );
@@ -5939,6 +5971,14 @@ class PackRepository extends BaseRepository {
         },
       );
 
+  /// PostgREST `or` filter for "a pack this user can actually use" — free,
+  /// or one of theirs. Shared by browsePacks and searchPacks so both apply
+  /// exactly the same rule.
+  static String _usablePacksFilter(List<String> ownedPackIds) {
+    if (ownedPackIds.isEmpty) return 'price_mru.eq.0';
+    return 'price_mru.eq.0,id.in.(${ownedPackIds.join(',')})';
+  }
+
   Future<List<PackEntity>> getMyPurchasedPacks(String userId) => guardedCall(
     operationName: 'getMyPurchasedPacks',
     operation: () async {
@@ -5952,8 +5992,15 @@ class PackRepository extends BaseRepository {
           )
           .order('purchased_at', ascending: false);
 
+      // The embedded packs(*) row comes back null when the buyer can't
+      // read that pack under `packs: public read approved` RLS (e.g. a
+      // pack that left 'approved' after it was bought). Skipping those
+      // rows keeps one unreadable pack from throwing and taking the
+      // user's WHOLE purchased list down with it.
       return rows
-          .map((r) => _rowToEntity(r['packs'] as Map<String, dynamic>))
+          .map((r) => r['packs'] as Map<String, dynamic>?)
+          .whereType<Map<String, dynamic>>()
+          .map(_rowToEntity)
           .toList();
     },
   );

@@ -53,6 +53,7 @@ String _notificationTypeLabel(BuildContext context, NotificationType type) =>
         context.l10n.notifTypeCreatorRecoveryRejected,
       NotificationType.chatMessage => context.l10n.notifTypeChatMessage,
       NotificationType.streakIncreased => context.l10n.notifTypeStreakIncreased,
+      NotificationType.packGranted => context.l10n.notifTypePackGranted,
     };
 
 /// Outstanding room invites the user hasn't acted on yet — surfaced as a

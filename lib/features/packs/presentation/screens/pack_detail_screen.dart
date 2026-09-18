@@ -11,7 +11,6 @@ import 'package:provider/provider.dart';
 import '../../../../core/extensions/context_ext.dart';
 import '../../../../core/services/image_cache_service.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../shared/widgets/buttons/j_button.dart';
 import '../../../../shared/widgets/cards/pack_cover_fallback.dart';
 import '../../../../shared/widgets/cards/user_avatar.dart';
 import '../../../../shared/widgets/feedback/error_view.dart';
@@ -762,14 +761,16 @@ class _PrimaryAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (!isOwned) {
-      return JButton(
-        label: pack.isFree
-            ? context.l10n.packGetFreePack
-            : context.l10n.packBuyForPrice(pack.priceMru),
-        onPressed: onPurchase,
-        isLoading: isPurchasing,
-        icon: pack.isFree ? Icons.redeem_rounded : Icons.shopping_cart_rounded,
-      );
+      // isOwned is pack.isFree || hasActivePurchase(pack.id) — a FREE
+      // pack is therefore always "owned", so reaching this branch means
+      // an unowned PAID pack. Paid packs are obtained externally through
+      // the Jma3a Store now, not purchased in-app — no button, price, or
+      // Store prompt here; this screen simply has no primary action to
+      // offer for a pack the user doesn't have. (Browse/Search/Featured
+      // already never surface an unowned paid pack's card in the first
+      // place — this only guards a pack detail reached directly, e.g. an
+      // older deep link.)
+      return const SizedBox.shrink();
     }
 
     return PackDownloadButton(

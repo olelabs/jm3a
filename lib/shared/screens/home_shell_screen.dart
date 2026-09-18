@@ -9,6 +9,7 @@ import '../../core/services/app_theme_service.dart';
 import '../../core/services/app_tutorial_service.dart';
 import '../widgets/tutorial/screen_tutorial.dart';
 import '../../features/friends/presentation/friends_provider.dart';
+import '../../features/notifications/presentation/notification_provider.dart';
 import '../../features/packs/presentation/pack_provider.dart';
 import '../../features/profile/presentation/profile_provider.dart';
 import '../../features/wallet/presentation/wallet_provider.dart';
@@ -41,6 +42,7 @@ class _HomeShellScreenState extends State<HomeShellScreen> {
     MarketplaceScreen(),
     ProfileScreen(),
   ];
+  static const _packsTabIndex = 2;
   static const _profileTabIndex = 3;
 
   @override
@@ -113,6 +115,28 @@ class _HomeShellScreenState extends State<HomeShellScreen> {
       });
     }
 
+    // A Store-granted pack notification arrived (NotificationProvider's own
+    // CDC subscription on the notifications table — no separate Realtime
+    // channel added here) while the app stays open on whatever screen the
+    // user is currently viewing. Refreshing PackProvider's entitlement
+    // state here — the one place already coordinating cross-provider
+    // reactions (see _refreshAll) — makes the newly granted pack available
+    // in Packs and the room pack selector without an app restart or
+    // closing/reopening an unrelated screen. Same "watch + post-frame
+    // consume" shape as the streak dialog above.
+    if (context.watch<NotificationProvider>().pendingEntitlementNotification !=
+        null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final notificationProvider = context.read<NotificationProvider>();
+        if (notificationProvider.pendingEntitlementNotification == null) {
+          return;
+        }
+        notificationProvider.consumeEntitlementNotification();
+        context.read<PackProvider>().refreshEntitlements();
+      });
+    }
+
     return ScreenTutorial(
       tutorialId: TutorialIds.homeIntro,
       steps: [_navShowcaseKey],
@@ -169,16 +193,28 @@ class _HomeShellScreenState extends State<HomeShellScreen> {
               child: Jma3aBottomNavBar(
                 selectedIndex: _index,
                 onDestinationSelected: (i) {
-                  // Profile persists in the IndexedStack rather than being
-                  // pushed/popped as its own route, so tab switches never reach
-                  // RouteObserver/didPopNext (see ProfileScreen) — this is the
-                  // one signal available for "the Profile tab was reopened".
-                  // Reuses the existing tab-switch callback rather than adding a
-                  // separate visibility-detection mechanism.
+                  // Profile and Packs both persist in the IndexedStack rather
+                  // than being pushed/popped as their own routes, so tab
+                  // switches never reach RouteObserver/didPopNext — this is
+                  // the one signal available for "this tab was reopened".
+                  // Reuses the existing tab-switch callback rather than
+                  // adding a separate visibility-detection mechanism.
+                  //
+                  // Packs specifically: a Store-granted (or otherwise
+                  // server-side) entitlement change has no other way to
+                  // reach the already-built MarketplaceScreen — its
+                  // initState only ever runs once per app session under
+                  // IndexedStack, so without this, a newly granted pack
+                  // would stay invisible in Browse until the app is
+                  // backgrounded/resumed or the user logs out/in.
                   final enteringProfile = i == _profileTabIndex && _index != i;
+                  final enteringPacks = i == _packsTabIndex && _index != i;
                   setState(() => _index = i);
                   if (enteringProfile) {
                     context.read<ProfileProvider>().refreshAll();
+                  }
+                  if (enteringPacks) {
+                    context.read<PackProvider>().refreshEntitlements();
                   }
                 },
                 destinations: [

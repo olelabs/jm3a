@@ -63,6 +63,20 @@ class NotificationProvider extends BaseProvider {
   String? _activeChatRoomId;
   void setActiveChatRoom(String? roomId) => _activeChatRoomId = roomId;
 
+  // Store-granted-pack refresh signal — set inside the CDC callback below
+  // when a packGranted notification arrives while the app is running, so a
+  // listener (HomeShellScreen) can react by refreshing PackProvider's
+  // entitlement state. This reuses the CDC channel that already exists for
+  // every notification type rather than adding a second, pack-specific
+  // subscription. Mirrors ProfileProvider.pendingStreakAchievement's exact
+  // "set here, consumed once by the one place that acts on it" shape.
+  NotificationEntity? _pendingEntitlementNotification;
+  NotificationEntity? get pendingEntitlementNotification =>
+      _pendingEntitlementNotification;
+  void consumeEntitlementNotification() {
+    _pendingEntitlementNotification = null;
+  }
+
   // ── Getters ────────────────────────────────────────────────────────────────
   List<NotificationEntity> get notifications => _notifications;
   List<NotificationPreference> get preferences => _preferences;
@@ -106,6 +120,7 @@ class NotificationProvider extends BaseProvider {
     _notifications = [];
     _preferences = [];
     _toastQueue = [];
+    _pendingEntitlementNotification = null;
     _page = 0;
     _hasMore = true;
     super.onUserLoggedOut();
@@ -211,6 +226,15 @@ class NotificationProvider extends BaseProvider {
             // Show in-app toast if user is in the app and preference is on
             if (!isRedundantChatNotif && showsInApp(type)) {
               _enqueueToast(entity);
+            }
+
+            // A pack entitlement just landed in the database — surface it
+            // so PackProvider's in-memory ownership state (otherwise only
+            // refreshed on login/resume/tab-switch) gets refreshed while
+            // the app stays open on the current screen. See
+            // HomeShellScreen for the consumer.
+            if (type == NotificationType.packGranted) {
+              _pendingEntitlementNotification = entity;
             }
 
             notifyListeners();

@@ -384,6 +384,7 @@ class _TypeIcon extends StatelessWidget {
     NotificationType.creatorRecoveryRejected => Icons.cancel_outlined,
     NotificationType.chatMessage => Icons.chat_bubble_rounded,
     NotificationType.streakIncreased => Icons.local_fire_department_rounded,
+    NotificationType.packGranted => Icons.inventory_2_rounded,
   };
 
   @override

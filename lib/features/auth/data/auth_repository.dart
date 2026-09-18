@@ -2345,6 +2345,9 @@ class AuthRepository extends BaseRepository {
           ? DateTime.parse(row['creator_privileges_removed_at'] as String)
           : null,
       hasPassword: row['has_password'] as bool? ?? false,
+      // Own-profile only — this mapper is never used for another user's
+      // row (see UserEntity.playerId).
+      playerId: row['player_id'] as String?,
     );
   }
 }

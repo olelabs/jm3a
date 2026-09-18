@@ -3948,7 +3948,7 @@ class AppLocalizationsFr extends AppLocalizations {
       'Essayez un autre nom ou une autre catégorie.';
 
   @override
-  String get packNoPurchasedPacks => 'Aucun pack acheté';
+  String get packNoAvailablePacks => 'Aucun pack disponible pour le moment';
 
   @override
   String get packNoRequestsYet => 'Aucune demande pour l\'instant.';
@@ -4221,7 +4221,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get packTabMyPacks => 'Mes packs';
 
   @override
-  String get packTabPurchased => 'Acheté';
+  String get packTabMyAvailablePacks => 'Mes packs disponibles';
 
   @override
   String get packTopUpWallet => 'Recharger le portefeuille';
@@ -4964,6 +4964,9 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get notifTypePackApproved => 'Pack approuvé';
+
+  @override
+  String get notifTypePackGranted => 'Nouveau pack';
 
   @override
   String get notifTypePackExpired => 'Pack expiré';
@@ -6468,6 +6471,12 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get profileStreakActive => 'Série active';
+
+  @override
+  String get profileMyPlayerId => 'Mon ID Joueur';
+
+  @override
+  String get profilePlayerIdCopied => 'ID Joueur copié';
 
   @override
   String get profileStreakInactive =>

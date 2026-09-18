@@ -413,6 +413,7 @@ class UserEntity extends Equatable {
     this.presenceMode = 'auto',
     this.creatorPrivilegesRemovedAt,
     this.hasPassword = false,
+    this.playerId,
   });
 
   final String id;
@@ -478,6 +479,22 @@ class UserEntity extends Equatable {
   /// redirects an authenticated user anywhere. Set as part of signup, or
   /// via Forgot password/Settings' Update Password.
   final bool hasPassword;
+
+  /// profiles.player_id — the stable, server-generated "JMA-XXXXXXXX"
+  /// identifier a user gives out (e.g. when ordering on the Jma3a Store).
+  /// Read-only and immutable; populated ONLY on the signed-in user's own
+  /// profile fetch. Never read from profiles_public / getSocialProfile, so
+  /// another user's Player ID is never present in this app at all.
+  final String? playerId;
+
+  /// The part a user actually shares and sees — the identifier without its
+  /// constant "JMA-" prefix, which the Store itself displays.
+  String? get playerIdShort {
+    final value = playerId;
+    if (value == null || value.isEmpty) return null;
+    const prefix = 'JMA-';
+    return value.startsWith(prefix) ? value.substring(prefix.length) : value;
+  }
 
   bool get isVerifiedCreator => verificationStatus == 'verified';
 
@@ -563,6 +580,7 @@ class UserEntity extends Equatable {
     DateTime? creatorPrivilegesRemovedAt,
     bool clearCreatorPrivilegesRemovedAt = false,
     bool? hasPassword,
+    String? playerId,
   }) {
     return UserEntity(
       id: id,
@@ -598,6 +616,7 @@ class UserEntity extends Equatable {
           ? null
           : (creatorPrivilegesRemovedAt ?? this.creatorPrivilegesRemovedAt),
       hasPassword: hasPassword ?? this.hasPassword,
+      playerId: playerId ?? this.playerId,
     );
   }
 
@@ -628,5 +647,6 @@ class UserEntity extends Equatable {
     themeBackgroundColor,
     creatorPrivilegesRemovedAt,
     hasPassword,
+    playerId,
   ];
 }

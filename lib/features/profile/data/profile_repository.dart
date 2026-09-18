@@ -488,6 +488,8 @@ class ProfileRepository extends BaseRepository {
       // corrupted false, discarding whatever correct value the account
       // actually had from login/signup.
       hasPassword: row['has_password'] as bool? ?? false,
+      // Own-profile only — see UserEntity.playerId.
+      playerId: row['player_id'] as String?,
     );
   }
 

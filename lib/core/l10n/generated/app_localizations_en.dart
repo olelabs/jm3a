@@ -3894,7 +3894,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get packSearchNoResultsHint => 'Try a different name or category.';
 
   @override
-  String get packNoPurchasedPacks => 'No purchased packs';
+  String get packNoAvailablePacks => 'No packs available yet';
 
   @override
   String get packNoRequestsYet => 'No requests yet.';
@@ -4165,7 +4165,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get packTabMyPacks => 'My Packs';
 
   @override
-  String get packTabPurchased => 'Purchased';
+  String get packTabMyAvailablePacks => 'My Available Packs';
 
   @override
   String get packTopUpWallet => 'Top Up Wallet';
@@ -4905,6 +4905,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get notifTypePackApproved => 'Pack Approved';
+
+  @override
+  String get notifTypePackGranted => 'A New Pack';
 
   @override
   String get notifTypePackExpired => 'Pack Expired';
@@ -6389,6 +6392,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get profileStreakActive => 'Streak active';
+
+  @override
+  String get profileMyPlayerId => 'My Player ID';
+
+  @override
+  String get profilePlayerIdCopied => 'Player ID copied';
 
   @override
   String get profileStreakInactive =>

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 
@@ -511,6 +512,11 @@ class _ProfileHeader extends StatelessWidget {
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: Colors.white70,
                         ),
+                      ),
+                    if (user.playerIdShort != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: _PlayerIdChip(playerId: user.playerIdShort!),
                       ),
                     if (currentStreak > 0)
                       Padding(
@@ -1053,4 +1059,53 @@ String _groupThousands(int n) {
     buffer.write(digits[i]);
   }
   return negative ? '-$buffer' : buffer.toString();
+}
+
+/// The signed-in user's own Player ID, with tap-to-copy.
+///
+/// Shows and copies ONLY the part after the constant "JMA-" prefix (the
+/// Jma3a Store displays that prefix itself), and renders solely from the
+/// current user's own profile — no other user's Player ID is ever loaded
+/// by this app. Display-only: the value is server-generated and immutable.
+class _PlayerIdChip extends StatelessWidget {
+  const _PlayerIdChip({required this.playerId});
+
+  final String playerId;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: () {
+        Clipboard.setData(ClipboardData(text: playerId));
+        context.showSnackBar(l10n.profilePlayerIdCopied);
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              l10n.profileMyPlayerId,
+              style: context.theme.textTheme.labelSmall?.copyWith(
+                color: Colors.white54,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              playerId,
+              style: context.theme.textTheme.labelMedium?.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.1,
+              ),
+            ),
+            const SizedBox(width: 6),
+            const Icon(Icons.copy_rounded, size: 13, color: Colors.white54),
+          ],
+        ),
+      ),
+    );
+  }
 }

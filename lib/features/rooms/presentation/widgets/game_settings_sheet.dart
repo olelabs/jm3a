@@ -79,8 +79,8 @@ bool packMatchesCategory(PackEntity pack, String? categoryId) =>
 /// to that result, and Room Settings silently inherited it instead of
 /// the real, unfiltered set of approved packs. Fetching directly here,
 /// independent of that cache, is what actually fixes it: no gameType
-/// restriction (every tab still needs its own packs), freeOnly: true for
-/// the browsable tier (owned/purchased packs are added separately from
+/// restriction (every tab still needs its own packs), the free tier for
+/// the browsable pool (owned/purchased packs are added separately from
 /// PackProvider.purchasedPacks/localPacks, which are real ownership
 /// state, not a filtered view). category/language stay unrestricted at
 /// this layer too — those remain purely additive client-side predicates
@@ -99,10 +99,15 @@ const int roomSettingsBrowsablePacksPerPage = 200;
 bool packShowsTrialBadge({required bool trialEnabled, required bool isOwned}) =>
     trialEnabled && !isOwned;
 
+/// Passing no ownedPackIds is what makes this the FREE tier specifically:
+/// browsePacks returns free-or-owned, and with no owned ids supplied that
+/// reduces to exactly `price_mru = 0` — the same query the old
+/// `freeOnly: true` argument produced. Owned packs are still added
+/// separately by the caller from PackProvider.purchasedPacks/localPacks,
+/// which is real ownership state rather than a filtered view.
 Future<List<PackEntity>> fetchRoomSettingsBrowsablePacks(
   PackRepository repo,
 ) => repo.browsePacks(
-  freeOnly: true,
   perPage: roomSettingsBrowsablePacksPerPage,
 );
 
@@ -123,6 +128,15 @@ class _GameSettingsSheetState extends State<GameSettingsSheet> {
   bool _loadingPacks = true;
   String _langFilter = 'en';
   Set<String> _playedPackIds = {}; // packs already used in this room
+
+  // The network-fetched halves of _packs — free-tier browsable packs and
+  // trial-eligible packs — cached here so a PackProvider entitlement
+  // refresh (see _onPackProviderChanged) can re-merge with CURRENT
+  // purchasedPacks/localPacks without hitting the network again. Neither
+  // changes based on what this user owns, so re-fetching them on every
+  // entitlement change would be wasted work.
+  List<PackEntity> _cachedBrowsable = [];
+  List<PackEntity> _cachedTrialEligible = [];
 
   // Item 6 (real-device report) — category filter. Null means "All
   // categories" (no filtering by category, the existing behavior).
@@ -200,6 +214,39 @@ class _GameSettingsSheetState extends State<GameSettingsSheet> {
     _loadLanguages();
     _loadSituationTags();
     _categories = context.read<PackProvider>().categories;
+    // Newly granted/purchased entitlements land in PackProvider (login,
+    // resume, tab-switch, or the notification-triggered refresh in
+    // HomeShellScreen) while this sheet can stay open the whole time a
+    // room is being created — re-merging on every change is what makes a
+    // pack granted mid-session appear here without closing the room.
+    context.read<PackProvider>().addListener(_onPackProviderChanged);
+  }
+
+  @override
+  void dispose() {
+    context.read<PackProvider>().removeListener(_onPackProviderChanged);
+    super.dispose();
+  }
+
+  void _onPackProviderChanged() {
+    if (_loadingPacks) return; // the initial _loadPacks() owns this window
+    _remergePacks();
+  }
+
+  /// Re-merges the cached network halves with CURRENT purchasedPacks/
+  /// localPacks — no network call, so this is safe to run on every
+  /// PackProvider change. Mirrors _loadPacks' own merge/dedupe exactly.
+  void _remergePacks() {
+    final packProvider = context.read<PackProvider>();
+    final owned = [
+      ...packProvider.purchasedPacks,
+      ...packProvider.localPacks,
+      ..._cachedBrowsable,
+      ..._cachedTrialEligible,
+    ];
+    final seen = <String>{};
+    final unique = owned.where((p) => seen.add(p.id)).toList();
+    if (mounted) setState(() => _packs = unique);
   }
 
   Future<void> _loadSituationTags() async {
@@ -247,6 +294,8 @@ class _GameSettingsSheetState extends State<GameSettingsSheet> {
       try {
         trialEligible = await PackRepository.instance.getEligibleTrialPacks();
       } catch (_) {}
+      _cachedBrowsable = browsable;
+      _cachedTrialEligible = trialEligible;
       final owned = [
         ...packProvider.purchasedPacks,
         ...packProvider.localPacks,

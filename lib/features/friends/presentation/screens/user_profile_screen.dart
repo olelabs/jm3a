@@ -20,6 +20,7 @@ import '../../../../shared/widgets/feedback/error_view.dart';
 import '../../../../shared/widgets/media/signed_network_image.dart';
 import '../../../packs/data/pack_repository.dart';
 import '../../../packs/domain/pack_entity.dart';
+import '../../../packs/presentation/pack_provider.dart';
 import '../../data/official_content_repository.dart';
 import '../../presentation/friends_provider.dart';
 import '../widgets/online_indicator.dart';
@@ -430,6 +431,17 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     // is never reached for the official account at all.
     final isSelf = p.userId == friends.currentUserId;
 
+    // "Most played by [name]" reflects what the PROFILE OWNER has played —
+    // getMostPlayedPacksForUser has no price/ownership condition, since it
+    // has no notion of who's VIEWING the profile. An unowned paid pack the
+    // profile owner happened to play (e.g. as a room member, not
+    // necessarily as its buyer) must not become a discoverable/tappable
+    // item for a viewer who doesn't own it — same free-or-owned rule as
+    // every other pack surface, applied here for the current viewer via
+    // the existing PackProvider (not a second ownership check).
+    final packProvider = context.watch<PackProvider>();
+    final visibleMostPlayed = _mostPlayed.where(packProvider.isOwned).toList();
+
     return Scaffold(
       appBar: AppBar(
         title: Text(p.displayName),
@@ -566,7 +578,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                     ),
                   if (!p.isBlocked &&
                       !p.isBlockedBy &&
-                      _mostPlayed.isNotEmpty) ...[
+                      visibleMostPlayed.isNotEmpty) ...[
                     _SectionHeader(
                       title: context.l10n.friendsMostPlayedBy(p.displayName),
                       emoji: '🔥',
@@ -576,14 +588,14 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                       child: ListView.separated(
                         scrollDirection: Axis.horizontal,
                         padding: const EdgeInsets.symmetric(horizontal: 16),
-                        itemCount: _mostPlayed.length,
+                        itemCount: visibleMostPlayed.length,
                         separatorBuilder: (_, _) => const SizedBox(width: 10),
                         itemBuilder: (_, i) =>
                             ProfilePackCard(
-                                  pack: _mostPlayed[i],
+                                  pack: visibleMostPlayed[i],
                                   showStats: true,
                                   onTap: () => context.push(
-                                    '${RouteNames.marketplace}/pack/${_mostPlayed[i].id}',
+                                    '${RouteNames.marketplace}/pack/${visibleMostPlayed[i].id}',
                                   ),
                                 )
                                 .animate(delay: (i * 40).ms)
@@ -623,7 +635,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   if (!p.isBlocked &&
                       !p.isBlockedBy &&
                       _packs.isEmpty &&
-                      _mostPlayed.isEmpty)
+                      visibleMostPlayed.isEmpty)
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 24),
                       child: Center(

@@ -30,11 +30,15 @@ class MarketplaceScreen extends StatefulWidget {
 }
 
 class _MarketplaceScreenState extends State<MarketplaceScreen>
-    with SingleTickerProviderStateMixin {
-  late final TabController _tabs;
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
+  // Not late final — Featured is hidden entirely when there are no
+  // featured packs (task requirement, not just an empty-state message),
+  // and TabController's length can't change in place, so the tab count
+  // toggling requires disposing and recreating it. See _ensureTabController.
+  TabController? _tabs;
+  bool _hasFeatured = false;
   GameType? _gameTypeFilter;
   String? _categoryFilter;
-  bool _freeOnly = false;
   final _scrollCtrl = ScrollController();
 
   bool _searchMode = false;
@@ -44,17 +48,48 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
   @override
   void initState() {
     super.initState();
-    _tabs = TabController(length: 3, vsync: this);
     _scrollCtrl.addListener(_onScroll);
+    // A pack can be granted entirely server-side (an approved Jma3a Store
+    // order) with nothing in a running session to notice it. Re-reading
+    // entitlements when this screen opens, and again whenever the app
+    // comes back to the foreground, is what makes such a pack appear
+    // without a logout/login.
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<PackProvider>().refreshEntitlements();
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) {
+      context.read<PackProvider>().refreshEntitlements();
+    }
   }
 
   @override
   void dispose() {
-    _tabs.dispose();
+    WidgetsBinding.instance.removeObserver(this);
+    _tabs?.dispose();
     _scrollCtrl.dispose();
     _searchCtrl.dispose();
     _searchFocus.dispose();
     super.dispose();
+  }
+
+  /// Featured must be completely hidden (not just an empty-state message)
+  /// when there are no featured packs — TabController's length is fixed
+  /// once created, so toggling that requires disposing the old controller
+  /// and creating a new one. This only actually runs when [hasFeatured]
+  /// changes (rare — driven by data loading/ownership, not user taps), so
+  /// resetting to Browse (index 0) on a real transition is simpler and
+  /// safer than trying to remap a selected index across a tab-count change,
+  /// and never surprises a mid-swipe user since it isn't tap-driven.
+  void _ensureTabController(bool hasFeatured) {
+    if (_tabs != null && hasFeatured == _hasFeatured) return;
+    _tabs?.dispose();
+    _hasFeatured = hasFeatured;
+    _tabs = TabController(length: hasFeatured ? 3 : 2, vsync: this);
   }
 
   void _onScroll() {
@@ -66,13 +101,11 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
       context.read<PackProvider>().loadMoreSearchResults(
         gameType: _gameTypeFilter?.toDbString(),
         categoryId: _categoryFilter,
-        freeOnly: _freeOnly,
       );
     } else {
       context.read<PackProvider>().loadMoreBrowsePacks(
         gameType: _gameTypeFilter?.toDbString(),
         categoryId: _categoryFilter,
-        freeOnly: _freeOnly,
       );
     }
   }
@@ -82,7 +115,6 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
       query,
       gameType: _gameTypeFilter?.toDbString(),
       categoryId: _categoryFilter,
-      freeOnly: _freeOnly,
     );
   }
 
@@ -105,6 +137,12 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
   Widget build(BuildContext context) {
     final user = context.watch<AuthProvider>().currentUser;
     final isVerified = user?.isVerifiedCreator ?? false;
+    // Reactive: featuredPacks is itself a computed (featured AND
+    // free-or-owned) getter, so this automatically re-evaluates whenever
+    // entitlements refresh, not just on first load.
+    final hasFeatured = context.watch<PackProvider>().featuredPacks.isNotEmpty;
+    _ensureTabController(hasFeatured);
+    final tabs = _tabs!;
 
     return Scaffold(
       // Transparent so HomeShellScreen's PlayfulBackground (the premium
@@ -197,10 +235,10 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
             bottom: _searchMode
                 ? null
                 : TabBar(
-                    controller: _tabs,
+                    controller: tabs,
                     tabs: [
                       Tab(text: context.l10n.packTabBrowse),
-                      Tab(text: context.l10n.packTabFeatured),
+                      if (hasFeatured) Tab(text: context.l10n.packTabFeatured),
                       Tab(text: context.l10n.packTabMyPacks),
                     ],
                   ),
@@ -209,46 +247,25 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
         body: _searchMode
             ? _SearchResultsView(scrollCtrl: _scrollCtrl)
             : TabBarView(
-                controller: _tabs,
+                controller: tabs,
                 children: [
                   _BrowseTab(
                     scrollCtrl: _scrollCtrl,
                     gameTypeFilter: _gameTypeFilter,
                     categoryFilter: _categoryFilter,
-                    freeOnly: _freeOnly,
-                    // Item 2 fix — filters must combine as AND, not each
-                    // reset the others: selecting Free then Truth or Dare
-                    // (or vice versa) used to only pass the filter that
-                    // JUST changed, silently dropping whichever one was
-                    // already active (loadBrowsePacks defaults freeOnly
-                    // to false / gameType to null when omitted) — e.g.
-                    // "Free" then "Truth or Dare" showed ALL Truth or
-                    // Dare packs, paid included, because the second call
-                    // never re-passed freeOnly: true. Every filter
-                    // callback now re-sends the FULL current filter set
-                    // (this screen's own _gameTypeFilter/_categoryFilter/
-                    // _freeOnly state), not just the one field it itself
-                    // owns.
+                    // Every filter callback re-sends the FULL current
+                    // filter set, not just the field it owns — otherwise
+                    // changing one silently drops the others.
                     onGameTypeChanged: (gt) {
                       setState(() => _gameTypeFilter = gt);
                       context.read<PackProvider>().loadBrowsePacks(
                         reset: true,
                         gameType: gt?.toDbString(),
                         categoryId: _categoryFilter,
-                        freeOnly: _freeOnly,
-                      );
-                    },
-                    onFreeOnlyChanged: (v) {
-                      setState(() => _freeOnly = v);
-                      context.read<PackProvider>().loadBrowsePacks(
-                        reset: true,
-                        gameType: _gameTypeFilter?.toDbString(),
-                        categoryId: _categoryFilter,
-                        freeOnly: v,
                       );
                     },
                   ),
-                  const _FeaturedTab(),
+                  if (hasFeatured) const _FeaturedTab(),
                   const MyPacksScreen(),
                 ],
               ),
@@ -377,17 +394,13 @@ class _BrowseTab extends StatelessWidget {
     required this.scrollCtrl,
     required this.gameTypeFilter,
     required this.categoryFilter,
-    required this.freeOnly,
     required this.onGameTypeChanged,
-    required this.onFreeOnlyChanged,
   });
 
   final ScrollController scrollCtrl;
   final GameType? gameTypeFilter;
   final String? categoryFilter;
-  final bool freeOnly;
   final void Function(GameType?) onGameTypeChanged;
-  final void Function(bool) onFreeOnlyChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -412,9 +425,7 @@ class _BrowseTab extends StatelessWidget {
               SliverToBoxAdapter(
                 child: _FilterRow(
                   selected: gameTypeFilter,
-                  freeOnly: freeOnly,
                   onTypeChanged: onGameTypeChanged,
-                  onFreeOnlyChanged: onFreeOnlyChanged,
                 ),
               ),
 
@@ -500,18 +511,17 @@ String gameTypeFilterLabel(AppLocalizations l10n, GameType gt) => switch (gt) {
   GameType.memeGame => l10n.gameNameMeme,
 };
 
+/// Game-type filters only. There is deliberately no "Free" chip: the list
+/// itself now contains only packs the user can actually use (free ones and
+/// ones they own), so a free/paid split has nothing left to narrow.
 class _FilterRow extends StatelessWidget {
   const _FilterRow({
     required this.selected,
-    required this.freeOnly,
     required this.onTypeChanged,
-    required this.onFreeOnlyChanged,
   });
 
   final GameType? selected;
-  final bool freeOnly;
   final void Function(GameType?) onTypeChanged;
-  final void Function(bool) onFreeOnlyChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -522,18 +532,8 @@ class _FilterRow extends StatelessWidget {
         children: [
           _FilterChip(
             label: context.l10n.gameNameAll,
-            isSelected: selected == null && !freeOnly,
-            onTap: () {
-              onTypeChanged(null);
-              onFreeOnlyChanged(false);
-            },
-          ),
-          const SizedBox(width: 8),
-          _FilterChip(
-            label: context.l10n.packFreeLabel,
-            isSelected: freeOnly,
-            onTap: () => onFreeOnlyChanged(!freeOnly),
-            icon: Icons.redeem_rounded,
+            isSelected: selected == null,
+            onTap: () => onTypeChanged(null),
           ),
           const SizedBox(width: 8),
           ...GameType.values.map(

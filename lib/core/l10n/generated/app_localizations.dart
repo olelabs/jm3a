@@ -6818,11 +6818,11 @@ abstract class AppLocalizations {
   /// **'Try a different name or category.'**
   String get packSearchNoResultsHint;
 
-  /// No description provided for @packNoPurchasedPacks.
+  /// No description provided for @packNoAvailablePacks.
   ///
   /// In en, this message translates to:
-  /// **'No purchased packs'**
-  String get packNoPurchasedPacks;
+  /// **'No packs available yet'**
+  String get packNoAvailablePacks;
 
   /// No description provided for @packNoRequestsYet.
   ///
@@ -7304,11 +7304,11 @@ abstract class AppLocalizations {
   /// **'My Packs'**
   String get packTabMyPacks;
 
-  /// No description provided for @packTabPurchased.
+  /// No description provided for @packTabMyAvailablePacks.
   ///
   /// In en, this message translates to:
-  /// **'Purchased'**
-  String get packTabPurchased;
+  /// **'My Available Packs'**
+  String get packTabMyAvailablePacks;
 
   /// No description provided for @packTopUpWallet.
   ///
@@ -8713,6 +8713,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Pack Approved'**
   String get notifTypePackApproved;
+
+  /// No description provided for @notifTypePackGranted.
+  ///
+  /// In en, this message translates to:
+  /// **'A New Pack'**
+  String get notifTypePackGranted;
 
   /// No description provided for @notifTypePackExpired.
   ///
@@ -11281,6 +11287,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Streak active'**
   String get profileStreakActive;
+
+  /// No description provided for @profileMyPlayerId.
+  ///
+  /// In en, this message translates to:
+  /// **'My Player ID'**
+  String get profileMyPlayerId;
+
+  /// No description provided for @profilePlayerIdCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Player ID copied'**
+  String get profilePlayerIdCopied;
 
   /// No description provided for @profileStreakInactive.
   ///

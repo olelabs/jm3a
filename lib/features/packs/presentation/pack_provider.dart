@@ -930,6 +930,8 @@
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
+
 import '../../../core/errors/failures.dart';
 import '../../../core/providers/base_provider.dart';
 import '../../../core/services/pack_sync_service.dart';
@@ -940,6 +942,26 @@ import '../data/pack_repository.dart';
 import '../domain/pack_entity.dart';
 
 export '../domain/pack_entity.dart';
+
+/// Mirrors PackRepository.browsePacks' own filter conditions (game type,
+/// category, language-or-multilang), so a pack injected client-side into
+/// Browse (see PackProvider.loadBrowsePacks) is held to exactly the same
+/// criteria the server query itself applies — an active filter still hides
+/// a pack that doesn't match it, owned or not. Top-level and pure so it's
+/// directly testable without constructing a PackProvider.
+bool browsePackMatchesFilters(
+  PackEntity pack, {
+  String? gameType,
+  String? categoryId,
+  String? language,
+}) {
+  if (gameType != null && pack.gameType != gameType) return false;
+  if (categoryId != null && pack.categoryId != categoryId) return false;
+  if (language != null && language != 'multi') {
+    if (pack.language != language && !pack.isMultilang) return false;
+  }
+  return true;
+}
 
 class PackProvider extends BaseProvider {
   PackProvider({
@@ -1009,7 +1031,17 @@ class PackProvider extends BaseProvider {
   bool get hasMoreSearchResults => _hasMoreSearchResults;
 
   List<PackEntity> get browsePacks => _browsePacks;
-  List<PackEntity> get featuredPacks => _featuredPacks;
+
+  /// featured AND (free OR owned). getFeaturedPacks() itself only filters
+  /// on status/is_featured — it has no ownership condition — so this is
+  /// computed here rather than trusted as-is, using whatever
+  /// _purchasedPacks currently holds. Because this is a getter (not a
+  /// value cached at fetch time), it automatically reflects the latest
+  /// entitlement state on every read — no extra wiring needed when
+  /// _purchasedPacks refreshes (login, resume, tab-switch, or a Store
+  /// grant notification).
+  List<PackEntity> get featuredPacks =>
+      _featuredPacks.where(isOwned).toList();
   List<PackEntity> get localPacks => _localPacks;
 
   // The actual limit value comes from PlatformConfigProvider
@@ -1024,9 +1056,26 @@ class PackProvider extends BaseProvider {
       .where((e) => e.value.isDownloaded)
       .map((e) => e.key)
       .toList();
-  List<PackEntity> get promotedPacks => _promotedPacks;
+
+  /// free OR owned — see [featuredPacks]' own doc comment; getPromotedPacks()
+  /// likewise has no price/ownership condition of its own. Shared by the
+  /// marketplace's Featured tab and the Room Browser carousel (both read
+  /// this same getter), so fixing it here fixes both call sites.
+  List<PackEntity> get promotedPacks =>
+      _promotedPacks.where(isOwned).toList();
   List<PackCategory> get categories => _categories;
   List<PackEntity> get purchasedPacks => _purchasedPacks;
+
+  /// Test-only seam: _purchasedPacks is otherwise only ever populated via
+  /// the login flow or purchasePack(), both of which cascade into several
+  /// other services (LocalStorageService, PackSyncService) that need real
+  /// plugin/init setup unrelated to what's actually under test here — see
+  /// pack_browse_ownership_refresh_test.dart for what this unblocks.
+  @visibleForTesting
+  void seedPurchasedPacksForTest(List<PackEntity> packs) {
+    _purchasedPacks = packs;
+  }
+
   List<PackEntity> get createdPacks => _createdPacks;
   List<PackEntity> get allPacks => {
     ..._browsePacks,
@@ -1054,13 +1103,35 @@ class PackProvider extends BaseProvider {
   void onUserLoggedIn(String userId) {
     _listenDownloads();
     _loadCategories();
-    loadBrowsePacks(reset: true);
-    _loadFeatured();
-    _loadPurchased(userId);
     loadCreatedPacks();
     _syncPacks(userId);
     _hydrateAllDownloads();
     _loadReportedPackIds(userId);
+    // Browse AND Featured/Promoted now return free-or-owned packs only, so
+    // the purchased list has to be loaded FIRST — querying before it
+    // resolves would omit every paid pack this user owns (Featured
+    // included: a real, admin-marked-featured paid pack the user already
+    // owns must still show up there).
+    _loadPurchased(userId).then((_) {
+      loadBrowsePacks(reset: true);
+      _loadFeatured();
+    });
+  }
+
+  /// Re-reads the user's entitlements from the server and refreshes the
+  /// lists that depend on them.
+  ///
+  /// Needed because a pack can be granted entirely server-side (a Jma3a
+  /// Store order an admin approves), with nothing in this already-running
+  /// session to notice: before this existed, such a pack stayed invisible
+  /// until the user logged out and back in. The Packs screen calls this
+  /// when it opens and when the app returns to the foreground — a plain
+  /// authoritative re-fetch, no realtime subscription needed.
+  Future<void> refreshEntitlements() async {
+    final userId = currentUserId;
+    if (userId == null) return;
+    await _loadPurchased(userId);
+    await loadBrowsePacks(reset: true);
   }
 
   void _loadReportedPackIds(String userId) {
@@ -1125,7 +1196,6 @@ class PackProvider extends BaseProvider {
     bool reset = false,
     String? gameType,
     String? categoryId,
-    bool freeOnly = false,
     String? language,
     String sortBy = 'avg_rating',
   }) async {
@@ -1140,30 +1210,45 @@ class PackProvider extends BaseProvider {
       final packs = await _repo.browsePacks(
         gameType: gameType,
         categoryId: categoryId,
-        freeOnly: freeOnly,
+        ownedPackIds: _purchasedPacks.map((p) => p.id).toList(),
         language: language,
         sortBy: sortBy,
         page: _browsePage,
         perPage: perPage,
       );
-      _browsePacks = reset ? packs : [..._browsePacks, ...packs];
+      if (reset) {
+        // The server query still sorts by rating, so a just-granted pack
+        // (avg_rating 0 by default) can legitimately satisfy the
+        // free-or-owned filter yet land past page 1. Rather than change
+        // that sort (used for genuine Browse/discovery ordering), any
+        // OWNED pack matching the CURRENT filters is guaranteed visible
+        // on the first page by prepending it here if the query's own
+        // first page didn't already include it — every owned pack is
+        // already fully loaded client-side in _purchasedPacks, so this
+        // needs no extra query.
+        final alreadyShown = packs.map((p) => p.id).toSet();
+        final missingOwned = _purchasedPacks.where(
+          (p) =>
+              !p.isFree &&
+              !alreadyShown.contains(p.id) &&
+              browsePackMatchesFilters(p, gameType: gameType, categoryId: categoryId, language: language),
+        );
+        _browsePacks = [...missingOwned, ...packs];
+      } else {
+        _browsePacks = [..._browsePacks, ...packs];
+      }
       _hasMorePacks = packs.length == perPage;
       _browsePage++;
       await _hydrateDownloadStates(packs.map((p) => p.id).toList());
     });
   }
 
-  /// Item 2 fix — this used to accept only [gameType]/[categoryId], so
-  /// scrolling to a further page under an active Free-only (or language)
-  /// filter silently dropped it (loadBrowsePacks defaults freeOnly to
-  /// false when omitted) — page 1 correctly showed e.g. free Truth or
-  /// Dare packs, but page 2+ would start mixing in paid ones. Now accepts
-  /// and forwards the SAME full filter set [loadBrowsePacks] itself does,
-  /// matching how loadMoreSearchResults already forwards all three.
+  /// Forwards the SAME full filter set [loadBrowsePacks] itself does — a
+  /// later page that dropped a filter would start mixing in packs the
+  /// first page correctly excluded.
   Future<void> loadMoreBrowsePacks({
     String? gameType,
     String? categoryId,
-    bool freeOnly = false,
     String? language,
   }) async {
     if (_isLoadingMore || !_hasMorePacks) return;
@@ -1173,7 +1258,6 @@ class PackProvider extends BaseProvider {
       await loadBrowsePacks(
         gameType: gameType,
         categoryId: categoryId,
-        freeOnly: freeOnly,
         language: language,
       );
     } finally {
@@ -1183,10 +1267,11 @@ class PackProvider extends BaseProvider {
   }
 
   /// Searches by pack name, creator name, or category — see
-  /// PackRepository.searchPacks. Reuses the same gameType/categoryId/
-  /// freeOnly filter params the Browse tab already has, so a search
-  /// happening under an active filter narrows within it rather than
-  /// ignoring it. A dedicated _isSearching (not the base runAsync
+  /// PackRepository.searchPacks. Reuses the same gameType/categoryId
+  /// filter params the Browse tab already has, so a search happening
+  /// under an active filter narrows within it rather than ignoring it.
+  /// Results are restricted to usable (free-or-owned) packs by the
+  /// repository, exactly like Browse. A dedicated _isSearching (not the base runAsync
   /// isLoading) so search and Browse-tab loading never stomp on each
   /// other's spinner state — same reason loadMoreBrowsePacks above has
   /// its own _isLoadingMore instead of reusing isLoading.
@@ -1195,7 +1280,6 @@ class PackProvider extends BaseProvider {
     bool reset = true,
     String? gameType,
     String? categoryId,
-    bool freeOnly = false,
   }) async {
     _searchQuery = query;
     if (reset) {
@@ -1223,7 +1307,7 @@ class PackProvider extends BaseProvider {
         query: query,
         gameType: gameType,
         categoryId: categoryId,
-        freeOnly: freeOnly,
+        ownedPackIds: _purchasedPacks.map((p) => p.id).toList(),
         page: _searchPage,
         perPage: perPage,
       );
@@ -1242,7 +1326,6 @@ class PackProvider extends BaseProvider {
   Future<void> loadMoreSearchResults({
     String? gameType,
     String? categoryId,
-    bool freeOnly = false,
   }) async {
     if (_isLoadingMoreSearch ||
         !_hasMoreSearchResults ||
@@ -1257,7 +1340,6 @@ class PackProvider extends BaseProvider {
         reset: false,
         gameType: gameType,
         categoryId: categoryId,
-        freeOnly: freeOnly,
       );
     } finally {
       _isLoadingMoreSearch = false;
@@ -1274,8 +1356,9 @@ class PackProvider extends BaseProvider {
   }
 
   Future<void> _loadFeatured() => runAsync(() async {
-    _featuredPacks = await _repo.getFeaturedPacks();
-    _promotedPacks = await _repo.getPromotedPacks();
+    final ownedPackIds = _purchasedPacks.map((p) => p.id).toList();
+    _featuredPacks = await _repo.getFeaturedPacks(ownedPackIds: ownedPackIds);
+    _promotedPacks = await _repo.getPromotedPacks(ownedPackIds: ownedPackIds);
   }, setLoading: false);
 
   Future<void> _loadCategories() => runAsync(() async {
@@ -1312,6 +1395,12 @@ class PackProvider extends BaseProvider {
         _purchasedPacks = await _repo.getMyPurchasedPacks(currentUserId!);
         _purchaseRecords = await _repo.getMyPurchaseRecords(currentUserId!);
         notifyListeners();
+        // Browse is a separately-cached snapshot keyed on _purchasedPacks
+        // as of whenever it was last fetched — without this, a pack
+        // bought just now would show in My Packs but not Browse until
+        // some other trigger (app resume, reopening the Packs tab)
+        // refreshed it.
+        await loadBrowsePacks(reset: true);
       }
       return null;
     } catch (e) {

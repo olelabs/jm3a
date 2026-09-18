@@ -35,7 +35,7 @@ class MyPacksScreen extends StatelessWidget {
         children: [
           TabBar(
             tabs: [
-              Tab(text: context.l10n.packTabPurchased),
+              Tab(text: context.l10n.packTabMyAvailablePacks),
               Tab(text: context.l10n.packTabDownloaded),
             ],
           ),
@@ -73,7 +73,7 @@ class _PurchasedList extends StatelessWidget {
             const Text('🛒', style: TextStyle(fontSize: 56)),
             const SizedBox(height: 16),
             Text(
-              context.l10n.packNoPurchasedPacks,
+              context.l10n.packNoAvailablePacks,
               style: context.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w700,
               ),

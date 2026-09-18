@@ -1,20 +1,24 @@
-// Regression coverage for item 2 — Packs filtering combined incorrectly.
+// Regression coverage for Packs filtering combining incorrectly.
 //
-// ROOT CAUSE: PackRepository.browsePacks itself ANDs whatever filters it's
-// given (confirmed correct at the query layer) — the bug was entirely in
-// the CALLERS: marketplace_screen.dart's onGameTypeChanged/onFreeOnlyChanged
-// each passed ONLY the filter that just changed, so the other currently-
-// active filter silently reset to its default (freeOnly: false / gameType:
-// null) on every call — e.g. selecting Free then Truth or Dare dropped the
-// Free filter, showing every Truth or Dare pack, paid included.
-// PackProvider.loadMoreBrowsePacks had the same gap for pagination: it
-// didn't even accept a freeOnly/language parameter to forward.
+// ORIGINAL ROOT CAUSE: PackRepository.browsePacks itself ANDs whatever
+// filters it's given (correct at the query layer) — the bug was entirely in
+// the CALLERS: marketplace_screen.dart's filter callbacks each passed ONLY
+// the filter that just changed, so any other active filter silently reset
+// to its default on every call. PackProvider.loadMoreBrowsePacks had the
+// same gap for pagination: it didn't accept the full filter set to forward.
+//
+// The "Free" filter this originally also covered no longer exists: the
+// Packs list now shows only packs the user can actually use (free ones,
+// plus paid ones they own), so there is no free/paid toggle left to lose.
+// What remains under test is that (a) every surviving filter still travels
+// together on one call, including through pagination, and (b) the owned-pack
+// ids that define "usable" are forwarded on every call — dropping those
+// would make a user's own paid packs vanish from the list.
 //
 // This drives the REAL PackProvider.loadBrowsePacks/loadMoreBrowsePacks
 // against a lightweight fake PackRepository that just records the
-// arguments it was called with — proving the FIX (every filter callback
-// re-sends the full current filter set) at the actual layer the bug lived
-// in, without needing a live Supabase-backed repository.
+// arguments it was called with, without needing a live Supabase-backed
+// repository.
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jma3a/core/services/pack_sync_service.dart';
 import 'package:jma3a/features/packs/data/pack_repository.dart';
@@ -34,12 +38,12 @@ class _RecordedBrowseCall {
   _RecordedBrowseCall({
     required this.gameType,
     required this.categoryId,
-    required this.freeOnly,
+    required this.ownedPackIds,
     required this.language,
   });
   final String? gameType;
   final String? categoryId;
-  final bool freeOnly;
+  final List<String> ownedPackIds;
   final String? language;
 }
 
@@ -53,7 +57,7 @@ class _FakePackRepository implements PackRepository {
   Future<List<PackEntity>> browsePacks({
     String? gameType,
     String? categoryId,
-    bool freeOnly = false,
+    List<String> ownedPackIds = const [],
     String? language,
     String? query,
     String sortBy = 'avg_rating',
@@ -64,7 +68,7 @@ class _FakePackRepository implements PackRepository {
       _RecordedBrowseCall(
         gameType: gameType,
         categoryId: categoryId,
-        freeOnly: freeOnly,
+        ownedPackIds: ownedPackIds,
         language: language,
       ),
     );
@@ -89,43 +93,40 @@ void main() {
       );
     });
 
-    test('game type + free-only are both sent together on the same call '
-        '(the exact combination that used to lose one filter)', () async {
-      await provider.loadBrowsePacks(
-        reset: true,
-        gameType: 'truth_or_dare',
-        freeOnly: true,
-      );
-
-      expect(repo.calls, hasLength(1));
-      expect(repo.calls.single.gameType, 'truth_or_dare');
-      expect(repo.calls.single.freeOnly, isTrue);
-    });
-
-    test('category + price and language + game type combinations are all '
-        'forwarded together, not independently', () async {
+    test('category, language and game type are all forwarded together on '
+        'the same call, not independently', () async {
       await provider.loadBrowsePacks(
         reset: true,
         gameType: 'meme_game',
         categoryId: 'cat-1',
-        freeOnly: true,
         language: 'ar',
       );
 
       final call = repo.calls.single;
       expect(call.gameType, 'meme_game');
       expect(call.categoryId, 'cat-1');
-      expect(call.freeOnly, isTrue);
       expect(call.language, 'ar');
+    });
+
+    test('the owned-pack ids that define a usable pack are forwarded on '
+        'every call', () async {
+      await provider.loadBrowsePacks(reset: true, gameType: 'truth_or_dare');
+
+      expect(repo.calls, hasLength(1));
+      expect(
+        repo.calls.single.ownedPackIds,
+        isNotNull,
+        reason: 'omitting these would silently hide every paid pack the '
+            'user actually owns',
+      );
     });
   });
 
   group('PackProvider.loadMoreBrowsePacks — pagination preserves every '
       'active filter', () {
-    test('freeOnly and language are now accepted and forwarded (the actual '
+    test('language and game type are accepted and forwarded (the actual '
         'gap: this method used to only take gameType/categoryId, so '
-        'scrolling to a further page under Free-only silently dropped it)',
-        () async {
+        'scrolling to a further page silently dropped the rest)', () async {
       final repo = _FakePackRepository();
       // _hasMorePacks defaults to true before any load, so this exercises
       // loadMoreBrowsePacks's own forwarding logic directly, isolated
@@ -137,16 +138,12 @@ void main() {
 
       await provider.loadMoreBrowsePacks(
         gameType: 'truth_or_dare',
-        freeOnly: true,
         language: 'ar',
       );
 
       expect(repo.calls, hasLength(1));
       final call = repo.calls.single;
       expect(call.gameType, 'truth_or_dare');
-      expect(call.freeOnly, isTrue,
-          reason: 'the exact regression: pagination must not silently '
-              'reset freeOnly to false');
       expect(call.language, 'ar');
     });
   });

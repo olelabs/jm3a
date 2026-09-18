@@ -10,7 +10,7 @@ import '../../../../core/router/route_names.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../features/avatar/presentation/avatar_creator_screen.dart';
-import '../../../../features/packs/domain/pack_entity.dart';
+import '../../../../features/packs/presentation/pack_provider.dart';
 import '../../../../shared/widgets/cards/j_card.dart';
 import '../../../../shared/widgets/cards/profile_pack_card.dart';
 import '../../../../shared/widgets/cards/user_avatar.dart';
@@ -66,6 +66,17 @@ class _ProfileScreenState extends State<ProfileScreen> with RouteAware {
     final l10n = context.l10n;
 
     if (user == null) return const SizedBox.shrink();
+
+    // "Most Played" reflects packs this user played as a room member,
+    // which getMostPlayedPacksForUser has no price/ownership condition
+    // for — so a paid pack played without (or no longer) owning it must
+    // not be shown or tappable here, same free-or-owned rule as every
+    // other pack surface. Mirrors the identical fix already applied to
+    // the OTHER-user profile view — see user_profile_screen.dart's
+    // visibleMostPlayed.
+    final visibleMostPlayed = profile.mostPlayedPacks
+        .where(context.watch<PackProvider>().isOwned)
+        .toList();
 
     return Scaffold(
       // Transparent so HomeShellScreen's PlayfulBackground (the premium
@@ -167,10 +178,10 @@ class _ProfileScreenState extends State<ProfileScreen> with RouteAware {
 
                   const SizedBox(height: 20),
 
-                  if (profile.mostPlayedPacks.isNotEmpty) ...[
+                  if (visibleMostPlayed.isNotEmpty) ...[
                     _PackSection(
                       title: l10n.profileMostPlayedPacks,
-                      packs: profile.mostPlayedPacks,
+                      packs: visibleMostPlayed,
                     ).animate(delay: 220.ms).fadeIn(),
                     const SizedBox(height: 16),
                   ],

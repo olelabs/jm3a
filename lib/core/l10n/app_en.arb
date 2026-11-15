@@ -36,12 +36,9 @@
   "navFriends": "Friends",
   "navMarketplace": "Packs",
   "navProfile": "Profile",
-  "authWelcome": "Welcome to Jma3a",
-  "authTagline": "Play together, anywhere",
   "authEmailLabel": "Your email address",
   "authEmailHint": "Enter your email",
   "authEmailInvalid": "Please enter a valid email address",
-  "authSendOtp": "Send code",
   "authOtpLabel": "Verification code",
   "authOtpVerify": "Verify",
   "authOtpResend": "Resend code",
@@ -90,7 +87,7 @@
   "settingsSigningOut": "Signing out…",
   "premiumBackgroundCustomSet": "Custom background set",
   "premiumBackgroundChooseColor": "Choose a background color",
-  "premiumBackgroundUpgradeHint": "Premium feature — tap to upgrade",
+  "premiumBackgroundUpgradeHint": "Premium feature",
   "premiumBackgroundSaveFailed": "Could not save background color.",
   "premiumBackgroundResetFailed": "Could not reset background color.",
   "roomsTitle": "Rooms",
@@ -202,39 +199,6 @@
     "placeholders": { "name": { "type": "String" } }
   },
   "settingsNotifications": "Notifications",
-  "walletEarningsTotal": "Total earned",
-  "walletEarningsThisMonth": "This month",
-  "walletEarningsTotalSales": "Total sales",
-  "walletTransactionHistory": "Transaction history",
-  "walletFilterAll": "All",
-  "walletFilterDeposits": "Deposits",
-  "walletFilterWithdrawals": "Withdrawals",
-  "walletFilterPurchases": "Purchases",
-  "walletFilterEarnings": "Earnings",
-  "walletFilterRefunds": "Refunds",
-  "walletFilterPayouts": "Payouts",
-  "walletFilterBonuses": "Bonuses",
-  "walletFilterAdjustments": "Adjustments",
-  "walletFilterTransfers": "Transfers",
-  "walletTypeDeposit": "Deposit",
-  "walletTypeWithdrawal": "Withdrawal",
-  "walletTypePurchase": "Pack Purchase",
-  "walletTypeRefund": "Refund",
-  "walletTypeCommission": "Creator Earnings",
-  "walletTypePayout": "Payout",
-  "walletTypeAdjustment": "Adjustment",
-  "walletTypeBonus": "Bonus",
-  "walletTypeTransfer": "Balance Transfer",
-  "walletStatusPending": "Pending",
-  "walletStatusProcessing": "Processing",
-  "walletStatusCompleted": "Completed",
-  "walletStatusFailed": "Failed",
-  "walletStatusCancelled": "Cancelled",
-  "walletStatusReversed": "Reversed",
-  "walletDepositStatusPending": "Pending",
-  "walletDepositStatusUnderReview": "Under Review",
-  "walletDepositStatusApproved": "Approved",
-  "walletDepositStatusRejected": "Rejected",
   "profileGames": "Games",
   "usernameProfileResolving": "Loading profile…",
   "usernameProfileNotFound": "This profile couldn't be found.",
@@ -276,8 +240,6 @@
   "gameSettingsAllowSpectators": "Allow spectators",
   "lobbyApprove": "Approve",
   "lobbyReject": "Reject",
-  "authUseEmailInstead": "Use email instead",
-  "authUsePhoneInstead": "Use phone instead",
   "authContinueAsGuest": "Continue as Guest",
   "authTermsPrivacyNotice": "By continuing you agree to our Terms & Privacy Policy",
   "authOtpAttemptsRemaining": "{count, plural, one{{count} attempt remaining} other{{count} attempts remaining}}",
@@ -371,17 +333,6 @@
   "lobbySelectPackBeforeStart": "Please select a pack before starting the game.",
   "lobbyRejoinDecisionFailed": "Failed: {error}",
   "@lobbyRejoinDecisionFailed": {
-    "placeholders": {
-      "error": {"type": "String"}
-    }
-  },
-  "premiumErrorInsufficientBalance": "Not enough balance. Please top up your wallet first.",
-  "premiumErrorWalletNotFound": "Wallet not found. Please contact support.",
-  "premiumErrorWalletFrozen": "Your wallet is frozen. Please contact support.",
-  "premiumErrorInvalidPlan": "Invalid plan selected.",
-  "premiumErrorDowngradeBlocked": "You can switch plans once your current subscription expires.",
-  "premiumErrorPurchaseFailed": "Purchase failed: {error}",
-  "@premiumErrorPurchaseFailed": {
     "placeholders": {
       "error": {"type": "String"}
     }
@@ -523,23 +474,9 @@
   "gameNameMeme": "Meme Game",
   "gameNameNeverHaveIEver": "Never Have I",
   "gameNameTruthOrDare": "Truth or Dare",
-  "gameSettingsChooseProofViewers": "Choose exactly who can see proof",
-  "gameSettingsMemberLabelSpectator": "{name} (spec)",
-  "@gameSettingsMemberLabelSpectator": {
-    "placeholders": {
-      "name": {
-        "type": "String"
-      }
-    }
-  },
   "gameSettingsNoPacksDevMsg": "No packs available. Run the seed SQL in Supabase.",
   "gameSettingsPackPunishments": "Pack punishments",
   "gameSettingsPlayersSubmit": "Players submit",
-  "gameSettingsProofCustom": "Custom",
-  "gameSettingsProofEveryone": "Everyone",
-  "gameSettingsProofPlayers": "Players",
-  "gameSettingsProofSpectators": "Spectators",
-  "gameSettingsProofVisibility": "Proof visibility",
   "gameSettingsPunishmentHintDefault": "When a player skips, every other player submits a punishment and the skipped player picks one to do.",
   "gameSettingsPunishmentHintPackAvailable": "This pack includes its own punishments. Choose who provides them when a player skips.",
   "gameSettingsPunishmentMode": "Punishment mode",
@@ -549,18 +486,6 @@
   "packBestMatchTitle": "BEST MATCH FOR YOU",
   "packOtherPacksTitle": "OTHER PACKS",
   "packMatchedLabel": "Matched",
-  "packTagRelationship": "Relationship",
-  "packTagBreakup": "Breakup",
-  "packTagFixingRelationship": "Fixing relationship",
-  "packTagDating": "Dating",
-  "packTagCouples": "Couples",
-  "packTagFriendship": "Friendship",
-  "packTagFamily": "Family",
-  "packTagParty": "Party",
-  "packTagIcebreaker": "Icebreaker",
-  "packTagWork": "Work",
-  "packTagTravel": "Travel",
-  "packTagLateNight": "Late night",
   "packCreationTagsTitle": "Types (optional)",
   "packCreationTagsSubtitle": "Help players find this pack for the right moment.",
   "none": "None",
@@ -605,13 +530,10 @@
   "roomsBrowsePacks": "Browse Packs",
   "roomsCloseAndCreateNew": "Close Existing Room and Create New Room",
   "roomsClosedSnackbar": "Room closed",
-  "roomsDailyLimitFreeBody": "Free plan allows {basicLimit} rooms per day. Try again tomorrow, or upgrade to Premium for {premiumLimit} rooms/day.",
+  "roomsDailyLimitFreeBody": "Free plan allows {basicLimit} rooms per day. Try again tomorrow.",
   "@roomsDailyLimitFreeBody": {
     "placeholders": {
       "basicLimit": {
-        "type": "int"
-      },
-      "premiumLimit": {
         "type": "int"
       }
     }
@@ -684,7 +606,7 @@
   "roomsNameTooShort": "At least 3 characters",
   "roomsNoClosedRooms": "No rooms closed in the last 5 days.",
   "roomsNoGameData": "No game data available.",
-  "roomsNoPacksBody": "You need at least one pack to create a room — get a free pack or purchase one from the marketplace first.",
+  "roomsNoPacksBody": "You need at least one pack to create a room — browse the marketplace for a free pack to get started.",
   "roomsNoPacksTitle": "No packs available",
   "roomsParticipantsCount": "Participants ({count})",
   "@roomsParticipantsCount": {
@@ -737,7 +659,6 @@
     }
   },
   "roomsTransferOwnership": "Transfer ownership",
-  "roomsUpgradeArrow": "Upgrade →",
   "roomsVisibility": "Visibility",
   "roomsWinnerLabel": "🏆 Winner: {name}",
   "@roomsWinnerLabel": {
@@ -974,7 +895,6 @@
   "todWriteCardPromptHint": "Write your card prompt…",
   "someone": "Someone",
   "todAllPlayersLeftGameBody": "All players left the game.",
-  "todAllPlayersLeftGameEnded": "All players left — game ended",
   "todChatTitle": "💬 Chat",
   "todGameEnded": "Game Ended",
   "todGameOver": "Game Over",
@@ -1201,7 +1121,6 @@
     }
   },
   "nhieCardPromptHint": "Never have I ever…",
-  "nhieCardTitle": "Never Have I Ever…",
   "nhieDrinksScore": "{count} 🍹",
   "@nhieDrinksScore": {
     "placeholders": {
@@ -1219,7 +1138,6 @@
     }
   },
   "nhieGameHistoryTitle": "Game History",
-  "nhieGoToHome": "Go to Home",
   "gameBackToRoom": "Back to Room",
   "nhieIHave": "I HAVE",
   "nhieMostDrinksWins": "Most 🍹 drinks wins!",
@@ -1275,14 +1193,6 @@
     }
   },
   "memeResponseSubmittedWaiting": "Response submitted! Waiting for others…",
-  "memeRoundBadgeAllCaps": "ROUND {round}",
-  "@memeRoundBadgeAllCaps": {
-    "placeholders": {
-      "round": {
-        "type": "int"
-      }
-    }
-  },
   "memeRoundResultsTitle": "Round {round} Results 🏆",
   "@memeRoundResultsTitle": {
     "placeholders": {
@@ -1669,171 +1579,14 @@
   "purchased": "Purchased",
   "signIn": "Sign In",
   "tryAgain": "Try again",
-  "accountLabel": "Account",
   "amountLabel": "Amount",
-  "copiedNotice": "Copied!",
-  "labelColonSuffix": "{label}: ",
-  "@labelColonSuffix": {
-    "placeholders": {
-      "label": {
-        "type": "String"
-      }
-    }
-  },
-  "nameLabel": "Name",
   "pendingLabel": "Pending",
   "phoneInvalid": "Phone number must be exactly 8 digits",
   "refresh": "Refresh",
   "seeAll": "See all",
-  "walletAmountToWithdraw": "Amount to withdraw",
-  "walletAmountValue": "Amount: {amount} MRU",
-  "@walletAmountValue": {
-    "placeholders": {
-      "amount": {
-        "type": "String"
-      }
-    }
-  },
-  "walletAvailableAmount": "Available: {amount}",
-  "@walletAvailableAmount": {
-    "placeholders": {
-      "amount": {
-        "type": "String"
-      }
-    }
-  },
-  "walletAvailableEarnings": "Available earnings",
-  "walletAvailableForWithdrawal": "Available for withdrawal",
-  "walletBackToWallet": "Back to Wallet",
-  "walletBalanceAfter": "Balance after",
-  "walletBulletCreditedAfterConfirm": "Earnings are credited after purchase is confirmed.",
-  "walletBulletEarn85": "You earn 85% of every pack sale.",
-  "walletBulletMinWithdrawal": "Minimum withdrawal: 500 MRU.",
-  "walletBulletPlatformFee": "15% platform fee keeps Jma3a running.",
-  "walletChooseHowToAddFunds": "Choose how you want to add funds.",
-  "walletConfirmWithdrawal": "Confirm withdrawal",
-  "walletCreateSellPacksHint": "Create and sell packs to earn commissions.",
-  "walletCreatorEarningsRateLabel": "Creator earnings rate",
-  "walletCreatorEarningsTitle": "Creator Earnings",
-  "walletCurrencyName": "Mauritanian Ouguiya",
   "walletCurrencyShort": "MRU",
-  "walletAvailableBalanceLabel": "Available Balance",
-  "walletFrozenLabel": "Wallet (Frozen)",
-  "walletDeposit": "Deposit",
-  "walletDepositAmount": "Deposit {amount}",
-  "@walletDepositAmount": {
-    "placeholders": {
-      "amount": {
-        "type": "String"
-      }
-    }
-  },
-  "walletDepositWarningNotice": "Only submit after completing the transfer. Deposits are manually reviewed and may take 1–24 hours.",
-  "walletEarningsBalance": "Earnings Balance",
-  "walletEnterReference": "Enter the reference from your payment",
-  "walletHowEarningsWork": "How earnings work",
-  "walletInsufficientBalance": "Insufficient balance",
-  "walletMaxDeposit": "Maximum deposit: 1,000,000 MRU",
-  "walletMethodLabel": "Method",
-  "walletMinDeposit": "Minimum deposit: 100 MRU",
-  "walletMinWithdrawal": "Minimum withdrawal: {amount} MRU",
-  "@walletMinWithdrawal": {
-    "placeholders": {
-      "amount": {
-        "type": "int"
-      }
-    }
-  },
-  "walletNoEarningsYet": "No earnings yet",
-  "walletNoTransactions": "No transactions",
-  "walletNoTransactionsYet": "No transactions yet",
-  "walletOfEveryPackSale": "of every pack sale ({fee}% platform fee)",
-  "@walletOfEveryPackSale": {
-    "placeholders": {
-      "fee": {
-        "type": "int"
-      }
-    }
-  },
-  "walletPaymentReferenceLabel": "Payment reference / transaction ID",
-  "walletPhoneNumberHint": "8-digit phone number",
-  "walletPayoutPhoneNumber": "Payout phone number",
-  "walletPhoneLabel": "Phone",
-  "walletRecentTransactions": "Recent Transactions",
-  "walletReferenceHint": "e.g. TXN123456789",
-  "walletSelectPaymentMethod": "Select payment method",
-  "walletSelectPayoutMethod": "Select payout method",
-  "walletStatusPaymentMethod": "{status} • {method}",
-  "@walletStatusPaymentMethod": {
-    "placeholders": {
-      "status": {
-        "type": "String"
-      },
-      "method": {
-        "type": "String"
-      }
-    }
-  },
-  "walletTitle": "Wallet",
-  "walletDepositSubmittedTitle": "Deposit Submitted!",
-  "walletDepositSubmittedSubtitle": "Your deposit of {amount} is under review. Balance will update once approved.",
-  "@walletDepositSubmittedSubtitle": {
-    "placeholders": {
-      "amount": {"type": "String"}
-    }
-  },
-  "walletDepositRequestFailed": "Deposit request failed.",
-  "walletSubmitDeposit": "Submit Deposit",
-  "walletWithdrawalSubmittedTitle": "Withdrawal Submitted!",
-  "walletWithdrawalSubmittedSubtitle": "Your withdrawal of {amount} is being processed. Funds will arrive within 1–24 hours.",
-  "@walletWithdrawalSubmittedSubtitle": {
-    "placeholders": {
-      "amount": {"type": "String"}
-    }
-  },
-  "walletWithdrawalRequestFailed": "Withdrawal request failed.",
-  "walletContinueArrow": "Continue →",
-  "walletConfirmWithdrawal": "Confirm Withdrawal",
-  "walletActionDeposit": "Deposit",
-  "walletActionWithdraw": "Withdraw",
-  "walletActionEarnings": "Earnings",
-  "walletDetailDateTime": "Date & time",
-  "walletDetailWalletAffected": "Wallet affected",
-  "walletDetailEarnings": "Earnings",
-  "walletDetailWalletBalance": "Wallet Balance",
-  "walletDetailBalanceAfter": "Balance after",
-  "walletDetailPaymentMethod": "Payment method",
-  "walletDetailDescription": "Description",
-  "walletDetailReference": "Reference",
-  "walletDetailTransactionId": "Transaction ID",
-  "walletDetailDateAtTime": "{date} at {time}",
-  "@walletDetailDateAtTime": {
-    "placeholders": {
-      "date": {"type": "String"},
-      "time": {"type": "String"}
-    }
-  },
-  "walletTransferAmount": "Transfer amount",
-  "walletTransferButton": "Transfer",
-  "walletTransferFailed": "Transfer failed.",
-  "walletTransferSuccess": "Transferred to wallet balance.",
-  "walletTransferToWallet": "Transfer to Wallet",
-  "walletTransferToWalletBalance": "Transfer to Wallet Balance",
-  "walletWithdraw": "Withdraw",
-  "walletWithdrawalAmount": "Withdrawal {amount}",
-  "@walletWithdrawalAmount": {
-    "placeholders": {
-      "amount": {
-        "type": "String"
-      }
-    }
-  },
-  "walletWithdrawalProcessingNotice": "Withdrawals are processed manually. Funds arrive in 1–24 hours once approved.",
-  "walletYourPhoneNumber": "Your phone number",
   "actionLabel": "Action",
-  "activeLabel": "Active",
   "darkMode": "Dark mode",
-  "getButton": "Get",
   "lightMode": "Light mode",
   "premiumAppThemeTitle": "App Theme",
   "appThemeNameJma3a": "Jma3a",
@@ -1868,7 +1621,6 @@
   "gameCardColorGoldPrestige": "Gold Prestige",
   "gameCardColorRosePink": "Rose Pink",
   "gameCardColorCyberTeal": "Cyber Teal",
-  "premiumAutoRenewNotice": "Subscriptions auto-renew unless cancelled 24h before renewal.",
   "premiumBackgroundColorEmoji": "Background Color ✦",
   "premiumBackgroundColorTitle": "Background Color",
   "bgColorWhite": "White",
@@ -1893,76 +1645,17 @@
   "bgColorSoftMint": "Soft Mint",
   "bgColorGraphite": "Graphite",
   "premiumBlendsIntoTheme": "Blends into your selected theme — text, cards, and icons adapt automatically.",
-  "premiumCannotDowngradeBody": "You have an active Premium Plus subscription. You can switch to a lower plan once it expires on {date}.",
-  "@premiumCannotDowngradeBody": {
-    "placeholders": {
-      "date": {
-        "type": "String"
-      }
-    }
-  },
-  "premiumCannotDowngradeTitle": "Cannot Downgrade Yet",
   "premiumCardTextReadable": "Card text stays readable",
   "premiumChooseAvatar": "Choose Avatar",
   "premiumChooseBackground": "Choose a background",
-  "premiumConfirmPurchase": "Confirm Purchase",
-  "premiumCurrentTermEnds": "your current term ends",
-  "premiumFeatureColumnHeader": "Feature",
   "premiumFeatureListDescription": "Custom themes & avatars, 15 rooms/day, up to 12 players per room, 10 offline packs (1 free), anonymous chat, and more.",
-  "premiumLockedUntilExpires": "Locked until Premium Plus expires",
-  "premiumMonthly": "Monthly",
   "premiumPageBackground": "Page background",
-  "premiumPlanActivated": "🎉 {plan} activated!",
-  "@premiumPlanActivated": {
-    "placeholders": {
-      "plan": {
-        "type": "String"
-      }
-    }
-  },
   "premiumPlusLabel": "Premium Plus",
-  "premiumPlusShort": "Plus",
   "premiumPremiumAvatars": "Premium Avatars",
   "premiumPremiumThemes": "Premium Themes ✦",
-  "premiumPricePerPeriod": "{price} / {period}",
-  "@premiumPricePerPeriod": {
-    "placeholders": {
-      "price": {
-        "type": "String"
-      },
-      "period": {
-        "type": "String"
-      }
-    }
-  },
-  "premiumPurchaseConfirmBody": "This will deduct {planPrice} from your wallet balance.\n\nPlan: {plan} — {planPrice}/{period}",
-  "@premiumPurchaseConfirmBody": {
-    "placeholders": {
-      "plan": {
-        "type": "String"
-      },
-      "planPrice": {
-        "type": "String"
-      },
-      "period": {
-        "type": "String"
-      }
-    }
-  },
-  "premiumPurchasePlan": "Purchase {plan}",
-  "@premiumPurchasePlan": {
-    "placeholders": {
-      "plan": {
-        "type": "String"
-      }
-    }
-  },
-  "premiumSave33": "Save 33%",
   "premiumTitle": "Premium",
   "premiumUnlockTitle": "Unlock Premium",
-  "premiumUpgradeToUnlock": "Upgrade to unlock",
-  "premiumWhatYouGet": "What you get",
-  "premiumYearly": "Yearly",
+  "premiumUpgradeToUnlock": "Requires Premium",
   "premiumYourAvatars": "Your Avatars",
   "premiumYourThemes": "Your Themes",
   "resetToDefault": "Reset to Default",
@@ -1979,15 +1672,6 @@
       }
     }
   },
-  "packAdditionalFeeBody": "This pack has extra cards, which requires an additional fee of {fee} MRU to submit for review.",
-  "@packAdditionalFeeBody": {
-    "placeholders": {
-      "fee": {
-        "type": "int"
-      }
-    }
-  },
-  "packAdditionalFeeTitle": "Additional fee required",
   "packAgeLabel": "Age",
   "packAllowedLabel": "Allowed",
   "packAudienceEveryone": "Everyone",
@@ -2109,7 +1793,7 @@
   "packGenderFemaleOnly": "Female only",
   "packGenderLabel": "Gender",
   "packGenderMaleOnly": "Male only",
-  "packImportantRulesBody": "• Packs cannot be edited after publishing.\n• You must purchase your own pack to use it in games.\n• Moderation review takes 1–3 business days.",
+  "packImportantRulesBody": "• Packs cannot be edited after publishing.\n• You must own your pack to use it in games.\n• Moderation review takes 1–3 business days.",
   "packImportantRulesTitle": "📋 Important rules:",
   "packInformationTitle": "Pack information",
   "packLangArabic": "Arabic",
@@ -2168,14 +1852,6 @@
   "packNoReactionImagesYet": "No reaction images yet",
   "packNotLoggedIn": "Not logged in",
   "packOneNamePerLanguage": "One name and description per language you selected.",
-  "packPayFeeAndSubmit": "Pay {fee} MRU & Submit",
-  "@packPayFeeAndSubmit": {
-    "placeholders": {
-      "fee": {
-        "type": "int"
-      }
-    }
-  },
   "packPendingAdminReview": "\"{name}\" is pending admin review",
   "@packPendingAdminReview": {
     "placeholders": {
@@ -2194,7 +1870,6 @@
       }
     }
   },
-  "packPriceFreeHint": "Leave as 0 for a free pack",
   "packMinPriceError": "Paid packs must be priced at {min} MRU or more",
   "@packMinPriceError": {
     "placeholders": {
@@ -2273,18 +1948,6 @@
       "date": {"type": "String"}
     }
   },
-  "packPaidExtraPackHint": "You can create an extra pack now for {price} MRU.",
-  "@packPaidExtraPackHint": {
-    "placeholders": {
-      "price": {"type": "int"}
-    }
-  },
-  "packCreateExtraPackPriced": "Create Extra Pack — {price} MRU",
-  "@packCreateExtraPackPriced": {
-    "placeholders": {
-      "price": {"type": "int"}
-    }
-  },
   "packCreatorNotVerified": "Only verified creators can submit packs for review.",
   "packAlreadyHasDraft": "You already have a draft pack. Finish, publish, or delete it before creating another draft.",
   "packDraftLimitReachedTitle": "Draft Limit Reached",
@@ -2348,27 +2011,6 @@
   "packAdditionalDetailsOptional": "Additional details (optional)",
   "packAvailableOffline": "Available offline",
   "packBrowseMarketplaceHint": "Browse the marketplace to find packs.",
-  "packConfirmPurchaseTitle": "Confirm Purchase",
-  "packConfirmPurchaseBody": "You're about to purchase \"{name}\" for {price}.",
-  "@packConfirmPurchaseBody": {
-    "placeholders": {
-      "name": {
-        "type": "String"
-      },
-      "price": {
-        "type": "String"
-      }
-    }
-  },
-  "packConfirmPurchaseAction": "Purchase",
-  "packBuyForPrice": "Buy for {price} MRU",
-  "@packBuyForPrice": {
-    "placeholders": {
-      "price": {
-        "type": "int"
-      }
-    }
-  },
   "packCancelled": "Cancelled",
   "packCancelledOn": "Cancelled on {date}",
   "@packCancelledOn": {
@@ -2458,18 +2100,8 @@
   },
   "packFallbackTitle": "Pack",
   "packFeaturedHeading": "⭐ Featured",
-  "packFreeOfflineLimitNotice": "Free plan allows 1 offline pack. Upgrade to Premium for 10.",
+  "packFreeOfflineLimitNotice": "Free plan allows 1 offline pack.",
   "packFullName": "Full name",
-  "packGetFreePack": "Get Free Pack",
-  "packInsufficientBalance": "Insufficient Balance",
-  "packInsufficientBalanceBody": "You need {price} MRU to purchase this pack. Your current balance is too low.",
-  "@packInsufficientBalanceBody": {
-    "placeholders": {
-      "price": {
-        "type": "int"
-      }
-    }
-  },
   "packLoadingPrice": "Loading price…",
   "packMinReviewLength": "Please write at least 10 characters.",
   "packMyPhysicalRequests": "My Physical Pack Requests",
@@ -2523,30 +2155,7 @@
   "packPlayer": "Player",
   "packProBadge": "★ PRO",
   "packOfficialBadge": "Jma3a",
-  "packProcessingEllipsis": "Processing…",
   "packPromotedBadge": "PROMOTED",
-  "packPurchaseFailed": "Purchase failed: {error}",
-  "@packPurchaseFailed": {
-    "placeholders": {
-      "error": {
-        "type": "String"
-      }
-    }
-  },
-  "packPurchasedNotice": "Pack purchased! You can now download it.",
-  "packTrialBadgeTooltip": "Free trial",
-  "packTrialCardsRemaining": "{count, plural, one{1 trial card left} other{{count} trial cards left}}",
-  "@packTrialCardsRemaining": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "packTrialPromptTitle": "Enjoying this pack?",
-  "packTrialPromptBody": "You've completed your free trial. Purchase the full pack to keep playing.",
-  "packTrialPurchaseButton": "Purchase Full Pack",
-  "packTrialEndButton": "End Trial",
   "packQuantity": "Quantity",
   "packRedownload": "Re-download",
   "packRejectionReason": "Rejection reason: {reason}",
@@ -2578,22 +2187,6 @@
   "packReportSubmitted": "Report submitted.",
   "packReportAlreadySubmitted": "You've already reported this pack.",
   "packReportFailed": "Couldn't submit your report. Please try again.",
-  "packPromoteYourPack": "Promote your pack",
-  "packPromotionDuration24h": "24 Hours",
-  "packPromotionDuration7d": "1 Week",
-  "packPromotionSubtitle": "Feature this pack in the promoted carousel to reach more players.",
-  "packPromotionSubmit": "Promote",
-  "packPromotionSuccess": "Pack promoted successfully!",
-  "packPromotionActiveLabel": "Promotion active",
-  "packPromotionEndsAt": "Ends {date}",
-  "@packPromotionEndsAt": {
-    "placeholders": {
-      "date": {
-        "type": "String"
-      }
-    }
-  },
-  "packPromotionAlreadyActive": "This pack already has an active promotion.",
   "packRequestPhysicalCopy": "Request Physical Copy",
   "packRetryDownload": "Retry download",
   "packReviewSubmitted": "Review submitted!",
@@ -2626,7 +2219,6 @@
   "packTabFeatured": "Featured",
   "packTabMyPacks": "My Packs",
   "packTabMyAvailablePacks": "My Available Packs",
-  "packTopUpWallet": "Top Up Wallet",
   "packWriteReview": "Write a review",
   "packWriteReviewShort": "Write review",
   "packYouOwnThisPack": "You own this pack",
@@ -2819,10 +2411,8 @@
       }
     }
   },
-  "avatarUpgradeToPremium": "Upgrade to Premium ✦",
   "profileAbout": "About",
   "profileAgeOptionalLabel": "Age (optional)",
-  "profileBalanceAndTransactions": "Balance & transactions",
   "profileAnswerSurvey": "Answer our survey",
   "profileAnswerSurveyHint": "Tell us what you think — it only takes a minute",
   "profileBioTooLong": "Maximum 280 characters",
@@ -2861,23 +2451,8 @@
   "profilePersonalDetails": "Personal details",
   "profilePhoneOptionalLabel": "Phone number (optional)",
   "profilePreferences": "Preferences",
-  "profilePremiumActiveExpires": "Active · expires {day}/{month}/{year}",
-  "@profilePremiumActiveExpires": {
-    "placeholders": {
-      "day": {
-        "type": "int"
-      },
-      "month": {
-        "type": "int"
-      },
-      "year": {
-        "type": "int"
-      }
-    }
-  },
   "profileSaveUsername": "Save username",
   "profileTakePhoto": "Take photo",
-  "profileUnlockPremiumHint": "Unlock themes, avatars, anonymous chat & more",
   "profileUploadingPhoto": "Uploading photo…",
   "profileUsernameCooldownNotice": "Username change available in {days, plural, one{{days} day} other{{days} days}}.\nChanges are limited to once every 30 days.",
   "@profileUsernameCooldownNotice": {
@@ -2954,18 +2529,6 @@
   "notifTypeWalletDebit": "Wallet Debit",
   "viewLabel": "View",
   "chatTitle": "Chat",
-  "gameSettingsAllowOneReplay": "Allow one replay",
-  "gameSettingsProofViewDuration": "Proof view duration (auto-closes after this)",
-  "gameSettingsProofUnlimitedDuration": "Unlimited duration (until next round)",
-  "gameSettingsProofReplayHint": "Premium viewers get one extra replay beyond this.",
-  "gameSettingsProofAutoCloseHint": "Proof auto-closes after {seconds}s — no replay while a duration is set.",
-  "@gameSettingsProofAutoCloseHint": {
-    "placeholders": {
-      "seconds": {
-        "type": "int"
-      }
-    }
-  },
   "gameSettingsRequireApprovalToSpectate": "Require approval to spectate",
   "moderationBanPlayer": "Ban player",
   "moderationDuration1Hour": "1 hour",
@@ -3148,10 +2711,6 @@
   "sharedPageNotFound": "Page Not Found",
   "sharedPageNotFoundHint": "The page you're looking for doesn't exist.",
   "sharedReject": "Reject",
-  "sharedRemoveSpectator": "Remove Spectator",
-  "sharedSetSpectator": "Set as Spectator",
-  "sharedSetSpectatorBody": "This player will stop counting as an active player and won't be able to take turns, but can still watch. You can reverse this anytime.",
-  "sharedSetSpectatorTitle": "Set as Spectator",
   "sharedRoomMembers": "Room members",
   "sharedRoomMembersCount": "👥 Room Members ({count})",
   "@sharedRoomMembersCount": {
@@ -3164,19 +2723,6 @@
   "sharedRoomSettingsTitle": "This room's settings",
   "sharedRuleNoTurnTimer": "No turn timer",
   "sharedRuleObjective": "Objective",
-  "sharedRulePolicyEveryone": "everyone in the game",
-  "sharedRulePolicyPlayersOnly": "players only",
-  "sharedRulePolicySpectatorsOnly": "spectators only",
-  "sharedRuleProofViewOnce": "Proof can be viewed once (Premium: twice).",
-  "sharedRuleProofViewTwice": "Proof can be viewed twice (Premium: three times).",
-  "sharedRuleProofVisibleTo": "Proof is visible to: {policy}.",
-  "@sharedRuleProofVisibleTo": {
-    "placeholders": {
-      "policy": {
-        "type": "String"
-      }
-    }
-  },
   "sharedRulePunishmentOff": "Punishment mode is OFF — skipping isn't offered as an option.",
   "sharedRulePunishmentOn": "Punishment mode is ON — skipping means every other player submits one punishment and you pick which you'll do.",
   "sharedRuleScoring": "Scoring",
@@ -3215,7 +2761,6 @@
   "friendsDecline": "Decline",
   "friendsPendingRequestsHeader": "Pending Friendship Requests",
   "friendsYourFriendsHeader": "Your Friends",
-  "friendsAdd": "Add",
   "friendsAddFriend": "Add friend",
   "friendsBlock": "Block",
   "friendsReport": "Report",
@@ -3232,8 +2777,6 @@
   "friendsOfficialAccount": "Official Jma3a Account",
   "friendsJma3aFeedHeader": "Jma3a Feed",
   "friendsAdvertisementsHeader": "Advertisements",
-  "friendsFollowersCount": "{count} Followers",
-  "@friendsFollowersCount": { "placeholders": { "count": { "type": "int" } } },
   "@friendsCreatedBy": {
     "placeholders": {
       "name": {
@@ -3256,10 +2799,6 @@
   "friendsNoBlockedUsersHint": "Users you block will appear here.",
   "friendsNoFriendsHint": "Explore people and find players to connect with.",
   "friendsNoFriendsYet": "No friends yet",
-  "friendsNoPendingRequests": "No pending requests",
-  "friendsNoPendingRequestsHint": "Friend requests you receive will appear here.",
-  "friendsNoResults": "No results",
-  "friendsNoResultsHint": "Try a different name or username.",
   "friendsOfflineCount": "Offline — {count}",
   "@friendsOfflineCount": {
     "placeholders": {
@@ -3331,7 +2870,8 @@
     }
   },
   "creatorReqPlayedWithOthers": "Play a game with other users",
-  "creatorApplyNow": "Apply Now",
+  "creatorRequestViaWhatsApp": "Request to become a Verified Creator",
+  "creatorWhatsAppMessage": "Hi, I'd like to request Verified Creator status on Jma3a.",
   "creatorKeepGoing": "Keep going — you'll be able to apply once every requirement above is met.",
   "creatorRecoveryBannerTitle": "Your verified creator status was removed",
   "creatorRecoveryBannerBody": "Your Premium Plus subscription lapsed and your verified creator status/privileges were automatically removed. You can submit a recovery request for admin review.",
@@ -3355,21 +2895,11 @@
   "creatorRecoveryPendingTitle": "Recovery Request Pending",
   "creatorRecoveryPendingBody": "Your recovery request is being reviewed by an admin. You'll be notified once a decision is made.",
   "creatorRecoveryRejectedTitle": "Your previous recovery request was rejected",
-  "creatorApplyDialogTitle": "Apply for Verification",
-  "creatorApplyDialogRealName": "Full legal name",
-  "creatorApplyDialogBio": "Short bio (optional)",
-  "creatorApplySubmitted": "Application submitted! We'll review it soon.",
-  "creatorApplyFailed": "Failed to submit application. Please try again.",
   "profileBecomeCreator": "Become a Verified Creator",
   "profileBecomeCreatorHint": "Unlock creator tools and earnings",
   "friendsPlayingNow": "Playing now",
   "friendsProfileNotFound": "Profile not found.",
-  "friendsReceived": "Received",
   "friendsRemoveFriend": "Remove friend",
-  "friendsRequests": "Requests",
-  "friendsSearchForFriends": "Search for friends",
-  "friendsSearchHint": "Search by username or name…",
-  "friendsSearchMinChars": "Enter at least 2 characters.",
   "friendsSentCount": "Sent — {count}",
   "@friendsSentCount": {
     "placeholders": {
@@ -3410,7 +2940,6 @@
     }
   },
   "friendsUnfollow": "Unfollow",
-  "friendsUserFallback": "User",
   "friendsYouHaveBlocked": "You have blocked this user.",
   "notifJustNow": "Just now",
   "notifMinutesAgo": "{count, plural, one{{count}m ago} other{{count}m ago}}",
@@ -3440,9 +2969,9 @@
   "settingsCancelAccountDeletionFailed": "Couldn't cancel your request. It may already be past cancellation — please try again or contact support.",
   "aboutUsTitle": "About Us",
   "aboutUsVersionLabel": "Version",
-  "aboutUsDescription": "Jma3a is a social multiplayer party-game platform developed and owned by MOUJ TECH. Play Truth or Dare, Never Have I Ever, and Meme games with friends and family, create and share your own packs, build a profile, and — as a Verified Creator — earn from packs you publish.",
+  "aboutUsDescription": "Jma3a is a social multiplayer party-game platform developed and owned by MOUJ TECH. Play Truth or Dare, Never Have I Ever, and Meme games with friends and family, create and share your own packs, and build a profile as a Verified Creator.",
   "aboutUsCompanySectionTitle": "Company",
-  "aboutUsCompanyInfo": "Jma3a is developed and owned by MOUJ TECH. MOUJ TECH is responsible for the app's development, features, and ongoing operation, including community-created packs, Verified Creator tools, Premium and Premium Plus, and the creator earnings wallet.",
+  "aboutUsCompanyInfo": "Jma3a is developed and owned by MOUJ TECH. MOUJ TECH is responsible for the app's development, features, and ongoing operation, including community-created packs and Verified Creator tools.",
   "moujTechDevelopedBy": "Developed by MOUJ TECH",
   "aboutUsContactTitle": "Contact",
   "aboutUsContactEmail": "support@jma3a.app",
@@ -3452,20 +2981,19 @@
   "aboutUsSocialTiktok": "TikTok",
   "aboutUsSocialSnapchat": "Snapchat",
   "aboutUsSocialFacebook": "Facebook",
+  "aboutUsSocialWhatsapp": "WhatsApp",
   "privacyPolicyTitle": "Privacy Policy",
   "privacyPolicyIntro": "This Privacy Policy explains what information the Jma3a app collects, how it is used, and the choices you have. It describes Jma3a's actual current features. Some legal details specific to MOUJ TECH as a company (such as its registered address and formal contact channels) are still being finalized and will be added here once available — this does not change what is described below about how the app itself handles your information.",
   "privacySectionInfoCollected": "Information We Collect",
-  "privacySectionInfoCollectedBody": "Account information: the email address you sign up with, and your chosen username, display name, bio, and avatar (either an uploaded photo or a generated avatar). Authentication: your password is handled by our authentication provider and is never visible to us in plain text; sign-in also uses one-time verification codes sent to your email. Activity and social data: the rooms and games you join or host, your in-game actions, scores, and streaks, chat messages you send in game rooms, and your friends, followers, and any accounts you block. Purchases and creator activity: packs you buy or publish, your Verified Creator status, wallet balance and payout history, and — if you request a physical pack — the name, phone number, and delivery area you provide for that order. Reports: if you report a pack, we record the reason and any details you add. Account deletion requests: if you request to delete your account, we record the reason you select and the request's status. Device and app information: your app version and build number, and basic platform information (Android or iOS), used to keep the app working correctly and to check for required updates.",
+  "privacySectionInfoCollectedBody": "Account information: the email address you sign up with, and your chosen username, display name, bio, and avatar (either an uploaded photo or a generated avatar). Authentication: your password is handled by our authentication provider and is never visible to us in plain text; sign-in also uses one-time verification codes sent to your email. Activity and social data: the rooms and games you join or host, your in-game actions, scores, and streaks, chat messages you send in game rooms, and your friends, followers, and any accounts you block. Ownership and creator activity: packs you own or publish, and your Verified Creator status. Reports: if you report a pack, we record the reason and any details you add. Account deletion requests: if you request to delete your account, we record the reason you select and the request's status. Device and app information: your app version and build number, and basic platform information (Android or iOS), used to keep the app working correctly and to check for required updates.",
   "privacySectionHowUsed": "How We Use Your Information",
-  "privacySectionHowUsedBody": "We use your information to operate the app's core features: creating and securing your account, matching you with rooms and games, showing your profile and stats to other players and friends as intended by each feature, processing pack purchases and creator payouts, delivering physical pack orders you request, reviewing reports and account deletion requests, and sending the notifications described below. We do not use a third-party analytics or advertising-tracking SDK in this app. We do not sell your information.",
+  "privacySectionHowUsedBody": "We use your information to operate the app's core features: creating and securing your account, matching you with rooms and games, showing your profile and stats to other players and friends as intended by each feature, reviewing reports and account deletion requests, and sending the notifications described below. We do not use a third-party analytics or advertising-tracking SDK in this app. We do not sell your information.",
   "privacySectionNotifications": "Notifications",
   "privacySectionNotificationsBody": "Jma3a sends notifications for things like game invites, room activity, friend requests, and messages. Push delivery is handled through OneSignal, a third-party notification service; some notifications are also scheduled directly on your device. You can manage notification permissions at any time from your device's system settings.",
-  "privacySectionPurchases": "Purchases",
-  "privacySectionPurchasesBody": "Some packs are paid, and Premium/Premium Plus are paid subscriptions. Verified Creators can publish packs and earn from them through an in-app wallet. Jma3a does not directly collect or store your full payment card details; payments are processed through the payment methods offered at checkout. Purchase and payout records (amounts, pack/subscription identifiers, and status) are kept as part of your account and creator history.",
   "privacySectionUserContent": "User-Generated Content",
   "privacySectionUserContentBody": "Packs, cards, and other content you create and publish may be visible to other users as intended by the feature you used to create them (for example, a published pack in the marketplace). Chat messages you send in a room are visible to other members of that room. You are responsible for the content you choose to create and share.",
   "privacySectionAccountDeletion": "Account Deletion",
-  "privacySectionAccountDeletionBody": "You can request account deletion from Settings. This submits a request for review — your account is not deleted immediately. While a request is pending, you can cancel it from Settings and your account stays active. Once a request has been accepted and processed, deletion cannot be undone, and your profile, packs, wallet balance, and game history are permanently removed.",
+  "privacySectionAccountDeletionBody": "You can request account deletion from Settings. This submits a request for review — your account is not deleted immediately. While a request is pending, you can cancel it from Settings and your account stays active. Once a request has been accepted and processed, deletion cannot be undone, and your profile, packs, and game history are permanently removed.",
   "privacySectionThirdParty": "Third-Party Services",
   "privacySectionThirdPartyBody": "Jma3a relies on a small number of third-party services to operate: our backend database and authentication provider, cloud object storage for images you upload (such as avatars and pack covers), and OneSignal for push notifications. These providers process data only as needed to provide their service to Jma3a.",
   "privacySectionContact": "Contact Us",
@@ -3483,10 +3011,6 @@
   "termsSectionCreatorsBody": "Jma3a offers Verified Creator status to eligible content creators, shown on their profile. Verified status may be granted or removed based on your account's standing and compliance with these Terms. An official Jma3a account may also appear in the app to share announcements and responses.",
   "termsSectionRoomsGames": "Rooms & Games",
   "termsSectionRoomsGamesBody": "Jma3a lets you create or join rooms to play multiplayer games with friends and other players, using packs of content provided by Jma3a or created by users. Room hosts and members are expected to follow these Terms while playing.",
-  "termsSectionPremium": "Premium & Premium Plus",
-  "termsSectionPremiumBody": "Jma3a offers optional Premium and Premium Plus subscriptions that unlock additional features and benefits within the app. What each tier includes may change over time; you will be shown what a subscription includes before you purchase it.",
-  "termsSectionWallet": "Wallet & Payments",
-  "termsSectionWalletBody": "Jma3a includes an in-app wallet that can be topped up using supported local payment methods. Creators may earn wallet balance from their content and request withdrawals, subject to Jma3a's review. Payments are also subject to the terms of the payment method provider you use.",
   "termsSectionModeration": "Reporting & Moderation",
   "termsSectionModerationBody": "You can report or block other users and content that violates these Terms. Jma3a may review reports and take action, including removing content, restricting features, or suspending or terminating accounts that violate these Terms.",
   "termsSectionTermination": "Suspension & Termination",
@@ -3508,11 +3032,9 @@
     }
   },
   "accountBannedPermanently": "Your account has been suspended from using Jma3a.",
-  "appUpdateAvailableTitle": "Update Available",
   "appUpdateDefaultTitle": "A new version is available",
   "appUpdateDefaultMessage": "Please update the app to continue enjoying the latest features.",
   "appUpdateNowButton": "Update",
-  "appUpdateLaterButton": "Later",
   "appUpdateBannerMessage": "A new version of Jma3a is available.",
   "deleteAccountReasonPrompt": "Why are you leaving?",
   "deleteAccountReasonNoLongerUse": "I no longer use the app",
@@ -3523,7 +3045,6 @@
   "deleteAccountReasonTemporaryBreak": "Temporary break",
   "deleteAccountReasonOther": "Other",
   "deleteAccountReasonOtherHint": "Please tell us more (required)",
-  "deleteAccountReasonValidation": "Please select a reason",
   "deleteAccountOtherDescriptionValidation": "Please describe your reason",
   "deleteAccountContinueButton": "Continue",
 
@@ -3535,8 +3056,6 @@
   "tutBrowserJoinCodeBody": "Got an invite code? Enter it here to jump into a private room.",
   "tutBrowserFilterTitle": "Find a game",
   "tutBrowserFilterBody": "Filter public rooms by game type to find one that's open to join.",
-  "tutCreateNameTitle": "Name your room",
-  "tutCreateNameBody": "Give your room a name so friends can recognise it.",
   "tutCreateVisibilityTitle": "Public or private",
   "tutCreateVisibilityBody": "Public rooms show in Browse for everyone. Private rooms are invite-only.",
   "tutCreateSpectatorsTitle": "Spectators",
@@ -3632,9 +3151,6 @@
   "reportTargetPack": "Reported a pack",
   "reportTargetRoom": "Reported a room",
   "reportTargetChatMessage": "Reported a message",
-  "walletDepositsUnavailable": "Deposits are temporarily unavailable.",
-  "walletWithdrawalsUnavailable": "Withdrawals are temporarily unavailable.",
-  "walletFinanceServiceUnavailable": "Finance service temporarily unavailable",
 
   "authIdentifierLabel": "Email or phone number",
   "authIdentifierHint": "you@example.com or 12345678",
@@ -3679,23 +3195,18 @@
   "authReadyToPlay": "Ready to play?",
   "authLegacyNoPasswordTitle": "No password yet",
   "authLegacyNoPasswordBody": "This account doesn't have a password yet. Verify with a one-time code to create one.",
-  "authVerifyWithOtp": "Verify with OTP",
   "authDontHaveAccount": "Don't have an account?",
   "authCreateAccount": "Create account",
 
   "passwordSettingsTitle": "Password & Security",
-  "passwordSettingsUpdateTitle": "Update Password",
-  "passwordSettingsUpdateSubtitle": "Change your password securely.",
   "passwordSettingsVerifyButton": "Verify Current Password",
   "passwordSettingsChangeButton": "Change Password",
-  "passwordSettingsOtpNotice": "We'll send a verification code to confirm it's you before applying this change.",
   "passwordSettingsCurrentLabel": "Current password",
   "passwordSettingsNewLabel": "New password",
   "passwordSettingsConfirmLabel": "Confirm new password",
   "passwordSettingsNoPasswordTitle": "Password",
   "passwordSettingsNoPasswordBody": "You haven't set a password yet.",
   "passwordSettingsHasPasswordBody": "Your password is set.",
-  "passwordSettingsSetButton": "Set password with OTP",
   "passwordSettingsChangeSuccess": "Password changed successfully",
 
   "settingsPassword": "Password & Security",
@@ -3752,5 +3263,38 @@
   "surveyChoiceLeaderboards": "Leaderboards",
   "surveyChoiceCustomization": "More customization (avatars/themes)",
   "surveyChoiceBetterNotifications": "Improved notifications",
-  "surveyChoiceOther": "Other"
+  "surveyChoiceOther": "Other",
+  "voiceJoin": "Join voice",
+  "voiceLeave": "Leave voice",
+  "voiceConnecting": "Connecting to voice…",
+  "voiceReconnecting": "Reconnecting to voice…",
+  "voiceSpeaking": "In voice · you can speak",
+  "voiceListening": "In voice · listening",
+  "voiceListenOnlyNotice": "Spectators can listen but not speak.",
+  "voiceMicOn": "Microphone on — tap to mute",
+  "voiceMicOff": "Microphone off — tap to talk",
+  "voiceRejoin": "Rejoin voice",
+  "voiceUnavailable": "Voice chat isn't available right now.",
+  "voiceErrorNotAllowed": "You can't join voice in this room.",
+  "voiceErrorRateLimited": "Too many attempts. Wait a moment and try again.",
+  "voiceMicPermissionDenied": "Microphone unavailable. Check the microphone permission in Settings.",
+  "voiceDisconnectedElsewhere": "You joined voice on another device.",
+  "voiceAwayPendingApproval": "You can join voice once the host lets you back into the game.",
+  "voiceDisconnected": "Voice disconnected.",
+  "voiceErrorFailed": "Couldn't connect to voice. Try again.",
+  "voiceRoleChangedListenOnly": "You're now a spectator. Rejoin voice to listen.",
+  "voiceMuteFailedForRecording": "Couldn't turn off your voice chat microphone, so recording didn't start. Try again.",
+  "voiceChatSetting": "Voice chat",
+  "voiceChatSettingOnSubtitle": "On — members join voice automatically; microphones start muted.",
+  "voiceChatSettingOffSubtitle": "Off — nobody can join voice in this room.",
+  "voiceDailyLimitReached": "Basic accounts can turn on voice chat in one room per day. Try again after midnight (Nouakchott time), or upgrade to Premium.",
+  "voiceSettingFailed": "Couldn't change voice chat. Try again.",
+  "voiceRetry": "Retry voice",
+  "voiceMutedByAdmin": "A room admin muted your microphone.",
+  "voiceMuteMember": "Mute microphone",
+  "voiceUnmuteMember": "Unmute microphone",
+  "voiceMemberMutedTooltip": "Microphone muted by an admin",
+  "voiceMuteActionFailed": "Couldn't change this member's microphone. Try again.",
+  "voiceDisabledForRoom": "Voice chat is off in this room.",
+  "roomsPermMuteVoice": "Mute microphones"
 }

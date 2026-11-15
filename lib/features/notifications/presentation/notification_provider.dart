@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui';
 
+import 'package:flutter/widgets.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
@@ -12,6 +13,14 @@ import '../data/notification_repository.dart';
 export '../domain/notification_entity.dart';
 
 const _uuid = Uuid();
+
+/// Signature of [LocalNotificationService.show] (injectable for tests).
+typedef LocalNotificationPresenter =
+    Future<void> Function({
+      required String title,
+      required String body,
+      Map<String, dynamic>? data,
+    });
 
 /// Item 5 — true when a just-arrived chatMessage notification is for the
 /// room the recipient currently has open on its chat tab, and is
@@ -36,10 +45,16 @@ bool isRedundantChatMessageNotification({
 /// Toast queue: FIFO, max 3 simultaneous toasts. Auto-dismiss timing and
 /// exit animation are owned by InAppToastOverlay, not this provider.
 class NotificationProvider extends BaseProvider {
-  NotificationProvider({required NotificationRepository notificationRepository})
-    : _repo = notificationRepository;
+  NotificationProvider({
+    required NotificationRepository notificationRepository,
+    // Tests only; the app always uses LocalNotificationService.
+    LocalNotificationPresenter? showLocalNotification,
+  }) : _repo = notificationRepository,
+       _showLocalNotification =
+           showLocalNotification ?? LocalNotificationService.instance.show;
 
   final NotificationRepository _repo;
+  final LocalNotificationPresenter _showLocalNotification;
 
   // ── State ──────────────────────────────────────────────────────────────────
   List<NotificationEntity> _notifications = [];
@@ -192,56 +207,73 @@ class NotificationProvider extends BaseProvider {
             column: 'user_id',
             value: userId,
           ),
-          callback: (payload) {
-            final row = payload.newRecord;
-            final type = NotificationType.fromString(
-              row['type'] as String? ?? 'system',
-            );
-
-            final data = (row['data'] as Map?)?.cast<String, dynamic>() ?? {};
-
-            final isRedundantChatNotif = isRedundantChatMessageNotification(
-              type: type,
-              activeChatRoomId: _activeChatRoomId,
-              data: data,
-            );
-
-            final entity = NotificationEntity(
-              id: row['id'] as String,
-              userId: userId,
-              type: type,
-              titleJson: parseLocalizedJson(row['title']),
-              bodyJson: parseLocalizedJson(row['body']),
-              data: data,
-              isRead: isRedundantChatNotif,
-              createdAt: DateTime.parse(row['created_at'] as String),
-              expiresAt: row['expires_at'] != null
-                  ? DateTime.tryParse(row['expires_at'] as String)
-                  : null,
-            );
-
-            // Prepend to list
-            _notifications = [entity, ..._notifications];
-
-            // Show in-app toast if user is in the app and preference is on
-            if (!isRedundantChatNotif && showsInApp(type)) {
-              _enqueueToast(entity);
-            }
-
-            // A pack entitlement just landed in the database — surface it
-            // so PackProvider's in-memory ownership state (otherwise only
-            // refreshed on login/resume/tab-switch) gets refreshed while
-            // the app stays open on the current screen. See
-            // HomeShellScreen for the consumer.
-            if (type == NotificationType.packGranted) {
-              _pendingEntitlementNotification = entity;
-            }
-
-            notifyListeners();
-            AppLogger.debug('NotificationProvider: new ${type.name}');
-          },
+          callback: (payload) => handleRealtimeInsert(userId, payload.newRecord),
         )
         .subscribe();
+  }
+
+  /// Whether the app is on screen right now — Flutter's own lifecycle
+  /// state, not presence/online status. Only `resumed` counts: inactive,
+  /// hidden, paused and detached all mean the user is not looking at the
+  /// app, so OneSignal (the OS) presents the notification instead.
+  static bool get _appIsInForeground =>
+      WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
+
+  /// One notifications INSERT delivered by the CDC channel above.
+  ///
+  /// The row always goes into the in-app list (history, unread count,
+  /// entitlement refresh). It is PRESENTED here (in-app toast + local
+  /// notification sound) only while the app is in the foreground: the
+  /// channel stays connected for a while after the app is backgrounded
+  /// (notably on Android), and presenting from here then would duplicate
+  /// the OneSignal push the OS shows for the same notification.
+  @visibleForTesting
+  void handleRealtimeInsert(String userId, Map<String, dynamic> row) {
+    final type = NotificationType.fromString(
+      row['type'] as String? ?? 'system',
+    );
+
+    final data = (row['data'] as Map?)?.cast<String, dynamic>() ?? {};
+
+    final isRedundantChatNotif = isRedundantChatMessageNotification(
+      type: type,
+      activeChatRoomId: _activeChatRoomId,
+      data: data,
+    );
+
+    final entity = NotificationEntity(
+      id: row['id'] as String,
+      userId: userId,
+      type: type,
+      titleJson: parseLocalizedJson(row['title']),
+      bodyJson: parseLocalizedJson(row['body']),
+      data: data,
+      isRead: isRedundantChatNotif,
+      createdAt: DateTime.parse(row['created_at'] as String),
+      expiresAt: row['expires_at'] != null
+          ? DateTime.tryParse(row['expires_at'] as String)
+          : null,
+    );
+
+    // Prepend to list
+    _notifications = [entity, ..._notifications];
+
+    // Show in-app toast if the app is on screen and preference is on
+    if (!isRedundantChatNotif && showsInApp(type) && _appIsInForeground) {
+      _enqueueToast(entity);
+    }
+
+    // A pack entitlement just landed in the database — surface it
+    // so PackProvider's in-memory ownership state (otherwise only
+    // refreshed on login/resume/tab-switch) gets refreshed while
+    // the app stays open on the current screen. See
+    // HomeShellScreen for the consumer.
+    if (type == NotificationType.packGranted) {
+      _pendingEntitlementNotification = entity;
+    }
+
+    notifyListeners();
+    AppLogger.debug('NotificationProvider: new ${type.name}');
   }
 
   // ── Toast queue ────────────────────────────────────────────────────────────
@@ -277,7 +309,7 @@ class NotificationProvider extends BaseProvider {
     // toast itself already passed through, so "in-app" and "sound" always
     // agree with each other and with the user's own preference.
     final lang = PlatformDispatcher.instance.locale.languageCode;
-    LocalNotificationService.instance.show(
+    _showLocalNotification(
       title: toast.titleFor(lang),
       body: toast.bodyFor(lang),
       data: toast.data,
@@ -339,5 +371,11 @@ class NotificationProvider extends BaseProvider {
         .map((p) => p.type == type ? p.copyWith(inApp: inApp, push: push) : p)
         .toList();
     notifyListeners();
+  }
+
+  /// Test seam: preferences as _loadPreferences would have set them.
+  @visibleForTesting
+  void debugSetPreferences(List<NotificationPreference> preferences) {
+    _preferences = preferences;
   }
 }

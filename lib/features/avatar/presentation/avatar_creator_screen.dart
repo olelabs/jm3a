@@ -7,8 +7,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/extensions/context_ext.dart';
 import '../../../core/providers/auth_provider.dart';
-import '../../../core/router/route_names.dart';
-import '../../../core/router/app_router.dart';
 import '../../../shared/widgets/overlays/confirm_dialog.dart';
 
 class AvatarConfig {
@@ -679,11 +677,6 @@ class _AvatarCreatorScreenState extends State<AvatarCreatorScreen> {
                 Text(
                   context.l10n.avatarCustomAvatarsHint,
                   textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 24),
-                FilledButton(
-                  onPressed: () => AppRouter.router.push(RouteNames.premium),
-                  child: Text(context.l10n.avatarUpgradeToPremium),
                 ),
               ],
             ),

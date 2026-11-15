@@ -22,23 +22,13 @@ void main() {
         'room_creation_daily_limit_premium': 15,
         'offline_pack_limit_basic': 1,
         'offline_pack_limit_premium': 10,
-        'pack_submission_free_monthly_limit': 2,
-        'pack_submission_min_gap_days': 15,
-        'pack_extra_creation_price_mru': 300,
         'physical_pack_price_mru': 1500,
-        'pack_promotion_price_24h_mru': 100,
-        'pack_promotion_price_7d_mru': 500,
       });
       expect(config.roomCreationDailyLimitBasic, 5);
       expect(config.roomCreationDailyLimitPremium, 15);
       expect(config.offlinePackLimitBasic, 1);
       expect(config.offlinePackLimitPremium, 10);
-      expect(config.packSubmissionFreeMonthlyLimit, 2);
-      expect(config.packSubmissionMinGapDays, 15);
-      expect(config.packExtraCreationFeeMru, 300);
       expect(config.physicalPackPriceMru, 1500);
-      expect(config.packPromotionPrice24hMru, 100);
-      expect(config.packPromotionPrice7dMru, 500);
     });
 
     test('a jsonb-numeric-as-string value (e.g. from a hand-edited row) '
@@ -56,9 +46,6 @@ void main() {
       expect(config.roomCreationDailyLimitPremium, 15);
       expect(config.offlinePackLimitBasic, 1);
       expect(config.offlinePackLimitPremium, 10);
-      expect(config.packSubmissionFreeMonthlyLimit, 2);
-      expect(config.packSubmissionMinGapDays, 15);
-      expect(config.packExtraCreationFeeMru, 300);
     });
 
     test('an unparseable value falls back rather than throwing', () {
@@ -95,12 +82,7 @@ void main() {
         'room_creation_daily_limit_premium': 15,
         'offline_pack_limit_basic': 1,
         'offline_pack_limit_premium': 10,
-        'pack_submission_free_monthly_limit': 2,
-        'pack_submission_min_gap_days': 15,
-        'pack_extra_creation_price_mru': 300,
         'physical_pack_price_mru': 1500,
-        'pack_promotion_price_24h_mru': 100,
-        'pack_promotion_price_7d_mru': 500,
       });
       final restored = PlatformConfig.fromJson(original.toJson());
       expect(restored.toJson(), equals(original.toJson()));
@@ -192,53 +174,38 @@ void main() {
     });
   });
 
-  // Sections 9-11 of the current audit: physical-pack requests, pack
-  // promotions, and deposits/withdrawals — each an independent
-  // admin-configurable enable/disable toggle, same fromRows/fallback/toJson
-  // machinery as every other flag above.
-  group('feature toggles: physical packs / promotions / deposits / '
-      'withdrawals (this session)', () {
-    test('all four default true (preserve today\'s always-on behavior) '
+  // Section 9 of the earlier audit: physical-pack requests — an
+  // independent admin-configurable enable/disable toggle, same
+  // fromRows/fallback/toJson machinery as every other flag above.
+  // (Sibling toggles depositsEnabled, packPromotionsEnabled, and — as of
+  // the Stage 8 mobile wallet removal — withdrawalsEnabled were removed
+  // along with the customer-facing flows they gated; those flows no
+  // longer exist client-side, so the flags had no reader. Withdrawals
+  // are now exclusively a Store Creator Portal concern.)
+  group('feature toggles: physical packs (this session)', () {
+    test('defaults true (preserve today\'s always-on behavior) '
         'when missing', () {
       final config = PlatformConfig.fromRows(const {});
       expect(config.physicalPackRequestsEnabled, isTrue);
-      expect(config.packPromotionsEnabled, isTrue);
-      expect(config.depositsEnabled, isTrue);
-      expect(config.withdrawalsEnabled, isTrue);
     });
 
-    test('each parses true/false independently of the others', () {
+    test('parses false', () {
       final config = PlatformConfig.fromRows({
         'physical_pack_requests_enabled': false,
-        'pack_promotions_enabled': true,
-        'deposits_enabled': false,
-        'withdrawals_enabled': true,
       });
       expect(config.physicalPackRequestsEnabled, isFalse);
-      expect(config.packPromotionsEnabled, isTrue);
-      expect(config.depositsEnabled, isFalse);
-      expect(config.withdrawalsEnabled, isTrue);
     });
 
-    test('a jsonb boolean-as-string value still parses for each', () {
+    test('a jsonb boolean-as-string value still parses', () {
       final config = PlatformConfig.fromRows({
         'physical_pack_requests_enabled': 'false',
-        'pack_promotions_enabled': 'false',
-        'deposits_enabled': 'false',
-        'withdrawals_enabled': 'false',
       });
       expect(config.physicalPackRequestsEnabled, isFalse);
-      expect(config.packPromotionsEnabled, isFalse);
-      expect(config.depositsEnabled, isFalse);
-      expect(config.withdrawalsEnabled, isFalse);
     });
 
     test('round-trips through toJson/fromJson', () {
       final original = PlatformConfig.fromRows({
         'physical_pack_requests_enabled': false,
-        'pack_promotions_enabled': false,
-        'deposits_enabled': true,
-        'withdrawals_enabled': false,
       });
       final restored = PlatformConfig.fromJson(original.toJson());
       expect(restored.toJson(), equals(original.toJson()));

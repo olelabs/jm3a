@@ -7,6 +7,7 @@ import 'package:jma3a/features/games/presentation/nhie_game_screen.dart';
 import 'package:jma3a/features/games/presentation/widgets/game_screen_security_gate.dart';
 import 'package:jma3a/features/packs/domain/pack_entity.dart';
 import 'package:jma3a/features/rooms/presentation/room_provider.dart';
+import 'package:jma3a/features/voice/presentation/voice_room_controller.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
@@ -39,7 +40,6 @@ import '../../features/games/engine/base_game_engine.dart';
 import '../../features/games/truth_or_dare/presentation/screens/tod_game_screen.dart';
 import '../../features/packs/presentation/screens/pack_detail_screen.dart';
 import '../../features/survey/presentation/screens/survey_screen.dart';
-import '../../features/wallet/presentation/screens/wallet_home_screen.dart';
 import '../../features/friends/presentation/screens/friends_screen.dart';
 import '../../features/friends/presentation/screens/user_profile_screen.dart';
 import '../../features/friends/presentation/screens/username_profile_resolver_screen.dart';
@@ -298,7 +298,6 @@ class AppRouter {
         final appRoutes = [
           RouteNames.home,
           RouteNames.settings,
-          RouteNames.wallet,
           RouteNames.survey,
           RouteNames.notifications,
           RouteNames.offline,
@@ -515,8 +514,13 @@ class AppRouter {
                 // subscription. May be null (e.g. a stale/backgrounded
                 // deep link); screens must handle that gracefully.
                 final roomProvider = extra['roomProvider'] as RoomProvider?;
+                // Same reasoning: the lobby's voice session, owned by the
+                // still-mounted LobbyScreen. Null -> no in-game voice overlay.
+                final voiceController =
+                    extra['voiceController'] as VoiceRoomController?;
 
                 return GameScreenSecurityGate(
+                  voiceController: voiceController,
                   child: switch (gameType) {
                     'never_have_i_ever' => NhieGameScreen(
                       roomId: roomId,
@@ -621,12 +625,7 @@ class AppRouter {
           builder: (_, __) => const ChangeUsernameScreen(),
         ),
 
-        // ---------- Wallet & Notifications ----------
-        GoRoute(
-          path: RouteNames.wallet,
-          parentNavigatorKey: rootKey,
-          builder: (_, __) => const WalletHomeScreen(),
-        ),
+        // ---------- Notifications ----------
         GoRoute(
           path: RouteNames.survey,
           parentNavigatorKey: rootKey,

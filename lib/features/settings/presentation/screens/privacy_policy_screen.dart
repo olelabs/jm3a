@@ -7,11 +7,13 @@ import '../../../../shared/widgets/mouj_tech_brand.dart';
 /// Privacy Policy — describes what this app actually collects/uses, based
 /// on the real implementation (see each privacySection*Body l10n key's own
 /// source-of-truth: account/auth fields, room/game/chat data, friends/
-/// followers/blocks, pack purchases + creator wallet, physical pack
-/// delivery details, pack reports, account deletion requests, and the
+/// followers/blocks, pack reports, account deletion requests, and the
 /// third-party services actually integrated — Supabase, object storage,
-/// OneSignal. No analytics/ad-tracking SDK is integrated, so none is
-/// claimed. Company-specific legal details (registered address, formal
+/// OneSignal. No purchase/payment/wallet data collection is described
+/// here — that commercial information now lives only in the app's actual
+/// entitlement/wallet UI, not this customer-facing legal screen. No
+/// analytics/ad-tracking SDK is integrated, so none is claimed. Company-
+/// specific legal details (registered address, formal
 /// data-protection contact, retention periods, jurisdiction) are NOT
 /// invented here — they were not verifiable from this codebase; see
 /// privacyPolicyIntro's own text and this task's final report for exactly
@@ -49,10 +51,6 @@ class PrivacyPolicyScreen extends StatelessWidget {
           _PolicySection(
             title: l10n.privacySectionNotifications,
             body: l10n.privacySectionNotificationsBody,
-          ),
-          _PolicySection(
-            title: l10n.privacySectionPurchases,
-            body: l10n.privacySectionPurchasesBody,
           ),
           _PolicySection(
             title: l10n.privacySectionUserContent,

@@ -14,6 +14,7 @@ import '../../../../features/packs/presentation/pack_provider.dart';
 import '../../../../shared/widgets/cards/j_card.dart';
 import '../../../../shared/widgets/cards/profile_pack_card.dart';
 import '../../../../shared/widgets/cards/user_avatar.dart';
+import '../../../../shared/widgets/cards/verified_creator_badge.dart';
 import '../../../../shared/widgets/game/responsive_game_text.dart';
 import '../../../../shared/widgets/qr/qr_reveal_sheets.dart';
 import '../../../../shared/widgets/navigation/jma3a_bottom_nav_bar.dart';
@@ -196,76 +197,6 @@ class _ProfileScreenState extends State<ProfileScreen> with RouteAware {
 
                   const SizedBox(height: 4),
 
-                  ListTile(
-                    leading: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFFF5A623), Color(0xFFFF6B35)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Center(
-                        child: Text(
-                          '✦',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                      ),
-                    ),
-                    title: Text(
-                      l10n.premiumTitle,
-                      style: const TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                    subtitle: Text(
-                      user.isPremiumActive
-                          ? (user.premiumExpiresAt != null
-                                ? l10n.profilePremiumActiveExpires(
-                                    user.premiumExpiresAt!.day,
-                                    user.premiumExpiresAt!.month,
-                                    user.premiumExpiresAt!.year,
-                                  )
-                                : l10n.activeLabel)
-                          : l10n.profileUnlockPremiumHint,
-                      style: TextStyle(
-                        color: user.isPremiumActive
-                            ? Colors.green.shade600
-                            : null,
-                      ),
-                    ),
-                    trailing: user.isPremiumActive
-                        ? Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.green.shade50,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.green.shade300),
-                            ),
-                            child: Text(
-                              l10n.activeLabel,
-                              style: TextStyle(
-                                color: Colors.green.shade700,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          )
-                        : const Icon(Icons.chevron_right_rounded),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    onTap: () => AppRouter.router.push(RouteNames.premium),
-                  ).animate(delay: 260.ms).fadeIn(),
-
                   if (user.isPremiumActive) ...[
                     ListTile(
                       leading: Container(
@@ -349,29 +280,6 @@ class _ProfileScreenState extends State<ProfileScreen> with RouteAware {
                       onTap: () =>
                           AppRouter.router.push(RouteNames.creatorVerification),
                     ).animate(delay: 285.ms).fadeIn(),
-
-                  ListTile(
-                    leading: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: AppColors.amberOrangeLight.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Icon(
-                        Icons.account_balance_wallet_outlined,
-                        color: AppColors.amberOrangeLight,
-                        size: 20,
-                      ),
-                    ),
-                    title: Text(l10n.walletTitle),
-                    subtitle: Text(l10n.profileBalanceAndTransactions),
-                    trailing: const Icon(Icons.chevron_right_rounded),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    onTap: () => AppRouter.router.push(RouteNames.wallet),
-                  ).animate(delay: 280.ms).fadeIn(),
 
                   // Item 5 — optional product-feedback survey. Own
                   // profile only (this screen has no isOfficial branch
@@ -527,7 +435,10 @@ class _ProfileHeader extends StatelessWidget {
                     if (user.playerIdShort != null)
                       Padding(
                         padding: const EdgeInsets.only(top: 6),
-                        child: _PlayerIdChip(playerId: user.playerIdShort!),
+                        child: _PlayerIdChip(
+                          playerId: user.playerId!,
+                          copyValue: user.playerIdShort!,
+                        ),
                       ),
                     if (currentStreak > 0)
                       Padding(
@@ -563,8 +474,7 @@ class _ProfileHeader extends StatelessWidget {
                         padding: const EdgeInsets.only(top: 4),
                         child: Row(
                           children: [
-                            Icon(
-                              Icons.verified_rounded,
+                            const VerifiedCreatorBadge(
                               size: 14,
                               color: AppColors.amberOrangeLight,
                             ),
@@ -1074,14 +984,17 @@ String _groupThousands(int n) {
 
 /// The signed-in user's own Player ID, with tap-to-copy.
 ///
-/// Shows and copies ONLY the part after the constant "JMA-" prefix (the
-/// Jma3a Store displays that prefix itself), and renders solely from the
-/// current user's own profile — no other user's Player ID is ever loaded
-/// by this app. Display-only: the value is server-generated and immutable.
+/// Displays the full "JMA-XXXXXXXX" value, but copies only the
+/// 8-character id (without the "JMA-" prefix) — the prefix is a constant
+/// the Jma3a Store already shows on its own, so only the variable part is
+/// useful to paste there. Renders solely from the current user's own
+/// profile — no other user's Player ID is ever loaded by this app.
+/// Display-only: the value is server-generated and immutable.
 class _PlayerIdChip extends StatelessWidget {
-  const _PlayerIdChip({required this.playerId});
+  const _PlayerIdChip({required this.playerId, required this.copyValue});
 
   final String playerId;
+  final String copyValue;
 
   @override
   Widget build(BuildContext context) {
@@ -1089,7 +1002,7 @@ class _PlayerIdChip extends StatelessWidget {
     return InkWell(
       borderRadius: BorderRadius.circular(8),
       onTap: () {
-        Clipboard.setData(ClipboardData(text: playerId));
+        Clipboard.setData(ClipboardData(text: copyValue));
         context.showSnackBar(l10n.profilePlayerIdCopied);
       },
       child: Padding(

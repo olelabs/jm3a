@@ -5676,7 +5676,6 @@ import 'features/packs/presentation/pack_provider.dart';
 import 'features/profile/presentation/profile_provider.dart';
 import 'features/offline/data/offline_game_provider.dart';
 import 'features/offline/data/offline_repository.dart';
-import 'features/wallet/presentation/wallet_provider.dart';
 
 // class Jma3aApp extends StatefulWidget {
 //   const Jma3aApp({super.key});
@@ -5973,12 +5972,6 @@ class _Jma3aAppState extends State<Jma3aApp> {
                     NotificationProvider(
                       notificationRepository: sl.notificationRepository,
                     ))
-                ..onAuthChanged(auth.currentUser?.id),
-        ),
-        ChangeNotifierProxyProvider<AuthProvider, WalletProvider>(
-          create: (_) => WalletProvider(walletRepository: sl.walletRepository),
-          update: (_, auth, wallet) =>
-              (wallet ?? WalletProvider(walletRepository: sl.walletRepository))
                 ..onAuthChanged(auth.currentUser?.id),
         ),
         ChangeNotifierProxyProvider<AuthProvider, PackProvider>(

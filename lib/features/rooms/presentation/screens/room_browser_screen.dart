@@ -279,10 +279,7 @@ class _RoomBrowserScreenState extends State<RoomBrowserScreen>
           content: Text(
             isPremium
                 ? context.l10n.roomsDailyLimitPremiumBody(dailyLimit)
-                : context.l10n.roomsDailyLimitFreeBody(
-                    dailyLimit,
-                    platformConfig.roomCreationDailyLimit(isPremium: true),
-                  ),
+                : context.l10n.roomsDailyLimitFreeBody(dailyLimit),
           ),
           actions: [
             TextButton(

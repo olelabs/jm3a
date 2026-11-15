@@ -71,7 +71,7 @@
 	<key>NSCameraUsageDescription</key>
 	<string>Used to scan a room or profile QR code</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Used to record voice proof for game challenges</string>
+	<string>Used to record voice proof for game challenges and, if you choose, to talk with other players in live voice chat</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

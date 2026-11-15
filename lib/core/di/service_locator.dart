@@ -356,7 +356,6 @@ import '../../features/friends/data/friends_repository.dart';
 import '../../features/friends/data/official_content_repository.dart';
 import '../../features/notifications/data/notification_repository.dart';
 import '../../features/survey/data/survey_repository.dart';
-import '../../features/wallet/data/wallet_repository.dart';
 import '../../features/packs/data/pack_repository.dart';
 import '../../features/rooms/data/room_repository.dart';
 import '../../features/rooms/data/room_cache_service.dart';
@@ -478,7 +477,6 @@ class ServiceLocator {
   SurveyRepository get surveyRepository => SurveyRepository.instance;
   NotificationRepository get notificationRepository =>
       NotificationRepository.instance;
-  WalletRepository get walletRepository => WalletRepository.instance;
   PackRepository get packRepository => PackRepository.instance;
   PlatformConfigRepository get platformConfigRepository =>
       PlatformConfigRepository.instance;

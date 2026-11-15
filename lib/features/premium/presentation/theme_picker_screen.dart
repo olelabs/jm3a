@@ -64,29 +64,20 @@ class ThemePickerScreen extends StatelessWidget {
           ),
           if (locked.isNotEmpty) ...[
             const SizedBox(height: 28),
-            Row(
-              children: [
-                Text(
-                  context.l10n.premiumPremiumThemes,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: const Color(0xFFF5A623),
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                const Spacer(),
-                TextButton(
-                  onPressed: () => AppRouter.router.push(RouteNames.premium),
-                  child: Text(context.l10n.roomsUpgradeArrow),
-                ),
-              ],
+            Text(
+              context.l10n.premiumPremiumThemes,
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w800,
+                color: const Color(0xFFF5A623),
+                letterSpacing: 0.5,
+              ),
             ),
             const SizedBox(height: 14),
             _ThemeGrid(
               themes: locked,
               currentId: svc.currentId,
               locked: true,
-              onTap: (_) => AppRouter.router.push(RouteNames.premium),
+              onTap: (_) {},
             ),
           ],
           const SizedBox(height: 28),
@@ -111,7 +102,7 @@ class ThemePickerScreen extends StatelessWidget {
                         ) ??
                         theme.colorScheme.surface,
                   )
-                : () => AppRouter.router.push(RouteNames.premium),
+                : () {},
           ),
           const SizedBox(height: 28),
           Text(

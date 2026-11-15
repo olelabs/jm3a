@@ -5538,20 +5538,15 @@
 // }
 
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:uuid/uuid.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/data/base_repository.dart';
 import '../../../core/errors/failures.dart';
 import '../../../core/network/api_client.dart';
-import '../../../core/utils/app_logger.dart';
 import '../domain/pack_entity.dart';
 import '../domain/pack_situation_tags.dart';
-import '../domain/pack_trial_state.dart';
 
 export '../domain/pack_entity.dart';
-
-const _uuid = Uuid();
 
 /// A selectable pack content language, sourced from the pack_languages
 /// table instead of a hardcoded list — admins can add new ones without an
@@ -5567,24 +5562,6 @@ class PackLanguage {
   final String name; // e.g. 'English'
   final String nativeName; // e.g. 'English' or 'العربية'
   final bool isRtl;
-}
-
-/// Server-authoritative promotion state for one pack — see
-/// PackRepository.getPackPromotionStatus.
-class PackPromotionStatus {
-  const PackPromotionStatus({required this.active, this.endsAt});
-
-  factory PackPromotionStatus.fromMap(Map<String, dynamic> map) {
-    return PackPromotionStatus(
-      active: map['active'] as bool? ?? false,
-      endsAt: map['ends_at'] != null
-          ? DateTime.parse(map['ends_at'] as String)
-          : null,
-    );
-  }
-
-  final bool active;
-  final DateTime? endsAt;
 }
 
 class PackRepository extends BaseRepository {
@@ -5676,7 +5653,6 @@ class PackRepository extends BaseRepository {
                 total_plays, version, has_spicy, is_featured, is_promoted,
                 min_age, max_age, gender_restriction, suggested_punishments,
                 min_players, max_players, category_id, download_url, published_at, created_at,
-                trial_enabled, trial_card_count,
                 profiles!creator_id(username, display_name, avatar_url, verification_status, is_official_account)
               ''')
           .eq('status', 'approved')
@@ -6047,155 +6023,6 @@ class PackRepository extends BaseRepository {
     },
   );
 
-  Future<void> purchasePack(String packId) => guardedCall(
-    operationName: 'purchasePack',
-    operation: () async {
-      final response = await _api.post(
-        '/v1/packs/purchase',
-        data: {'pack_id': packId, 'idempotency_key': _uuid.v4()},
-      );
-      final data = response.data as Map<String, dynamic>?;
-      final error = data?['error'] as String?;
-      if (error != null) throw Exception(error);
-    },
-  );
-
-  // ── Trial Packs (try before purchase) ─────────────────────────────────────
-  // See migration_2026_pack_trial.sql for the DB side: packs.trial_enabled/
-  // trial_card_count, the pack_trial_usage table (RLS: own-row read only,
-  // no client insert/update/delete — every write below goes through a
-  // SECURITY DEFINER RPC, same "no client insert" shape purchasePack's own
-  // pack_purchases already uses), and these three RPCs.
-
-  /// Trial-enabled packs the current user hasn't purchased and hasn't
-  /// already trialed — for the room-settings pack picker only (see
-  /// game_settings_sheet.dart). The RPC reads auth.uid() itself, so this
-  /// can never return another user's eligibility.
-  Future<List<PackEntity>> getEligibleTrialPacks() => guardedCall(
-    operationName: 'getEligibleTrialPacks',
-    operation: () async {
-      final rows = await _supabase.rpc('get_eligible_trial_packs');
-      return (rows as List)
-          .map((r) => _rowToEntity(Map<String, dynamic>.from(r as Map)))
-          .toList();
-    },
-  );
-
-  /// Atomically claims/starts this user's ONE trial for [packId]. Call
-  /// exactly once, when the game actually begins with a trial-eligible
-  /// pack selected — never merely because the pack was displayed/picked.
-  /// Idempotent: calling it again for a trial already in progress just
-  /// returns the existing state, never creates a second trial.
-  Future<PackTrialStatus> startPackTrial(String packId) => guardedCall(
-    operationName: 'startPackTrial',
-    operation: () async {
-      try {
-        final result = await _supabase.rpc(
-          'start_pack_trial',
-          params: {'p_pack_id': packId},
-        );
-        // Defensive against either JSON shape a single-composite-row RPC
-        // could come back as — a bare object, or (like every other
-        // RETURNS TABLE RPC already used in this codebase, e.g.
-        // get_room_by_invite_code) a one-element list. A mis-shaped
-        // response here must never throw: an uncaught exception at game
-        // start would be swallowed by initAsOwner's outer catch, leaving
-        // trialStatus null for the rest of the session and disabling
-        // trial gating entirely instead of just failing this one call.
-        final m = _asSingleRpcRow(result);
-        final cardsPlayed = m['cards_played'] as int? ?? 0;
-        return PackTrialStatus(
-          state: PackTrialState.active,
-          cardsPlayed: cardsPlayed,
-        );
-      } on PostgrestException catch (e) {
-        if (e.message.contains('not_a_trial_pack')) {
-          return const PackTrialStatus();
-        }
-        if (e.message.contains('already_owns_pack')) {
-          return const PackTrialStatus(state: PackTrialState.owned);
-        }
-        rethrow;
-      }
-    },
-  );
-
-  /// Normalizes a single-row RPC response to a plain Map regardless of
-  /// whether Supabase/PostgREST returned it as a bare JSON object or as
-  /// a one-element JSON array (both are valid encodings of "one row" for
-  /// a Postgres function; this project already has proven precedent for
-  /// the list-wrapped shape in room_repository.dart's
-  /// get_room_by_invite_code call). Never throws on a shape mismatch —
-  /// returns an empty map instead, so callers fall back to their own
-  /// defaults rather than propagate a cast exception.
-  Map<String, dynamic> _asSingleRpcRow(dynamic result) {
-    if (result is List) {
-      return result.isEmpty
-          ? const {}
-          : Map<String, dynamic>.from(result.first as Map);
-    }
-    if (result is Map) return Map<String, dynamic>.from(result);
-    return const {};
-  }
-
-  /// The authoritative "may the next card be revealed" check — call
-  /// immediately before advancing to a new card while a trial (unowned)
-  /// pack is selected. Atomically consumes one trial card if the user is
-  /// still within their limit; never lets cards_played exceed
-  /// packs.trial_card_count even under concurrent calls (row-locked
-  /// UPDATE ... WHERE cards_played < trial_card_count in the RPC).
-  Future<PackTrialStatus> tryConsumeTrialCard(String packId) => guardedCall(
-    operationName: 'tryConsumeTrialCard',
-    operation: () async {
-      // TEMPORARY DIAGNOSTIC LOGGING — pinpointing why the first
-      // production call isn't incrementing pack_trial_usage.cards_played
-      // despite start_pack_trial succeeding and the production SQL being
-      // confirmed correct. Safe to remove once the root cause is found.
-      // Uses AppLogger.warning/error deliberately, NOT .debug/.info —
-      // AppLogger's own _logLevel is Level.warning in a non-development
-      // build (see app_logger.dart), so .debug/.info are silently
-      // dropped in production and would never actually be captured here.
-      // Logs packId + response shape/value + exception details only —
-      // no tokens/JWT/credentials anywhere in this call.
-      dynamic result;
-      try {
-        result = await _supabase.rpc(
-          'try_consume_trial_card',
-          params: {'p_pack_id': packId},
-        );
-        AppLogger.warning(
-          'TRIAL_DIAG tryConsumeTrialCard RPC returned packId=$packId '
-          'rawType=${result.runtimeType} rawValue=$result',
-        );
-      } catch (e, st) {
-        AppLogger.error(
-          'TRIAL_DIAG tryConsumeTrialCard RPC THREW packId=$packId '
-          'exceptionType=${e.runtimeType} exceptionMessage=$e',
-          error: e,
-          stackTrace: st,
-        );
-        rethrow;
-      }
-      final row = _asSingleRpcRow(result);
-      AppLogger.warning(
-        'TRIAL_DIAG tryConsumeTrialCard parsed packId=$packId '
-        'rowType=${row.runtimeType} row=$row',
-      );
-      // Fail closed, not open — an empty/mis-shaped row (should never
-      // happen; try_consume_trial_card always RETURN QUERYs exactly one
-      // row on every branch) must never be read as an implicit "allowed".
-      if (row.isEmpty) {
-        return const PackTrialStatus(state: PackTrialState.exhausted);
-      }
-      return PackTrialStatus.fromConsumeResult(
-        allowed: row['allowed'] as bool? ?? false,
-        reason: row['reason'] as String? ?? 'trial_exhausted',
-        cardsPlayed: row['cards_played'] as int? ?? 0,
-        trialCardCount: row['trial_card_count'] as int? ?? 0,
-      );
-    },
-  );
-
   /// Requests a printed physical copy of a pack the caller already owns.
   /// Price is entirely app-controlled — never set by the pack creator —
   /// and the debit + row insert happen atomically server-side. Total
@@ -6264,78 +6091,6 @@ class PackRepository extends BaseRepository {
       }
     },
   );
-
-  /// Promotes a pack the caller owns for [duration] ('24h' or '7d').
-  /// Verified-creator status, pack-published status, and wallet balance
-  /// are all re-checked atomically server-side — the client only mirrors
-  /// those checks to fail fast/show a nicer message.
-  Future<void> promotePack({
-    required String packId,
-    required String duration,
-  }) => guardedCall(
-    operationName: 'promotePack',
-    operation: () async {
-      try {
-        await _supabase.rpc(
-          'promote_pack',
-          params: {'p_pack_id': packId, 'p_duration': duration},
-        );
-      } on PostgrestException catch (e) {
-        if (e.message.contains('not_pack_owner')) {
-          throw const ForbiddenFailure(
-            message: 'You can only promote packs you created.',
-          );
-        }
-        if (e.message.contains('pack_not_published')) {
-          throw const ValidationFailure(
-            message: 'Only reviewed and published packs can be promoted.',
-          );
-        }
-        if (e.message.contains('creator_not_verified')) {
-          throw const ForbiddenFailure(
-            message: 'Only verified creators can promote packs.',
-          );
-        }
-        if (e.message.contains('promotion_slots_full')) {
-          throw const ConflictFailure(
-            message:
-                'All promotion slots are taken right now — try again later.',
-          );
-        }
-        if (e.message.contains('already_promoted')) {
-          throw const ConflictFailure(
-            message: 'This pack already has an active promotion.',
-            code: 'already_promoted',
-          );
-        }
-        if (e.message.contains('insufficient') ||
-            e.message.contains('Insufficient balance')) {
-          throw const PaymentFailure(
-            message: 'Insufficient wallet balance to promote this pack.',
-          );
-        }
-        rethrow;
-      }
-    },
-  );
-
-  /// Server-authoritative "is this pack currently promoted" check (mirrors
-  /// promote_pack()'s own active-promotion guard — see
-  /// get_pack_promotion_status RPC) so the UI can hide the Promote action
-  /// and show an "active until ..." state instead of relying on a client
-  /// side guess. Returns null `endsAt` when there is no active promotion.
-  Future<PackPromotionStatus> getPackPromotionStatus(String packId) =>
-      guardedCall(
-        operationName: 'getPackPromotionStatus',
-        operation: () async {
-          final result = await _supabase.rpc(
-            'get_pack_promotion_status',
-            params: {'p_pack_id': packId},
-          );
-          final map = Map<String, dynamic>.from(result as Map);
-          return PackPromotionStatus.fromMap(map);
-        },
-      );
 
   Future<List<Map<String, dynamic>>> getMyPhysicalPackRequests() => guardedCall(
     operationName: 'getMyPhysicalPackRequests',
@@ -6723,27 +6478,22 @@ class PackRepository extends BaseRepository {
   /// Enforces the 1-free-submission-every-15-days rule (a pure rolling
   /// gap since the creator's last row in pack_submissions — NOT a
   /// calendar-month counter; "2 per month" is the natural cadence of a
-  /// 15-day interval, not a second, independently-resettable limit) and
-  /// the database-configured paid-exception fee entirely server-side
-  /// (SECURITY DEFINER RPC `submit_pack_for_review`) — the quota/fee
-  /// logic lives in exactly one place (Postgres), not split across this
-  /// client and the Node API's `/v1/packs/:id/submit` route. Also
-  /// verifies the caller is a verified creator (reuses the exact same
+  /// 15-day interval, not a second, independently-resettable limit)
+  /// entirely server-side (SECURITY DEFINER RPC `submit_pack_for_review`).
+  /// Also verifies the caller is a verified creator (reuses the exact same
   /// creator_verifications check promote_pack() already enforces — not a
-  /// second definition). Pass [payFee] true only after the caller has
-  /// already shown the user the fee amount and gotten confirmation;
-  /// calling with it false first is how the fee amount itself is
-  /// discovered (a `fee_required` PaymentFailure is thrown).
-  Future<Map<String, dynamic>> submitForReview(
-    String packId, {
-    bool payFee = false,
-  }) => guardedCall(
+  /// second definition). The client never requests the RPC's paid
+  /// exception (always passes `p_pay_fee: false`) — there is no
+  /// customer-facing in-app payment path for pack submission; a
+  /// `fee_required` PaymentFailure just means the free window isn't open
+  /// yet (see PackCreationStatus.nextFreeAt).
+  Future<Map<String, dynamic>> submitForReview(String packId) => guardedCall(
     operationName: 'submitForReview',
     operation: () async {
       try {
         final result = await _supabase.rpc(
           'submit_pack_for_review',
-          params: {'p_pack_id': packId, 'p_pay_fee': payFee},
+          params: {'p_pack_id': packId, 'p_pay_fee': false},
         );
         return Map<String, dynamic>.from(result as Map);
       } on PostgrestException catch (e) {
@@ -7021,8 +6771,6 @@ class PackRepository extends BaseRepository {
               .toList() ??
           const [],
       platformManaged: r['platform_managed'] as bool? ?? false,
-      trialEnabled: r['trial_enabled'] as bool? ?? false,
-      trialCardCount: r['trial_card_count'] as int? ?? 0,
     );
   }
 

@@ -115,7 +115,6 @@ abstract final class RouteNames {
   static const packDetail = 'pack';
   static const userProfile = 'user';
   static const publicProfile = 'publicProfile';
-  static const wallet = '/wallet';
   static const survey = '/survey';
   static const notifications = '/notifications';
   static const settings = '/settings';

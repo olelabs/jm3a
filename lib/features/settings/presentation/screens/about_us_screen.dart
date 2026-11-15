@@ -127,6 +127,12 @@ class AboutUsScreen extends StatelessWidget {
                   trailing: const Icon(Icons.copy_rounded, size: 18),
                   onTap: () => _copyToClipboard(context, l10n.aboutUsWebsite),
                 ),
+                const Divider(height: 1),
+                _SocialTile(
+                  icon: Icons.chat_rounded,
+                  label: l10n.aboutUsSocialWhatsapp,
+                  url: SocialLinks.whatsapp,
+                ),
               ],
             ),
           ),

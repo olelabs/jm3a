@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
-import '../../../../core/config/platform_config_provider.dart';
 import '../../../../core/extensions/context_ext.dart';
 import '../../../../core/errors/failures.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -13,7 +11,6 @@ import '../../../../shared/widgets/feedback/error_view.dart';
 import '../../../../shared/widgets/media/signed_network_image.dart';
 import '../../data/pack_repository.dart';
 import '../pack_provider.dart';
-import '../widgets/promote_pack_sheet.dart';
 
 /// The pack's own title in the viewer's language if available, else in the
 /// pack's declared language, else in whatever language it actually has —
@@ -226,25 +223,6 @@ class _CreatorPackRow extends StatefulWidget {
 
 class _CreatorPackRowState extends State<_CreatorPackRow> {
   bool _deleting = false;
-  PackPromotionStatus? _promotionStatus;
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.pack.status == PackStatus.approved) _loadPromotionStatus();
-  }
-
-  Future<void> _loadPromotionStatus() async {
-    try {
-      final status = await PackRepository.instance.getPackPromotionStatus(
-        widget.pack.id,
-      );
-      if (mounted) setState(() => _promotionStatus = status);
-    } catch (_) {
-      // Best-effort UX hint only — promote_pack() itself is still the
-      // authoritative check if this fails to load and the button shows.
-    }
-  }
 
   Future<void> _confirmDelete() async {
     final pack = widget.pack;
@@ -295,28 +273,6 @@ class _CreatorPackRowState extends State<_CreatorPackRow> {
           context.l10n.packDeleteDraftFailed(e.toString()),
         );
       }
-    }
-  }
-
-  /// Item 9/14/15 — promotion, reachable directly from the creator's own
-  /// dashboard row (not only from the marketplace detail screen). Reuses
-  /// the existing PromotePackSheet as-is (ownership/status/verification/
-  /// price all re-verified server-side inside promote_pack() regardless
-  /// of the fact this button is only ever shown for the creator's own
-  /// approved pack) — this is presentation wiring, not a second
-  /// promotion system.
-  Future<void> _promote() async {
-    final result = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (_) => PromotePackSheet(packId: widget.pack.id),
-    );
-    if (result == true && mounted) {
-      context.showSnackBar(context.l10n.packPromotionSuccess);
-      _loadPromotionStatus();
     }
   }
 
@@ -451,38 +407,6 @@ class _CreatorPackRowState extends State<_CreatorPackRow> {
                       color: AppColors.errorRed,
                       tooltip: context.l10n.packDeleteDraft,
                       onPressed: _confirmDelete,
-                    ),
-
-            // Promote — item 9/14/15: only ever offered on the creator's
-            // own approved/published pack, matching promote_pack()'s own
-            // server-side "status = approved" gate exactly (drafts,
-            // pending review, rejected packs never show this). Server is
-            // still the source of truth for the already-active case —
-            // promote_pack() itself now rejects a duplicate promotion
-            // (already_promoted) even if this client-side status check
-            // was stale or failed to load.
-            if (status == PackStatus.approved &&
-                (_promotionStatus?.active == true ||
-                    context
-                        .watch<PlatformConfigProvider>()
-                        .packPromotionsEnabled))
-              _promotionStatus?.active == true
-                  ? Tooltip(
-                      message: context.l10n.packPromotionEndsAt(
-                        DateFormat.yMMMd(
-                          Localizations.localeOf(context).toString(),
-                        ).add_jm().format(_promotionStatus!.endsAt!.toLocal()),
-                      ),
-                      child: _StatusBadge(
-                        label: context.l10n.packPromotionActiveLabel,
-                        color: AppColors.brandPurpleMid,
-                      ),
-                    )
-                  : IconButton(
-                      icon: const Icon(Icons.trending_up_rounded),
-                      color: AppColors.brandPurpleMid,
-                      tooltip: context.l10n.packPromoteYourPack,
-                      onPressed: _promote,
                     ),
           ],
         ),

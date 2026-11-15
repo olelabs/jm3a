@@ -121,12 +121,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get navProfile => 'الملف الشخصي';
 
   @override
-  String get authWelcome => 'مرحباً بك في جماعة';
-
-  @override
-  String get authTagline => 'العب مع أصدقائك، في أي مكان';
-
-  @override
   String get authEmailLabel => 'بريدك الإلكتروني';
 
   @override
@@ -134,9 +128,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get authEmailInvalid => 'يرجى إدخال بريد إلكتروني صحيح';
-
-  @override
-  String get authSendOtp => 'إرسال الرمز';
 
   @override
   String get authOtpLabel => 'رمز التحقق';
@@ -265,7 +256,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get premiumBackgroundChooseColor => 'اختر لون الخلفية';
 
   @override
-  String get premiumBackgroundUpgradeHint => 'ميزة بريميوم — اضغط للترقية';
+  String get premiumBackgroundUpgradeHint => 'ميزة بريميوم';
 
   @override
   String get premiumBackgroundSaveFailed => 'تعذر حفظ لون الخلفية.';
@@ -457,105 +448,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get settingsNotifications => 'الإشعارات';
 
   @override
-  String get walletEarningsTotal => 'إجمالي الأرباح';
-
-  @override
-  String get walletEarningsThisMonth => 'هذا الشهر';
-
-  @override
-  String get walletEarningsTotalSales => 'إجمالي المبيعات';
-
-  @override
-  String get walletTransactionHistory => 'سجل المعاملات';
-
-  @override
-  String get walletFilterAll => 'الكل';
-
-  @override
-  String get walletFilterDeposits => 'الإيداعات';
-
-  @override
-  String get walletFilterWithdrawals => 'السحوبات';
-
-  @override
-  String get walletFilterPurchases => 'المشتريات';
-
-  @override
-  String get walletFilterEarnings => 'الأرباح';
-
-  @override
-  String get walletFilterRefunds => 'المبالغ المستردة';
-
-  @override
-  String get walletFilterPayouts => 'المستحقات';
-
-  @override
-  String get walletFilterBonuses => 'المكافآت';
-
-  @override
-  String get walletFilterAdjustments => 'التعديلات';
-
-  @override
-  String get walletFilterTransfers => 'التحويلات';
-
-  @override
-  String get walletTypeDeposit => 'إيداع';
-
-  @override
-  String get walletTypeWithdrawal => 'سحب';
-
-  @override
-  String get walletTypePurchase => 'شراء حزمة';
-
-  @override
-  String get walletTypeRefund => 'استرداد';
-
-  @override
-  String get walletTypeCommission => 'أرباح المبدع';
-
-  @override
-  String get walletTypePayout => 'دفعة مستحقات';
-
-  @override
-  String get walletTypeAdjustment => 'تعديل';
-
-  @override
-  String get walletTypeBonus => 'مكافأة';
-
-  @override
-  String get walletTypeTransfer => 'تحويل رصيد';
-
-  @override
-  String get walletStatusPending => 'قيد الانتظار';
-
-  @override
-  String get walletStatusProcessing => 'قيد المعالجة';
-
-  @override
-  String get walletStatusCompleted => 'مكتمل';
-
-  @override
-  String get walletStatusFailed => 'فشل';
-
-  @override
-  String get walletStatusCancelled => 'ملغى';
-
-  @override
-  String get walletStatusReversed => 'معكوس';
-
-  @override
-  String get walletDepositStatusPending => 'قيد الانتظار';
-
-  @override
-  String get walletDepositStatusUnderReview => 'قيد المراجعة';
-
-  @override
-  String get walletDepositStatusApproved => 'معتمد';
-
-  @override
-  String get walletDepositStatusRejected => 'مرفوض';
-
-  @override
   String get profileGames => 'الألعاب';
 
   @override
@@ -655,12 +547,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get lobbyReject => 'رفض';
-
-  @override
-  String get authUseEmailInstead => 'استخدم البريد الإلكتروني بدلاً من ذلك';
-
-  @override
-  String get authUsePhoneInstead => 'استخدم رقم الهاتف بدلاً من ذلك';
 
   @override
   String get authContinueAsGuest => 'المتابعة كضيف';
@@ -862,29 +748,6 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
-  String get premiumErrorInsufficientBalance =>
-      'الرصيد غير كافٍ. يرجى شحن محفظتك أولاً.';
-
-  @override
-  String get premiumErrorWalletNotFound =>
-      'لم يتم العثور على المحفظة. يرجى التواصل مع الدعم.';
-
-  @override
-  String get premiumErrorWalletFrozen => 'محفظتك مجمدة. يرجى التواصل مع الدعم.';
-
-  @override
-  String get premiumErrorInvalidPlan => 'الخطة المختارة غير صالحة.';
-
-  @override
-  String get premiumErrorDowngradeBlocked =>
-      'يمكنك تغيير الخطة بعد انتهاء اشتراكك الحالي.';
-
-  @override
-  String premiumErrorPurchaseFailed(String error) {
-    return 'فشل الشراء: $error';
-  }
-
-  @override
   String get lobbyRoomReopened =>
       'أُعيد فتح الغرفة — يمكن للاعبين الجدد الانضمام مجددًا.';
 
@@ -1072,15 +935,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get gameNameTruthOrDare => 'الحقيقة أم الجرأة';
 
   @override
-  String get gameSettingsChooseProofViewers =>
-      'اختر بالضبط من يمكنه رؤية الإثبات';
-
-  @override
-  String gameSettingsMemberLabelSpectator(String name) {
-    return '$name (متفرج)';
-  }
-
-  @override
   String get gameSettingsNoPacksDevMsg =>
       'لا توجد حزم متاحة. شغّل SQL التمهيدي في Supabase.';
 
@@ -1089,21 +943,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get gameSettingsPlayersSubmit => 'يقترحها اللاعبون';
-
-  @override
-  String get gameSettingsProofCustom => 'مخصص';
-
-  @override
-  String get gameSettingsProofEveryone => 'الجميع';
-
-  @override
-  String get gameSettingsProofPlayers => 'اللاعبون';
-
-  @override
-  String get gameSettingsProofSpectators => 'المتفرجون';
-
-  @override
-  String get gameSettingsProofVisibility => 'ظهور الإثبات';
 
   @override
   String get gameSettingsPunishmentHintDefault =>
@@ -1134,42 +973,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get packMatchedLabel => 'مطابقة';
-
-  @override
-  String get packTagRelationship => 'علاقة';
-
-  @override
-  String get packTagBreakup => 'انفصال';
-
-  @override
-  String get packTagFixingRelationship => 'إصلاح العلاقة';
-
-  @override
-  String get packTagDating => 'مواعدة';
-
-  @override
-  String get packTagCouples => 'أزواج';
-
-  @override
-  String get packTagFriendship => 'صداقة';
-
-  @override
-  String get packTagFamily => 'عائلة';
-
-  @override
-  String get packTagParty => 'حفلة';
-
-  @override
-  String get packTagIcebreaker => 'كسر الجليد';
-
-  @override
-  String get packTagWork => 'عمل';
-
-  @override
-  String get packTagTravel => 'سفر';
-
-  @override
-  String get packTagLateNight => 'سهرة ليلية';
 
   @override
   String get packCreationTagsTitle => 'الأنواع (اختياري)';
@@ -1229,8 +1032,8 @@ class AppLocalizationsAr extends AppLocalizations {
   String get roomsClosedSnackbar => 'تم إغلاق الغرفة';
 
   @override
-  String roomsDailyLimitFreeBody(int basicLimit, int premiumLimit) {
-    return 'تسمح الخطة المجانية بـ $basicLimit غرف يومياً. حاول مجدداً غداً، أو قم بالترقية إلى المميزة لـ $premiumLimit غرفة/يوم.';
+  String roomsDailyLimitFreeBody(int basicLimit) {
+    return 'تسمح الخطة المجانية بـ $basicLimit غرف يومياً. حاول مجدداً غداً.';
   }
 
   @override
@@ -1316,7 +1119,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get roomsNoPacksBody =>
-      'تحتاج إلى حزمة واحدة على الأقل لإنشاء غرفة — احصل على حزمة مجانية أو اشترِ واحدة من المتجر أولاً.';
+      'تحتاج إلى حزمة واحدة على الأقل لإنشاء غرفة — تصفح المتجر للعثور على حزمة مجانية.';
 
   @override
   String get roomsNoPacksTitle => 'لا توجد حزم متاحة';
@@ -1380,9 +1183,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get roomsTransferOwnership => 'نقل الملكية';
-
-  @override
-  String get roomsUpgradeArrow => 'الترقية ←';
 
   @override
   String get roomsVisibility => 'الظهور';
@@ -1785,9 +1585,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get todAllPlayersLeftGameBody => 'غادر جميع اللاعبين اللعبة.';
 
   @override
-  String get todAllPlayersLeftGameEnded => 'غادر جميع اللاعبين — انتهت اللعبة';
-
-  @override
   String get todChatTitle => '💬 الدردشة';
 
   @override
@@ -2095,9 +1892,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get nhieCardPromptHint => 'لم أفعل من قبل…';
 
   @override
-  String get nhieCardTitle => 'لم أفعل من قبل أبداً…';
-
-  @override
   String nhieDrinksScore(int count) {
     return '$count 🍹';
   }
@@ -2109,9 +1903,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get nhieGameHistoryTitle => 'سجل اللعبة';
-
-  @override
-  String get nhieGoToHome => 'الذهاب إلى الرئيسية';
 
   @override
   String get gameBackToRoom => 'العودة إلى الغرفة';
@@ -2185,11 +1976,6 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get memeResponseSubmittedWaiting =>
       'تم إرسال الإجابة! بانتظار البقية…';
-
-  @override
-  String memeRoundBadgeAllCaps(int round) {
-    return 'الجولة $round';
-  }
 
   @override
   String memeRoundResultsTitle(int round) {
@@ -2633,21 +2419,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get tryAgain => 'حاول مجدداً';
 
   @override
-  String get accountLabel => 'الحساب';
-
-  @override
   String get amountLabel => 'المبلغ';
-
-  @override
-  String get copiedNotice => 'تم النسخ!';
-
-  @override
-  String labelColonSuffix(String label) {
-    return '$label: ';
-  }
-
-  @override
-  String get nameLabel => 'الاسم';
 
   @override
   String get pendingLabel => 'قيد الانتظار';
@@ -2662,267 +2434,13 @@ class AppLocalizationsAr extends AppLocalizations {
   String get seeAll => 'عرض الكل';
 
   @override
-  String get walletAmountToWithdraw => 'المبلغ المراد سحبه';
-
-  @override
-  String walletAmountValue(String amount) {
-    return 'المبلغ: $amount أوقية';
-  }
-
-  @override
-  String walletAvailableAmount(String amount) {
-    return 'المتاح: $amount';
-  }
-
-  @override
-  String get walletAvailableEarnings => 'الأرباح المتاحة';
-
-  @override
-  String get walletAvailableForWithdrawal => 'متاح للسحب';
-
-  @override
-  String get walletBackToWallet => 'العودة إلى المحفظة';
-
-  @override
-  String get walletBalanceAfter => 'الرصيد بعد العملية';
-
-  @override
-  String get walletBulletCreditedAfterConfirm =>
-      'تُضاف الأرباح بعد تأكيد الشراء.';
-
-  @override
-  String get walletBulletEarn85 => 'تكسب 85% من كل عملية بيع حزمة.';
-
-  @override
-  String get walletBulletMinWithdrawal => 'الحد الأدنى للسحب: 500 أوقية.';
-
-  @override
-  String get walletBulletPlatformFee => 'رسوم المنصة 15% تُبقي جماعة تعمل.';
-
-  @override
-  String get walletChooseHowToAddFunds => 'اختر كيف تريد إضافة الأموال.';
-
-  @override
-  String get walletConfirmWithdrawal => 'تأكيد السحب';
-
-  @override
-  String get walletCreateSellPacksHint => 'أنشئ وبِع حزماً لتكسب عمولات.';
-
-  @override
-  String get walletCreatorEarningsRateLabel => 'معدل أرباح المنشئ';
-
-  @override
-  String get walletCreatorEarningsTitle => 'أرباح المنشئ';
-
-  @override
-  String get walletCurrencyName => 'الأوقية الموريتانية';
-
-  @override
   String get walletCurrencyShort => 'أوقية';
-
-  @override
-  String get walletAvailableBalanceLabel => 'الرصيد المتاح';
-
-  @override
-  String get walletFrozenLabel => 'المحفظة (مجمّدة)';
-
-  @override
-  String get walletDeposit => 'إيداع';
-
-  @override
-  String walletDepositAmount(String amount) {
-    return 'إيداع $amount';
-  }
-
-  @override
-  String get walletDepositWarningNotice =>
-      'أرسل الطلب فقط بعد إتمام التحويل. تتم مراجعة الإيداعات يدوياً وقد تستغرق من 1 إلى 24 ساعة.';
-
-  @override
-  String get walletEarningsBalance => 'رصيد الأرباح';
-
-  @override
-  String get walletEnterReference => 'أدخل مرجع عملية الدفع';
-
-  @override
-  String get walletHowEarningsWork => 'كيف تعمل الأرباح';
-
-  @override
-  String get walletInsufficientBalance => 'الرصيد غير كافٍ';
-
-  @override
-  String get walletMaxDeposit => 'الحد الأقصى للإيداع: 1,000,000 أوقية';
-
-  @override
-  String get walletMethodLabel => 'الطريقة';
-
-  @override
-  String get walletMinDeposit => 'الحد الأدنى للإيداع: 100 أوقية';
-
-  @override
-  String walletMinWithdrawal(int amount) {
-    return 'الحد الأدنى للسحب: $amount أوقية';
-  }
-
-  @override
-  String get walletNoEarningsYet => 'لا توجد أرباح بعد';
-
-  @override
-  String get walletNoTransactions => 'لا توجد معاملات';
-
-  @override
-  String get walletNoTransactionsYet => 'لا توجد معاملات بعد';
-
-  @override
-  String walletOfEveryPackSale(int fee) {
-    return 'من كل عملية بيع حزمة (رسوم منصة $fee%)';
-  }
-
-  @override
-  String get walletPaymentReferenceLabel => 'مرجع الدفع / رقم المعاملة';
-
-  @override
-  String get walletPhoneNumberHint => 'رقم هاتف مكوّن من 8 أرقام';
-
-  @override
-  String get walletPayoutPhoneNumber => 'رقم هاتف الاستلام';
-
-  @override
-  String get walletPhoneLabel => 'الهاتف';
-
-  @override
-  String get walletRecentTransactions => 'المعاملات الأخيرة';
-
-  @override
-  String get walletReferenceHint => 'مثال: TXN123456789';
-
-  @override
-  String get walletSelectPaymentMethod => 'اختر طريقة الدفع';
-
-  @override
-  String get walletSelectPayoutMethod => 'اختر طريقة الاستلام';
-
-  @override
-  String walletStatusPaymentMethod(String status, String method) {
-    return '$status • $method';
-  }
-
-  @override
-  String get walletTitle => 'المحفظة';
-
-  @override
-  String get walletDepositSubmittedTitle => 'تم إرسال الإيداع!';
-
-  @override
-  String walletDepositSubmittedSubtitle(String amount) {
-    return 'إيداعك بقيمة $amount قيد المراجعة. سيتم تحديث الرصيد بعد الموافقة.';
-  }
-
-  @override
-  String get walletDepositRequestFailed => 'فشل طلب الإيداع.';
-
-  @override
-  String get walletSubmitDeposit => 'إرسال الإيداع';
-
-  @override
-  String get walletWithdrawalSubmittedTitle => 'تم إرسال السحب!';
-
-  @override
-  String walletWithdrawalSubmittedSubtitle(String amount) {
-    return 'سحبك بقيمة $amount قيد المعالجة. ستصل الأموال خلال 1 إلى 24 ساعة.';
-  }
-
-  @override
-  String get walletWithdrawalRequestFailed => 'فشل طلب السحب.';
-
-  @override
-  String get walletContinueArrow => 'متابعة ←';
-
-  @override
-  String get walletActionDeposit => 'إيداع';
-
-  @override
-  String get walletActionWithdraw => 'سحب';
-
-  @override
-  String get walletActionEarnings => 'الأرباح';
-
-  @override
-  String get walletDetailDateTime => 'التاريخ والوقت';
-
-  @override
-  String get walletDetailWalletAffected => 'المحفظة المتأثرة';
-
-  @override
-  String get walletDetailEarnings => 'الأرباح';
-
-  @override
-  String get walletDetailWalletBalance => 'رصيد المحفظة';
-
-  @override
-  String get walletDetailBalanceAfter => 'الرصيد بعد العملية';
-
-  @override
-  String get walletDetailPaymentMethod => 'طريقة الدفع';
-
-  @override
-  String get walletDetailDescription => 'الوصف';
-
-  @override
-  String get walletDetailReference => 'المرجع';
-
-  @override
-  String get walletDetailTransactionId => 'معرّف المعاملة';
-
-  @override
-  String walletDetailDateAtTime(String date, String time) {
-    return '$date في $time';
-  }
-
-  @override
-  String get walletTransferAmount => 'مبلغ التحويل';
-
-  @override
-  String get walletTransferButton => 'تحويل';
-
-  @override
-  String get walletTransferFailed => 'فشل التحويل.';
-
-  @override
-  String get walletTransferSuccess => 'تم التحويل إلى رصيد المحفظة.';
-
-  @override
-  String get walletTransferToWallet => 'تحويل إلى المحفظة';
-
-  @override
-  String get walletTransferToWalletBalance => 'تحويل إلى رصيد المحفظة';
-
-  @override
-  String get walletWithdraw => 'سحب';
-
-  @override
-  String walletWithdrawalAmount(String amount) {
-    return 'سحب $amount';
-  }
-
-  @override
-  String get walletWithdrawalProcessingNotice =>
-      'تتم معالجة عمليات السحب يدوياً. تصل الأموال خلال 1-24 ساعة بعد الموافقة.';
-
-  @override
-  String get walletYourPhoneNumber => 'رقم هاتفك';
 
   @override
   String get actionLabel => 'إجراء';
 
   @override
-  String get activeLabel => 'نشط';
-
-  @override
   String get darkMode => 'الوضع الداكن';
-
-  @override
-  String get getButton => 'احصل عليه';
 
   @override
   String get lightMode => 'الوضع الفاتح';
@@ -3028,10 +2546,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get gameCardColorCyberTeal => 'سماوي سايبر';
 
   @override
-  String get premiumAutoRenewNotice =>
-      'تُجدَّد الاشتراكات تلقائياً ما لم يتم إلغاؤها قبل 24 ساعة من التجديد.';
-
-  @override
   String get premiumBackgroundColorEmoji => 'لون الخلفية ✦';
 
   @override
@@ -3105,14 +2619,6 @@ class AppLocalizationsAr extends AppLocalizations {
       'يندمج مع المظهر المختار — يتكيف النص والبطاقات والأيقونات تلقائياً.';
 
   @override
-  String premiumCannotDowngradeBody(String date) {
-    return 'لديك اشتراك مميز بلس نشط. يمكنك التبديل إلى خطة أقل بعد انتهائه في $date.';
-  }
-
-  @override
-  String get premiumCannotDowngradeTitle => 'لا يمكن التخفيض بعد';
-
-  @override
   String get premiumCardTextReadable => 'يبقى نص البطاقة مقروءاً';
 
   @override
@@ -3122,37 +2628,14 @@ class AppLocalizationsAr extends AppLocalizations {
   String get premiumChooseBackground => 'اختر خلفية';
 
   @override
-  String get premiumConfirmPurchase => 'تأكيد الشراء';
-
-  @override
-  String get premiumCurrentTermEnds => 'انتهاء مدتك الحالية';
-
-  @override
-  String get premiumFeatureColumnHeader => 'الميزة';
-
-  @override
   String get premiumFeatureListDescription =>
       'مظاهر وصور رمزية مخصصة، 15 غرفة يومياً، حتى 12 لاعباً لكل غرفة، 10 حزم دون اتصال (1 مجانية)، دردشة مجهولة، والمزيد.';
-
-  @override
-  String get premiumLockedUntilExpires => 'مقفل حتى تنتهي صلاحية مميز بلس';
-
-  @override
-  String get premiumMonthly => 'شهري';
 
   @override
   String get premiumPageBackground => 'خلفية الصفحة';
 
   @override
-  String premiumPlanActivated(String plan) {
-    return '🎉 تم تفعيل $plan!';
-  }
-
-  @override
   String get premiumPlusLabel => 'مميز بلس';
-
-  @override
-  String get premiumPlusShort => 'بلس';
 
   @override
   String get premiumPremiumAvatars => 'صور رمزية مميزة';
@@ -3161,41 +2644,13 @@ class AppLocalizationsAr extends AppLocalizations {
   String get premiumPremiumThemes => 'مظاهر مميزة ✦';
 
   @override
-  String premiumPricePerPeriod(String price, String period) {
-    return '$price / $period';
-  }
-
-  @override
-  String premiumPurchaseConfirmBody(
-    String plan,
-    String planPrice,
-    String period,
-  ) {
-    return 'سيتم خصم $planPrice من رصيد محفظتك.\n\nالخطة: $plan — $planPrice/$period';
-  }
-
-  @override
-  String premiumPurchasePlan(String plan) {
-    return 'شراء $plan';
-  }
-
-  @override
-  String get premiumSave33 => 'وفّر 33%';
-
-  @override
   String get premiumTitle => 'مميز';
 
   @override
   String get premiumUnlockTitle => 'افتح المميز';
 
   @override
-  String get premiumUpgradeToUnlock => 'قم بالترقية للفتح';
-
-  @override
-  String get premiumWhatYouGet => 'ما الذي تحصل عليه';
-
-  @override
-  String get premiumYearly => 'سنوي';
+  String get premiumUpgradeToUnlock => 'يتطلب مميز';
 
   @override
   String get premiumYourAvatars => 'صورك الرمزية';
@@ -3225,14 +2680,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String packAddMoreMinimum(int count) {
     return 'أضف $count أخرى (10 كحد أدنى) أو احذفها جميعاً.';
   }
-
-  @override
-  String packAdditionalFeeBody(int fee) {
-    return 'تحتوي هذه الحزمة على بطاقات إضافية، مما يتطلب رسوماً إضافية قدرها $fee أوقية لتقديمها للمراجعة.';
-  }
-
-  @override
-  String get packAdditionalFeeTitle => 'رسوم إضافية مطلوبة';
 
   @override
   String get packAgeLabel => 'العمر';
@@ -3394,7 +2841,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get packImportantRulesBody =>
-      '• لا يمكن تعديل الحزم بعد نشرها.\n• يجب عليك شراء حزمتك الخاصة لاستخدامها في الألعاب.\n• تستغرق مراجعة الإشراف من 1 إلى 3 أيام عمل.';
+      '• لا يمكن تعديل الحزم بعد نشرها.\n• يجب أن تمتلك حزمتك الخاصة لاستخدامها في الألعاب.\n• تستغرق مراجعة الإشراف من 1 إلى 3 أيام عمل.';
 
   @override
   String get packImportantRulesTitle => '📋 قواعد مهمة:';
@@ -3478,11 +2925,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get packOneNamePerLanguage => 'اسم ووصف واحد لكل لغة اخترتها.';
 
   @override
-  String packPayFeeAndSubmit(int fee) {
-    return 'دفع $fee أوقية وإرسال';
-  }
-
-  @override
   String packPendingAdminReview(String name) {
     return '\"$name\" في انتظار مراجعة الإدارة';
   }
@@ -3497,9 +2939,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String packPlayersSliderLabel(int count) {
     return '$count لاعبين';
   }
-
-  @override
-  String get packPriceFreeHint => 'اترك 0 لجعل الحزمة مجانية';
 
   @override
   String packMinPriceError(int min) {
@@ -3623,16 +3062,6 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
-  String packPaidExtraPackHint(int price) {
-    return 'يمكنك إنشاء باقة إضافية الآن مقابل $price أوقية.';
-  }
-
-  @override
-  String packCreateExtraPackPriced(int price) {
-    return 'إنشاء باقة إضافية — $price أوقية';
-  }
-
-  @override
   String get packCreatorNotVerified =>
       'يمكن للمنشئين الموثقين فقط إرسال الباقات للمراجعة.';
 
@@ -3729,22 +3158,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get packBrowseMarketplaceHint => 'تصفح المتجر للعثور على حزم.';
-
-  @override
-  String get packConfirmPurchaseTitle => 'تأكيد الشراء';
-
-  @override
-  String packConfirmPurchaseBody(String name, String price) {
-    return 'أنت على وشك شراء \"$name\" مقابل $price.';
-  }
-
-  @override
-  String get packConfirmPurchaseAction => 'شراء';
-
-  @override
-  String packBuyForPrice(int price) {
-    return 'شراء مقابل $price أوقية';
-  }
 
   @override
   String get packCancelled => 'ملغى';
@@ -3846,21 +3259,10 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get packFreeOfflineLimitNotice =>
-      'تسمح الخطة المجانية بحزمة واحدة دون اتصال. قم بالترقية إلى بريميوم للحصول على 10.';
+      'تسمح الخطة المجانية بحزمة واحدة دون اتصال.';
 
   @override
   String get packFullName => 'الاسم الكامل';
-
-  @override
-  String get packGetFreePack => 'احصل على الحزمة مجاناً';
-
-  @override
-  String get packInsufficientBalance => 'الرصيد غير كافٍ';
-
-  @override
-  String packInsufficientBalanceBody(int price) {
-    return 'تحتاج إلى $price أوقية لشراء هذه الحزمة. رصيدك الحالي منخفض جداً.';
-  }
 
   @override
   String get packLoadingPrice => 'جارٍ تحميل السعر…';
@@ -3947,45 +3349,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get packOfficialBadge => 'جماعة';
 
   @override
-  String get packProcessingEllipsis => 'جارٍ المعالجة…';
-
-  @override
   String get packPromotedBadge => 'مروَّج';
-
-  @override
-  String packPurchaseFailed(String error) {
-    return 'فشل الشراء: $error';
-  }
-
-  @override
-  String get packPurchasedNotice => 'تم شراء الحزمة! يمكنك الآن تنزيلها.';
-
-  @override
-  String get packTrialBadgeTooltip => 'تجربة مجانية';
-
-  @override
-  String packTrialCardsRemaining(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count بطاقات تجريبية متبقية',
-      one: 'بطاقة تجريبية واحدة متبقية',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String get packTrialPromptTitle => 'هل أعجبتك هذه الحزمة؟';
-
-  @override
-  String get packTrialPromptBody =>
-      'لقد أكملت تجربتك المجانية. اشترِ الحزمة الكاملة لمواصلة اللعب.';
-
-  @override
-  String get packTrialPurchaseButton => 'شراء الحزمة الكاملة';
-
-  @override
-  String get packTrialEndButton => 'إنهاء التجربة';
 
   @override
   String get packQuantity => 'الكمية';
@@ -4041,36 +3405,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get packReportFailed => 'تعذر إرسال بلاغك. حاول مرة أخرى.';
-
-  @override
-  String get packPromoteYourPack => 'روّج لحزمتك';
-
-  @override
-  String get packPromotionDuration24h => '24 ساعة';
-
-  @override
-  String get packPromotionDuration7d => 'أسبوع واحد';
-
-  @override
-  String get packPromotionSubtitle =>
-      'أبرز هذه الحزمة في شريط الحزم المروَّجة للوصول إلى مزيد من اللاعبين.';
-
-  @override
-  String get packPromotionSubmit => 'روّج';
-
-  @override
-  String get packPromotionSuccess => 'تم ترويج الحزمة بنجاح!';
-
-  @override
-  String get packPromotionActiveLabel => 'الترويج نشط';
-
-  @override
-  String packPromotionEndsAt(String date) {
-    return 'ينتهي $date';
-  }
-
-  @override
-  String get packPromotionAlreadyActive => 'هذه الحزمة لديها بالفعل ترويج نشط.';
 
   @override
   String get packRequestPhysicalCopy => 'طلب نسخة مطبوعة';
@@ -4167,9 +3501,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get packTabMyAvailablePacks => 'حزمي المتاحة';
-
-  @override
-  String get packTopUpWallet => 'شحن المحفظة';
 
   @override
   String get packWriteReview => 'اكتب مراجعة';
@@ -4677,16 +4008,10 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
-  String get avatarUpgradeToPremium => 'الترقية إلى بريميوم ✦';
-
-  @override
   String get profileAbout => 'نبذة';
 
   @override
   String get profileAgeOptionalLabel => 'العمر (اختياري)';
-
-  @override
-  String get profileBalanceAndTransactions => 'الرصيد والمعاملات';
 
   @override
   String get profileAnswerSurvey => 'أجب على استطلاعنا';
@@ -4795,19 +4120,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get profilePreferences => 'التفضيلات';
 
   @override
-  String profilePremiumActiveExpires(int day, int month, int year) {
-    return 'نشط · تنتهي الصلاحية في $day/$month/$year';
-  }
-
-  @override
   String get profileSaveUsername => 'حفظ اسم المستخدم';
 
   @override
   String get profileTakePhoto => 'التقاط صورة';
-
-  @override
-  String get profileUnlockPremiumHint =>
-      'افتح السمات والصور الرمزية والدردشة المجهولة والمزيد';
 
   @override
   String get profileUploadingPhoto => 'جارٍ رفع الصورة…';
@@ -4991,26 +4307,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get chatTitle => 'الدردشة';
-
-  @override
-  String get gameSettingsAllowOneReplay => 'السماح بإعادة واحدة';
-
-  @override
-  String get gameSettingsProofViewDuration =>
-      'مدة عرض الإثبات (يُغلق تلقائياً بعدها)';
-
-  @override
-  String get gameSettingsProofUnlimitedDuration =>
-      'مدة غير محدودة (حتى الجولة التالية)';
-
-  @override
-  String get gameSettingsProofReplayHint =>
-      'يحصل المشتركون المميزون على إعادة إضافية بعد ذلك.';
-
-  @override
-  String gameSettingsProofAutoCloseHint(int seconds) {
-    return 'يُغلق الإثبات تلقائياً بعد $seconds ثانية — لا إعادة أثناء تحديد مدة.';
-  }
 
   @override
   String get gameSettingsRequireApprovalToSpectate => 'طلب الموافقة للمشاهدة';
@@ -5359,19 +4655,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get sharedReject => 'رفض';
 
   @override
-  String get sharedRemoveSpectator => 'إلغاء صفة المتفرج';
-
-  @override
-  String get sharedSetSpectator => 'تحويل إلى متفرج';
-
-  @override
-  String get sharedSetSpectatorBody =>
-      'لن يُحتسب هذا اللاعب كلاعب نشط ولن يتمكن من أخذ دوره، لكن يمكنه المشاهدة. يمكنك التراجع عن هذا في أي وقت.';
-
-  @override
-  String get sharedSetSpectatorTitle => 'تحويل إلى متفرج';
-
-  @override
   String get sharedRoomMembers => 'أعضاء الغرفة';
 
   @override
@@ -5387,28 +4670,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get sharedRuleObjective => 'الهدف';
-
-  @override
-  String get sharedRulePolicyEveryone => 'الجميع في اللعبة';
-
-  @override
-  String get sharedRulePolicyPlayersOnly => 'اللاعبون فقط';
-
-  @override
-  String get sharedRulePolicySpectatorsOnly => 'المتفرجون فقط';
-
-  @override
-  String get sharedRuleProofViewOnce =>
-      'يمكن مشاهدة الإثبات مرة واحدة (بريميوم: مرتين).';
-
-  @override
-  String get sharedRuleProofViewTwice =>
-      'يمكن مشاهدة الإثبات مرتين (بريميوم: ثلاث مرات).';
-
-  @override
-  String sharedRuleProofVisibleTo(String policy) {
-    return 'الإثبات مرئي لـ: $policy.';
-  }
 
   @override
   String get sharedRulePunishmentOff =>
@@ -5495,9 +4756,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get friendsYourFriendsHeader => 'أصدقاؤك';
 
   @override
-  String get friendsAdd => 'إضافة';
-
-  @override
   String get friendsAddFriend => 'إضافة صديق';
 
   @override
@@ -5548,11 +4806,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get friendsAdvertisementsHeader => 'الإعلانات';
 
   @override
-  String friendsFollowersCount(int count) {
-    return '$count متابع';
-  }
-
-  @override
   String get friendsFollow => 'متابعة';
 
   @override
@@ -5577,19 +4830,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get friendsNoFriendsYet => 'لا يوجد أصدقاء بعد';
-
-  @override
-  String get friendsNoPendingRequests => 'لا توجد طلبات معلقة';
-
-  @override
-  String get friendsNoPendingRequestsHint =>
-      'ستظهر هنا طلبات الصداقة التي تتلقاها.';
-
-  @override
-  String get friendsNoResults => 'لا توجد نتائج';
-
-  @override
-  String get friendsNoResultsHint => 'جرّب اسماً أو اسم مستخدم مختلفاً.';
 
   @override
   String friendsOfflineCount(int count) {
@@ -5645,7 +4885,11 @@ class AppLocalizationsAr extends AppLocalizations {
   String get creatorReqPlayedWithOthers => 'العب لعبة مع مستخدمين آخرين';
 
   @override
-  String get creatorApplyNow => 'تقدم الآن';
+  String get creatorRequestViaWhatsApp => 'طلب أن تصبح منشئاً موثقاً';
+
+  @override
+  String get creatorWhatsAppMessage =>
+      'مرحباً، أرغب في طلب حالة \"منشئ موثّق\" على جماعة.';
 
   @override
   String get creatorKeepGoing =>
@@ -5732,21 +4976,6 @@ class AppLocalizationsAr extends AppLocalizations {
       'تم رفض طلب الاستعادة السابق الخاص بك';
 
   @override
-  String get creatorApplyDialogTitle => 'طلب التوثيق';
-
-  @override
-  String get creatorApplyDialogRealName => 'الاسم القانوني الكامل';
-
-  @override
-  String get creatorApplyDialogBio => 'نبذة قصيرة (اختياري)';
-
-  @override
-  String get creatorApplySubmitted => 'تم إرسال الطلب! سنراجعه قريبًا.';
-
-  @override
-  String get creatorApplyFailed => 'فشل إرسال الطلب. حاول مرة أخرى.';
-
-  @override
   String get profileBecomeCreator => 'كن منشئ محتوى موثقًا';
 
   @override
@@ -5759,22 +4988,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get friendsProfileNotFound => 'الملف الشخصي غير موجود.';
 
   @override
-  String get friendsReceived => 'المستلمة';
-
-  @override
   String get friendsRemoveFriend => 'إزالة صديق';
-
-  @override
-  String get friendsRequests => 'الطلبات';
-
-  @override
-  String get friendsSearchForFriends => 'ابحث عن أصدقاء';
-
-  @override
-  String get friendsSearchHint => 'ابحث بالاسم أو اسم المستخدم…';
-
-  @override
-  String get friendsSearchMinChars => 'أدخل حرفين على الأقل.';
 
   @override
   String friendsSentCount(int count) {
@@ -5819,9 +5033,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get friendsUnfollow => 'إلغاء المتابعة';
-
-  @override
-  String get friendsUserFallback => 'مستخدم';
 
   @override
   String get friendsYouHaveBlocked => 'لقد حظرت هذا المستخدم.';
@@ -5907,14 +5118,14 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get aboutUsDescription =>
-      'جماعة هي منصة اجتماعية للألعاب الجماعية متعددة اللاعبين، طورتها وتملكها MOUJ TECH. العب الحقيقة أم الجرأة، لم يسبق لي، وألعاب الميمز مع الأصدقاء والعائلة، وأنشئ وشارك حزمك الخاصة، وابنِ ملفك الشخصي، واربح كصانع محتوى موثّق من الحزم التي تنشرها.';
+      'جماعة هي منصة اجتماعية للألعاب الجماعية متعددة اللاعبين، طورتها وتملكها MOUJ TECH. العب الحقيقة أم الجرأة، لم يسبق لي، وألعاب الميمز مع الأصدقاء والعائلة، وأنشئ وشارك حزمك الخاصة، وابنِ ملفك الشخصي كصانع محتوى موثّق.';
 
   @override
   String get aboutUsCompanySectionTitle => 'الشركة';
 
   @override
   String get aboutUsCompanyInfo =>
-      'يتم تطوير وامتلاك جماعة من قبل MOUJ TECH. تتولى MOUJ TECH مسؤولية تطوير التطبيق وميزاته وتشغيله المستمر، بما في ذلك الحزم التي ينشئها المجتمع، وأدوات صانع المحتوى الموثّق، وباقتي Premium وPremium Plus، ومحفظة أرباح صانعي المحتوى.';
+      'يتم تطوير وامتلاك جماعة من قبل MOUJ TECH. تتولى MOUJ TECH مسؤولية تطوير التطبيق وميزاته وتشغيله المستمر، بما في ذلك الحزم التي ينشئها المجتمع وأدوات صانع المحتوى الموثّق.';
 
   @override
   String get moujTechDevelopedBy => 'تم التطوير بواسطة MOUJ TECH';
@@ -5944,6 +5155,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get aboutUsSocialFacebook => 'Facebook';
 
   @override
+  String get aboutUsSocialWhatsapp => 'واتساب';
+
+  @override
   String get privacyPolicyTitle => 'سياسة الخصوصية';
 
   @override
@@ -5955,14 +5169,14 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get privacySectionInfoCollectedBody =>
-      'معلومات الحساب: البريد الإلكتروني الذي تسجّل به، واسم المستخدم والاسم المعروض والسيرة الذاتية والصورة الرمزية التي تختارها (صورة مرفوعة أو صورة رمزية تم إنشاؤها). المصادقة: تتم إدارة كلمة المرور عبر مزوّد المصادقة الخاص بنا ولا تكون مرئية لنا كنص عادي؛ كما يستخدم تسجيل الدخول رموز تحقق لمرة واحدة تُرسل إلى بريدك الإلكتروني. بيانات النشاط والتفاعل الاجتماعي: الغرف والألعاب التي تنضم إليها أو تستضيفها، وإجراءاتك أثناء اللعب، ونتائجك وسلاسل إنجازاتك، ورسائل الدردشة التي ترسلها في غرف اللعب، وقائمة أصدقائك ومتابعيك وأي حسابات تحظرها. المشتريات ونشاط المنشئين: الحزم التي تشتريها أو تنشرها، وحالة \"منشئ موثّق\" الخاصة بك، ورصيد محفظتك وسجل الدفعات، وإذا طلبت حزمة مادية — الاسم ورقم الهاتف ومنطقة التوصيل التي تقدّمها لهذا الطلب. البلاغات: إذا أبلغت عن حزمة، نسجّل السبب وأي تفاصيل تضيفها. طلبات حذف الحساب: إذا طلبت حذف حسابك، نسجّل السبب الذي تختاره وحالة الطلب. معلومات الجهاز والتطبيق: إصدار التطبيق ورقم البناء، ومعلومات أساسية عن النظام الأساسي (Android أو iOS)، تُستخدم للحفاظ على عمل التطبيق بشكل صحيح والتحقق من التحديثات المطلوبة.';
+      'معلومات الحساب: البريد الإلكتروني الذي تسجّل به، واسم المستخدم والاسم المعروض والسيرة الذاتية والصورة الرمزية التي تختارها (صورة مرفوعة أو صورة رمزية تم إنشاؤها). المصادقة: تتم إدارة كلمة المرور عبر مزوّد المصادقة الخاص بنا ولا تكون مرئية لنا كنص عادي؛ كما يستخدم تسجيل الدخول رموز تحقق لمرة واحدة تُرسل إلى بريدك الإلكتروني. بيانات النشاط والتفاعل الاجتماعي: الغرف والألعاب التي تنضم إليها أو تستضيفها، وإجراءاتك أثناء اللعب، ونتائجك وسلاسل إنجازاتك، ورسائل الدردشة التي ترسلها في غرف اللعب، وقائمة أصدقائك ومتابعيك وأي حسابات تحظرها. الملكية ونشاط المنشئين: الحزم التي تملكها أو تنشرها، وحالة \"منشئ موثّق\" الخاصة بك. البلاغات: إذا أبلغت عن حزمة، نسجّل السبب وأي تفاصيل تضيفها. طلبات حذف الحساب: إذا طلبت حذف حسابك، نسجّل السبب الذي تختاره وحالة الطلب. معلومات الجهاز والتطبيق: إصدار التطبيق ورقم البناء، ومعلومات أساسية عن النظام الأساسي (Android أو iOS)، تُستخدم للحفاظ على عمل التطبيق بشكل صحيح والتحقق من التحديثات المطلوبة.';
 
   @override
   String get privacySectionHowUsed => 'كيفية استخدام معلوماتك';
 
   @override
   String get privacySectionHowUsedBody =>
-      'نستخدم معلوماتك لتشغيل الميزات الأساسية للتطبيق: إنشاء حسابك وتأمينه، وضمّك إلى الغرف والألعاب، وعرض ملفك الشخصي وإحصائياتك للاعبين الآخرين وأصدقائك وفق ما تقصده كل ميزة، ومعالجة مشتريات الحزم ودفعات المنشئين، وتوصيل طلبات الحزم المادية التي تطلبها، ومراجعة البلاغات وطلبات حذف الحساب، وإرسال الإشعارات الموضحة أدناه. لا نستخدم أي أداة تحليلات أو تتبّع إعلاني تابعة لجهة خارجية في هذا التطبيق. نحن لا نبيع معلوماتك.';
+      'نستخدم معلوماتك لتشغيل الميزات الأساسية للتطبيق: إنشاء حسابك وتأمينه، وضمّك إلى الغرف والألعاب، وعرض ملفك الشخصي وإحصائياتك للاعبين الآخرين وأصدقائك وفق ما تقصده كل ميزة، ومراجعة البلاغات وطلبات حذف الحساب، وإرسال الإشعارات الموضحة أدناه. لا نستخدم أي أداة تحليلات أو تتبّع إعلاني تابعة لجهة خارجية في هذا التطبيق. نحن لا نبيع معلوماتك.';
 
   @override
   String get privacySectionNotifications => 'الإشعارات';
@@ -5970,13 +5184,6 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get privacySectionNotificationsBody =>
       'يرسل تطبيق جماعة إشعارات لأمور مثل دعوات اللعب ونشاط الغرف وطلبات الصداقة والرسائل. يتم تسليم الإشعارات الفورية عبر OneSignal، وهي خدمة إشعارات تابعة لجهة خارجية؛ كما تتم جدولة بعض الإشعارات مباشرة على جهازك. يمكنك إدارة أذونات الإشعارات في أي وقت من إعدادات النظام في جهازك.';
-
-  @override
-  String get privacySectionPurchases => 'المشتريات';
-
-  @override
-  String get privacySectionPurchasesBody =>
-      'بعض الحزم مدفوعة، وباقتا Premium وPremium Plus هما اشتراكان مدفوعان. يمكن لـ\"المنشئين الموثّقين\" نشر حزم وكسب أرباح منها عبر محفظة داخل التطبيق. لا يقوم تطبيق جماعة بجمع أو تخزين تفاصيل بطاقة الدفع الكاملة الخاصة بك مباشرة؛ تتم معالجة المدفوعات عبر وسائل الدفع المتاحة عند الدفع. تُحفظ سجلات المشتريات والدفعات (المبالغ ومعرّفات الحزم/الاشتراكات والحالة) كجزء من سجل حسابك وسجل نشاطك كمنشئ.';
 
   @override
   String get privacySectionUserContent => 'المحتوى الذي ينشئه المستخدم';
@@ -5990,7 +5197,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get privacySectionAccountDeletionBody =>
-      'يمكنك طلب حذف حسابك من الإعدادات. يؤدي هذا إلى تقديم طلب للمراجعة — ولا يُحذف حسابك فورًا. أثناء انتظار مراجعة الطلب، يمكنك إلغاؤه من الإعدادات ويبقى حسابك نشطًا. بمجرد قبول الطلب ومعالجته، لا يمكن التراجع عن الحذف، ويتم حذف ملفك الشخصي وحزمك ورصيد محفظتك وسجل ألعابك نهائيًا.';
+      'يمكنك طلب حذف حسابك من الإعدادات. يؤدي هذا إلى تقديم طلب للمراجعة — ولا يُحذف حسابك فورًا. أثناء انتظار مراجعة الطلب، يمكنك إلغاؤه من الإعدادات ويبقى حسابك نشطًا. بمجرد قبول الطلب ومعالجته، لا يمكن التراجع عن الحذف، ويتم حذف ملفك الشخصي وحزمك وسجل ألعابك نهائيًا.';
 
   @override
   String get privacySectionThirdParty => 'الخدمات التابعة لجهات خارجية';
@@ -6050,20 +5257,6 @@ class AppLocalizationsAr extends AppLocalizations {
       'يتيح لك Jma3a إنشاء أو الانضمام إلى غرف للعب ألعاب متعددة اللاعبين مع الأصدقاء والمستخدمين الآخرين، باستخدام حزم محتوى مقدمة من Jma3a أو من إنشاء المستخدمين. يُتوقع من مضيفي وأعضاء الغرفة الالتزام بهذه الشروط أثناء اللعب.';
 
   @override
-  String get termsSectionPremium => 'Premium و Premium Plus';
-
-  @override
-  String get termsSectionPremiumBody =>
-      'يقدم Jma3a اشتراكات اختيارية Premium وPremium Plus تفتح ميزات ومزايا إضافية داخل التطبيق. قد يتغير محتوى كل فئة بمرور الوقت، وسيتم إعلامك بما يتضمنه الاشتراك قبل الشراء.';
-
-  @override
-  String get termsSectionWallet => 'المحفظة والمدفوعات';
-
-  @override
-  String get termsSectionWalletBody =>
-      'يتضمن Jma3a محفظة داخل التطبيق يمكن شحنها باستخدام وسائل الدفع المحلية المدعومة. يمكن للمنشئين كسب رصيد من محتواهم وطلب سحبه، وذلك وفقًا لمراجعة Jma3a. تخضع المدفوعات أيضًا لشروط مزود وسيلة الدفع التي تستخدمها.';
-
-  @override
   String get termsSectionModeration => 'الإبلاغ والإشراف';
 
   @override
@@ -6112,9 +5305,6 @@ class AppLocalizationsAr extends AppLocalizations {
       'تم حظر حسابك نهائيًا من استخدام جماعة.';
 
   @override
-  String get appUpdateAvailableTitle => 'يتوفر تحديث';
-
-  @override
   String get appUpdateDefaultTitle => 'يتوفر إصدار جديد';
 
   @override
@@ -6123,9 +5313,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get appUpdateNowButton => 'تحديث';
-
-  @override
-  String get appUpdateLaterButton => 'لاحقًا';
 
   @override
   String get appUpdateBannerMessage => 'يتوفر إصدار جديد من تطبيق جماعة.';
@@ -6156,9 +5343,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get deleteAccountReasonOtherHint => 'يرجى إخبارنا بالمزيد (مطلوب)';
-
-  @override
-  String get deleteAccountReasonValidation => 'يرجى اختيار سبب';
 
   @override
   String get deleteAccountOtherDescriptionValidation => 'يرجى وصف سببك';
@@ -6193,12 +5377,6 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get tutBrowserFilterBody =>
       'صفِّ الغرف العامة حسب نوع اللعبة لتجد غرفة مفتوحة للانضمام.';
-
-  @override
-  String get tutCreateNameTitle => 'سمِّ غرفتك';
-
-  @override
-  String get tutCreateNameBody => 'أعطِ غرفتك اسمًا حتى يتعرّف عليها أصدقاؤك.';
 
   @override
   String get tutCreateVisibilityTitle => 'عامة أو خاصة';
@@ -6493,16 +5671,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get reportTargetChatMessage => 'بلاغ عن رسالة';
 
   @override
-  String get walletDepositsUnavailable => 'الإيداع غير متاح مؤقتًا.';
-
-  @override
-  String get walletWithdrawalsUnavailable => 'السحب غير متاح مؤقتًا.';
-
-  @override
-  String get walletFinanceServiceUnavailable =>
-      'الخدمة المالية غير متاحة مؤقتًا';
-
-  @override
   String get authIdentifierLabel => 'البريد الإلكتروني أو رقم الهاتف';
 
   @override
@@ -6635,9 +5803,6 @@ class AppLocalizationsAr extends AppLocalizations {
       'هذا الحساب ليس لديه كلمة مرور بعد. تحقق برمز لمرة واحدة لإنشاء واحدة.';
 
   @override
-  String get authVerifyWithOtp => 'التحقق برمز';
-
-  @override
   String get authDontHaveAccount => 'ليس لديك حساب؟';
 
   @override
@@ -6647,20 +5812,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get passwordSettingsTitle => 'كلمة المرور والأمان';
 
   @override
-  String get passwordSettingsUpdateTitle => 'تحديث كلمة المرور';
-
-  @override
-  String get passwordSettingsUpdateSubtitle => 'غيّر كلمة مرورك بأمان.';
-
-  @override
   String get passwordSettingsVerifyButton => 'تحقق من كلمة المرور الحالية';
 
   @override
   String get passwordSettingsChangeButton => 'تغيير كلمة المرور';
-
-  @override
-  String get passwordSettingsOtpNotice =>
-      'سنرسل لك رمز تحقق لتأكيد هويتك قبل تطبيق هذا التغيير.';
 
   @override
   String get passwordSettingsCurrentLabel => 'كلمة المرور الحالية';
@@ -6679,9 +5834,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get passwordSettingsHasPasswordBody => 'كلمة المرور الخاصة بك معينة.';
-
-  @override
-  String get passwordSettingsSetButton => 'تعيين كلمة مرور برمز';
 
   @override
   String get passwordSettingsChangeSuccess => 'تم تغيير كلمة المرور بنجاح';
@@ -6852,4 +6004,116 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get surveyChoiceOther => 'أخرى';
+
+  @override
+  String get voiceJoin => 'انضم إلى المحادثة الصوتية';
+
+  @override
+  String get voiceLeave => 'مغادرة المحادثة الصوتية';
+
+  @override
+  String get voiceConnecting => 'جارٍ الاتصال بالمحادثة الصوتية…';
+
+  @override
+  String get voiceReconnecting => 'جارٍ إعادة الاتصال بالمحادثة الصوتية…';
+
+  @override
+  String get voiceSpeaking => 'في المحادثة الصوتية · يمكنك التحدث';
+
+  @override
+  String get voiceListening => 'في المحادثة الصوتية · استماع فقط';
+
+  @override
+  String get voiceListenOnlyNotice => 'يمكن للمشاهدين الاستماع فقط دون التحدث.';
+
+  @override
+  String get voiceMicOn => 'الميكروفون مفعّل — اضغط للكتم';
+
+  @override
+  String get voiceMicOff => 'الميكروفون مكتوم — اضغط للتحدث';
+
+  @override
+  String get voiceRejoin => 'إعادة الانضمام إلى المحادثة الصوتية';
+
+  @override
+  String get voiceUnavailable => 'المحادثة الصوتية غير متاحة حاليًا.';
+
+  @override
+  String get voiceErrorNotAllowed =>
+      'لا يمكنك الانضمام إلى المحادثة الصوتية في هذه الغرفة.';
+
+  @override
+  String get voiceErrorRateLimited =>
+      'محاولات كثيرة. انتظر قليلًا ثم حاول مجددًا.';
+
+  @override
+  String get voiceMicPermissionDenied =>
+      'الميكروفون غير متاح. تحقّق من إذن الميكروفون في الإعدادات.';
+
+  @override
+  String get voiceDisconnectedElsewhere =>
+      'انضممت إلى المحادثة الصوتية من جهاز آخر.';
+
+  @override
+  String get voiceAwayPendingApproval =>
+      'يمكنك الانضمام إلى المحادثة الصوتية بعد أن يسمح لك المضيف بالعودة إلى اللعبة.';
+
+  @override
+  String get voiceDisconnected => 'انقطع الاتصال بالمحادثة الصوتية.';
+
+  @override
+  String get voiceErrorFailed =>
+      'تعذّر الاتصال بالمحادثة الصوتية. حاول مجددًا.';
+
+  @override
+  String get voiceRoleChangedListenOnly =>
+      'أصبحت مشاهدًا. أعد الانضمام إلى المحادثة الصوتية للاستماع.';
+
+  @override
+  String get voiceMuteFailedForRecording =>
+      'تعذّر كتم ميكروفون المحادثة الصوتية، لذلك لم يبدأ التسجيل. حاول مجددًا.';
+
+  @override
+  String get voiceChatSetting => 'المحادثة الصوتية';
+
+  @override
+  String get voiceChatSettingOnSubtitle =>
+      'مفعّلة — ينضم الأعضاء تلقائيًا، وتبدأ الميكروفونات مكتومة.';
+
+  @override
+  String get voiceChatSettingOffSubtitle =>
+      'متوقفة — لا يمكن لأحد الانضمام إلى المحادثة الصوتية في هذه الغرفة.';
+
+  @override
+  String get voiceDailyLimitReached =>
+      'يمكن للحسابات الأساسية تفعيل المحادثة الصوتية في غرفة واحدة يوميًا. حاول مجددًا بعد منتصف الليل (بتوقيت نواكشوط) أو قم بالترقية إلى بريميوم.';
+
+  @override
+  String get voiceSettingFailed =>
+      'تعذّر تغيير إعداد المحادثة الصوتية. حاول مجددًا.';
+
+  @override
+  String get voiceRetry => 'إعادة محاولة الصوت';
+
+  @override
+  String get voiceMutedByAdmin => 'قام مشرف الغرفة بكتم ميكروفونك.';
+
+  @override
+  String get voiceMuteMember => 'كتم الميكروفون';
+
+  @override
+  String get voiceUnmuteMember => 'إلغاء كتم الميكروفون';
+
+  @override
+  String get voiceMemberMutedTooltip => 'الميكروفون مكتوم من قبل مشرف';
+
+  @override
+  String get voiceMuteActionFailed =>
+      'تعذّر تغيير ميكروفون هذا العضو. حاول مجددًا.';
+
+  @override
+  String get voiceDisabledForRoom => 'المحادثة الصوتية متوقفة في هذه الغرفة.';
+
+  @override
+  String get roomsPermMuteVoice => 'كتم الميكروفونات';
 }

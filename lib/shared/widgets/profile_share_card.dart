@@ -4,6 +4,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../../core/extensions/context_ext.dart';
 import '../../core/theme/app_colors.dart';
 import '../../features/auth/domain/entities/user_entity.dart';
+import 'cards/verified_creator_badge.dart';
 
 /// Isolated, purpose-built widget for [shareProfile]'s generated image —
 /// deliberately NOT a screenshot of any real screen (see profile_share.dart
@@ -119,8 +120,7 @@ class ProfileShareCard extends StatelessWidget {
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(
-                        Icons.verified_rounded,
+                      const VerifiedCreatorBadge(
                         size: 16,
                         color: AppColors.amberOrangeLight,
                       ),

@@ -5,8 +5,6 @@ import '../../../../core/di/service_locator.dart';
 import '../../../../core/errors/failures.dart';
 import '../../../../core/extensions/context_ext.dart';
 import '../../../../core/providers/auth_provider.dart';
-import '../../../../core/router/route_names.dart';
-import '../../../../core/router/app_router.dart';
 import '../../../../core/services/app_tutorial_service.dart';
 import '../../../../shared/widgets/buttons/j_button.dart';
 import '../../../../shared/widgets/tutorial/screen_tutorial.dart';
@@ -474,21 +472,6 @@ class _CreateRoomSheetState extends State<CreateRoomSheet> {
                             fontWeight: FontWeight.w700,
                           ),
                         ),
-                        if (!isPremium) ...[
-                          const SizedBox(width: 8),
-                          GestureDetector(
-                            onTap: () {
-                              Navigator.pop(ctx);
-                              AppRouter.router.push(RouteNames.premium);
-                            },
-                            child: Text(
-                              context.l10n.roomsUpgradeArrow,
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                color: theme.colorScheme.primary,
-                              ),
-                            ),
-                          ),
-                        ],
                       ],
                     ),
                     const SizedBox(height: 8),
@@ -506,10 +489,7 @@ class _CreateRoomSheetState extends State<CreateRoomSheet> {
                                       setState(() => _emoji = e);
                                       Navigator.pop(ctx);
                                     }
-                                  : () {
-                                      Navigator.pop(ctx);
-                                      AppRouter.router.push(RouteNames.premium);
-                                    },
+                                  : () {},
                             ),
                           )
                           .toList(),

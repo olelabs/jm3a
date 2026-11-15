@@ -1361,8 +1361,6 @@ class PackEntity extends Equatable {
     this.maxPlayers,
     List<String>? suggestedPunishments,
     this.platformManaged = false,
-    this.trialEnabled = false,
-    this.trialCardCount = 0,
   }) : availableLanguages = availableLanguages ?? const [],
        suggestedPunishments = suggestedPunishments ?? const [];
 
@@ -1432,17 +1430,6 @@ class PackEntity extends Equatable {
   /// at the original creator for provenance; this is the flag that
   /// actually gates whether they can still edit/submit/manage it.
   final bool platformManaged;
-
-  /// Trial Packs — admin-only (see the Jma3a admin console's official-pack
-  /// edit flow; never settable from this consumer app). When true, an
-  /// eligible user who hasn't purchased this pack may play the first
-  /// [trialCardCount] cards once — see PackRepository.getEligibleTrialPacks
-  /// / startPackTrial / tryConsumeTrialCard and
-  /// migration_2026_pack_trial.sql. Always false with trialCardCount 0 for
-  /// every pack created before this feature and for any pack an admin
-  /// hasn't explicitly opted in.
-  final bool trialEnabled;
-  final int trialCardCount;
 
   bool get isFree => priceMru == 0;
   bool get isPublished => status.isPublished;

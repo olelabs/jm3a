@@ -18,4 +18,16 @@ abstract final class SocialLinks {
 
   /// TODO: fill in with the real official Jma3a Facebook page URL.
   static const String facebook = '';
+
+  /// TODO: placeholder Mauritania number — replace with the real Jma3a
+  /// WhatsApp contact number once available.
+  static const String whatsappNumber = '22232323232';
+
+  /// The single Jma3a WhatsApp contact URL (wa.me), with no prefilled
+  /// message. Every screen that needs a WhatsApp contact/request action
+  /// (About Us, Verified Creator request) reads this one constant rather
+  /// than hardcoding the number — a caller that wants a prefilled message
+  /// appends its own `?text=` query param on top of this base URL rather
+  /// than duplicating the number.
+  static const String whatsapp = 'https://wa.me/$whatsappNumber';
 }

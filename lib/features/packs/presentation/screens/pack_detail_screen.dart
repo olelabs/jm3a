@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
 import '../../../../core/config/platform_config_provider.dart';
 import '../../../../core/providers/auth_provider.dart';
-import '../../../../core/router/route_names.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/extensions/context_ext.dart';
@@ -14,12 +12,10 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/cards/pack_cover_fallback.dart';
 import '../../../../shared/widgets/cards/user_avatar.dart';
 import '../../../../shared/widgets/feedback/error_view.dart';
-import '../../../../shared/widgets/overlays/loading_overlay.dart';
 import '../../data/pack_repository.dart';
 import '../pack_provider.dart';
 import '../widgets/pack_download_button.dart';
 import '../widgets/physical_pack_request_sheet.dart';
-import '../widgets/promote_pack_sheet.dart';
 import '../widgets/report_pack_sheet.dart';
 import '../widgets/review_sheet.dart';
 
@@ -45,9 +41,7 @@ class _PackDetailScreenState extends State<PackDetailScreen> {
   PackEntity? _pack;
   List<PackReview> _reviews = [];
   PackRating? _myRating;
-  PackPromotionStatus? _promotionStatus;
   bool _isLoading = true;
-  bool _isPurchasing = false;
   Object? _error;
 
   @override
@@ -82,95 +76,12 @@ class _PackDetailScreenState extends State<PackDetailScreen> {
         _myRating = results.length > 2 ? results[2] as PackRating? : null;
         _isLoading = false;
       });
-      if (pack.creatorId == userId &&
-          pack.isVerifiedCreator &&
-          pack.isPublished) {
-        _loadPromotionStatus();
-      }
     } catch (e) {
       if (mounted)
         setState(() {
           _error = e;
           _isLoading = false;
         });
-    }
-  }
-
-  // Item 10 — guards against a rapid double-tap opening two confirmation
-  // dialogs before the first one's awaited Future resolves (isPurchasing
-  // alone only covers the window AFTER confirmation, once the actual API
-  // call is in flight).
-  bool _isConfirmingPurchase = false;
-
-  Future<void> _purchase() async {
-    final pack = _pack;
-    if (pack == null || _isPurchasing || _isConfirmingPurchase) return;
-
-    // Item 10 — show what's being purchased (name, price/currency) and
-    // require an explicit confirmation before ever calling the purchase
-    // API. Cancelling performs no purchase at all — this only gates the
-    // EXISTING purchasePack flow below, it doesn't duplicate it.
-    _isConfirmingPurchase = true;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dCtx) => AlertDialog(
-        title: Text(dCtx.l10n.packConfirmPurchaseTitle),
-        content: Text(
-          dCtx.l10n.packConfirmPurchaseBody(
-            _displayTitle(dCtx, pack),
-            pack.isFree
-                ? dCtx.l10n.packFreeLabel
-                : dCtx.l10n.packPriceMru(pack.priceMru),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dCtx, false),
-            child: Text(dCtx.l10n.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dCtx, true),
-            child: Text(dCtx.l10n.packConfirmPurchaseAction),
-          ),
-        ],
-      ),
-    );
-    _isConfirmingPurchase = false;
-    if (confirmed != true || !mounted) return;
-
-    setState(() => _isPurchasing = true);
-    final error = await context.read<PackProvider>().purchasePack(pack);
-    if (!mounted) return;
-    setState(() => _isPurchasing = false);
-
-    if (error == null) {
-      context.showSnackBar(context.l10n.packPurchasedNotice);
-      await _load();
-    } else if (error.toLowerCase().contains('insufficient')) {
-      showDialog(
-        context: context,
-        builder: (_) => AlertDialog(
-          title: Text(context.l10n.packInsufficientBalance),
-          content: Text(
-            context.l10n.packInsufficientBalanceBody(pack.priceMru),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(context.l10n.cancel),
-            ),
-            FilledButton(
-              onPressed: () {
-                Navigator.pop(context);
-                context.push(RouteNames.wallet);
-              },
-              child: Text(context.l10n.packTopUpWallet),
-            ),
-          ],
-        ),
-      );
-    } else {
-      context.showErrorSnackBar(context.l10n.packPurchaseFailed(error));
     }
   }
 
@@ -209,31 +120,6 @@ class _PackDetailScreenState extends State<PackDetailScreen> {
     );
     if (result == true && mounted) {
       context.showSnackBar(context.l10n.packPhysicalCopyRequested);
-    }
-  }
-
-  Future<void> _loadPromotionStatus() async {
-    try {
-      final status = await PackRepository.instance.getPackPromotionStatus(
-        widget.packId,
-      );
-      if (mounted) setState(() => _promotionStatus = status);
-    } catch (_) {
-      // Best-effort UX hint only — promote_pack() itself is still the
-      // authoritative check if this fails to load and the button shows.
-    }
-  }
-
-  Future<void> _showPromotePackSheet(String packId) async {
-    final result = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => PromotePackSheet(packId: packId),
-    );
-    if (result == true && mounted) {
-      context.showSnackBar(context.l10n.packPromotionSuccess);
-      _loadPromotionStatus();
     }
   }
 
@@ -280,18 +166,11 @@ class _PackDetailScreenState extends State<PackDetailScreen> {
     final pack = _pack!;
     final packs = context.watch<PackProvider>();
     final isOwned = packs.isOwned(pack);
-    final canPromote =
-        pack.creatorId == packs.currentUserId &&
-        pack.isVerifiedCreator &&
-        pack.isPublished;
     final dlState = packs.downloadStateFor(pack.id);
     final purchase = packs.purchaseFor(pack.id);
     final theme = context.theme;
 
-    return LoadingOverlay(
-      isLoading: _isPurchasing,
-      message: context.l10n.packProcessingEllipsis,
-      child: Scaffold(
+    return Scaffold(
         body: CustomScrollView(
           slivers: [
             SliverAppBar(
@@ -427,8 +306,6 @@ class _PackDetailScreenState extends State<PackDetailScreen> {
                     pack: pack,
                     isOwned: isOwned,
                     dlState: dlState,
-                    isPurchasing: _isPurchasing,
-                    onPurchase: _purchase,
                     onDownload: () async {
                       final isPremium =
                           context
@@ -467,37 +344,6 @@ class _PackDetailScreenState extends State<PackDetailScreen> {
                       icon: const Icon(Icons.local_shipping_outlined),
                       label: Text(context.l10n.packRequestPhysicalCopy),
                     ),
-                  ],
-
-                  // §10: promotions-disabled hides the "Promote" CTA, but an
-                  // ALREADY-active promotion (bought while enabled) keeps
-                  // showing its own "ends at" state — disabling only blocks
-                  // new attempts, never touches an existing active one.
-                  if (canPromote &&
-                      (_promotionStatus?.active == true ||
-                          context
-                              .watch<PlatformConfigProvider>()
-                              .packPromotionsEnabled)) ...[
-                    const SizedBox(height: 10),
-                    _promotionStatus?.active == true
-                        ? OutlinedButton.icon(
-                            onPressed: null,
-                            icon: const Icon(Icons.campaign_outlined),
-                            label: Text(
-                              context.l10n.packPromotionEndsAt(
-                                DateFormat.yMMMd(
-                                  Localizations.localeOf(context).toString(),
-                                ).add_jm().format(
-                                  _promotionStatus!.endsAt!.toLocal(),
-                                ),
-                              ),
-                            ),
-                          )
-                        : OutlinedButton.icon(
-                            onPressed: () => _showPromotePackSheet(pack.id),
-                            icon: const Icon(Icons.campaign_outlined),
-                            label: Text(context.l10n.packPromoteYourPack),
-                          ),
                   ],
 
                   const SizedBox(height: 28),
@@ -594,8 +440,7 @@ class _PackDetailScreenState extends State<PackDetailScreen> {
             ),
           ],
         ),
-      ),
-    );
+      );
   }
 }
 
@@ -744,8 +589,6 @@ class _PrimaryAction extends StatelessWidget {
     required this.pack,
     required this.isOwned,
     required this.dlState,
-    required this.isPurchasing,
-    required this.onPurchase,
     required this.onDownload,
     required this.onDelete,
   });
@@ -753,8 +596,6 @@ class _PrimaryAction extends StatelessWidget {
   final PackEntity pack;
   final bool isOwned;
   final PackDownloadState dlState;
-  final bool isPurchasing;
-  final VoidCallback onPurchase;
   final VoidCallback onDownload;
   final VoidCallback onDelete;
 

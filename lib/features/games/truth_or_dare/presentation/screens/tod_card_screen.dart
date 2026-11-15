@@ -32,6 +32,7 @@ import '../../../../rooms/domain/room_entity.dart';
 import '../../../../../shared/widgets/game/dishonest_reasons_panel.dart';
 import '../../../../../shared/widgets/game/honesty_vote_buttons.dart';
 import '../../../../../shared/widgets/game/responsive_game_text.dart';
+import '../../../../voice/presentation/voice_recording_coordinator.dart';
 
 /// Custom cards respecting daresEnabled — same rule the normal
 /// question-selection flow already enforces (TruthOrDareEngine._onChoice)
@@ -967,6 +968,12 @@ class _CardView extends StatelessWidget {
     Uint8List? voiceBytes;
     bool isRecording = false;
     final recorder = AudioRecorder();
+    // Voice chat (LiveKit) must not hold the microphone while recording a
+    // proof: the coordinator mutes it for the recording and keeps it muted
+    // afterwards. No voice session in this game -> plain recording as before.
+    final voiceRecording = VoiceRecordingCoordinator(
+      VoiceSessionScope.maybeOf(context),
+    );
     bool recorderDisposed = false;
     void safeDisposeRecorder() {
       if (recorderDisposed) return;
@@ -985,34 +992,54 @@ class _CardView extends StatelessWidget {
 
     Future<void> stopRecording(StateSetter setS) async {
       recordingTimer?.cancel();
-      final path = await recorder.stop();
-      if (path == null) return;
-      await Future.delayed(const Duration(milliseconds: 300));
-      final file = File(path);
-      if (!await file.exists()) return;
-      final bytes = await file.readAsBytes();
-      if (bytes.isEmpty) return;
-      setS(() {
-        voiceBytes = bytes;
-        isRecording = false;
-        recordingSeconds = 0;
-      });
+      try {
+        final path = await recorder.stop();
+        if (path == null) return;
+        await Future.delayed(const Duration(milliseconds: 300));
+        final file = File(path);
+        if (!await file.exists()) return;
+        final bytes = await file.readAsBytes();
+        if (bytes.isEmpty) return;
+        setS(() {
+          voiceBytes = bytes;
+          isRecording = false;
+          recordingSeconds = 0;
+        });
+      } finally {
+        voiceRecording.recordingEnded(); // voice mic stays muted
+      }
     }
 
     Future<void> startRecording(StateSetter setS) async {
       if (!await recorder.hasPermission()) return;
+      final readiness = await voiceRecording.prepareToRecord();
+      if (readiness == VoiceRecordingReadiness.closed) return;
+      if (readiness == VoiceRecordingReadiness.microphoneBusy) {
+        if (context.mounted) {
+          context.showSnackBar(
+            context.l10n.voiceMuteFailedForRecording,
+            isError: true,
+          );
+        }
+        return;
+      }
       game.broadcastActivity('uploading_proof');
-      final dir = await getTemporaryDirectory();
-      final path =
-          '${dir.path}/proof_${DateTime.now().millisecondsSinceEpoch}.m4a';
-      await recorder.start(
-        const RecordConfig(
-          encoder: AudioEncoder.aacLc,
-          bitRate: 64000,
-          sampleRate: 44100,
-        ),
-        path: path,
-      );
+      try {
+        final dir = await getTemporaryDirectory();
+        final path =
+            '${dir.path}/proof_${DateTime.now().millisecondsSinceEpoch}.m4a';
+        await recorder.start(
+          const RecordConfig(
+            encoder: AudioEncoder.aacLc,
+            bitRate: 64000,
+            sampleRate: 44100,
+          ),
+          path: path,
+        );
+      } catch (_) {
+        voiceRecording.recordingEnded();
+        rethrow;
+      }
       recordingSeconds = 0;
       setS(() {
         isRecording = true;
@@ -1029,7 +1056,11 @@ class _CardView extends StatelessWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => StatefulBuilder(
+      // VoiceRecordingCleanup releases any voice-mic hold however the sheet
+      // goes away (submit, cancel, dismiss, or the route being torn down).
+      builder: (ctx) => VoiceRecordingCleanup(
+        coordinator: voiceRecording,
+        child: StatefulBuilder(
         builder: (ctx, setS) {
           return PopScope(
             // Item 3 (prevent multiple actions while submitting) —
@@ -1486,8 +1517,10 @@ class _CardView extends StatelessWidget {
             ),
           );
         },
+        ),
       ),
     ).then((_) {
+      voiceRecording.close();
       game.resumeTimer();
     });
   }

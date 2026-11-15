@@ -16,6 +16,7 @@ import '../../../../shared/widgets/buttons/j_button.dart';
 import '../../../../shared/widgets/cards/pack_cover_fallback.dart';
 import '../../../../shared/widgets/cards/profile_pack_card.dart';
 import '../../../../shared/widgets/cards/user_avatar.dart';
+import '../../../../shared/widgets/cards/verified_creator_badge.dart';
 import '../../../../shared/widgets/feedback/error_view.dart';
 import '../../../../shared/widgets/media/signed_network_image.dart';
 import '../../../packs/data/pack_repository.dart';
@@ -787,11 +788,7 @@ class _ProfileHeaderContent extends StatelessWidget {
               ],
               if (p.isVerified) ...[
                 const SizedBox(width: 4),
-                const Icon(
-                  Icons.verified_rounded,
-                  size: 20,
-                  color: AppColors.infoBlue,
-                ),
+                const VerifiedCreatorBadge(size: 20),
               ],
             ],
           ),

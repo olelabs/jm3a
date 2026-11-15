@@ -442,6 +442,17 @@ class NotificationTile extends StatelessWidget {
 }
 
 // ── Notification preferences screen ──────────────────────────────────────────
+// Wallet credit/debit and the subscription-expiring-soon reminders are not
+// customer-configurable here — excluded from the list below even though the
+// underlying NotificationType values, their delivery, and their deep links
+// are untouched; only their preference row is hidden.
+const Set<NotificationType> _hiddenPreferenceTypes = {
+  NotificationType.walletCredit,
+  NotificationType.walletDebit,
+  NotificationType.subscriptionExpiring2d,
+  NotificationType.subscriptionExpiring1d,
+};
+
 class NotificationPreferencesScreen extends StatelessWidget {
   const NotificationPreferencesScreen({super.key});
 
@@ -482,7 +493,9 @@ class NotificationPreferencesScreen extends StatelessWidget {
                 ),
               ),
               const Divider(height: 1),
-              ...NotificationType.values.map((type) {
+              ...NotificationType.values
+                  .where((type) => !_hiddenPreferenceTypes.contains(type))
+                  .map((type) {
                 final pref =
                     notifs.preferences
                         .cast<NotificationPreference?>()

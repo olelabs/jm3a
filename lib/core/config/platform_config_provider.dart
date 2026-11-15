@@ -82,13 +82,7 @@ class PlatformConfigProvider extends ChangeNotifier {
   int offlinePackLimit({required bool isPremium}) =>
       _config.offlinePackLimit(isPremium: isPremium);
 
-  int get packSubmissionFreeMonthlyLimit =>
-      _config.packSubmissionFreeMonthlyLimit;
-  int get packSubmissionMinGapDays => _config.packSubmissionMinGapDays;
-  int get packExtraCreationFeeMru => _config.packExtraCreationFeeMru;
   int get physicalPackPriceMru => _config.physicalPackPriceMru;
-  int get packPromotionPrice24hMru => _config.packPromotionPrice24hMru;
-  int get packPromotionPrice7dMru => _config.packPromotionPrice7dMru;
 
   bool get spicyContentEnabled => _config.spicyContentEnabled;
 
@@ -102,7 +96,4 @@ class PlatformConfigProvider extends ChangeNotifier {
   int get scorePointsPerStreakDay => _config.scorePointsPerStreakDay;
 
   bool get physicalPackRequestsEnabled => _config.physicalPackRequestsEnabled;
-  bool get packPromotionsEnabled => _config.packPromotionsEnabled;
-  bool get depositsEnabled => _config.depositsEnabled;
-  bool get withdrawalsEnabled => _config.withdrawalsEnabled;
 }

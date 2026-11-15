@@ -33,7 +33,6 @@ import '../../../../../shared/widgets/overlays/confirm_dialog.dart';
 import '../../../../../shared/widgets/overlays/host_reconnect_overlay.dart';
 import '../../../../../shared/widgets/game/away_presence_snackbar_listener.dart';
 import '../../../../../shared/widgets/game/game_chat_sheet.dart';
-import '../../../../../shared/widgets/game/trial_limit_sheet.dart';
 import '../../../game_session_messages.dart';
 import '../../domain/tod_models.dart';
 import '../../tod_game_provider.dart';
@@ -354,11 +353,6 @@ class _TodGameScreenState extends State<TodGameScreen> {
     // itself notifies (e.g. once its initial state loads), not just when
     // RoomProvider changes.
     _provider.addListener(_syncAwayFromPresence);
-    // Trial Packs — only ever non-null on the owner's own provider
-    // instance (see TodGameProvider.trialStatus's own doc comment); a
-    // no-op listener add on a follower's screen, since trialStatus never
-    // changes there.
-    _provider.addListener(_onTrialExhausted);
     _provider.permissionChecker = widget.roomProvider?.memberHasPermission;
     _provider.roomProvider = widget.roomProvider;
     final roomId = widget.roomProvider?.room?.id;
@@ -374,7 +368,6 @@ class _TodGameScreenState extends State<TodGameScreen> {
     widget.roomProvider?.removeListener(_onRoomPauseChanged);
     widget.roomProvider?.removeListener(_syncAwayFromPresence);
     _provider.removeListener(_syncAwayFromPresence);
-    _provider.removeListener(_onTrialExhausted);
     _lifecycleSub?.cancel();
     // ScreenSecurityService.instance.disable();
     _statusSub?.cancel();
@@ -386,48 +379,6 @@ class _TodGameScreenState extends State<TodGameScreen> {
     );
     _provider.dispose();
     super.dispose();
-  }
-
-  // Trial Packs — one-shot: fires whenever _provider notifies and the
-  // owner's trial has just become exhausted; _trialSheetOpen guards
-  // against re-showing the sheet on every subsequent unrelated
-  // notification while it's already up (e.g. other realtime state
-  // updates arriving while the player is deciding).
-  bool _trialSheetOpen = false;
-
-  void _onTrialExhausted() {
-    final status = _provider.trialStatus;
-    if (status == null || !status.isExhausted || _trialSheetOpen) return;
-    _trialSheetOpen = true;
-    _showTrialLimitSheet();
-  }
-
-  Future<void> _showTrialLimitSheet() async {
-    try {
-      final pack = await sl.packRepository.getPackDetail(widget.packId);
-      if (!mounted) return;
-      final purchased = await showTrialLimitSheet(context, pack);
-      if (!mounted) return;
-      if (purchased) {
-        // Reuses the existing purchase flow's own result — this call
-        // never restarts the room/game/turn/settings, it only marks the
-        // pack owned and continues from exactly where play stopped (see
-        // TodGameProvider.resumeAfterTrialPurchase's own doc comment).
-        await _provider.resumeAfterTrialPurchase();
-      } else {
-        // "End Trial" / dismissed — per spec, the trial GAME ends here
-        // (not merely frozen on screen): reuses the existing owner-only
-        // end-game flow, same as the manual "End Game" button
-        // (_confirmEndGame -> game.requestEndGame()). No card 6 is ever
-        // reachable, and the trial stays consumed (pack_trial_usage is
-        // untouched by ending the game — nothing resets it).
-        await _provider.requestEndGame(reason: 'trial_declined');
-      }
-    } catch (e) {
-      AppLogger.warning('TodGameScreen: trial-limit sheet failed: $e');
-    } finally {
-      _trialSheetOpen = false;
-    }
   }
 
   void _wireRealtimeCallbacks() {

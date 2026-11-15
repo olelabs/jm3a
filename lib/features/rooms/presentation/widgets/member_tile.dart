@@ -13,8 +13,10 @@ class MemberTile extends StatelessWidget {
     required this.isCurrentUser,
     required this.canModerate,
     this.isWaitingForGameApproval = false,
+    this.isSpeaking = false,
     this.onKick,
     this.onMute,
+    this.onVoiceMute,
     this.onBan,
     this.onTransferOwnership,
     this.onManagePermissions,
@@ -29,8 +31,17 @@ class MemberTile extends StatelessWidget {
   /// from isAway ("left the game") and isGameMuted ("watching, blocked
   /// from turns") — this member hasn't been decided on yet at all.
   final bool isWaitingForGameApproval;
+
+  /// Currently speaking in the room's LiveKit voice chat — drawn as a ring
+  /// via UserAvatar's existing border. Purely visual; unrelated to the chat
+  /// mute (isMuted) and game mute (isGameMuted) badges.
+  final bool isSpeaking;
   final VoidCallback? onKick;
   final VoidCallback? onMute;
+
+  /// Admin VOICE mute/unmute (microphone only) — separate from [onMute],
+  /// which is the text-chat mute.
+  final VoidCallback? onVoiceMute;
   final VoidCallback? onBan;
   final VoidCallback? onTransferOwnership;
 
@@ -105,7 +116,37 @@ class MemberTile extends StatelessWidget {
                       showOnlineStatus: true,
                       isOnline: !member.isDisconnected && !member.isAway,
                       isBackgroundedAway: isAway,
+                      borderWidth: isSpeaking ? 2.5 : 0,
+                      borderColor: isSpeaking ? AppColors.successGreen : null,
                     ),
+                    if (member.isVoiceMuted)
+                      Positioned(
+                        left: -2,
+                        bottom: -2,
+                        child: Tooltip(
+                          message: context.l10n.voiceMemberMutedTooltip,
+                          child: Container(
+                            key: const Key('member_voice_muted_badge'),
+                            width: 14,
+                            height: 14,
+                            decoration: BoxDecoration(
+                              color: AppColors.warningAmber,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: theme.colorScheme.surface,
+                                width: 1,
+                              ),
+                            ),
+                            // The admin VOICE mute (is_voice_muted): a mic
+                            // icon is correct here, unlike the chat badge.
+                            child: const Icon(
+                              Icons.mic_off_rounded,
+                              size: 8,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
                     if (member.isMuted)
                       Positioned(
                         right: -2,
@@ -299,6 +340,24 @@ class MemberTile extends StatelessWidget {
                 onTap: () {
                   Navigator.pop(ctx);
                   onMute?.call();
+                },
+              ),
+            if (onVoiceMute != null)
+              ListTile(
+                key: const Key('member_voice_mute_action'),
+                leading: Icon(
+                  member.isVoiceMuted
+                      ? Icons.mic_rounded
+                      : Icons.mic_off_rounded,
+                ),
+                title: Text(
+                  member.isVoiceMuted
+                      ? l10n.voiceUnmuteMember
+                      : l10n.voiceMuteMember,
+                ),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  onVoiceMute?.call();
                 },
               ),
             if (onKick != null)

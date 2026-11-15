@@ -286,62 +286,18 @@ class _CreatePackScreenState extends State<CreatePackScreen> {
     }
   }
 
-  Future<bool> _confirmSubmissionFee() async {
-    // The fee is admin-configurable via app_settings (never hardcoded) —
-    // submit_pack_for_review always charges the live server-side value
-    // regardless of what's shown here; PlatformConfigProvider's cached
-    // value is purely so the dialog text is accurate.
-    final fee = context.read<PlatformConfigProvider>().packExtraCreationFeeMru;
-    if (!mounted) return false;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(ctx.l10n.packAdditionalFeeTitle),
-        content: Text(ctx.l10n.packAdditionalFeeBody(fee)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(ctx.l10n.cancel),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(ctx.l10n.packPayFeeAndSubmit(fee)),
-          ),
-        ],
-      ),
-    );
-    return confirmed == true;
-  }
-
-  /// [payFee] true skips straight to a paid submission (used on retry after
-  /// the server itself reported fee_required) — otherwise runs the
-  /// non-authoritative pre-check first purely to decide whether to show the
-  /// confirmation dialog before calling the RPC, which always re-verifies
-  /// the real limit server-side regardless of what the pre-check found.
-  Future<void> _submit({bool payFee = false}) async {
+  /// Only the free submission path is customer-facing — there is no
+  /// in-app payment action. If the account is outside its free-submission
+  /// window, `_PublishStep` disables the submit button entirely (see
+  /// `_EligibilityCard`'s "next free submission at" date) rather than
+  /// offering a paid workaround; `submitForReview()` still independently
+  /// re-verifies the same limit server-side regardless.
+  Future<void> _submit() async {
     if (_savedPackId == null) return;
-
-    if (!payFee) {
-      try {
-        final status = await PackRepository.instance.getPackCreationStatus();
-        if (!status.canSubmitFree) {
-          if (!mounted) return;
-          if (!await _confirmSubmissionFee()) return;
-          payFee = true;
-        }
-      } catch (_) {
-        // Pre-check is best-effort only — fall through and let the RPC's
-        // own authoritative check decide (may still surface fee_required
-        // below, handled the same way as a fresh confirmation).
-      }
-    }
 
     setState(() => _isSaving = true);
     try {
-      await PackRepository.instance.submitForReview(
-        _savedPackId!,
-        payFee: payFee,
-      );
+      await PackRepository.instance.submitForReview(_savedPackId!);
       if (mounted) {
         context.read<PackProvider>().loadCreatedPacks();
         context.showSnackBar(context.l10n.packSubmittedForReviewNotice);
@@ -349,13 +305,7 @@ class _CreatePackScreenState extends State<CreatePackScreen> {
       }
     } on PaymentFailure catch (e) {
       setState(() => _isSaving = false);
-      if (e.code == 'fee_required' && mounted) {
-        // The pre-check missed it (race) — the server has now confirmed a
-        // fee is actually required, so ask once more and submit paid.
-        if (await _confirmSubmissionFee()) await _submit(payFee: true);
-      } else if (mounted) {
-        context.showErrorSnackBar(e.message);
-      }
+      if (mounted) context.showErrorSnackBar(e.message);
     } on Failure catch (e) {
       setState(() => _isSaving = false);
       if (mounted) {
@@ -2905,7 +2855,9 @@ class _PublishStepState extends State<_PublishStep> {
     // (server-side) submit both use, so the button state and the reasons shown
     // can never disagree. Never a silent disable.
     final issues = draft.validationIssues();
-    final canPublish = issues.isEmpty && widget.packId != null;
+    final canSubmitNow = _status?.canSubmitFree ?? true;
+    final canPublish =
+        issues.isEmpty && widget.packId != null && canSubmitNow;
     final titleValue = draft.selectedLanguages.isNotEmpty
         ? (draft.titles[draft.selectedLanguages.first] ?? '')
         : '';
@@ -2978,11 +2930,10 @@ class _PublishStepState extends State<_PublishStep> {
 
           const SizedBox(height: 16),
 
-          // Eligibility — item 12/13's explicit requirement: show free-
-          // submission availability, the next-free date if unavailable, and
-          // the database-configured paid option up front, never hidden
-          // behind a separate screen. Server-authoritative regardless —
-          // this card is read-only UX, submitForReview() re-verifies
+          // Eligibility — shows free-submission availability and the
+          // next-free date if unavailable; there is no paid workaround.
+          // Server-authoritative regardless — this card is read-only UX,
+          // submitForReview() re-verifies
           // everything itself.
           _EligibilityCard(status: _status, loading: _loadingStatus)
               .animate(delay: 85.ms)
@@ -3110,11 +3061,7 @@ class _PublishStepState extends State<_PublishStep> {
               const SizedBox(width: 12),
               Expanded(
                 child: JButton(
-                  label: (_status != null && !_status!.canSubmitFree)
-                      ? context.l10n.packCreateExtraPackPriced(
-                          _status!.extraPackPriceMru,
-                        )
-                      : context.l10n.packSubmitForReview,
+                  label: context.l10n.packSubmitForReview,
                   onPressed: canPublish ? widget.onPublish : null,
                   isLoading: widget.isSaving,
                   icon: Icons.send_rounded,
@@ -3179,9 +3126,9 @@ void _showPackTerms(BuildContext context) {
   );
 }
 
-/// Item 12/13 — free-submission-availability, next-free-date, and the
-/// database-configured paid-extra-pack option, shown clearly before the
-/// submit CTA rather than only surfacing at the moment of failure. Purely
+/// Free-submission availability and next-free-date, shown clearly before
+/// the submit CTA rather than only surfacing at the moment of failure —
+/// there is no paid workaround when the free window isn't open yet. Purely
 /// presentational (the server independently re-verifies everything in
 /// submitForReview()); [status] is null while still loading or if the
 /// preflight call failed, in which case a neutral loading/unknown state
@@ -3262,15 +3209,6 @@ class _EligibilityCard extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               l10n.packNextFreeSubmissionAt(_formatDate(s!.nextFreeAt!)),
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
-          if (!isFree) ...[
-            const SizedBox(height: 4),
-            Text(
-              l10n.packPaidExtraPackHint(s?.extraPackPriceMru ?? 0),
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),

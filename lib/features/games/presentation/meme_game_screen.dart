@@ -9,8 +9,6 @@ import 'package:jma3a/core/services/image_url_signer.dart';
 import 'package:jma3a/core/router/app_router.dart';
 import 'package:jma3a/shared/widgets/cards/honesty_score_line.dart';
 import 'package:jma3a/shared/widgets/game/dishonest_reasons_panel.dart';
-import 'package:jma3a/shared/widgets/game/trial_limit_sheet.dart';
-import 'package:jma3a/features/packs/domain/pack_trial_state.dart';
 import 'package:jma3a/shared/widgets/game/honesty_vote_buttons.dart';
 import 'package:jma3a/features/games/engine/base_game_engine.dart';
 import 'package:jma3a/features/games/presentation/widgets/game_screen_security_gate.dart';
@@ -732,16 +730,6 @@ class MemeGameProvider extends ChangeNotifier {
         existingSnapshot = existing?['state_snapshot'] as Map<String, dynamic>?;
       }
 
-      // Trial Packs — mirrors this exact condition so the trial
-      // claim/consume block below (after this if/else converges) can
-      // distinguish a genuine resume from a brand-new session. Kept as a
-      // literal re-check (not hoisted into a shared bool) so the `if`
-      // below still gets Dart's normal null-promotion on
-      // existingSnapshot inside its own block.
-      final isResumingSession =
-          existing != null &&
-          existingSnapshot != null &&
-          existingSnapshot.isNotEmpty;
       if (existing != null &&
           existingSnapshot != null &&
           existingSnapshot.isNotEmpty) {
@@ -850,30 +838,6 @@ class MemeGameProvider extends ChangeNotifier {
             'session creation: $e',
           );
         }
-      }
-
-      // Trial Packs — claim/refresh this owner's trial for `packId`
-      // (idempotent: safe on every initAsOwner call, new session or
-      // resumed). Best-effort — a failure here must never block the
-      // game itself from starting; it just means trial gating silently
-      // doesn't apply this session, same as "not a trial pack" (mirrors
-      // TodGameProvider.initAsOwner's own trial block).
-      try {
-        _trialStatus = await sl.packRepository.startPackTrial(packId);
-        // A genuinely new session is about to show this pack's first
-        // card for the first time — that consumes one trial slot too,
-        // exactly like every subsequent card does in ownerAdvanceTurn
-        // below. A resume must NOT re-consume: the card currently on
-        // screen already consumed its slot in the session that
-        // originally revealed it.
-        if (!isResumingSession &&
-            _trialStatus != null &&
-            _trialStatus!.state == PackTrialState.active) {
-          _trialStatus = await sl.packRepository.tryConsumeTrialCard(packId);
-        }
-      } catch (e) {
-        AppLogger.warning('MemeProvider: trial claim/consume failed: $e');
-        _trialStatus = null;
       }
 
       if (_sessionId != null) {
@@ -1061,17 +1025,6 @@ class MemeGameProvider extends ChangeNotifier {
   String? _packId;
   GameConfig? _config;
   GameConfig? get config => _config;
-
-  // Trial Packs — server-reported trial state for this session's pack
-  // (see PackRepository.startPackTrial/tryConsumeTrialCard and
-  // migration_2026_pack_trial.sql). Null or state == notTrialPack/owned
-  // means trial gating never applies. Only ever consulted/mutated on the
-  // OWNER's client (initAsOwner/ownerAdvanceTurn below) — mirrors
-  // TodGameProvider.trialStatus's own doc comment on why trial usage is
-  // keyed to the room owner, not every participant, in this owner-run,
-  // broadcast-relay architecture.
-  PackTrialStatus? _trialStatus;
-  PackTrialStatus? get trialStatus => _trialStatus;
 
   // ── Round timer (item 1) ─────────────────────────────────────────────
   // Same architecture as TodGameProvider._syncTimer/NhieGameProvider's
@@ -1572,40 +1525,6 @@ class MemeGameProvider extends ChangeNotifier {
       _readyForNext.clear();
       _myReadyIntent = false;
 
-      // Trial Packs — the authoritative "may the next card be revealed"
-      // check (task section 14): consult the server BEFORE the engine
-      // ever advances, not just a disabled button. _trialStatus stays
-      // null/notTrialPack/owned for every game that isn't an active,
-      // unowned trial — this is then a pure no-op, identical to
-      // pre-trial behavior. On trial_exhausted, the engine is left
-      // exactly where it was and the UI shows the purchase prompt via
-      // trialStatus.isExhausted (mirrors TodGameProvider.
-      // ownerAdvanceTurn's identical gate).
-      if (_trialStatus != null &&
-          _trialStatus!.state != PackTrialState.notTrialPack &&
-          _trialStatus!.state != PackTrialState.owned) {
-        final packId = _packId;
-        if (packId != null) {
-          try {
-            _trialStatus = await sl.packRepository.tryConsumeTrialCard(
-              packId,
-            );
-          } catch (e) {
-            AppLogger.warning(
-              'MemeProvider: tryConsumeTrialCard failed: $e',
-            );
-            // Fail closed, not open — an indeterminate result must never
-            // accidentally grant an extra unpaid card. Retryable.
-            _safeNotify();
-            return;
-          }
-          if (_trialStatus!.state == PackTrialState.exhausted) {
-            _safeNotify();
-            return;
-          }
-        }
-      }
-
       _engine!.advanceTurn();
       _autoFillAwayPlayers();
       if (_engine!.isGameOver) _loadState = MemeLoadState.gameOver;
@@ -1631,19 +1550,6 @@ class MemeGameProvider extends ChangeNotifier {
     } finally {
       _advancing = false;
     }
-  }
-
-  /// Trial Packs — call once showTrialLimitSheet resolves `true` (a
-  /// confirmed, successful purchase via the existing PackProvider.
-  /// purchasePack flow). Marks this session's pack owned so every
-  /// subsequent advance skips trial gating entirely, then immediately
-  /// continues to the next card from exactly where play stopped — same
-  /// room, same session, nothing reset or replayed (mirrors
-  /// TodGameProvider.resumeAfterTrialPurchase).
-  Future<void> resumeAfterTrialPurchase() async {
-    _trialStatus = const PackTrialStatus(state: PackTrialState.owned);
-    _safeNotify();
-    await ownerAdvanceTurn();
   }
 
   /// Advance the round, delegating to the owner's client if the caller
@@ -2776,49 +2682,9 @@ class _MemeGameScreenState extends State<MemeGameScreen> {
 
     widget.roomProvider?.addListener(_syncAwayFromPresence);
     _provider.addListener(_syncAwayFromPresence);
-    // Trial Packs — only ever non-null on the owner's own provider
-    // instance; a no-op add on a follower's screen (mirrors
-    // TodGameScreen's identical listener).
-    _provider.addListener(_onTrialExhausted);
     _lifecycleSub = widget.roomProvider?.lifecycleEvents.listen(
       _onRoomLifecycleEvent,
     );
-  }
-
-  // Trial Packs — one-shot: fires whenever _provider notifies and the
-  // owner's trial has just become exhausted; _trialSheetOpen guards
-  // against re-showing the sheet on every subsequent unrelated
-  // notification while it's already up (mirrors TodGameScreen's
-  // identical handler).
-  bool _trialSheetOpen = false;
-
-  void _onTrialExhausted() {
-    final status = _provider.trialStatus;
-    if (status == null || !status.isExhausted || _trialSheetOpen) return;
-    _trialSheetOpen = true;
-    _showTrialLimitSheet();
-  }
-
-  Future<void> _showTrialLimitSheet() async {
-    try {
-      final pack = await sl.packRepository.getPackDetail(widget.packId);
-      if (!mounted) return;
-      final purchased = await showTrialLimitSheet(context, pack);
-      if (!mounted) return;
-      if (purchased) {
-        await _provider.resumeAfterTrialPurchase();
-      } else {
-        // "End Trial" / dismissed — the trial GAME ends here (mirrors
-        // TodGameScreen's identical fix); no card 6 is ever reachable,
-        // and the trial stays consumed (ending the game never touches
-        // pack_trial_usage).
-        await _provider.endGame();
-      }
-    } catch (e) {
-      AppLogger.warning('MemeGameScreen: trial-limit sheet failed: $e');
-    } finally {
-      _trialSheetOpen = false;
-    }
   }
 
   bool? _lastKnownRoomOwner;
@@ -2985,7 +2851,6 @@ class _MemeGameScreenState extends State<MemeGameScreen> {
     widget.roomProvider?.removeListener(_onRoomPauseChanged);
     widget.roomProvider?.removeListener(_syncAwayFromPresence);
     _provider.removeListener(_syncAwayFromPresence);
-    _provider.removeListener(_onTrialExhausted);
     _lifecycleSub?.cancel();
     // ScreenSecurityService.instance.disable();
     // Only removes this screen's own 'game' listener — the room channel,

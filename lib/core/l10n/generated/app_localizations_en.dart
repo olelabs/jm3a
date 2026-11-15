@@ -123,12 +123,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get navProfile => 'Profile';
 
   @override
-  String get authWelcome => 'Welcome to Jma3a';
-
-  @override
-  String get authTagline => 'Play together, anywhere';
-
-  @override
   String get authEmailLabel => 'Your email address';
 
   @override
@@ -136,9 +130,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get authEmailInvalid => 'Please enter a valid email address';
-
-  @override
-  String get authSendOtp => 'Send code';
 
   @override
   String get authOtpLabel => 'Verification code';
@@ -269,7 +260,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get premiumBackgroundChooseColor => 'Choose a background color';
 
   @override
-  String get premiumBackgroundUpgradeHint => 'Premium feature — tap to upgrade';
+  String get premiumBackgroundUpgradeHint => 'Premium feature';
 
   @override
   String get premiumBackgroundSaveFailed => 'Could not save background color.';
@@ -464,105 +455,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsNotifications => 'Notifications';
 
   @override
-  String get walletEarningsTotal => 'Total earned';
-
-  @override
-  String get walletEarningsThisMonth => 'This month';
-
-  @override
-  String get walletEarningsTotalSales => 'Total sales';
-
-  @override
-  String get walletTransactionHistory => 'Transaction history';
-
-  @override
-  String get walletFilterAll => 'All';
-
-  @override
-  String get walletFilterDeposits => 'Deposits';
-
-  @override
-  String get walletFilterWithdrawals => 'Withdrawals';
-
-  @override
-  String get walletFilterPurchases => 'Purchases';
-
-  @override
-  String get walletFilterEarnings => 'Earnings';
-
-  @override
-  String get walletFilterRefunds => 'Refunds';
-
-  @override
-  String get walletFilterPayouts => 'Payouts';
-
-  @override
-  String get walletFilterBonuses => 'Bonuses';
-
-  @override
-  String get walletFilterAdjustments => 'Adjustments';
-
-  @override
-  String get walletFilterTransfers => 'Transfers';
-
-  @override
-  String get walletTypeDeposit => 'Deposit';
-
-  @override
-  String get walletTypeWithdrawal => 'Withdrawal';
-
-  @override
-  String get walletTypePurchase => 'Pack Purchase';
-
-  @override
-  String get walletTypeRefund => 'Refund';
-
-  @override
-  String get walletTypeCommission => 'Creator Earnings';
-
-  @override
-  String get walletTypePayout => 'Payout';
-
-  @override
-  String get walletTypeAdjustment => 'Adjustment';
-
-  @override
-  String get walletTypeBonus => 'Bonus';
-
-  @override
-  String get walletTypeTransfer => 'Balance Transfer';
-
-  @override
-  String get walletStatusPending => 'Pending';
-
-  @override
-  String get walletStatusProcessing => 'Processing';
-
-  @override
-  String get walletStatusCompleted => 'Completed';
-
-  @override
-  String get walletStatusFailed => 'Failed';
-
-  @override
-  String get walletStatusCancelled => 'Cancelled';
-
-  @override
-  String get walletStatusReversed => 'Reversed';
-
-  @override
-  String get walletDepositStatusPending => 'Pending';
-
-  @override
-  String get walletDepositStatusUnderReview => 'Under Review';
-
-  @override
-  String get walletDepositStatusApproved => 'Approved';
-
-  @override
-  String get walletDepositStatusRejected => 'Rejected';
-
-  @override
   String get profileGames => 'Games';
 
   @override
@@ -662,12 +554,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get lobbyReject => 'Reject';
-
-  @override
-  String get authUseEmailInstead => 'Use email instead';
-
-  @override
-  String get authUsePhoneInstead => 'Use phone instead';
 
   @override
   String get authContinueAsGuest => 'Continue as Guest';
@@ -865,30 +751,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get premiumErrorInsufficientBalance =>
-      'Not enough balance. Please top up your wallet first.';
-
-  @override
-  String get premiumErrorWalletNotFound =>
-      'Wallet not found. Please contact support.';
-
-  @override
-  String get premiumErrorWalletFrozen =>
-      'Your wallet is frozen. Please contact support.';
-
-  @override
-  String get premiumErrorInvalidPlan => 'Invalid plan selected.';
-
-  @override
-  String get premiumErrorDowngradeBlocked =>
-      'You can switch plans once your current subscription expires.';
-
-  @override
-  String premiumErrorPurchaseFailed(String error) {
-    return 'Purchase failed: $error';
-  }
-
-  @override
   String get lobbyRoomReopened => 'Room reopened — new players can join again.';
 
   @override
@@ -1071,15 +933,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gameNameTruthOrDare => 'Truth or Dare';
 
   @override
-  String get gameSettingsChooseProofViewers =>
-      'Choose exactly who can see proof';
-
-  @override
-  String gameSettingsMemberLabelSpectator(String name) {
-    return '$name (spec)';
-  }
-
-  @override
   String get gameSettingsNoPacksDevMsg =>
       'No packs available. Run the seed SQL in Supabase.';
 
@@ -1088,21 +941,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gameSettingsPlayersSubmit => 'Players submit';
-
-  @override
-  String get gameSettingsProofCustom => 'Custom';
-
-  @override
-  String get gameSettingsProofEveryone => 'Everyone';
-
-  @override
-  String get gameSettingsProofPlayers => 'Players';
-
-  @override
-  String get gameSettingsProofSpectators => 'Spectators';
-
-  @override
-  String get gameSettingsProofVisibility => 'Proof visibility';
 
   @override
   String get gameSettingsPunishmentHintDefault =>
@@ -1133,42 +971,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get packMatchedLabel => 'Matched';
-
-  @override
-  String get packTagRelationship => 'Relationship';
-
-  @override
-  String get packTagBreakup => 'Breakup';
-
-  @override
-  String get packTagFixingRelationship => 'Fixing relationship';
-
-  @override
-  String get packTagDating => 'Dating';
-
-  @override
-  String get packTagCouples => 'Couples';
-
-  @override
-  String get packTagFriendship => 'Friendship';
-
-  @override
-  String get packTagFamily => 'Family';
-
-  @override
-  String get packTagParty => 'Party';
-
-  @override
-  String get packTagIcebreaker => 'Icebreaker';
-
-  @override
-  String get packTagWork => 'Work';
-
-  @override
-  String get packTagTravel => 'Travel';
-
-  @override
-  String get packTagLateNight => 'Late night';
 
   @override
   String get packCreationTagsTitle => 'Types (optional)';
@@ -1229,8 +1031,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get roomsClosedSnackbar => 'Room closed';
 
   @override
-  String roomsDailyLimitFreeBody(int basicLimit, int premiumLimit) {
-    return 'Free plan allows $basicLimit rooms per day. Try again tomorrow, or upgrade to Premium for $premiumLimit rooms/day.';
+  String roomsDailyLimitFreeBody(int basicLimit) {
+    return 'Free plan allows $basicLimit rooms per day. Try again tomorrow.';
   }
 
   @override
@@ -1316,7 +1118,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get roomsNoPacksBody =>
-      'You need at least one pack to create a room — get a free pack or purchase one from the marketplace first.';
+      'You need at least one pack to create a room — browse the marketplace for a free pack to get started.';
 
   @override
   String get roomsNoPacksTitle => 'No packs available';
@@ -1380,9 +1182,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get roomsTransferOwnership => 'Transfer ownership';
-
-  @override
-  String get roomsUpgradeArrow => 'Upgrade →';
 
   @override
   String get roomsVisibility => 'Visibility';
@@ -1782,9 +1581,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get todAllPlayersLeftGameBody => 'All players left the game.';
 
   @override
-  String get todAllPlayersLeftGameEnded => 'All players left — game ended';
-
-  @override
   String get todChatTitle => '💬 Chat';
 
   @override
@@ -2088,9 +1884,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get nhieCardPromptHint => 'Never have I ever…';
 
   @override
-  String get nhieCardTitle => 'Never Have I Ever…';
-
-  @override
   String nhieDrinksScore(int count) {
     return '$count 🍹';
   }
@@ -2102,9 +1895,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get nhieGameHistoryTitle => 'Game History';
-
-  @override
-  String get nhieGoToHome => 'Go to Home';
 
   @override
   String get gameBackToRoom => 'Back to Room';
@@ -2178,11 +1968,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get memeResponseSubmittedWaiting =>
       'Response submitted! Waiting for others…';
-
-  @override
-  String memeRoundBadgeAllCaps(int round) {
-    return 'ROUND $round';
-  }
 
   @override
   String memeRoundResultsTitle(int round) {
@@ -2626,21 +2411,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tryAgain => 'Try again';
 
   @override
-  String get accountLabel => 'Account';
-
-  @override
   String get amountLabel => 'Amount';
-
-  @override
-  String get copiedNotice => 'Copied!';
-
-  @override
-  String labelColonSuffix(String label) {
-    return '$label: ';
-  }
-
-  @override
-  String get nameLabel => 'Name';
 
   @override
   String get pendingLabel => 'Pending';
@@ -2655,269 +2426,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get seeAll => 'See all';
 
   @override
-  String get walletAmountToWithdraw => 'Amount to withdraw';
-
-  @override
-  String walletAmountValue(String amount) {
-    return 'Amount: $amount MRU';
-  }
-
-  @override
-  String walletAvailableAmount(String amount) {
-    return 'Available: $amount';
-  }
-
-  @override
-  String get walletAvailableEarnings => 'Available earnings';
-
-  @override
-  String get walletAvailableForWithdrawal => 'Available for withdrawal';
-
-  @override
-  String get walletBackToWallet => 'Back to Wallet';
-
-  @override
-  String get walletBalanceAfter => 'Balance after';
-
-  @override
-  String get walletBulletCreditedAfterConfirm =>
-      'Earnings are credited after purchase is confirmed.';
-
-  @override
-  String get walletBulletEarn85 => 'You earn 85% of every pack sale.';
-
-  @override
-  String get walletBulletMinWithdrawal => 'Minimum withdrawal: 500 MRU.';
-
-  @override
-  String get walletBulletPlatformFee => '15% platform fee keeps Jma3a running.';
-
-  @override
-  String get walletChooseHowToAddFunds => 'Choose how you want to add funds.';
-
-  @override
-  String get walletConfirmWithdrawal => 'Confirm Withdrawal';
-
-  @override
-  String get walletCreateSellPacksHint =>
-      'Create and sell packs to earn commissions.';
-
-  @override
-  String get walletCreatorEarningsRateLabel => 'Creator earnings rate';
-
-  @override
-  String get walletCreatorEarningsTitle => 'Creator Earnings';
-
-  @override
-  String get walletCurrencyName => 'Mauritanian Ouguiya';
-
-  @override
   String get walletCurrencyShort => 'MRU';
-
-  @override
-  String get walletAvailableBalanceLabel => 'Available Balance';
-
-  @override
-  String get walletFrozenLabel => 'Wallet (Frozen)';
-
-  @override
-  String get walletDeposit => 'Deposit';
-
-  @override
-  String walletDepositAmount(String amount) {
-    return 'Deposit $amount';
-  }
-
-  @override
-  String get walletDepositWarningNotice =>
-      'Only submit after completing the transfer. Deposits are manually reviewed and may take 1–24 hours.';
-
-  @override
-  String get walletEarningsBalance => 'Earnings Balance';
-
-  @override
-  String get walletEnterReference => 'Enter the reference from your payment';
-
-  @override
-  String get walletHowEarningsWork => 'How earnings work';
-
-  @override
-  String get walletInsufficientBalance => 'Insufficient balance';
-
-  @override
-  String get walletMaxDeposit => 'Maximum deposit: 1,000,000 MRU';
-
-  @override
-  String get walletMethodLabel => 'Method';
-
-  @override
-  String get walletMinDeposit => 'Minimum deposit: 100 MRU';
-
-  @override
-  String walletMinWithdrawal(int amount) {
-    return 'Minimum withdrawal: $amount MRU';
-  }
-
-  @override
-  String get walletNoEarningsYet => 'No earnings yet';
-
-  @override
-  String get walletNoTransactions => 'No transactions';
-
-  @override
-  String get walletNoTransactionsYet => 'No transactions yet';
-
-  @override
-  String walletOfEveryPackSale(int fee) {
-    return 'of every pack sale ($fee% platform fee)';
-  }
-
-  @override
-  String get walletPaymentReferenceLabel =>
-      'Payment reference / transaction ID';
-
-  @override
-  String get walletPhoneNumberHint => '8-digit phone number';
-
-  @override
-  String get walletPayoutPhoneNumber => 'Payout phone number';
-
-  @override
-  String get walletPhoneLabel => 'Phone';
-
-  @override
-  String get walletRecentTransactions => 'Recent Transactions';
-
-  @override
-  String get walletReferenceHint => 'e.g. TXN123456789';
-
-  @override
-  String get walletSelectPaymentMethod => 'Select payment method';
-
-  @override
-  String get walletSelectPayoutMethod => 'Select payout method';
-
-  @override
-  String walletStatusPaymentMethod(String status, String method) {
-    return '$status • $method';
-  }
-
-  @override
-  String get walletTitle => 'Wallet';
-
-  @override
-  String get walletDepositSubmittedTitle => 'Deposit Submitted!';
-
-  @override
-  String walletDepositSubmittedSubtitle(String amount) {
-    return 'Your deposit of $amount is under review. Balance will update once approved.';
-  }
-
-  @override
-  String get walletDepositRequestFailed => 'Deposit request failed.';
-
-  @override
-  String get walletSubmitDeposit => 'Submit Deposit';
-
-  @override
-  String get walletWithdrawalSubmittedTitle => 'Withdrawal Submitted!';
-
-  @override
-  String walletWithdrawalSubmittedSubtitle(String amount) {
-    return 'Your withdrawal of $amount is being processed. Funds will arrive within 1–24 hours.';
-  }
-
-  @override
-  String get walletWithdrawalRequestFailed => 'Withdrawal request failed.';
-
-  @override
-  String get walletContinueArrow => 'Continue →';
-
-  @override
-  String get walletActionDeposit => 'Deposit';
-
-  @override
-  String get walletActionWithdraw => 'Withdraw';
-
-  @override
-  String get walletActionEarnings => 'Earnings';
-
-  @override
-  String get walletDetailDateTime => 'Date & time';
-
-  @override
-  String get walletDetailWalletAffected => 'Wallet affected';
-
-  @override
-  String get walletDetailEarnings => 'Earnings';
-
-  @override
-  String get walletDetailWalletBalance => 'Wallet Balance';
-
-  @override
-  String get walletDetailBalanceAfter => 'Balance after';
-
-  @override
-  String get walletDetailPaymentMethod => 'Payment method';
-
-  @override
-  String get walletDetailDescription => 'Description';
-
-  @override
-  String get walletDetailReference => 'Reference';
-
-  @override
-  String get walletDetailTransactionId => 'Transaction ID';
-
-  @override
-  String walletDetailDateAtTime(String date, String time) {
-    return '$date at $time';
-  }
-
-  @override
-  String get walletTransferAmount => 'Transfer amount';
-
-  @override
-  String get walletTransferButton => 'Transfer';
-
-  @override
-  String get walletTransferFailed => 'Transfer failed.';
-
-  @override
-  String get walletTransferSuccess => 'Transferred to wallet balance.';
-
-  @override
-  String get walletTransferToWallet => 'Transfer to Wallet';
-
-  @override
-  String get walletTransferToWalletBalance => 'Transfer to Wallet Balance';
-
-  @override
-  String get walletWithdraw => 'Withdraw';
-
-  @override
-  String walletWithdrawalAmount(String amount) {
-    return 'Withdrawal $amount';
-  }
-
-  @override
-  String get walletWithdrawalProcessingNotice =>
-      'Withdrawals are processed manually. Funds arrive in 1–24 hours once approved.';
-
-  @override
-  String get walletYourPhoneNumber => 'Your phone number';
 
   @override
   String get actionLabel => 'Action';
 
   @override
-  String get activeLabel => 'Active';
-
-  @override
   String get darkMode => 'Dark mode';
-
-  @override
-  String get getButton => 'Get';
 
   @override
   String get lightMode => 'Light mode';
@@ -3023,10 +2538,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gameCardColorCyberTeal => 'Cyber Teal';
 
   @override
-  String get premiumAutoRenewNotice =>
-      'Subscriptions auto-renew unless cancelled 24h before renewal.';
-
-  @override
   String get premiumBackgroundColorEmoji => 'Background Color ✦';
 
   @override
@@ -3100,14 +2611,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Blends into your selected theme — text, cards, and icons adapt automatically.';
 
   @override
-  String premiumCannotDowngradeBody(String date) {
-    return 'You have an active Premium Plus subscription. You can switch to a lower plan once it expires on $date.';
-  }
-
-  @override
-  String get premiumCannotDowngradeTitle => 'Cannot Downgrade Yet';
-
-  @override
   String get premiumCardTextReadable => 'Card text stays readable';
 
   @override
@@ -3117,37 +2620,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get premiumChooseBackground => 'Choose a background';
 
   @override
-  String get premiumConfirmPurchase => 'Confirm Purchase';
-
-  @override
-  String get premiumCurrentTermEnds => 'your current term ends';
-
-  @override
-  String get premiumFeatureColumnHeader => 'Feature';
-
-  @override
   String get premiumFeatureListDescription =>
       'Custom themes & avatars, 15 rooms/day, up to 12 players per room, 10 offline packs (1 free), anonymous chat, and more.';
-
-  @override
-  String get premiumLockedUntilExpires => 'Locked until Premium Plus expires';
-
-  @override
-  String get premiumMonthly => 'Monthly';
 
   @override
   String get premiumPageBackground => 'Page background';
 
   @override
-  String premiumPlanActivated(String plan) {
-    return '🎉 $plan activated!';
-  }
-
-  @override
   String get premiumPlusLabel => 'Premium Plus';
-
-  @override
-  String get premiumPlusShort => 'Plus';
 
   @override
   String get premiumPremiumAvatars => 'Premium Avatars';
@@ -3156,41 +2636,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get premiumPremiumThemes => 'Premium Themes ✦';
 
   @override
-  String premiumPricePerPeriod(String price, String period) {
-    return '$price / $period';
-  }
-
-  @override
-  String premiumPurchaseConfirmBody(
-    String plan,
-    String planPrice,
-    String period,
-  ) {
-    return 'This will deduct $planPrice from your wallet balance.\n\nPlan: $plan — $planPrice/$period';
-  }
-
-  @override
-  String premiumPurchasePlan(String plan) {
-    return 'Purchase $plan';
-  }
-
-  @override
-  String get premiumSave33 => 'Save 33%';
-
-  @override
   String get premiumTitle => 'Premium';
 
   @override
   String get premiumUnlockTitle => 'Unlock Premium';
 
   @override
-  String get premiumUpgradeToUnlock => 'Upgrade to unlock';
-
-  @override
-  String get premiumWhatYouGet => 'What you get';
-
-  @override
-  String get premiumYearly => 'Yearly';
+  String get premiumUpgradeToUnlock => 'Requires Premium';
 
   @override
   String get premiumYourAvatars => 'Your Avatars';
@@ -3220,14 +2672,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String packAddMoreMinimum(int count) {
     return 'Add $count more (minimum 10) or remove them all.';
   }
-
-  @override
-  String packAdditionalFeeBody(int fee) {
-    return 'This pack has extra cards, which requires an additional fee of $fee MRU to submit for review.';
-  }
-
-  @override
-  String get packAdditionalFeeTitle => 'Additional fee required';
 
   @override
   String get packAgeLabel => 'Age';
@@ -3391,7 +2835,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get packImportantRulesBody =>
-      '• Packs cannot be edited after publishing.\n• You must purchase your own pack to use it in games.\n• Moderation review takes 1–3 business days.';
+      '• Packs cannot be edited after publishing.\n• You must own your pack to use it in games.\n• Moderation review takes 1–3 business days.';
 
   @override
   String get packImportantRulesTitle => '📋 Important rules:';
@@ -3476,11 +2920,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'One name and description per language you selected.';
 
   @override
-  String packPayFeeAndSubmit(int fee) {
-    return 'Pay $fee MRU & Submit';
-  }
-
-  @override
   String packPendingAdminReview(String name) {
     return '\"$name\" is pending admin review';
   }
@@ -3495,9 +2934,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String packPlayersSliderLabel(int count) {
     return '$count players';
   }
-
-  @override
-  String get packPriceFreeHint => 'Leave as 0 for a free pack';
 
   @override
   String packMinPriceError(int min) {
@@ -3620,16 +3056,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String packPaidExtraPackHint(int price) {
-    return 'You can create an extra pack now for $price MRU.';
-  }
-
-  @override
-  String packCreateExtraPackPriced(int price) {
-    return 'Create Extra Pack — $price MRU';
-  }
-
-  @override
   String get packCreatorNotVerified =>
       'Only verified creators can submit packs for review.';
 
@@ -3729,22 +3155,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Browse the marketplace to find packs.';
 
   @override
-  String get packConfirmPurchaseTitle => 'Confirm Purchase';
-
-  @override
-  String packConfirmPurchaseBody(String name, String price) {
-    return 'You\'re about to purchase \"$name\" for $price.';
-  }
-
-  @override
-  String get packConfirmPurchaseAction => 'Purchase';
-
-  @override
-  String packBuyForPrice(int price) {
-    return 'Buy for $price MRU';
-  }
-
-  @override
   String get packCancelled => 'Cancelled';
 
   @override
@@ -3840,22 +3250,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get packFeaturedHeading => '⭐ Featured';
 
   @override
-  String get packFreeOfflineLimitNotice =>
-      'Free plan allows 1 offline pack. Upgrade to Premium for 10.';
+  String get packFreeOfflineLimitNotice => 'Free plan allows 1 offline pack.';
 
   @override
   String get packFullName => 'Full name';
-
-  @override
-  String get packGetFreePack => 'Get Free Pack';
-
-  @override
-  String get packInsufficientBalance => 'Insufficient Balance';
-
-  @override
-  String packInsufficientBalanceBody(int price) {
-    return 'You need $price MRU to purchase this pack. Your current balance is too low.';
-  }
 
   @override
   String get packLoadingPrice => 'Loading price…';
@@ -3942,45 +3340,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get packOfficialBadge => 'Jma3a';
 
   @override
-  String get packProcessingEllipsis => 'Processing…';
-
-  @override
   String get packPromotedBadge => 'PROMOTED';
-
-  @override
-  String packPurchaseFailed(String error) {
-    return 'Purchase failed: $error';
-  }
-
-  @override
-  String get packPurchasedNotice => 'Pack purchased! You can now download it.';
-
-  @override
-  String get packTrialBadgeTooltip => 'Free trial';
-
-  @override
-  String packTrialCardsRemaining(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count trial cards left',
-      one: '1 trial card left',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String get packTrialPromptTitle => 'Enjoying this pack?';
-
-  @override
-  String get packTrialPromptBody =>
-      'You\'ve completed your free trial. Purchase the full pack to keep playing.';
-
-  @override
-  String get packTrialPurchaseButton => 'Purchase Full Pack';
-
-  @override
-  String get packTrialEndButton => 'End Trial';
 
   @override
   String get packQuantity => 'Quantity';
@@ -4038,37 +3398,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get packReportFailed =>
       'Couldn\'t submit your report. Please try again.';
-
-  @override
-  String get packPromoteYourPack => 'Promote your pack';
-
-  @override
-  String get packPromotionDuration24h => '24 Hours';
-
-  @override
-  String get packPromotionDuration7d => '1 Week';
-
-  @override
-  String get packPromotionSubtitle =>
-      'Feature this pack in the promoted carousel to reach more players.';
-
-  @override
-  String get packPromotionSubmit => 'Promote';
-
-  @override
-  String get packPromotionSuccess => 'Pack promoted successfully!';
-
-  @override
-  String get packPromotionActiveLabel => 'Promotion active';
-
-  @override
-  String packPromotionEndsAt(String date) {
-    return 'Ends $date';
-  }
-
-  @override
-  String get packPromotionAlreadyActive =>
-      'This pack already has an active promotion.';
 
   @override
   String get packRequestPhysicalCopy => 'Request Physical Copy';
@@ -4166,9 +3495,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get packTabMyAvailablePacks => 'My Available Packs';
-
-  @override
-  String get packTopUpWallet => 'Top Up Wallet';
 
   @override
   String get packWriteReview => 'Write a review';
@@ -4677,16 +4003,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get avatarUpgradeToPremium => 'Upgrade to Premium ✦';
-
-  @override
   String get profileAbout => 'About';
 
   @override
   String get profileAgeOptionalLabel => 'Age (optional)';
-
-  @override
-  String get profileBalanceAndTransactions => 'Balance & transactions';
 
   @override
   String get profileAnswerSurvey => 'Answer our survey';
@@ -4791,19 +4111,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profilePreferences => 'Preferences';
 
   @override
-  String profilePremiumActiveExpires(int day, int month, int year) {
-    return 'Active · expires $day/$month/$year';
-  }
-
-  @override
   String get profileSaveUsername => 'Save username';
 
   @override
   String get profileTakePhoto => 'Take photo';
-
-  @override
-  String get profileUnlockPremiumHint =>
-      'Unlock themes, avatars, anonymous chat & more';
 
   @override
   String get profileUploadingPhoto => 'Uploading photo…';
@@ -4984,26 +4295,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get chatTitle => 'Chat';
-
-  @override
-  String get gameSettingsAllowOneReplay => 'Allow one replay';
-
-  @override
-  String get gameSettingsProofViewDuration =>
-      'Proof view duration (auto-closes after this)';
-
-  @override
-  String get gameSettingsProofUnlimitedDuration =>
-      'Unlimited duration (until next round)';
-
-  @override
-  String get gameSettingsProofReplayHint =>
-      'Premium viewers get one extra replay beyond this.';
-
-  @override
-  String gameSettingsProofAutoCloseHint(int seconds) {
-    return 'Proof auto-closes after ${seconds}s — no replay while a duration is set.';
-  }
 
   @override
   String get gameSettingsRequireApprovalToSpectate =>
@@ -5355,19 +4646,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sharedReject => 'Reject';
 
   @override
-  String get sharedRemoveSpectator => 'Remove Spectator';
-
-  @override
-  String get sharedSetSpectator => 'Set as Spectator';
-
-  @override
-  String get sharedSetSpectatorBody =>
-      'This player will stop counting as an active player and won\'t be able to take turns, but can still watch. You can reverse this anytime.';
-
-  @override
-  String get sharedSetSpectatorTitle => 'Set as Spectator';
-
-  @override
   String get sharedRoomMembers => 'Room members';
 
   @override
@@ -5383,28 +4661,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sharedRuleObjective => 'Objective';
-
-  @override
-  String get sharedRulePolicyEveryone => 'everyone in the game';
-
-  @override
-  String get sharedRulePolicyPlayersOnly => 'players only';
-
-  @override
-  String get sharedRulePolicySpectatorsOnly => 'spectators only';
-
-  @override
-  String get sharedRuleProofViewOnce =>
-      'Proof can be viewed once (Premium: twice).';
-
-  @override
-  String get sharedRuleProofViewTwice =>
-      'Proof can be viewed twice (Premium: three times).';
-
-  @override
-  String sharedRuleProofVisibleTo(String policy) {
-    return 'Proof is visible to: $policy.';
-  }
 
   @override
   String get sharedRulePunishmentOff =>
@@ -5492,9 +4748,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get friendsYourFriendsHeader => 'Your Friends';
 
   @override
-  String get friendsAdd => 'Add';
-
-  @override
   String get friendsAddFriend => 'Add friend';
 
   @override
@@ -5545,11 +4798,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get friendsAdvertisementsHeader => 'Advertisements';
 
   @override
-  String friendsFollowersCount(int count) {
-    return '$count Followers';
-  }
-
-  @override
   String get friendsFollow => 'Follow';
 
   @override
@@ -5575,19 +4823,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get friendsNoFriendsYet => 'No friends yet';
-
-  @override
-  String get friendsNoPendingRequests => 'No pending requests';
-
-  @override
-  String get friendsNoPendingRequestsHint =>
-      'Friend requests you receive will appear here.';
-
-  @override
-  String get friendsNoResults => 'No results';
-
-  @override
-  String get friendsNoResultsHint => 'Try a different name or username.';
 
   @override
   String friendsOfflineCount(int count) {
@@ -5643,7 +4878,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get creatorReqPlayedWithOthers => 'Play a game with other users';
 
   @override
-  String get creatorApplyNow => 'Apply Now';
+  String get creatorRequestViaWhatsApp =>
+      'Request to become a Verified Creator';
+
+  @override
+  String get creatorWhatsAppMessage =>
+      'Hi, I\'d like to request Verified Creator status on Jma3a.';
 
   @override
   String get creatorKeepGoing =>
@@ -5730,23 +4970,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Your previous recovery request was rejected';
 
   @override
-  String get creatorApplyDialogTitle => 'Apply for Verification';
-
-  @override
-  String get creatorApplyDialogRealName => 'Full legal name';
-
-  @override
-  String get creatorApplyDialogBio => 'Short bio (optional)';
-
-  @override
-  String get creatorApplySubmitted =>
-      'Application submitted! We\'ll review it soon.';
-
-  @override
-  String get creatorApplyFailed =>
-      'Failed to submit application. Please try again.';
-
-  @override
   String get profileBecomeCreator => 'Become a Verified Creator';
 
   @override
@@ -5759,22 +4982,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get friendsProfileNotFound => 'Profile not found.';
 
   @override
-  String get friendsReceived => 'Received';
-
-  @override
   String get friendsRemoveFriend => 'Remove friend';
-
-  @override
-  String get friendsRequests => 'Requests';
-
-  @override
-  String get friendsSearchForFriends => 'Search for friends';
-
-  @override
-  String get friendsSearchHint => 'Search by username or name…';
-
-  @override
-  String get friendsSearchMinChars => 'Enter at least 2 characters.';
 
   @override
   String friendsSentCount(int count) {
@@ -5819,9 +5027,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get friendsUnfollow => 'Unfollow';
-
-  @override
-  String get friendsUserFallback => 'User';
 
   @override
   String get friendsYouHaveBlocked => 'You have blocked this user.';
@@ -5908,14 +5113,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutUsDescription =>
-      'Jma3a is a social multiplayer party-game platform developed and owned by MOUJ TECH. Play Truth or Dare, Never Have I Ever, and Meme games with friends and family, create and share your own packs, build a profile, and — as a Verified Creator — earn from packs you publish.';
+      'Jma3a is a social multiplayer party-game platform developed and owned by MOUJ TECH. Play Truth or Dare, Never Have I Ever, and Meme games with friends and family, create and share your own packs, and build a profile as a Verified Creator.';
 
   @override
   String get aboutUsCompanySectionTitle => 'Company';
 
   @override
   String get aboutUsCompanyInfo =>
-      'Jma3a is developed and owned by MOUJ TECH. MOUJ TECH is responsible for the app\'s development, features, and ongoing operation, including community-created packs, Verified Creator tools, Premium and Premium Plus, and the creator earnings wallet.';
+      'Jma3a is developed and owned by MOUJ TECH. MOUJ TECH is responsible for the app\'s development, features, and ongoing operation, including community-created packs and Verified Creator tools.';
 
   @override
   String get moujTechDevelopedBy => 'Developed by MOUJ TECH';
@@ -5945,6 +5150,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aboutUsSocialFacebook => 'Facebook';
 
   @override
+  String get aboutUsSocialWhatsapp => 'WhatsApp';
+
+  @override
   String get privacyPolicyTitle => 'Privacy Policy';
 
   @override
@@ -5956,14 +5164,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get privacySectionInfoCollectedBody =>
-      'Account information: the email address you sign up with, and your chosen username, display name, bio, and avatar (either an uploaded photo or a generated avatar). Authentication: your password is handled by our authentication provider and is never visible to us in plain text; sign-in also uses one-time verification codes sent to your email. Activity and social data: the rooms and games you join or host, your in-game actions, scores, and streaks, chat messages you send in game rooms, and your friends, followers, and any accounts you block. Purchases and creator activity: packs you buy or publish, your Verified Creator status, wallet balance and payout history, and — if you request a physical pack — the name, phone number, and delivery area you provide for that order. Reports: if you report a pack, we record the reason and any details you add. Account deletion requests: if you request to delete your account, we record the reason you select and the request\'s status. Device and app information: your app version and build number, and basic platform information (Android or iOS), used to keep the app working correctly and to check for required updates.';
+      'Account information: the email address you sign up with, and your chosen username, display name, bio, and avatar (either an uploaded photo or a generated avatar). Authentication: your password is handled by our authentication provider and is never visible to us in plain text; sign-in also uses one-time verification codes sent to your email. Activity and social data: the rooms and games you join or host, your in-game actions, scores, and streaks, chat messages you send in game rooms, and your friends, followers, and any accounts you block. Ownership and creator activity: packs you own or publish, and your Verified Creator status. Reports: if you report a pack, we record the reason and any details you add. Account deletion requests: if you request to delete your account, we record the reason you select and the request\'s status. Device and app information: your app version and build number, and basic platform information (Android or iOS), used to keep the app working correctly and to check for required updates.';
 
   @override
   String get privacySectionHowUsed => 'How We Use Your Information';
 
   @override
   String get privacySectionHowUsedBody =>
-      'We use your information to operate the app\'s core features: creating and securing your account, matching you with rooms and games, showing your profile and stats to other players and friends as intended by each feature, processing pack purchases and creator payouts, delivering physical pack orders you request, reviewing reports and account deletion requests, and sending the notifications described below. We do not use a third-party analytics or advertising-tracking SDK in this app. We do not sell your information.';
+      'We use your information to operate the app\'s core features: creating and securing your account, matching you with rooms and games, showing your profile and stats to other players and friends as intended by each feature, reviewing reports and account deletion requests, and sending the notifications described below. We do not use a third-party analytics or advertising-tracking SDK in this app. We do not sell your information.';
 
   @override
   String get privacySectionNotifications => 'Notifications';
@@ -5971,13 +5179,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get privacySectionNotificationsBody =>
       'Jma3a sends notifications for things like game invites, room activity, friend requests, and messages. Push delivery is handled through OneSignal, a third-party notification service; some notifications are also scheduled directly on your device. You can manage notification permissions at any time from your device\'s system settings.';
-
-  @override
-  String get privacySectionPurchases => 'Purchases';
-
-  @override
-  String get privacySectionPurchasesBody =>
-      'Some packs are paid, and Premium/Premium Plus are paid subscriptions. Verified Creators can publish packs and earn from them through an in-app wallet. Jma3a does not directly collect or store your full payment card details; payments are processed through the payment methods offered at checkout. Purchase and payout records (amounts, pack/subscription identifiers, and status) are kept as part of your account and creator history.';
 
   @override
   String get privacySectionUserContent => 'User-Generated Content';
@@ -5991,7 +5192,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get privacySectionAccountDeletionBody =>
-      'You can request account deletion from Settings. This submits a request for review — your account is not deleted immediately. While a request is pending, you can cancel it from Settings and your account stays active. Once a request has been accepted and processed, deletion cannot be undone, and your profile, packs, wallet balance, and game history are permanently removed.';
+      'You can request account deletion from Settings. This submits a request for review — your account is not deleted immediately. While a request is pending, you can cancel it from Settings and your account stays active. Once a request has been accepted and processed, deletion cannot be undone, and your profile, packs, and game history are permanently removed.';
 
   @override
   String get privacySectionThirdParty => 'Third-Party Services';
@@ -6051,20 +5252,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Jma3a lets you create or join rooms to play multiplayer games with friends and other players, using packs of content provided by Jma3a or created by users. Room hosts and members are expected to follow these Terms while playing.';
 
   @override
-  String get termsSectionPremium => 'Premium & Premium Plus';
-
-  @override
-  String get termsSectionPremiumBody =>
-      'Jma3a offers optional Premium and Premium Plus subscriptions that unlock additional features and benefits within the app. What each tier includes may change over time; you will be shown what a subscription includes before you purchase it.';
-
-  @override
-  String get termsSectionWallet => 'Wallet & Payments';
-
-  @override
-  String get termsSectionWalletBody =>
-      'Jma3a includes an in-app wallet that can be topped up using supported local payment methods. Creators may earn wallet balance from their content and request withdrawals, subject to Jma3a\'s review. Payments are also subject to the terms of the payment method provider you use.';
-
-  @override
   String get termsSectionModeration => 'Reporting & Moderation';
 
   @override
@@ -6113,9 +5300,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Your account has been suspended from using Jma3a.';
 
   @override
-  String get appUpdateAvailableTitle => 'Update Available';
-
-  @override
   String get appUpdateDefaultTitle => 'A new version is available';
 
   @override
@@ -6124,9 +5308,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get appUpdateNowButton => 'Update';
-
-  @override
-  String get appUpdateLaterButton => 'Later';
 
   @override
   String get appUpdateBannerMessage => 'A new version of Jma3a is available.';
@@ -6158,9 +5339,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get deleteAccountReasonOtherHint => 'Please tell us more (required)';
-
-  @override
-  String get deleteAccountReasonValidation => 'Please select a reason';
 
   @override
   String get deleteAccountOtherDescriptionValidation =>
@@ -6196,13 +5374,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get tutBrowserFilterBody =>
       'Filter public rooms by game type to find one that\'s open to join.';
-
-  @override
-  String get tutCreateNameTitle => 'Name your room';
-
-  @override
-  String get tutCreateNameBody =>
-      'Give your room a name so friends can recognise it.';
 
   @override
   String get tutCreateVisibilityTitle => 'Public or private';
@@ -6494,18 +5665,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get reportTargetChatMessage => 'Reported a message';
 
   @override
-  String get walletDepositsUnavailable =>
-      'Deposits are temporarily unavailable.';
-
-  @override
-  String get walletWithdrawalsUnavailable =>
-      'Withdrawals are temporarily unavailable.';
-
-  @override
-  String get walletFinanceServiceUnavailable =>
-      'Finance service temporarily unavailable';
-
-  @override
   String get authIdentifierLabel => 'Email or phone number';
 
   @override
@@ -6637,9 +5796,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'This account doesn\'t have a password yet. Verify with a one-time code to create one.';
 
   @override
-  String get authVerifyWithOtp => 'Verify with OTP';
-
-  @override
   String get authDontHaveAccount => 'Don\'t have an account?';
 
   @override
@@ -6649,20 +5805,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get passwordSettingsTitle => 'Password & Security';
 
   @override
-  String get passwordSettingsUpdateTitle => 'Update Password';
-
-  @override
-  String get passwordSettingsUpdateSubtitle => 'Change your password securely.';
-
-  @override
   String get passwordSettingsVerifyButton => 'Verify Current Password';
 
   @override
   String get passwordSettingsChangeButton => 'Change Password';
-
-  @override
-  String get passwordSettingsOtpNotice =>
-      'We\'ll send a verification code to confirm it\'s you before applying this change.';
 
   @override
   String get passwordSettingsCurrentLabel => 'Current password';
@@ -6682,9 +5828,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get passwordSettingsHasPasswordBody => 'Your password is set.';
-
-  @override
-  String get passwordSettingsSetButton => 'Set password with OTP';
 
   @override
   String get passwordSettingsChangeSuccess => 'Password changed successfully';
@@ -6859,4 +6002,113 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get surveyChoiceOther => 'Other';
+
+  @override
+  String get voiceJoin => 'Join voice';
+
+  @override
+  String get voiceLeave => 'Leave voice';
+
+  @override
+  String get voiceConnecting => 'Connecting to voice…';
+
+  @override
+  String get voiceReconnecting => 'Reconnecting to voice…';
+
+  @override
+  String get voiceSpeaking => 'In voice · you can speak';
+
+  @override
+  String get voiceListening => 'In voice · listening';
+
+  @override
+  String get voiceListenOnlyNotice => 'Spectators can listen but not speak.';
+
+  @override
+  String get voiceMicOn => 'Microphone on — tap to mute';
+
+  @override
+  String get voiceMicOff => 'Microphone off — tap to talk';
+
+  @override
+  String get voiceRejoin => 'Rejoin voice';
+
+  @override
+  String get voiceUnavailable => 'Voice chat isn\'t available right now.';
+
+  @override
+  String get voiceErrorNotAllowed => 'You can\'t join voice in this room.';
+
+  @override
+  String get voiceErrorRateLimited =>
+      'Too many attempts. Wait a moment and try again.';
+
+  @override
+  String get voiceMicPermissionDenied =>
+      'Microphone unavailable. Check the microphone permission in Settings.';
+
+  @override
+  String get voiceDisconnectedElsewhere =>
+      'You joined voice on another device.';
+
+  @override
+  String get voiceAwayPendingApproval =>
+      'You can join voice once the host lets you back into the game.';
+
+  @override
+  String get voiceDisconnected => 'Voice disconnected.';
+
+  @override
+  String get voiceErrorFailed => 'Couldn\'t connect to voice. Try again.';
+
+  @override
+  String get voiceRoleChangedListenOnly =>
+      'You\'re now a spectator. Rejoin voice to listen.';
+
+  @override
+  String get voiceMuteFailedForRecording =>
+      'Couldn\'t turn off your voice chat microphone, so recording didn\'t start. Try again.';
+
+  @override
+  String get voiceChatSetting => 'Voice chat';
+
+  @override
+  String get voiceChatSettingOnSubtitle =>
+      'On — members join voice automatically; microphones start muted.';
+
+  @override
+  String get voiceChatSettingOffSubtitle =>
+      'Off — nobody can join voice in this room.';
+
+  @override
+  String get voiceDailyLimitReached =>
+      'Basic accounts can turn on voice chat in one room per day. Try again after midnight (Nouakchott time), or upgrade to Premium.';
+
+  @override
+  String get voiceSettingFailed => 'Couldn\'t change voice chat. Try again.';
+
+  @override
+  String get voiceRetry => 'Retry voice';
+
+  @override
+  String get voiceMutedByAdmin => 'A room admin muted your microphone.';
+
+  @override
+  String get voiceMuteMember => 'Mute microphone';
+
+  @override
+  String get voiceUnmuteMember => 'Unmute microphone';
+
+  @override
+  String get voiceMemberMutedTooltip => 'Microphone muted by an admin';
+
+  @override
+  String get voiceMuteActionFailed =>
+      'Couldn\'t change this member\'s microphone. Try again.';
+
+  @override
+  String get voiceDisabledForRoom => 'Voice chat is off in this room.';
+
+  @override
+  String get roomsPermMuteVoice => 'Mute microphones';
 }

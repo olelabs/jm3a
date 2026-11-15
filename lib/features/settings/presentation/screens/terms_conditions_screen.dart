@@ -7,10 +7,11 @@ import '../../../../shared/widgets/mouj_tech_brand.dart';
 /// Terms & Conditions — mirrors PrivacyPolicyScreen's own
 /// _PolicySection/l10n-driven structure so future copy edits stay a pure
 /// l10n-file change with no widget/layout changes needed. Every section
-/// below describes only functionality that actually exists in this app
-/// (rooms, packs, Premium/Premium Plus, creator verification, the
-/// wallet, reporting/blocking) — see terms_conditions_screen's own
-/// l10n keys (termsSection*) for the exact copy.
+/// below describes only non-commercial functionality (accounts, rooms,
+/// packs, creator verification, reporting/blocking) — no Premium,
+/// subscription, or payment wording belongs on this screen — see
+/// terms_conditions_screen's own l10n keys (termsSection*) for the exact
+/// copy.
 class TermsConditionsScreen extends StatelessWidget {
   const TermsConditionsScreen({super.key});
 
@@ -50,14 +51,6 @@ class TermsConditionsScreen extends StatelessWidget {
           _TermsSection(
             title: l10n.termsSectionRoomsGames,
             body: l10n.termsSectionRoomsGamesBody,
-          ),
-          _TermsSection(
-            title: l10n.termsSectionPremium,
-            body: l10n.termsSectionPremiumBody,
-          ),
-          _TermsSection(
-            title: l10n.termsSectionWallet,
-            body: l10n.termsSectionWalletBody,
           ),
           _TermsSection(
             title: l10n.termsSectionModeration,

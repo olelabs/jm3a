@@ -851,24 +851,6 @@ class ProfileRepository extends BaseRepository {
     },
   );
 
-  /// Submits a creator-verification application. RLS ("creator_verifications:
-  /// own insert") is the real gate — it already rejects this for a user who
-  /// is already verified — this call doesn't re-check eligibility itself.
-  Future<void> applyCreatorVerification({
-    required String userId,
-    required String realName,
-    String? bio,
-  }) => guardedCall(
-    operationName: 'applyCreatorVerification',
-    operation: () async {
-      await _supabase.from('creator_verifications').insert({
-        'user_id': userId,
-        'real_name': realName,
-        if (bio != null && bio.isNotEmpty) 'bio': bio,
-      });
-    },
-  );
-
   /// Submits an item-8 recovery complaint for a creator whose verified
   /// status/privileges were auto-removed after their Premium Plus lapsed.
   /// RLS ("creator_recovery_complaints: own insert") is the real

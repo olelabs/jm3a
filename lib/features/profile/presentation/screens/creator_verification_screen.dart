@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../../../core/constants/social_links.dart';
 import '../../../../core/extensions/context_ext.dart';
 import '../../../../core/providers/auth_provider.dart';
 import '../../../../core/router/route_names.dart';
+import '../../../../shared/utils/external_link_launcher.dart';
 import '../../data/profile_repository.dart';
 
 /// "Become a verified creator" — shows live progress against the
@@ -26,7 +28,6 @@ class _CreatorVerificationScreenState
     extends State<CreatorVerificationScreen> {
   CreatorVerificationProgress? _progress;
   bool _loading = true;
-  bool _submitting = false;
   String? _error;
 
   @override
@@ -53,71 +54,15 @@ class _CreatorVerificationScreenState
     }
   }
 
-  Future<void> _apply() async {
-    final userId = context.read<AuthProvider>().currentUser?.id;
-    if (userId == null) return;
-    final l10n = context.l10n;
-    final nameCtrl = TextEditingController();
-    final bioCtrl = TextEditingController();
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.creatorApplyDialogTitle),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameCtrl,
-              decoration: InputDecoration(
-                labelText: l10n.creatorApplyDialogRealName,
-              ),
-              textCapitalization: TextCapitalization.words,
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: bioCtrl,
-              decoration: InputDecoration(
-                labelText: l10n.creatorApplyDialogBio,
-              ),
-              maxLines: 3,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l10n.cancel),
-          ),
-          FilledButton(
-            onPressed: nameCtrl.text.trim().length >= 2
-                ? () => Navigator.pop(ctx, true)
-                : null,
-            child: Text(l10n.creatorApplyNow),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true || !mounted) return;
-    if (nameCtrl.text.trim().length < 2) return;
-
-    setState(() => _submitting = true);
-    try {
-      await ProfileRepository.instance.applyCreatorVerification(
-        userId: userId,
-        realName: nameCtrl.text.trim(),
-        bio: bioCtrl.text.trim(),
-      );
-      if (mounted) {
-        context.showSnackBar(l10n.creatorApplySubmitted);
-        Navigator.pop(context);
-      }
-    } catch (_) {
-      if (mounted) context.showErrorSnackBar(l10n.creatorApplyFailed);
-    } finally {
-      if (mounted) setState(() => _submitting = false);
-    }
+  /// Requests are now made via WhatsApp instead of the in-app
+  /// applyCreatorVerification() RPC — see SocialLinks.whatsapp's own doc
+  /// comment for why the number lives in exactly one place. A short,
+  /// non-sensitive prefilled message identifies the request as being for
+  /// Verified Creator status; it never includes the user's name, email,
+  /// or any other account detail.
+  Future<void> _requestViaWhatsApp() async {
+    final message = Uri.encodeComponent(context.l10n.creatorWhatsAppMessage);
+    await launchExternalUrl('${SocialLinks.whatsapp}?text=$message');
   }
 
   @override
@@ -241,18 +186,13 @@ class _CreatorVerificationScreenState
         ),
         const SizedBox(height: 24),
         if (p.isEligible)
-          FilledButton(
-            onPressed: _submitting ? null : _apply,
+          FilledButton.icon(
+            onPressed: _requestViaWhatsApp,
             style: FilledButton.styleFrom(
               minimumSize: const Size(double.infinity, 48),
             ),
-            child: _submitting
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : Text(l10n.creatorApplyNow),
+            icon: const Icon(Icons.chat_rounded),
+            label: Text(l10n.creatorRequestViaWhatsApp),
           )
         else
           Text(

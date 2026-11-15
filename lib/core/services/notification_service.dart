@@ -295,7 +295,13 @@ class NotificationService {
         }
       case 'wallet_credit':
       case 'wallet_debit':
-        _pushDetail(router, RouteNames.wallet);
+        // Stage 8: the mobile wallet UI was removed — creator earnings/
+        // withdrawals now live entirely in the Store Creator Portal.
+        // jma3a-api can still emit these notification types unchanged, so
+        // this stays navigable (see _navigableNotificationTypes below)
+        // but now opens the general Notifications Center rather than a
+        // destination that no longer exists.
+        _pushDetail(router, RouteNames.notifications);
       case 'pack_sale':
       case 'pack_expired':
       case 'physical_pack_status':
@@ -335,10 +341,10 @@ class NotificationService {
     }
   }
 
-  /// Every one of these destinations (room, user profile, wallet, pack
-  /// detail, creator dashboard, premium, notifications) is a "drill-down"
+  /// Every one of these destinations (room, user profile, pack detail,
+  /// creator dashboard, premium, notifications) is a "drill-down"
   /// screen — reached everywhere ELSE in this app via push (see
-  /// RouteNames.wallet/.premium/.notifications and pack-detail/room-entry
+  /// RouteNames.premium/.notifications and pack-detail/room-entry
   /// call sites throughout the UI), never via go(), specifically because
   /// go() replaces the router's entire location/history instead of
   /// stacking on top of it. Using go() here (the previous behavior) is

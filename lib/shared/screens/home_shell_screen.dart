@@ -12,7 +12,6 @@ import '../../features/friends/presentation/friends_provider.dart';
 import '../../features/notifications/presentation/notification_provider.dart';
 import '../../features/packs/presentation/pack_provider.dart';
 import '../../features/profile/presentation/profile_provider.dart';
-import '../../features/wallet/presentation/wallet_provider.dart';
 import '../widgets/streak_achievement_dialog.dart';
 import '../../core/router/app_router.dart';
 import '../../core/router/route_names.dart';
@@ -60,7 +59,6 @@ class _HomeShellScreenState extends State<HomeShellScreen> {
 
     context.read<PackProvider>().onAuthChanged(uid);
     context.read<FriendsProvider>().onAuthChanged(uid);
-    context.read<WalletProvider>().onAuthChanged(uid);
 
     sl.notificationService.setExternalUserId(uid);
   }

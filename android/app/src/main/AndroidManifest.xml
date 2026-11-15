@@ -5,6 +5,11 @@
    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
    <uses-permission android:name="android.permission.VIBRATE"/>
    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+   <!-- LiveKit voice rooms (flutter_webrtc): lets libwebrtc request an
+        alternate network on Wi-Fi/cellular handover. RECORD_AUDIO above,
+        ACCESS_NETWORK_STATE (connectivity_plus) and MODIFY_AUDIO_SETTINGS /
+        BLUETOOTH (flutter_webrtc's audioswitch) are merged in already. -->
+   <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE"/>
    <!-- Item 7 (QR codes) — mobile_scanner needs this to open the camera
         for scanning a room/profile QR code. -->
    <uses-permission android:name="android.permission.CAMERA"/>

@@ -30,7 +30,7 @@ class MarketplaceScreen extends StatefulWidget {
 }
 
 class _MarketplaceScreenState extends State<MarketplaceScreen>
-    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   // Not late final — Featured is hidden entirely when there are no
   // featured packs (task requirement, not just an empty-state message),
   // and TabController's length can't change in place, so the tab count

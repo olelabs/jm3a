@@ -4405,6 +4405,11 @@ abstract final class ModeratorPermission {
   // someone else.
   static const setSpectator = 'set_spectator';
 
+  // Voice chat: mute/unmute another member's MICROPHONE (LiveKit publishing
+  // only). Separate from muteChat (text chat) and mutePlayers (game turns);
+  // enforced server-side by set_room_member_voice_muted + jma3a-api.
+  static const muteVoice = 'mute_voice';
+
   // start_game/end_game are intentionally excluded — both are hard
   // owner-only now (see create_game_session and the ToD end-game path),
   // never delegable to a moderator. The string constants above stay
@@ -4420,6 +4425,7 @@ abstract final class ModeratorPermission {
     mutePlayers,
     manageSettings,
     setSpectator,
+    muteVoice,
   ];
 }
 
@@ -4445,6 +4451,7 @@ class RoomMemberEntity extends Equatable {
     this.isHiddenSpectator = false,
     this.isMuted = false,
     this.isGameMuted = false,
+    this.isVoiceMuted = false,
     this.isDisconnected = false,
     this.isAway = false,
     this.leftDefinitively = false,
@@ -4472,6 +4479,11 @@ class RoomMemberEntity extends Equatable {
   /// but can still watch. Distinct from [isMuted], which only silences
   /// text chat — do not conflate the two.
   final bool isGameMuted;
+
+  /// Admin-imposed VOICE mute (room_members.is_voice_muted): may listen to
+  /// voice chat but never publish a microphone. Independent of [isMuted]
+  /// (text chat) and [isGameMuted] (turns); only the server can change it.
+  final bool isVoiceMuted;
   final bool isDisconnected;
   final bool isAway;
   final bool leftDefinitively;
@@ -4513,6 +4525,7 @@ class RoomMemberEntity extends Equatable {
     bool? isHiddenSpectator,
     bool? isMuted,
     bool? isGameMuted,
+    bool? isVoiceMuted,
     bool? isDisconnected,
     bool? isAway,
     bool? leftDefinitively,
@@ -4534,6 +4547,7 @@ class RoomMemberEntity extends Equatable {
     isHiddenSpectator: isHiddenSpectator ?? this.isHiddenSpectator,
     isMuted: isMuted ?? this.isMuted,
     isGameMuted: isGameMuted ?? this.isGameMuted,
+    isVoiceMuted: isVoiceMuted ?? this.isVoiceMuted,
     isDisconnected: isDisconnected ?? this.isDisconnected,
     isAway: isAway ?? this.isAway,
     leftDefinitively: leftDefinitively ?? this.leftDefinitively,
@@ -4557,6 +4571,7 @@ class RoomMemberEntity extends Equatable {
     isHiddenSpectator,
     isMuted,
     isGameMuted,
+    isVoiceMuted,
     isDisconnected,
     isAway,
     leftDefinitively,
@@ -4688,6 +4703,7 @@ class RoomSettingsEntity extends Equatable {
     this.maxTruths = 2,
     this.honestyVoteEnabled = true,
     this.daresEnabled = true,
+    this.voiceEnabled = false,
   });
 
   final int turnTimerSeconds;
@@ -4736,6 +4752,12 @@ class RoomSettingsEntity extends Equatable {
   /// unchanged until a host explicitly turns dares off.
   final bool daresEnabled;
 
+  /// room_settings.voice_enabled — LiveKit voice chat on/off (default off).
+  /// READ-ONLY on the client: deliberately absent from [toMap] (so ordinary
+  /// settings saves never write it) and changed only through jma3a-api, which
+  /// enforces permissions and the Basic-tier daily allowance.
+  final bool voiceEnabled;
+
   RoomSettingsEntity copyWith({
     int? turnTimerSeconds,
     bool? allowSkip,
@@ -4756,6 +4778,7 @@ class RoomSettingsEntity extends Equatable {
     int? maxTruths,
     bool? honestyVoteEnabled,
     bool? daresEnabled,
+    bool? voiceEnabled,
   }) => RoomSettingsEntity(
     turnTimerSeconds: turnTimerSeconds ?? this.turnTimerSeconds,
     allowSkip: allowSkip ?? this.allowSkip,
@@ -4779,6 +4802,7 @@ class RoomSettingsEntity extends Equatable {
     maxTruths: maxTruths ?? this.maxTruths,
     honestyVoteEnabled: honestyVoteEnabled ?? this.honestyVoteEnabled,
     daresEnabled: daresEnabled ?? this.daresEnabled,
+    voiceEnabled: voiceEnabled ?? this.voiceEnabled,
   );
 
   Map<String, dynamic> toMap() => {
@@ -4829,6 +4853,7 @@ class RoomSettingsEntity extends Equatable {
     maxTruths: (m['max_truths'] as num?)?.toInt() ?? 2,
     honestyVoteEnabled: m['honesty_vote_enabled'] as bool? ?? true,
     daresEnabled: m['dares_enabled'] as bool? ?? true,
+    voiceEnabled: m['voice_enabled'] as bool? ?? false,
   );
 
   @override
@@ -4852,6 +4877,7 @@ class RoomSettingsEntity extends Equatable {
     maxTruths,
     honestyVoteEnabled,
     daresEnabled,
+    voiceEnabled,
   ];
 }
 

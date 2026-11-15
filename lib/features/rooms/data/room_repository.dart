@@ -2622,6 +2622,141 @@ bool isDirectlyJoinableRoom({
     !gameStarted &&
     !requiresApproval;
 
+/// Phase 1C-B-2 — every error code the six B-1 membership RPCs
+/// (member_join_room, member_leave_room, member_set_ready, member_set_away,
+/// member_leave_room_definitively, member_evict_stale) raise with
+/// `RAISE EXCEPTION '<code>'` (SQLSTATE P0001). See
+/// supabase/migrations_manual/phase1c_b1/b1_migration.sql.
+const membershipRpcErrorCodes = <String>{
+  'not_authenticated',
+  'invalid_mode',
+  'invalid_argument',
+  'invalid_target',
+  'room_not_found',
+  'room_closed',
+  'kicked',
+  'banned',
+  'owner_absent',
+  'spectators_not_allowed',
+  'anonymous_spectators_not_allowed',
+  'premium_required',
+  'approval_required',
+  'spectator_approval_required',
+  'rejoin_approval_required',
+  'owner_seat_unavailable',
+  'room_full',
+  'resume_not_allowed',
+  'owner_must_close',
+  'not_a_member',
+  'cannot_evict_owner',
+  'room_paused',
+  'target_not_stale',
+};
+
+/// Join refusals B-1 newly enforces server-side that end the attempt — the
+/// room provider shows them as a failure state instead of continuing.
+const membershipTerminalJoinRefusals = <String>{
+  'kicked',
+  'owner_seat_unavailable',
+  'premium_required',
+  'spectators_not_allowed',
+  'anonymous_spectators_not_allowed',
+  'invalid_mode',
+};
+
+/// The B-1 membership RPC error code carried by [e], or null when [e] is
+/// not one. Exact match only: a substring test would treat
+/// `rejoin_approval_required` / `spectator_approval_required` as
+/// `approval_required`.
+String? membershipRpcErrorCode(PostgrestException e) =>
+    e.code == 'P0001' && membershipRpcErrorCodes.contains(e.message)
+    ? e.message
+    : null;
+
+/// Maps a B-1 membership RPC refusal to the app's [Failure] types, keeping
+/// the RPC code in [Failure.code] so callers branch on it exactly. Returns
+/// null for anything that is not a B-1 membership RPC code (the caller
+/// rethrows it unchanged). Messages the old direct-write path already
+/// produced are kept verbatim.
+Failure? membershipRpcFailure(PostgrestException e) {
+  final code = membershipRpcErrorCode(e);
+  if (code == null) return null;
+  return switch (code) {
+    'room_not_found' => NotFoundFailure(
+      message: 'Room not found or no longer available.',
+      code: code,
+    ),
+    'room_closed' => NotFoundFailure(
+      message: 'This room has been closed by the host.',
+      code: code,
+    ),
+    'owner_absent' => NotFoundFailure(
+      message: 'The host has left. This room is no longer available.',
+      code: code,
+    ),
+    'room_full' => ConflictFailure(message: 'Room is full.', code: code),
+    'banned' => ForbiddenFailure(
+      message: 'You are banned from this room.',
+      code: code,
+    ),
+    'kicked' => ForbiddenFailure(
+      message: 'You were removed from this room.',
+      code: code,
+    ),
+    'owner_seat_unavailable' => ConflictFailure(
+      message:
+          'Your seat was taken while you were away. Try again when a seat frees up.',
+      code: code,
+    ),
+    'premium_required' => ForbiddenFailure(
+      message: 'Hidden spectating requires an active Premium subscription.',
+      code: code,
+    ),
+    'spectators_not_allowed' => ForbiddenFailure(
+      message: 'This room does not allow spectators.',
+      code: code,
+    ),
+    'anonymous_spectators_not_allowed' => ForbiddenFailure(
+      message: 'This room does not allow hidden spectators.',
+      code: code,
+    ),
+    'approval_required' ||
+    'spectator_approval_required' ||
+    'rejoin_approval_required' => ConflictFailure(
+      message: 'Approval is required to enter this room.',
+      code: code,
+    ),
+    'not_authenticated' => AuthFailure(code: code),
+    'invalid_mode' || 'invalid_argument' || 'invalid_target' =>
+      ValidationFailure(message: 'Invalid request.', code: code),
+    'resume_not_allowed' => ForbiddenFailure(
+      message: 'You cannot resume this game.',
+      code: code,
+    ),
+    'owner_must_close' => ForbiddenFailure(
+      message: 'The host must close or transfer the room instead of leaving.',
+      code: code,
+    ),
+    'target_not_stale' => ConflictFailure(
+      message: 'That player is still connected.',
+      code: code,
+    ),
+    'not_a_member' => ForbiddenFailure(
+      message: 'You are not in this room.',
+      code: code,
+    ),
+    'cannot_evict_owner' => ForbiddenFailure(
+      message: 'The host cannot be removed this way.',
+      code: code,
+    ),
+    'room_paused' => ConflictFailure(
+      message: 'The game is paused.',
+      code: code,
+    ),
+    _ => ServerFailure(message: e.message, code: code),
+  };
+}
+
 class RoomRepository extends BaseRepository {
   final _api = ApiClient.instance;
   RoomRepository._();
@@ -2852,15 +2987,6 @@ class RoomRepository extends BaseRepository {
     required String roomId,
     String role = 'player',
     bool isHiddenSpectator = false,
-    // A verified participant of this room's current/most-recent game session
-    // (see RoomProvider's isSessionParticipant — frozen game_sessions.player_ids,
-    // and NOT kicked/left) is RETURNING to a room the host closed with the game
-    // kept alive, not joining fresh. For them the closed-status rejection below
-    // must be skipped so they can reactivate their existing membership. Every
-    // other gate (owner-abandoned, capacity, ban) still runs, and the server's
-    // RLS + reactivation trigger remain the real boundary; the caller only sets
-    // this after authoritatively confirming participation.
-    bool isReturningParticipant = false,
   }) => guardedCall(
     operationName: 'joinRoom',
     operation: () async {
@@ -2885,118 +3011,28 @@ class RoomRepository extends BaseRepository {
         );
 
       final room = _rowToEntity(row);
-      // A returning session participant is NOT turned away by closed_at — they
-      // are resuming their own game/room (see the parameter's doc). A genuine
-      // new joiner still hits the wall.
-      if (room.status == RoomStatus.closed && !isReturningParticipant)
-        throw const NotFoundFailure(
-          message: 'This room has been closed by the host.',
-        );
 
-      final isOwnerJoining = userId == (row['owner_id'] as String);
-      if (!isOwnerJoining) {
-        final ownerRow = await _supabase
-            .from('room_members')
-            .select('id')
-            .eq('room_id', roomId)
-            .eq('user_id', row['owner_id'] as String)
-            .isFilter('left_at', null)
-            .maybeSingle();
-        if (ownerRow == null) {
-          // RPC atomically sets deleted_at alongside status (a plain
-          // status-only update here previously left the room in an
-          // inconsistent partial-close state — closed but not deleted_at)
-          // and aborts any active/paused game_sessions row too.
+      // Phase 1C-B-2: one server-side, room-locked call (member_join_room)
+      // replaces the former client-side checks (closed room, host present,
+      // capacity incl. the owner exemption, ban) and the direct upsert. The
+      // server also enforces the approval / spectator / rejoin / kicked
+      // gates and sets is_away; [userId] is the caller (auth.uid()).
+      final mode = isHiddenSpectator || role == 'spectator_anon'
+          ? 'spectator_anon'
+          : role;
+      try {
+        await _membershipRpc('member_join_room', {
+          'p_room_id': roomId,
+          'p_mode': mode,
+        });
+      } on Failure catch (f) {
+        if (f.code == 'owner_absent') {
+          // As before: close the abandoned room atomically (deleted_at +
+          // abort of any active/paused session) before reporting it gone.
           await _supabase.rpc(
             'close_abandoned_room',
             params: {'p_room_id': roomId},
           );
-          throw const NotFoundFailure(
-            message: 'The host has left. This room is no longer available.',
-          );
-        }
-      }
-
-      final playerCount = await _supabase
-          .from('room_members')
-          .select('id')
-          .eq('room_id', roomId)
-          .eq('role', 'player')
-          .isFilter('left_at', null)
-          .neq('user_id', userId)
-          .count(CountOption.exact);
-      final activePlayers = playerCount.count ?? 0;
-      // Room capacity fix: the OWNER of this room must always be able to
-      // rejoin it — never rejected by the normal capacity check just
-      // because the room is at max_players (e.g. the owner force-closed
-      // the app without formally leaving, so their own seat is still one
-      // of the counted ones; a plain "activePlayers >= maxPlayers" gate
-      // has no way to know the caller IS one of those already-counted
-      // seats, not an additional new one). `isOwnerJoining` above is
-      // derived from `row['owner_id']` — the server-returned room row —
-      // compared against this authenticated call's own userId, exactly
-      // the same trusted comparison already used a few lines up for the
-      // "owner must still be present" check; never a client-supplied
-      // admin flag. Every other gate above this (closed room, banned)
-      // still applies to the owner exactly as before — only the numeric
-      // capacity count is bypassed. This does not weaken capacity
-      // enforcement for a normal (non-owner) joiner in any way.
-      if (roomJoinExceedsCapacity(
-        isOwnerJoining: isOwnerJoining,
-        activePlayers: activePlayers,
-        maxPlayers: room.maxPlayers,
-      )) {
-        throw const ConflictFailure(message: 'Room is full.');
-      }
-
-      final ban = await _supabase
-          .from('room_bans')
-          .select('id, banned_until')
-          .eq('room_id', roomId)
-          .eq('user_id', userId)
-          .isFilter('lifted_at', null)
-          .maybeSingle();
-
-      if (ban != null) {
-        final until = ban['banned_until'];
-        if (until == null ||
-            DateTime.parse(until as String).isAfter(DateTime.now())) {
-          throw const ForbiddenFailure(
-            message: 'You are banned from this room.',
-          );
-        }
-      }
-
-      final seatRes = await _supabase
-          .from('room_members')
-          .select('id')
-          .eq('room_id', roomId)
-          .isFilter('left_at', null)
-          .count(CountOption.exact);
-      final seatOrder = seatRes.count ?? 0;
-
-      try {
-        await _supabase.from('room_members').upsert({
-          'room_id': roomId,
-          'user_id': userId,
-          'seat_order': seatOrder,
-          'role': role == 'spectator_anon' ? 'spectator' : role,
-          'is_hidden_spectator': isHiddenSpectator || role == 'spectator_anon',
-          'is_ready': false,
-          'left_at': null,
-          'joined_at': DateTime.now().toIso8601String(),
-        }, onConflict: 'room_id,user_id');
-      } on PostgrestException catch (e) {
-        // Backstop only — the pre-check above (roomJoinExceedsCapacity)
-        // already rejects the common case with this same friendly
-        // message before ever reaching the database. This only fires on
-        // a genuine race (two joiners for the last seat at once), where
-        // the DB-level capacity trigger (room_members_enforce_capacity,
-        // see supabase/migrations/20260915091000_room_members_capacity_
-        // trigger.sql) raises the same 'room_full' string
-        // acceptRoomInvite already uses — remapped here the same way.
-        if (e.message.contains('room_full')) {
-          throw const ConflictFailure(message: 'Room is full.');
         }
         rethrow;
       }
@@ -3078,7 +3114,23 @@ class RoomRepository extends BaseRepository {
           await requestToJoin(userId: userId, roomId: roomId);
           throw const PendingApprovalFailure();
         case JoinByCodeAction.directJoin:
-          return joinRoom(userId: userId, roomId: roomId);
+          try {
+            return await joinRoom(userId: userId, roomId: roomId);
+          } on Failure catch (f) {
+            switch (f.code) {
+              // Same outcome as the requestApproval branch above.
+              case 'approval_required':
+                await requestToJoin(userId: userId, roomId: roomId);
+                throw const PendingApprovalFailure();
+              // Hand off to the lobby: RoomProvider.initialize runs the
+              // existing rejoin / spectator-approval flow (unchanged,
+              // including request_game_rejoin's not_eligible outcome).
+              case 'rejoin_approval_required':
+              case 'spectator_approval_required':
+                return _rowToEntity(row);
+            }
+            rethrow;
+          }
       }
     },
   );
@@ -3918,18 +3970,15 @@ class RoomRepository extends BaseRepository {
     },
   );
 
-  Future<void> leaveRoom({required String userId, required String roomId}) =>
-      guardedCall(
-        operationName: 'leaveRoom',
-        operation: () async {
-          await _supabase
-              .from('room_members')
-              .update({'left_at': DateTime.now().toIso8601String()})
-              .eq('room_id', roomId)
-              .eq('user_id', userId)
-              .isFilter('left_at', null);
-        },
-      );
+  /// Soft leave of the caller's own membership (member_leave_room). A no-op
+  /// when the caller has no active membership. Removing another member is
+  /// [evictStaleMember]'s job, never this method's.
+  Future<void> leaveRoom({required String roomId}) => guardedCall(
+    operationName: 'leaveRoom',
+    operation: () async {
+      await _membershipRpc('member_leave_room', {'p_room_id': roomId});
+    },
+  );
 
   /// Server-verified heartbeat — Presence (client-side diffing, no server
   /// record) was previously the sole signal driving member eviction, and
@@ -4095,12 +4144,8 @@ class RoomRepository extends BaseRepository {
           .eq('id', roomId)
           .maybeSingle();
 
-      await _supabase
-          .from('room_members')
-          .update({'left_at': DateTime.now().toIso8601String()})
-          .eq('room_id', roomId)
-          .eq('user_id', userId)
-          .isFilter('left_at', null);
+      // Soft leave of the caller's own membership ([userId] is the caller).
+      await _membershipRpc('member_leave_room', {'p_room_id': roomId});
 
       if (room != null && room['owner_id'] == userId) {
         await _supabase
@@ -4236,6 +4281,8 @@ class RoomRepository extends BaseRepository {
           // even though the DB row (and mute_player_in_game RPC) were
           // correct the whole time. See RoomProvider._refreshMembers.
           isGameMuted: r['is_game_muted'] as bool? ?? false,
+          // Admin voice mute — separate from chat (is_muted) and game mute.
+          isVoiceMuted: r['is_voice_muted'] as bool? ?? false,
           isAway: r['is_away'] as bool? ?? false,
           leftDefinitively: r['left_definitively'] as bool? ?? false,
           isPremium: profile['is_premium'] as bool? ?? false,
@@ -4530,6 +4577,10 @@ class RoomRepository extends BaseRepository {
   // Game participation only — must never touch left_at (room membership is
   // a separate concept; a player marked away here is still, deliberately,
   // a full room member — see RoomProvider's arrivedMidGame self-mark).
+  //
+  // B-2: server-enforced via member_set_away — always acts on the caller's
+  // own row (auth.uid()); [userId] is the caller and is not sent. away=false
+  // is accepted only for a legitimate resume (resume_not_allowed otherwise).
   Future<void> setMemberAway(
     String roomId,
     String userId, {
@@ -4537,29 +4588,73 @@ class RoomRepository extends BaseRepository {
   }) => guardedCall(
     operationName: 'setMemberAway',
     operation: () async {
-      await _supabase
-          .from('room_members')
-          .update({'is_away': away})
-          .eq('room_id', roomId)
-          .eq('user_id', userId);
+      await _membershipRpc('member_set_away', {
+        'p_room_id': roomId,
+        'p_away': away,
+      });
     },
   );
 
+  /// Lobby Leave button / quitting a game. Server-enforced via
+  /// member_leave_room_definitively on the caller's own row (auth.uid());
+  /// [userId] is the caller and is not sent. The owner is refused with
+  /// owner_must_close.
   Future<void> setMemberDefinitiveLeave(String roomId, String userId) =>
       guardedCall(
         operationName: 'setMemberDefinitiveLeave',
         operation: () async {
-          await _supabase
-              .from('room_members')
-              .update({
-                'role': 'spectator',
-                'left_definitively': true,
-                'left_at': DateTime.now().toIso8601String(),
-              })
-              .eq('room_id', roomId)
-              .eq('user_id', userId);
+          await _membershipRpc('member_leave_room_definitively', {
+            'p_room_id': roomId,
+          });
         },
       );
+
+  /// The caller's own ready flag (member_set_ready). Returns false when the
+  /// caller has no active membership in [roomId].
+  Future<bool> setMemberReady(String roomId, bool ready) => guardedCall(
+    operationName: 'setMemberReady',
+    operation: () async {
+      final result = await _membershipRpc('member_set_ready', {
+        'p_room_id': roomId,
+        'p_ready': ready,
+      });
+      return result == true;
+    },
+  );
+
+  /// Grace-period eviction of a stale member (member_evict_stale). The
+  /// server re-checks everything: the caller is an active member, the
+  /// target is not the owner, the room is not paused, and the target's
+  /// last_seen_at is at least 25s old (target_not_stale otherwise). Returns
+  /// false when the target had already left.
+  Future<bool> evictStaleMember({
+    required String roomId,
+    required String targetUserId,
+  }) => guardedCall(
+    operationName: 'evictStaleMember',
+    operation: () async {
+      final result = await _membershipRpc('member_evict_stale', {
+        'p_room_id': roomId,
+        'p_target_user_id': targetUserId,
+      });
+      return result == true;
+    },
+  );
+
+  /// Calls one of the B-1 membership RPCs, turning its error codes into
+  /// [Failure]s via [membershipRpcFailure]; any other error is rethrown.
+  Future<dynamic> _membershipRpc(
+    String function,
+    Map<String, dynamic> params,
+  ) async {
+    try {
+      return await _supabase.rpc(function, params: params);
+    } on PostgrestException catch (e) {
+      final failure = membershipRpcFailure(e);
+      if (failure == null) rethrow;
+      throw failure;
+    }
+  }
 
   Future<void> transferOwnership(
     String roomId,

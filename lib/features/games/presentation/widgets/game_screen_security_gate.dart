@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/utils/app_logger.dart';
 import '../../../settings/presentation/screen_security_service.dart';
+import '../../../voice/presentation/voice_recording_coordinator.dart';
+import '../../../voice/presentation/voice_room_controller.dart';
+import '../../../voice/presentation/widgets/voice_game_overlay.dart';
 
 /// Route-level back-navigation registry for the active game.
 ///
@@ -79,9 +82,18 @@ class GameBackGuard extends InheritedWidget {
 /// prevention isn't possible" generically for every game mode, the same
 /// way the block itself is generic — no per-game overlay code needed.
 class GameScreenSecurityGate extends StatefulWidget {
-  const GameScreenSecurityGate({super.key, required this.child});
+  const GameScreenSecurityGate({
+    super.key,
+    required this.child,
+    this.voiceController,
+  });
 
   final Widget child;
+
+  /// The lobby's voice session, passed through the game route's extras like
+  /// `roomProvider`. Null (e.g. a deep link without extras) shows no voice
+  /// overlay at all.
+  final VoiceRoomController? voiceController;
 
   @override
   State<GameScreenSecurityGate> createState() =>
@@ -155,6 +167,28 @@ class _GameScreenSecurityGateState extends State<GameScreenSecurityGate> {
               ),
             ],
           );
+    // Voice overlay as a keyed sibling ABOVE `content`: `content` flips between
+    // the bare child and the recording Stack above, but the key keeps the
+    // overlay's element (and its expanded/collapsed state) mounted across
+    // that flip. It renders nothing unless a voice session is active.
+    final voice = widget.voiceController;
+    // VoiceSessionScope lets in-game features (voice-proof recording) find
+    // the controller to coordinate microphone use.
+    final body = voice == null
+        ? content
+        : VoiceSessionScope(
+            controller: voice,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                content,
+                Positioned.fill(
+                  key: const ValueKey('game_voice_overlay'),
+                  child: VoiceGameOverlay(controller: voice),
+                ),
+              ],
+            ),
+          );
     // The ONE PopScope for the entire game route. canPop:false means every
     // back path is intercepted here regardless of which internal sub-view a
     // game screen is currently showing — the fix for sub-views (round history,
@@ -165,7 +199,7 @@ class _GameScreenSecurityGateState extends State<GameScreenSecurityGate> {
       child: PopScope(
         canPop: false,
         onPopInvokedWithResult: (didPop, _) => _onBack(didPop),
-        child: content,
+        child: body,
       ),
     );
   }

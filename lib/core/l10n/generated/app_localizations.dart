@@ -316,18 +316,6 @@ abstract class AppLocalizations {
   /// **'Profile'**
   String get navProfile;
 
-  /// No description provided for @authWelcome.
-  ///
-  /// In en, this message translates to:
-  /// **'Welcome to Jma3a'**
-  String get authWelcome;
-
-  /// No description provided for @authTagline.
-  ///
-  /// In en, this message translates to:
-  /// **'Play together, anywhere'**
-  String get authTagline;
-
   /// No description provided for @authEmailLabel.
   ///
   /// In en, this message translates to:
@@ -345,12 +333,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Please enter a valid email address'**
   String get authEmailInvalid;
-
-  /// No description provided for @authSendOtp.
-  ///
-  /// In en, this message translates to:
-  /// **'Send code'**
-  String get authSendOtp;
 
   /// No description provided for @authOtpLabel.
   ///
@@ -601,7 +583,7 @@ abstract class AppLocalizations {
   /// No description provided for @premiumBackgroundUpgradeHint.
   ///
   /// In en, this message translates to:
-  /// **'Premium feature — tap to upgrade'**
+  /// **'Premium feature'**
   String get premiumBackgroundUpgradeHint;
 
   /// No description provided for @premiumBackgroundSaveFailed.
@@ -946,204 +928,6 @@ abstract class AppLocalizations {
   /// **'Notifications'**
   String get settingsNotifications;
 
-  /// No description provided for @walletEarningsTotal.
-  ///
-  /// In en, this message translates to:
-  /// **'Total earned'**
-  String get walletEarningsTotal;
-
-  /// No description provided for @walletEarningsThisMonth.
-  ///
-  /// In en, this message translates to:
-  /// **'This month'**
-  String get walletEarningsThisMonth;
-
-  /// No description provided for @walletEarningsTotalSales.
-  ///
-  /// In en, this message translates to:
-  /// **'Total sales'**
-  String get walletEarningsTotalSales;
-
-  /// No description provided for @walletTransactionHistory.
-  ///
-  /// In en, this message translates to:
-  /// **'Transaction history'**
-  String get walletTransactionHistory;
-
-  /// No description provided for @walletFilterAll.
-  ///
-  /// In en, this message translates to:
-  /// **'All'**
-  String get walletFilterAll;
-
-  /// No description provided for @walletFilterDeposits.
-  ///
-  /// In en, this message translates to:
-  /// **'Deposits'**
-  String get walletFilterDeposits;
-
-  /// No description provided for @walletFilterWithdrawals.
-  ///
-  /// In en, this message translates to:
-  /// **'Withdrawals'**
-  String get walletFilterWithdrawals;
-
-  /// No description provided for @walletFilterPurchases.
-  ///
-  /// In en, this message translates to:
-  /// **'Purchases'**
-  String get walletFilterPurchases;
-
-  /// No description provided for @walletFilterEarnings.
-  ///
-  /// In en, this message translates to:
-  /// **'Earnings'**
-  String get walletFilterEarnings;
-
-  /// No description provided for @walletFilterRefunds.
-  ///
-  /// In en, this message translates to:
-  /// **'Refunds'**
-  String get walletFilterRefunds;
-
-  /// No description provided for @walletFilterPayouts.
-  ///
-  /// In en, this message translates to:
-  /// **'Payouts'**
-  String get walletFilterPayouts;
-
-  /// No description provided for @walletFilterBonuses.
-  ///
-  /// In en, this message translates to:
-  /// **'Bonuses'**
-  String get walletFilterBonuses;
-
-  /// No description provided for @walletFilterAdjustments.
-  ///
-  /// In en, this message translates to:
-  /// **'Adjustments'**
-  String get walletFilterAdjustments;
-
-  /// No description provided for @walletFilterTransfers.
-  ///
-  /// In en, this message translates to:
-  /// **'Transfers'**
-  String get walletFilterTransfers;
-
-  /// No description provided for @walletTypeDeposit.
-  ///
-  /// In en, this message translates to:
-  /// **'Deposit'**
-  String get walletTypeDeposit;
-
-  /// No description provided for @walletTypeWithdrawal.
-  ///
-  /// In en, this message translates to:
-  /// **'Withdrawal'**
-  String get walletTypeWithdrawal;
-
-  /// No description provided for @walletTypePurchase.
-  ///
-  /// In en, this message translates to:
-  /// **'Pack Purchase'**
-  String get walletTypePurchase;
-
-  /// No description provided for @walletTypeRefund.
-  ///
-  /// In en, this message translates to:
-  /// **'Refund'**
-  String get walletTypeRefund;
-
-  /// No description provided for @walletTypeCommission.
-  ///
-  /// In en, this message translates to:
-  /// **'Creator Earnings'**
-  String get walletTypeCommission;
-
-  /// No description provided for @walletTypePayout.
-  ///
-  /// In en, this message translates to:
-  /// **'Payout'**
-  String get walletTypePayout;
-
-  /// No description provided for @walletTypeAdjustment.
-  ///
-  /// In en, this message translates to:
-  /// **'Adjustment'**
-  String get walletTypeAdjustment;
-
-  /// No description provided for @walletTypeBonus.
-  ///
-  /// In en, this message translates to:
-  /// **'Bonus'**
-  String get walletTypeBonus;
-
-  /// No description provided for @walletTypeTransfer.
-  ///
-  /// In en, this message translates to:
-  /// **'Balance Transfer'**
-  String get walletTypeTransfer;
-
-  /// No description provided for @walletStatusPending.
-  ///
-  /// In en, this message translates to:
-  /// **'Pending'**
-  String get walletStatusPending;
-
-  /// No description provided for @walletStatusProcessing.
-  ///
-  /// In en, this message translates to:
-  /// **'Processing'**
-  String get walletStatusProcessing;
-
-  /// No description provided for @walletStatusCompleted.
-  ///
-  /// In en, this message translates to:
-  /// **'Completed'**
-  String get walletStatusCompleted;
-
-  /// No description provided for @walletStatusFailed.
-  ///
-  /// In en, this message translates to:
-  /// **'Failed'**
-  String get walletStatusFailed;
-
-  /// No description provided for @walletStatusCancelled.
-  ///
-  /// In en, this message translates to:
-  /// **'Cancelled'**
-  String get walletStatusCancelled;
-
-  /// No description provided for @walletStatusReversed.
-  ///
-  /// In en, this message translates to:
-  /// **'Reversed'**
-  String get walletStatusReversed;
-
-  /// No description provided for @walletDepositStatusPending.
-  ///
-  /// In en, this message translates to:
-  /// **'Pending'**
-  String get walletDepositStatusPending;
-
-  /// No description provided for @walletDepositStatusUnderReview.
-  ///
-  /// In en, this message translates to:
-  /// **'Under Review'**
-  String get walletDepositStatusUnderReview;
-
-  /// No description provided for @walletDepositStatusApproved.
-  ///
-  /// In en, this message translates to:
-  /// **'Approved'**
-  String get walletDepositStatusApproved;
-
-  /// No description provided for @walletDepositStatusRejected.
-  ///
-  /// In en, this message translates to:
-  /// **'Rejected'**
-  String get walletDepositStatusRejected;
-
   /// No description provided for @profileGames.
   ///
   /// In en, this message translates to:
@@ -1323,18 +1107,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Reject'**
   String get lobbyReject;
-
-  /// No description provided for @authUseEmailInstead.
-  ///
-  /// In en, this message translates to:
-  /// **'Use email instead'**
-  String get authUseEmailInstead;
-
-  /// No description provided for @authUsePhoneInstead.
-  ///
-  /// In en, this message translates to:
-  /// **'Use phone instead'**
-  String get authUsePhoneInstead;
 
   /// No description provided for @authContinueAsGuest.
   ///
@@ -1678,42 +1450,6 @@ abstract class AppLocalizations {
   /// **'Failed: {error}'**
   String lobbyRejoinDecisionFailed(String error);
 
-  /// No description provided for @premiumErrorInsufficientBalance.
-  ///
-  /// In en, this message translates to:
-  /// **'Not enough balance. Please top up your wallet first.'**
-  String get premiumErrorInsufficientBalance;
-
-  /// No description provided for @premiumErrorWalletNotFound.
-  ///
-  /// In en, this message translates to:
-  /// **'Wallet not found. Please contact support.'**
-  String get premiumErrorWalletNotFound;
-
-  /// No description provided for @premiumErrorWalletFrozen.
-  ///
-  /// In en, this message translates to:
-  /// **'Your wallet is frozen. Please contact support.'**
-  String get premiumErrorWalletFrozen;
-
-  /// No description provided for @premiumErrorInvalidPlan.
-  ///
-  /// In en, this message translates to:
-  /// **'Invalid plan selected.'**
-  String get premiumErrorInvalidPlan;
-
-  /// No description provided for @premiumErrorDowngradeBlocked.
-  ///
-  /// In en, this message translates to:
-  /// **'You can switch plans once your current subscription expires.'**
-  String get premiumErrorDowngradeBlocked;
-
-  /// No description provided for @premiumErrorPurchaseFailed.
-  ///
-  /// In en, this message translates to:
-  /// **'Purchase failed: {error}'**
-  String premiumErrorPurchaseFailed(String error);
-
   /// No description provided for @lobbyRoomReopened.
   ///
   /// In en, this message translates to:
@@ -2014,18 +1750,6 @@ abstract class AppLocalizations {
   /// **'Truth or Dare'**
   String get gameNameTruthOrDare;
 
-  /// No description provided for @gameSettingsChooseProofViewers.
-  ///
-  /// In en, this message translates to:
-  /// **'Choose exactly who can see proof'**
-  String get gameSettingsChooseProofViewers;
-
-  /// No description provided for @gameSettingsMemberLabelSpectator.
-  ///
-  /// In en, this message translates to:
-  /// **'{name} (spec)'**
-  String gameSettingsMemberLabelSpectator(String name);
-
   /// No description provided for @gameSettingsNoPacksDevMsg.
   ///
   /// In en, this message translates to:
@@ -2043,36 +1767,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Players submit'**
   String get gameSettingsPlayersSubmit;
-
-  /// No description provided for @gameSettingsProofCustom.
-  ///
-  /// In en, this message translates to:
-  /// **'Custom'**
-  String get gameSettingsProofCustom;
-
-  /// No description provided for @gameSettingsProofEveryone.
-  ///
-  /// In en, this message translates to:
-  /// **'Everyone'**
-  String get gameSettingsProofEveryone;
-
-  /// No description provided for @gameSettingsProofPlayers.
-  ///
-  /// In en, this message translates to:
-  /// **'Players'**
-  String get gameSettingsProofPlayers;
-
-  /// No description provided for @gameSettingsProofSpectators.
-  ///
-  /// In en, this message translates to:
-  /// **'Spectators'**
-  String get gameSettingsProofSpectators;
-
-  /// No description provided for @gameSettingsProofVisibility.
-  ///
-  /// In en, this message translates to:
-  /// **'Proof visibility'**
-  String get gameSettingsProofVisibility;
 
   /// No description provided for @gameSettingsPunishmentHintDefault.
   ///
@@ -2127,78 +1821,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Matched'**
   String get packMatchedLabel;
-
-  /// No description provided for @packTagRelationship.
-  ///
-  /// In en, this message translates to:
-  /// **'Relationship'**
-  String get packTagRelationship;
-
-  /// No description provided for @packTagBreakup.
-  ///
-  /// In en, this message translates to:
-  /// **'Breakup'**
-  String get packTagBreakup;
-
-  /// No description provided for @packTagFixingRelationship.
-  ///
-  /// In en, this message translates to:
-  /// **'Fixing relationship'**
-  String get packTagFixingRelationship;
-
-  /// No description provided for @packTagDating.
-  ///
-  /// In en, this message translates to:
-  /// **'Dating'**
-  String get packTagDating;
-
-  /// No description provided for @packTagCouples.
-  ///
-  /// In en, this message translates to:
-  /// **'Couples'**
-  String get packTagCouples;
-
-  /// No description provided for @packTagFriendship.
-  ///
-  /// In en, this message translates to:
-  /// **'Friendship'**
-  String get packTagFriendship;
-
-  /// No description provided for @packTagFamily.
-  ///
-  /// In en, this message translates to:
-  /// **'Family'**
-  String get packTagFamily;
-
-  /// No description provided for @packTagParty.
-  ///
-  /// In en, this message translates to:
-  /// **'Party'**
-  String get packTagParty;
-
-  /// No description provided for @packTagIcebreaker.
-  ///
-  /// In en, this message translates to:
-  /// **'Icebreaker'**
-  String get packTagIcebreaker;
-
-  /// No description provided for @packTagWork.
-  ///
-  /// In en, this message translates to:
-  /// **'Work'**
-  String get packTagWork;
-
-  /// No description provided for @packTagTravel.
-  ///
-  /// In en, this message translates to:
-  /// **'Travel'**
-  String get packTagTravel;
-
-  /// No description provided for @packTagLateNight.
-  ///
-  /// In en, this message translates to:
-  /// **'Late night'**
-  String get packTagLateNight;
 
   /// No description provided for @packCreationTagsTitle.
   ///
@@ -2299,8 +1921,8 @@ abstract class AppLocalizations {
   /// No description provided for @roomsDailyLimitFreeBody.
   ///
   /// In en, this message translates to:
-  /// **'Free plan allows {basicLimit} rooms per day. Try again tomorrow, or upgrade to Premium for {premiumLimit} rooms/day.'**
-  String roomsDailyLimitFreeBody(int basicLimit, int premiumLimit);
+  /// **'Free plan allows {basicLimit} rooms per day. Try again tomorrow.'**
+  String roomsDailyLimitFreeBody(int basicLimit);
 
   /// No description provided for @roomsDailyLimitPremiumBody.
   ///
@@ -2443,7 +2065,7 @@ abstract class AppLocalizations {
   /// No description provided for @roomsNoPacksBody.
   ///
   /// In en, this message translates to:
-  /// **'You need at least one pack to create a room — get a free pack or purchase one from the marketplace first.'**
+  /// **'You need at least one pack to create a room — browse the marketplace for a free pack to get started.'**
   String get roomsNoPacksBody;
 
   /// No description provided for @roomsNoPacksTitle.
@@ -2547,12 +2169,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Transfer ownership'**
   String get roomsTransferOwnership;
-
-  /// No description provided for @roomsUpgradeArrow.
-  ///
-  /// In en, this message translates to:
-  /// **'Upgrade →'**
-  String get roomsUpgradeArrow;
 
   /// No description provided for @roomsVisibility.
   ///
@@ -3232,12 +2848,6 @@ abstract class AppLocalizations {
   /// **'All players left the game.'**
   String get todAllPlayersLeftGameBody;
 
-  /// No description provided for @todAllPlayersLeftGameEnded.
-  ///
-  /// In en, this message translates to:
-  /// **'All players left — game ended'**
-  String get todAllPlayersLeftGameEnded;
-
   /// No description provided for @todChatTitle.
   ///
   /// In en, this message translates to:
@@ -3712,12 +3322,6 @@ abstract class AppLocalizations {
   /// **'Never have I ever…'**
   String get nhieCardPromptHint;
 
-  /// No description provided for @nhieCardTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Never Have I Ever…'**
-  String get nhieCardTitle;
-
   /// No description provided for @nhieDrinksScore.
   ///
   /// In en, this message translates to:
@@ -3735,12 +3339,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Game History'**
   String get nhieGameHistoryTitle;
-
-  /// No description provided for @nhieGoToHome.
-  ///
-  /// In en, this message translates to:
-  /// **'Go to Home'**
-  String get nhieGoToHome;
 
   /// No description provided for @gameBackToRoom.
   ///
@@ -3867,12 +3465,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Response submitted! Waiting for others…'**
   String get memeResponseSubmittedWaiting;
-
-  /// No description provided for @memeRoundBadgeAllCaps.
-  ///
-  /// In en, this message translates to:
-  /// **'ROUND {round}'**
-  String memeRoundBadgeAllCaps(int round);
 
   /// No description provided for @memeRoundResultsTitle.
   ///
@@ -4618,35 +4210,11 @@ abstract class AppLocalizations {
   /// **'Try again'**
   String get tryAgain;
 
-  /// No description provided for @accountLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'Account'**
-  String get accountLabel;
-
   /// No description provided for @amountLabel.
   ///
   /// In en, this message translates to:
   /// **'Amount'**
   String get amountLabel;
-
-  /// No description provided for @copiedNotice.
-  ///
-  /// In en, this message translates to:
-  /// **'Copied!'**
-  String get copiedNotice;
-
-  /// No description provided for @labelColonSuffix.
-  ///
-  /// In en, this message translates to:
-  /// **'{label}: '**
-  String labelColonSuffix(String label);
-
-  /// No description provided for @nameLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'Name'**
-  String get nameLabel;
 
   /// No description provided for @pendingLabel.
   ///
@@ -4672,461 +4240,11 @@ abstract class AppLocalizations {
   /// **'See all'**
   String get seeAll;
 
-  /// No description provided for @walletAmountToWithdraw.
-  ///
-  /// In en, this message translates to:
-  /// **'Amount to withdraw'**
-  String get walletAmountToWithdraw;
-
-  /// No description provided for @walletAmountValue.
-  ///
-  /// In en, this message translates to:
-  /// **'Amount: {amount} MRU'**
-  String walletAmountValue(String amount);
-
-  /// No description provided for @walletAvailableAmount.
-  ///
-  /// In en, this message translates to:
-  /// **'Available: {amount}'**
-  String walletAvailableAmount(String amount);
-
-  /// No description provided for @walletAvailableEarnings.
-  ///
-  /// In en, this message translates to:
-  /// **'Available earnings'**
-  String get walletAvailableEarnings;
-
-  /// No description provided for @walletAvailableForWithdrawal.
-  ///
-  /// In en, this message translates to:
-  /// **'Available for withdrawal'**
-  String get walletAvailableForWithdrawal;
-
-  /// No description provided for @walletBackToWallet.
-  ///
-  /// In en, this message translates to:
-  /// **'Back to Wallet'**
-  String get walletBackToWallet;
-
-  /// No description provided for @walletBalanceAfter.
-  ///
-  /// In en, this message translates to:
-  /// **'Balance after'**
-  String get walletBalanceAfter;
-
-  /// No description provided for @walletBulletCreditedAfterConfirm.
-  ///
-  /// In en, this message translates to:
-  /// **'Earnings are credited after purchase is confirmed.'**
-  String get walletBulletCreditedAfterConfirm;
-
-  /// No description provided for @walletBulletEarn85.
-  ///
-  /// In en, this message translates to:
-  /// **'You earn 85% of every pack sale.'**
-  String get walletBulletEarn85;
-
-  /// No description provided for @walletBulletMinWithdrawal.
-  ///
-  /// In en, this message translates to:
-  /// **'Minimum withdrawal: 500 MRU.'**
-  String get walletBulletMinWithdrawal;
-
-  /// No description provided for @walletBulletPlatformFee.
-  ///
-  /// In en, this message translates to:
-  /// **'15% platform fee keeps Jma3a running.'**
-  String get walletBulletPlatformFee;
-
-  /// No description provided for @walletChooseHowToAddFunds.
-  ///
-  /// In en, this message translates to:
-  /// **'Choose how you want to add funds.'**
-  String get walletChooseHowToAddFunds;
-
-  /// No description provided for @walletConfirmWithdrawal.
-  ///
-  /// In en, this message translates to:
-  /// **'Confirm Withdrawal'**
-  String get walletConfirmWithdrawal;
-
-  /// No description provided for @walletCreateSellPacksHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Create and sell packs to earn commissions.'**
-  String get walletCreateSellPacksHint;
-
-  /// No description provided for @walletCreatorEarningsRateLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'Creator earnings rate'**
-  String get walletCreatorEarningsRateLabel;
-
-  /// No description provided for @walletCreatorEarningsTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Creator Earnings'**
-  String get walletCreatorEarningsTitle;
-
-  /// No description provided for @walletCurrencyName.
-  ///
-  /// In en, this message translates to:
-  /// **'Mauritanian Ouguiya'**
-  String get walletCurrencyName;
-
   /// No description provided for @walletCurrencyShort.
   ///
   /// In en, this message translates to:
   /// **'MRU'**
   String get walletCurrencyShort;
-
-  /// No description provided for @walletAvailableBalanceLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'Available Balance'**
-  String get walletAvailableBalanceLabel;
-
-  /// No description provided for @walletFrozenLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'Wallet (Frozen)'**
-  String get walletFrozenLabel;
-
-  /// No description provided for @walletDeposit.
-  ///
-  /// In en, this message translates to:
-  /// **'Deposit'**
-  String get walletDeposit;
-
-  /// No description provided for @walletDepositAmount.
-  ///
-  /// In en, this message translates to:
-  /// **'Deposit {amount}'**
-  String walletDepositAmount(String amount);
-
-  /// No description provided for @walletDepositWarningNotice.
-  ///
-  /// In en, this message translates to:
-  /// **'Only submit after completing the transfer. Deposits are manually reviewed and may take 1–24 hours.'**
-  String get walletDepositWarningNotice;
-
-  /// No description provided for @walletEarningsBalance.
-  ///
-  /// In en, this message translates to:
-  /// **'Earnings Balance'**
-  String get walletEarningsBalance;
-
-  /// No description provided for @walletEnterReference.
-  ///
-  /// In en, this message translates to:
-  /// **'Enter the reference from your payment'**
-  String get walletEnterReference;
-
-  /// No description provided for @walletHowEarningsWork.
-  ///
-  /// In en, this message translates to:
-  /// **'How earnings work'**
-  String get walletHowEarningsWork;
-
-  /// No description provided for @walletInsufficientBalance.
-  ///
-  /// In en, this message translates to:
-  /// **'Insufficient balance'**
-  String get walletInsufficientBalance;
-
-  /// No description provided for @walletMaxDeposit.
-  ///
-  /// In en, this message translates to:
-  /// **'Maximum deposit: 1,000,000 MRU'**
-  String get walletMaxDeposit;
-
-  /// No description provided for @walletMethodLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'Method'**
-  String get walletMethodLabel;
-
-  /// No description provided for @walletMinDeposit.
-  ///
-  /// In en, this message translates to:
-  /// **'Minimum deposit: 100 MRU'**
-  String get walletMinDeposit;
-
-  /// No description provided for @walletMinWithdrawal.
-  ///
-  /// In en, this message translates to:
-  /// **'Minimum withdrawal: {amount} MRU'**
-  String walletMinWithdrawal(int amount);
-
-  /// No description provided for @walletNoEarningsYet.
-  ///
-  /// In en, this message translates to:
-  /// **'No earnings yet'**
-  String get walletNoEarningsYet;
-
-  /// No description provided for @walletNoTransactions.
-  ///
-  /// In en, this message translates to:
-  /// **'No transactions'**
-  String get walletNoTransactions;
-
-  /// No description provided for @walletNoTransactionsYet.
-  ///
-  /// In en, this message translates to:
-  /// **'No transactions yet'**
-  String get walletNoTransactionsYet;
-
-  /// No description provided for @walletOfEveryPackSale.
-  ///
-  /// In en, this message translates to:
-  /// **'of every pack sale ({fee}% platform fee)'**
-  String walletOfEveryPackSale(int fee);
-
-  /// No description provided for @walletPaymentReferenceLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'Payment reference / transaction ID'**
-  String get walletPaymentReferenceLabel;
-
-  /// No description provided for @walletPhoneNumberHint.
-  ///
-  /// In en, this message translates to:
-  /// **'8-digit phone number'**
-  String get walletPhoneNumberHint;
-
-  /// No description provided for @walletPayoutPhoneNumber.
-  ///
-  /// In en, this message translates to:
-  /// **'Payout phone number'**
-  String get walletPayoutPhoneNumber;
-
-  /// No description provided for @walletPhoneLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'Phone'**
-  String get walletPhoneLabel;
-
-  /// No description provided for @walletRecentTransactions.
-  ///
-  /// In en, this message translates to:
-  /// **'Recent Transactions'**
-  String get walletRecentTransactions;
-
-  /// No description provided for @walletReferenceHint.
-  ///
-  /// In en, this message translates to:
-  /// **'e.g. TXN123456789'**
-  String get walletReferenceHint;
-
-  /// No description provided for @walletSelectPaymentMethod.
-  ///
-  /// In en, this message translates to:
-  /// **'Select payment method'**
-  String get walletSelectPaymentMethod;
-
-  /// No description provided for @walletSelectPayoutMethod.
-  ///
-  /// In en, this message translates to:
-  /// **'Select payout method'**
-  String get walletSelectPayoutMethod;
-
-  /// No description provided for @walletStatusPaymentMethod.
-  ///
-  /// In en, this message translates to:
-  /// **'{status} • {method}'**
-  String walletStatusPaymentMethod(String status, String method);
-
-  /// No description provided for @walletTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Wallet'**
-  String get walletTitle;
-
-  /// No description provided for @walletDepositSubmittedTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Deposit Submitted!'**
-  String get walletDepositSubmittedTitle;
-
-  /// No description provided for @walletDepositSubmittedSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Your deposit of {amount} is under review. Balance will update once approved.'**
-  String walletDepositSubmittedSubtitle(String amount);
-
-  /// No description provided for @walletDepositRequestFailed.
-  ///
-  /// In en, this message translates to:
-  /// **'Deposit request failed.'**
-  String get walletDepositRequestFailed;
-
-  /// No description provided for @walletSubmitDeposit.
-  ///
-  /// In en, this message translates to:
-  /// **'Submit Deposit'**
-  String get walletSubmitDeposit;
-
-  /// No description provided for @walletWithdrawalSubmittedTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Withdrawal Submitted!'**
-  String get walletWithdrawalSubmittedTitle;
-
-  /// No description provided for @walletWithdrawalSubmittedSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Your withdrawal of {amount} is being processed. Funds will arrive within 1–24 hours.'**
-  String walletWithdrawalSubmittedSubtitle(String amount);
-
-  /// No description provided for @walletWithdrawalRequestFailed.
-  ///
-  /// In en, this message translates to:
-  /// **'Withdrawal request failed.'**
-  String get walletWithdrawalRequestFailed;
-
-  /// No description provided for @walletContinueArrow.
-  ///
-  /// In en, this message translates to:
-  /// **'Continue →'**
-  String get walletContinueArrow;
-
-  /// No description provided for @walletActionDeposit.
-  ///
-  /// In en, this message translates to:
-  /// **'Deposit'**
-  String get walletActionDeposit;
-
-  /// No description provided for @walletActionWithdraw.
-  ///
-  /// In en, this message translates to:
-  /// **'Withdraw'**
-  String get walletActionWithdraw;
-
-  /// No description provided for @walletActionEarnings.
-  ///
-  /// In en, this message translates to:
-  /// **'Earnings'**
-  String get walletActionEarnings;
-
-  /// No description provided for @walletDetailDateTime.
-  ///
-  /// In en, this message translates to:
-  /// **'Date & time'**
-  String get walletDetailDateTime;
-
-  /// No description provided for @walletDetailWalletAffected.
-  ///
-  /// In en, this message translates to:
-  /// **'Wallet affected'**
-  String get walletDetailWalletAffected;
-
-  /// No description provided for @walletDetailEarnings.
-  ///
-  /// In en, this message translates to:
-  /// **'Earnings'**
-  String get walletDetailEarnings;
-
-  /// No description provided for @walletDetailWalletBalance.
-  ///
-  /// In en, this message translates to:
-  /// **'Wallet Balance'**
-  String get walletDetailWalletBalance;
-
-  /// No description provided for @walletDetailBalanceAfter.
-  ///
-  /// In en, this message translates to:
-  /// **'Balance after'**
-  String get walletDetailBalanceAfter;
-
-  /// No description provided for @walletDetailPaymentMethod.
-  ///
-  /// In en, this message translates to:
-  /// **'Payment method'**
-  String get walletDetailPaymentMethod;
-
-  /// No description provided for @walletDetailDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'Description'**
-  String get walletDetailDescription;
-
-  /// No description provided for @walletDetailReference.
-  ///
-  /// In en, this message translates to:
-  /// **'Reference'**
-  String get walletDetailReference;
-
-  /// No description provided for @walletDetailTransactionId.
-  ///
-  /// In en, this message translates to:
-  /// **'Transaction ID'**
-  String get walletDetailTransactionId;
-
-  /// No description provided for @walletDetailDateAtTime.
-  ///
-  /// In en, this message translates to:
-  /// **'{date} at {time}'**
-  String walletDetailDateAtTime(String date, String time);
-
-  /// No description provided for @walletTransferAmount.
-  ///
-  /// In en, this message translates to:
-  /// **'Transfer amount'**
-  String get walletTransferAmount;
-
-  /// No description provided for @walletTransferButton.
-  ///
-  /// In en, this message translates to:
-  /// **'Transfer'**
-  String get walletTransferButton;
-
-  /// No description provided for @walletTransferFailed.
-  ///
-  /// In en, this message translates to:
-  /// **'Transfer failed.'**
-  String get walletTransferFailed;
-
-  /// No description provided for @walletTransferSuccess.
-  ///
-  /// In en, this message translates to:
-  /// **'Transferred to wallet balance.'**
-  String get walletTransferSuccess;
-
-  /// No description provided for @walletTransferToWallet.
-  ///
-  /// In en, this message translates to:
-  /// **'Transfer to Wallet'**
-  String get walletTransferToWallet;
-
-  /// No description provided for @walletTransferToWalletBalance.
-  ///
-  /// In en, this message translates to:
-  /// **'Transfer to Wallet Balance'**
-  String get walletTransferToWalletBalance;
-
-  /// No description provided for @walletWithdraw.
-  ///
-  /// In en, this message translates to:
-  /// **'Withdraw'**
-  String get walletWithdraw;
-
-  /// No description provided for @walletWithdrawalAmount.
-  ///
-  /// In en, this message translates to:
-  /// **'Withdrawal {amount}'**
-  String walletWithdrawalAmount(String amount);
-
-  /// No description provided for @walletWithdrawalProcessingNotice.
-  ///
-  /// In en, this message translates to:
-  /// **'Withdrawals are processed manually. Funds arrive in 1–24 hours once approved.'**
-  String get walletWithdrawalProcessingNotice;
-
-  /// No description provided for @walletYourPhoneNumber.
-  ///
-  /// In en, this message translates to:
-  /// **'Your phone number'**
-  String get walletYourPhoneNumber;
 
   /// No description provided for @actionLabel.
   ///
@@ -5134,23 +4252,11 @@ abstract class AppLocalizations {
   /// **'Action'**
   String get actionLabel;
 
-  /// No description provided for @activeLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'Active'**
-  String get activeLabel;
-
   /// No description provided for @darkMode.
   ///
   /// In en, this message translates to:
   /// **'Dark mode'**
   String get darkMode;
-
-  /// No description provided for @getButton.
-  ///
-  /// In en, this message translates to:
-  /// **'Get'**
-  String get getButton;
 
   /// No description provided for @lightMode.
   ///
@@ -5356,12 +4462,6 @@ abstract class AppLocalizations {
   /// **'Cyber Teal'**
   String get gameCardColorCyberTeal;
 
-  /// No description provided for @premiumAutoRenewNotice.
-  ///
-  /// In en, this message translates to:
-  /// **'Subscriptions auto-renew unless cancelled 24h before renewal.'**
-  String get premiumAutoRenewNotice;
-
   /// No description provided for @premiumBackgroundColorEmoji.
   ///
   /// In en, this message translates to:
@@ -5506,18 +4606,6 @@ abstract class AppLocalizations {
   /// **'Blends into your selected theme — text, cards, and icons adapt automatically.'**
   String get premiumBlendsIntoTheme;
 
-  /// No description provided for @premiumCannotDowngradeBody.
-  ///
-  /// In en, this message translates to:
-  /// **'You have an active Premium Plus subscription. You can switch to a lower plan once it expires on {date}.'**
-  String premiumCannotDowngradeBody(String date);
-
-  /// No description provided for @premiumCannotDowngradeTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Cannot Downgrade Yet'**
-  String get premiumCannotDowngradeTitle;
-
   /// No description provided for @premiumCardTextReadable.
   ///
   /// In en, this message translates to:
@@ -5536,41 +4624,11 @@ abstract class AppLocalizations {
   /// **'Choose a background'**
   String get premiumChooseBackground;
 
-  /// No description provided for @premiumConfirmPurchase.
-  ///
-  /// In en, this message translates to:
-  /// **'Confirm Purchase'**
-  String get premiumConfirmPurchase;
-
-  /// No description provided for @premiumCurrentTermEnds.
-  ///
-  /// In en, this message translates to:
-  /// **'your current term ends'**
-  String get premiumCurrentTermEnds;
-
-  /// No description provided for @premiumFeatureColumnHeader.
-  ///
-  /// In en, this message translates to:
-  /// **'Feature'**
-  String get premiumFeatureColumnHeader;
-
   /// No description provided for @premiumFeatureListDescription.
   ///
   /// In en, this message translates to:
   /// **'Custom themes & avatars, 15 rooms/day, up to 12 players per room, 10 offline packs (1 free), anonymous chat, and more.'**
   String get premiumFeatureListDescription;
-
-  /// No description provided for @premiumLockedUntilExpires.
-  ///
-  /// In en, this message translates to:
-  /// **'Locked until Premium Plus expires'**
-  String get premiumLockedUntilExpires;
-
-  /// No description provided for @premiumMonthly.
-  ///
-  /// In en, this message translates to:
-  /// **'Monthly'**
-  String get premiumMonthly;
 
   /// No description provided for @premiumPageBackground.
   ///
@@ -5578,23 +4636,11 @@ abstract class AppLocalizations {
   /// **'Page background'**
   String get premiumPageBackground;
 
-  /// No description provided for @premiumPlanActivated.
-  ///
-  /// In en, this message translates to:
-  /// **'🎉 {plan} activated!'**
-  String premiumPlanActivated(String plan);
-
   /// No description provided for @premiumPlusLabel.
   ///
   /// In en, this message translates to:
   /// **'Premium Plus'**
   String get premiumPlusLabel;
-
-  /// No description provided for @premiumPlusShort.
-  ///
-  /// In en, this message translates to:
-  /// **'Plus'**
-  String get premiumPlusShort;
 
   /// No description provided for @premiumPremiumAvatars.
   ///
@@ -5607,34 +4653,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Premium Themes ✦'**
   String get premiumPremiumThemes;
-
-  /// No description provided for @premiumPricePerPeriod.
-  ///
-  /// In en, this message translates to:
-  /// **'{price} / {period}'**
-  String premiumPricePerPeriod(String price, String period);
-
-  /// No description provided for @premiumPurchaseConfirmBody.
-  ///
-  /// In en, this message translates to:
-  /// **'This will deduct {planPrice} from your wallet balance.\n\nPlan: {plan} — {planPrice}/{period}'**
-  String premiumPurchaseConfirmBody(
-    String plan,
-    String planPrice,
-    String period,
-  );
-
-  /// No description provided for @premiumPurchasePlan.
-  ///
-  /// In en, this message translates to:
-  /// **'Purchase {plan}'**
-  String premiumPurchasePlan(String plan);
-
-  /// No description provided for @premiumSave33.
-  ///
-  /// In en, this message translates to:
-  /// **'Save 33%'**
-  String get premiumSave33;
 
   /// No description provided for @premiumTitle.
   ///
@@ -5651,20 +4669,8 @@ abstract class AppLocalizations {
   /// No description provided for @premiumUpgradeToUnlock.
   ///
   /// In en, this message translates to:
-  /// **'Upgrade to unlock'**
+  /// **'Requires Premium'**
   String get premiumUpgradeToUnlock;
-
-  /// No description provided for @premiumWhatYouGet.
-  ///
-  /// In en, this message translates to:
-  /// **'What you get'**
-  String get premiumWhatYouGet;
-
-  /// No description provided for @premiumYearly.
-  ///
-  /// In en, this message translates to:
-  /// **'Yearly'**
-  String get premiumYearly;
 
   /// No description provided for @premiumYourAvatars.
   ///
@@ -5719,18 +4725,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Add {count} more (minimum 10) or remove them all.'**
   String packAddMoreMinimum(int count);
-
-  /// No description provided for @packAdditionalFeeBody.
-  ///
-  /// In en, this message translates to:
-  /// **'This pack has extra cards, which requires an additional fee of {fee} MRU to submit for review.'**
-  String packAdditionalFeeBody(int fee);
-
-  /// No description provided for @packAdditionalFeeTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Additional fee required'**
-  String get packAdditionalFeeTitle;
 
   /// No description provided for @packAgeLabel.
   ///
@@ -6005,7 +4999,7 @@ abstract class AppLocalizations {
   /// No description provided for @packImportantRulesBody.
   ///
   /// In en, this message translates to:
-  /// **'• Packs cannot be edited after publishing.\n• You must purchase your own pack to use it in games.\n• Moderation review takes 1–3 business days.'**
+  /// **'• Packs cannot be edited after publishing.\n• You must own your pack to use it in games.\n• Moderation review takes 1–3 business days.'**
   String get packImportantRulesBody;
 
   /// No description provided for @packImportantRulesTitle.
@@ -6146,12 +5140,6 @@ abstract class AppLocalizations {
   /// **'One name and description per language you selected.'**
   String get packOneNamePerLanguage;
 
-  /// No description provided for @packPayFeeAndSubmit.
-  ///
-  /// In en, this message translates to:
-  /// **'Pay {fee} MRU & Submit'**
-  String packPayFeeAndSubmit(int fee);
-
   /// No description provided for @packPendingAdminReview.
   ///
   /// In en, this message translates to:
@@ -6175,12 +5163,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count} players'**
   String packPlayersSliderLabel(int count);
-
-  /// No description provided for @packPriceFreeHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Leave as 0 for a free pack'**
-  String get packPriceFreeHint;
 
   /// No description provided for @packMinPriceError.
   ///
@@ -6368,18 +5350,6 @@ abstract class AppLocalizations {
   /// **'Next free submission: {date}'**
   String packNextFreeSubmissionAt(String date);
 
-  /// No description provided for @packPaidExtraPackHint.
-  ///
-  /// In en, this message translates to:
-  /// **'You can create an extra pack now for {price} MRU.'**
-  String packPaidExtraPackHint(int price);
-
-  /// No description provided for @packCreateExtraPackPriced.
-  ///
-  /// In en, this message translates to:
-  /// **'Create Extra Pack — {price} MRU'**
-  String packCreateExtraPackPriced(int price);
-
   /// No description provided for @packCreatorNotVerified.
   ///
   /// In en, this message translates to:
@@ -6554,30 +5524,6 @@ abstract class AppLocalizations {
   /// **'Browse the marketplace to find packs.'**
   String get packBrowseMarketplaceHint;
 
-  /// No description provided for @packConfirmPurchaseTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Confirm Purchase'**
-  String get packConfirmPurchaseTitle;
-
-  /// No description provided for @packConfirmPurchaseBody.
-  ///
-  /// In en, this message translates to:
-  /// **'You\'re about to purchase \"{name}\" for {price}.'**
-  String packConfirmPurchaseBody(String name, String price);
-
-  /// No description provided for @packConfirmPurchaseAction.
-  ///
-  /// In en, this message translates to:
-  /// **'Purchase'**
-  String get packConfirmPurchaseAction;
-
-  /// No description provided for @packBuyForPrice.
-  ///
-  /// In en, this message translates to:
-  /// **'Buy for {price} MRU'**
-  String packBuyForPrice(int price);
-
   /// No description provided for @packCancelled.
   ///
   /// In en, this message translates to:
@@ -6719,7 +5665,7 @@ abstract class AppLocalizations {
   /// No description provided for @packFreeOfflineLimitNotice.
   ///
   /// In en, this message translates to:
-  /// **'Free plan allows 1 offline pack. Upgrade to Premium for 10.'**
+  /// **'Free plan allows 1 offline pack.'**
   String get packFreeOfflineLimitNotice;
 
   /// No description provided for @packFullName.
@@ -6727,24 +5673,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Full name'**
   String get packFullName;
-
-  /// No description provided for @packGetFreePack.
-  ///
-  /// In en, this message translates to:
-  /// **'Get Free Pack'**
-  String get packGetFreePack;
-
-  /// No description provided for @packInsufficientBalance.
-  ///
-  /// In en, this message translates to:
-  /// **'Insufficient Balance'**
-  String get packInsufficientBalance;
-
-  /// No description provided for @packInsufficientBalanceBody.
-  ///
-  /// In en, this message translates to:
-  /// **'You need {price} MRU to purchase this pack. Your current balance is too low.'**
-  String packInsufficientBalanceBody(int price);
 
   /// No description provided for @packLoadingPrice.
   ///
@@ -6902,65 +5830,11 @@ abstract class AppLocalizations {
   /// **'Jma3a'**
   String get packOfficialBadge;
 
-  /// No description provided for @packProcessingEllipsis.
-  ///
-  /// In en, this message translates to:
-  /// **'Processing…'**
-  String get packProcessingEllipsis;
-
   /// No description provided for @packPromotedBadge.
   ///
   /// In en, this message translates to:
   /// **'PROMOTED'**
   String get packPromotedBadge;
-
-  /// No description provided for @packPurchaseFailed.
-  ///
-  /// In en, this message translates to:
-  /// **'Purchase failed: {error}'**
-  String packPurchaseFailed(String error);
-
-  /// No description provided for @packPurchasedNotice.
-  ///
-  /// In en, this message translates to:
-  /// **'Pack purchased! You can now download it.'**
-  String get packPurchasedNotice;
-
-  /// No description provided for @packTrialBadgeTooltip.
-  ///
-  /// In en, this message translates to:
-  /// **'Free trial'**
-  String get packTrialBadgeTooltip;
-
-  /// No description provided for @packTrialCardsRemaining.
-  ///
-  /// In en, this message translates to:
-  /// **'{count, plural, one{1 trial card left} other{{count} trial cards left}}'**
-  String packTrialCardsRemaining(int count);
-
-  /// No description provided for @packTrialPromptTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Enjoying this pack?'**
-  String get packTrialPromptTitle;
-
-  /// No description provided for @packTrialPromptBody.
-  ///
-  /// In en, this message translates to:
-  /// **'You\'ve completed your free trial. Purchase the full pack to keep playing.'**
-  String get packTrialPromptBody;
-
-  /// No description provided for @packTrialPurchaseButton.
-  ///
-  /// In en, this message translates to:
-  /// **'Purchase Full Pack'**
-  String get packTrialPurchaseButton;
-
-  /// No description provided for @packTrialEndButton.
-  ///
-  /// In en, this message translates to:
-  /// **'End Trial'**
-  String get packTrialEndButton;
 
   /// No description provided for @packQuantity.
   ///
@@ -7063,60 +5937,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t submit your report. Please try again.'**
   String get packReportFailed;
-
-  /// No description provided for @packPromoteYourPack.
-  ///
-  /// In en, this message translates to:
-  /// **'Promote your pack'**
-  String get packPromoteYourPack;
-
-  /// No description provided for @packPromotionDuration24h.
-  ///
-  /// In en, this message translates to:
-  /// **'24 Hours'**
-  String get packPromotionDuration24h;
-
-  /// No description provided for @packPromotionDuration7d.
-  ///
-  /// In en, this message translates to:
-  /// **'1 Week'**
-  String get packPromotionDuration7d;
-
-  /// No description provided for @packPromotionSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Feature this pack in the promoted carousel to reach more players.'**
-  String get packPromotionSubtitle;
-
-  /// No description provided for @packPromotionSubmit.
-  ///
-  /// In en, this message translates to:
-  /// **'Promote'**
-  String get packPromotionSubmit;
-
-  /// No description provided for @packPromotionSuccess.
-  ///
-  /// In en, this message translates to:
-  /// **'Pack promoted successfully!'**
-  String get packPromotionSuccess;
-
-  /// No description provided for @packPromotionActiveLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'Promotion active'**
-  String get packPromotionActiveLabel;
-
-  /// No description provided for @packPromotionEndsAt.
-  ///
-  /// In en, this message translates to:
-  /// **'Ends {date}'**
-  String packPromotionEndsAt(String date);
-
-  /// No description provided for @packPromotionAlreadyActive.
-  ///
-  /// In en, this message translates to:
-  /// **'This pack already has an active promotion.'**
-  String get packPromotionAlreadyActive;
 
   /// No description provided for @packRequestPhysicalCopy.
   ///
@@ -7309,12 +6129,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'My Available Packs'**
   String get packTabMyAvailablePacks;
-
-  /// No description provided for @packTopUpWallet.
-  ///
-  /// In en, this message translates to:
-  /// **'Top Up Wallet'**
-  String get packTopUpWallet;
 
   /// No description provided for @packWriteReview.
   ///
@@ -8306,12 +7120,6 @@ abstract class AppLocalizations {
   /// **'You can update your avatar again in {hours}h {mins}m.'**
   String avatarUpdateCooldownNotice(int hours, int mins);
 
-  /// No description provided for @avatarUpgradeToPremium.
-  ///
-  /// In en, this message translates to:
-  /// **'Upgrade to Premium ✦'**
-  String get avatarUpgradeToPremium;
-
   /// No description provided for @profileAbout.
   ///
   /// In en, this message translates to:
@@ -8323,12 +7131,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Age (optional)'**
   String get profileAgeOptionalLabel;
-
-  /// No description provided for @profileBalanceAndTransactions.
-  ///
-  /// In en, this message translates to:
-  /// **'Balance & transactions'**
-  String get profileBalanceAndTransactions;
 
   /// No description provided for @profileAnswerSurvey.
   ///
@@ -8516,12 +7318,6 @@ abstract class AppLocalizations {
   /// **'Preferences'**
   String get profilePreferences;
 
-  /// No description provided for @profilePremiumActiveExpires.
-  ///
-  /// In en, this message translates to:
-  /// **'Active · expires {day}/{month}/{year}'**
-  String profilePremiumActiveExpires(int day, int month, int year);
-
   /// No description provided for @profileSaveUsername.
   ///
   /// In en, this message translates to:
@@ -8533,12 +7329,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Take photo'**
   String get profileTakePhoto;
-
-  /// No description provided for @profileUnlockPremiumHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Unlock themes, avatars, anonymous chat & more'**
-  String get profileUnlockPremiumHint;
 
   /// No description provided for @profileUploadingPhoto.
   ///
@@ -8869,36 +7659,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Chat'**
   String get chatTitle;
-
-  /// No description provided for @gameSettingsAllowOneReplay.
-  ///
-  /// In en, this message translates to:
-  /// **'Allow one replay'**
-  String get gameSettingsAllowOneReplay;
-
-  /// No description provided for @gameSettingsProofViewDuration.
-  ///
-  /// In en, this message translates to:
-  /// **'Proof view duration (auto-closes after this)'**
-  String get gameSettingsProofViewDuration;
-
-  /// No description provided for @gameSettingsProofUnlimitedDuration.
-  ///
-  /// In en, this message translates to:
-  /// **'Unlimited duration (until next round)'**
-  String get gameSettingsProofUnlimitedDuration;
-
-  /// No description provided for @gameSettingsProofReplayHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Premium viewers get one extra replay beyond this.'**
-  String get gameSettingsProofReplayHint;
-
-  /// No description provided for @gameSettingsProofAutoCloseHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Proof auto-closes after {seconds}s — no replay while a duration is set.'**
-  String gameSettingsProofAutoCloseHint(int seconds);
 
   /// No description provided for @gameSettingsRequireApprovalToSpectate.
   ///
@@ -9524,30 +8284,6 @@ abstract class AppLocalizations {
   /// **'Reject'**
   String get sharedReject;
 
-  /// No description provided for @sharedRemoveSpectator.
-  ///
-  /// In en, this message translates to:
-  /// **'Remove Spectator'**
-  String get sharedRemoveSpectator;
-
-  /// No description provided for @sharedSetSpectator.
-  ///
-  /// In en, this message translates to:
-  /// **'Set as Spectator'**
-  String get sharedSetSpectator;
-
-  /// No description provided for @sharedSetSpectatorBody.
-  ///
-  /// In en, this message translates to:
-  /// **'This player will stop counting as an active player and won\'t be able to take turns, but can still watch. You can reverse this anytime.'**
-  String get sharedSetSpectatorBody;
-
-  /// No description provided for @sharedSetSpectatorTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Set as Spectator'**
-  String get sharedSetSpectatorTitle;
-
   /// No description provided for @sharedRoomMembers.
   ///
   /// In en, this message translates to:
@@ -9577,42 +8313,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Objective'**
   String get sharedRuleObjective;
-
-  /// No description provided for @sharedRulePolicyEveryone.
-  ///
-  /// In en, this message translates to:
-  /// **'everyone in the game'**
-  String get sharedRulePolicyEveryone;
-
-  /// No description provided for @sharedRulePolicyPlayersOnly.
-  ///
-  /// In en, this message translates to:
-  /// **'players only'**
-  String get sharedRulePolicyPlayersOnly;
-
-  /// No description provided for @sharedRulePolicySpectatorsOnly.
-  ///
-  /// In en, this message translates to:
-  /// **'spectators only'**
-  String get sharedRulePolicySpectatorsOnly;
-
-  /// No description provided for @sharedRuleProofViewOnce.
-  ///
-  /// In en, this message translates to:
-  /// **'Proof can be viewed once (Premium: twice).'**
-  String get sharedRuleProofViewOnce;
-
-  /// No description provided for @sharedRuleProofViewTwice.
-  ///
-  /// In en, this message translates to:
-  /// **'Proof can be viewed twice (Premium: three times).'**
-  String get sharedRuleProofViewTwice;
-
-  /// No description provided for @sharedRuleProofVisibleTo.
-  ///
-  /// In en, this message translates to:
-  /// **'Proof is visible to: {policy}.'**
-  String sharedRuleProofVisibleTo(String policy);
 
   /// No description provided for @sharedRulePunishmentOff.
   ///
@@ -9758,12 +8458,6 @@ abstract class AppLocalizations {
   /// **'Your Friends'**
   String get friendsYourFriendsHeader;
 
-  /// No description provided for @friendsAdd.
-  ///
-  /// In en, this message translates to:
-  /// **'Add'**
-  String get friendsAdd;
-
   /// No description provided for @friendsAddFriend.
   ///
   /// In en, this message translates to:
@@ -9860,12 +8554,6 @@ abstract class AppLocalizations {
   /// **'Advertisements'**
   String get friendsAdvertisementsHeader;
 
-  /// No description provided for @friendsFollowersCount.
-  ///
-  /// In en, this message translates to:
-  /// **'{count} Followers'**
-  String friendsFollowersCount(int count);
-
   /// No description provided for @friendsFollow.
   ///
   /// In en, this message translates to:
@@ -9913,30 +8601,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No friends yet'**
   String get friendsNoFriendsYet;
-
-  /// No description provided for @friendsNoPendingRequests.
-  ///
-  /// In en, this message translates to:
-  /// **'No pending requests'**
-  String get friendsNoPendingRequests;
-
-  /// No description provided for @friendsNoPendingRequestsHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Friend requests you receive will appear here.'**
-  String get friendsNoPendingRequestsHint;
-
-  /// No description provided for @friendsNoResults.
-  ///
-  /// In en, this message translates to:
-  /// **'No results'**
-  String get friendsNoResults;
-
-  /// No description provided for @friendsNoResultsHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Try a different name or username.'**
-  String get friendsNoResultsHint;
 
   /// No description provided for @friendsOfflineCount.
   ///
@@ -10010,11 +8674,17 @@ abstract class AppLocalizations {
   /// **'Play a game with other users'**
   String get creatorReqPlayedWithOthers;
 
-  /// No description provided for @creatorApplyNow.
+  /// No description provided for @creatorRequestViaWhatsApp.
   ///
   /// In en, this message translates to:
-  /// **'Apply Now'**
-  String get creatorApplyNow;
+  /// **'Request to become a Verified Creator'**
+  String get creatorRequestViaWhatsApp;
+
+  /// No description provided for @creatorWhatsAppMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Hi, I\'d like to request Verified Creator status on Jma3a.'**
+  String get creatorWhatsAppMessage;
 
   /// No description provided for @creatorKeepGoing.
   ///
@@ -10154,36 +8824,6 @@ abstract class AppLocalizations {
   /// **'Your previous recovery request was rejected'**
   String get creatorRecoveryRejectedTitle;
 
-  /// No description provided for @creatorApplyDialogTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Apply for Verification'**
-  String get creatorApplyDialogTitle;
-
-  /// No description provided for @creatorApplyDialogRealName.
-  ///
-  /// In en, this message translates to:
-  /// **'Full legal name'**
-  String get creatorApplyDialogRealName;
-
-  /// No description provided for @creatorApplyDialogBio.
-  ///
-  /// In en, this message translates to:
-  /// **'Short bio (optional)'**
-  String get creatorApplyDialogBio;
-
-  /// No description provided for @creatorApplySubmitted.
-  ///
-  /// In en, this message translates to:
-  /// **'Application submitted! We\'ll review it soon.'**
-  String get creatorApplySubmitted;
-
-  /// No description provided for @creatorApplyFailed.
-  ///
-  /// In en, this message translates to:
-  /// **'Failed to submit application. Please try again.'**
-  String get creatorApplyFailed;
-
   /// No description provided for @profileBecomeCreator.
   ///
   /// In en, this message translates to:
@@ -10208,41 +8848,11 @@ abstract class AppLocalizations {
   /// **'Profile not found.'**
   String get friendsProfileNotFound;
 
-  /// No description provided for @friendsReceived.
-  ///
-  /// In en, this message translates to:
-  /// **'Received'**
-  String get friendsReceived;
-
   /// No description provided for @friendsRemoveFriend.
   ///
   /// In en, this message translates to:
   /// **'Remove friend'**
   String get friendsRemoveFriend;
-
-  /// No description provided for @friendsRequests.
-  ///
-  /// In en, this message translates to:
-  /// **'Requests'**
-  String get friendsRequests;
-
-  /// No description provided for @friendsSearchForFriends.
-  ///
-  /// In en, this message translates to:
-  /// **'Search for friends'**
-  String get friendsSearchForFriends;
-
-  /// No description provided for @friendsSearchHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Search by username or name…'**
-  String get friendsSearchHint;
-
-  /// No description provided for @friendsSearchMinChars.
-  ///
-  /// In en, this message translates to:
-  /// **'Enter at least 2 characters.'**
-  String get friendsSearchMinChars;
 
   /// No description provided for @friendsSentCount.
   ///
@@ -10315,12 +8925,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Unfollow'**
   String get friendsUnfollow;
-
-  /// No description provided for @friendsUserFallback.
-  ///
-  /// In en, this message translates to:
-  /// **'User'**
-  String get friendsUserFallback;
 
   /// No description provided for @friendsYouHaveBlocked.
   ///
@@ -10457,7 +9061,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutUsDescription.
   ///
   /// In en, this message translates to:
-  /// **'Jma3a is a social multiplayer party-game platform developed and owned by MOUJ TECH. Play Truth or Dare, Never Have I Ever, and Meme games with friends and family, create and share your own packs, build a profile, and — as a Verified Creator — earn from packs you publish.'**
+  /// **'Jma3a is a social multiplayer party-game platform developed and owned by MOUJ TECH. Play Truth or Dare, Never Have I Ever, and Meme games with friends and family, create and share your own packs, and build a profile as a Verified Creator.'**
   String get aboutUsDescription;
 
   /// No description provided for @aboutUsCompanySectionTitle.
@@ -10469,7 +9073,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutUsCompanyInfo.
   ///
   /// In en, this message translates to:
-  /// **'Jma3a is developed and owned by MOUJ TECH. MOUJ TECH is responsible for the app\'s development, features, and ongoing operation, including community-created packs, Verified Creator tools, Premium and Premium Plus, and the creator earnings wallet.'**
+  /// **'Jma3a is developed and owned by MOUJ TECH. MOUJ TECH is responsible for the app\'s development, features, and ongoing operation, including community-created packs and Verified Creator tools.'**
   String get aboutUsCompanyInfo;
 
   /// No description provided for @moujTechDevelopedBy.
@@ -10526,6 +9130,12 @@ abstract class AppLocalizations {
   /// **'Facebook'**
   String get aboutUsSocialFacebook;
 
+  /// No description provided for @aboutUsSocialWhatsapp.
+  ///
+  /// In en, this message translates to:
+  /// **'WhatsApp'**
+  String get aboutUsSocialWhatsapp;
+
   /// No description provided for @privacyPolicyTitle.
   ///
   /// In en, this message translates to:
@@ -10547,7 +9157,7 @@ abstract class AppLocalizations {
   /// No description provided for @privacySectionInfoCollectedBody.
   ///
   /// In en, this message translates to:
-  /// **'Account information: the email address you sign up with, and your chosen username, display name, bio, and avatar (either an uploaded photo or a generated avatar). Authentication: your password is handled by our authentication provider and is never visible to us in plain text; sign-in also uses one-time verification codes sent to your email. Activity and social data: the rooms and games you join or host, your in-game actions, scores, and streaks, chat messages you send in game rooms, and your friends, followers, and any accounts you block. Purchases and creator activity: packs you buy or publish, your Verified Creator status, wallet balance and payout history, and — if you request a physical pack — the name, phone number, and delivery area you provide for that order. Reports: if you report a pack, we record the reason and any details you add. Account deletion requests: if you request to delete your account, we record the reason you select and the request\'s status. Device and app information: your app version and build number, and basic platform information (Android or iOS), used to keep the app working correctly and to check for required updates.'**
+  /// **'Account information: the email address you sign up with, and your chosen username, display name, bio, and avatar (either an uploaded photo or a generated avatar). Authentication: your password is handled by our authentication provider and is never visible to us in plain text; sign-in also uses one-time verification codes sent to your email. Activity and social data: the rooms and games you join or host, your in-game actions, scores, and streaks, chat messages you send in game rooms, and your friends, followers, and any accounts you block. Ownership and creator activity: packs you own or publish, and your Verified Creator status. Reports: if you report a pack, we record the reason and any details you add. Account deletion requests: if you request to delete your account, we record the reason you select and the request\'s status. Device and app information: your app version and build number, and basic platform information (Android or iOS), used to keep the app working correctly and to check for required updates.'**
   String get privacySectionInfoCollectedBody;
 
   /// No description provided for @privacySectionHowUsed.
@@ -10559,7 +9169,7 @@ abstract class AppLocalizations {
   /// No description provided for @privacySectionHowUsedBody.
   ///
   /// In en, this message translates to:
-  /// **'We use your information to operate the app\'s core features: creating and securing your account, matching you with rooms and games, showing your profile and stats to other players and friends as intended by each feature, processing pack purchases and creator payouts, delivering physical pack orders you request, reviewing reports and account deletion requests, and sending the notifications described below. We do not use a third-party analytics or advertising-tracking SDK in this app. We do not sell your information.'**
+  /// **'We use your information to operate the app\'s core features: creating and securing your account, matching you with rooms and games, showing your profile and stats to other players and friends as intended by each feature, reviewing reports and account deletion requests, and sending the notifications described below. We do not use a third-party analytics or advertising-tracking SDK in this app. We do not sell your information.'**
   String get privacySectionHowUsedBody;
 
   /// No description provided for @privacySectionNotifications.
@@ -10573,18 +9183,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Jma3a sends notifications for things like game invites, room activity, friend requests, and messages. Push delivery is handled through OneSignal, a third-party notification service; some notifications are also scheduled directly on your device. You can manage notification permissions at any time from your device\'s system settings.'**
   String get privacySectionNotificationsBody;
-
-  /// No description provided for @privacySectionPurchases.
-  ///
-  /// In en, this message translates to:
-  /// **'Purchases'**
-  String get privacySectionPurchases;
-
-  /// No description provided for @privacySectionPurchasesBody.
-  ///
-  /// In en, this message translates to:
-  /// **'Some packs are paid, and Premium/Premium Plus are paid subscriptions. Verified Creators can publish packs and earn from them through an in-app wallet. Jma3a does not directly collect or store your full payment card details; payments are processed through the payment methods offered at checkout. Purchase and payout records (amounts, pack/subscription identifiers, and status) are kept as part of your account and creator history.'**
-  String get privacySectionPurchasesBody;
 
   /// No description provided for @privacySectionUserContent.
   ///
@@ -10607,7 +9205,7 @@ abstract class AppLocalizations {
   /// No description provided for @privacySectionAccountDeletionBody.
   ///
   /// In en, this message translates to:
-  /// **'You can request account deletion from Settings. This submits a request for review — your account is not deleted immediately. While a request is pending, you can cancel it from Settings and your account stays active. Once a request has been accepted and processed, deletion cannot be undone, and your profile, packs, wallet balance, and game history are permanently removed.'**
+  /// **'You can request account deletion from Settings. This submits a request for review — your account is not deleted immediately. While a request is pending, you can cancel it from Settings and your account stays active. Once a request has been accepted and processed, deletion cannot be undone, and your profile, packs, and game history are permanently removed.'**
   String get privacySectionAccountDeletionBody;
 
   /// No description provided for @privacySectionThirdParty.
@@ -10706,30 +9304,6 @@ abstract class AppLocalizations {
   /// **'Jma3a lets you create or join rooms to play multiplayer games with friends and other players, using packs of content provided by Jma3a or created by users. Room hosts and members are expected to follow these Terms while playing.'**
   String get termsSectionRoomsGamesBody;
 
-  /// No description provided for @termsSectionPremium.
-  ///
-  /// In en, this message translates to:
-  /// **'Premium & Premium Plus'**
-  String get termsSectionPremium;
-
-  /// No description provided for @termsSectionPremiumBody.
-  ///
-  /// In en, this message translates to:
-  /// **'Jma3a offers optional Premium and Premium Plus subscriptions that unlock additional features and benefits within the app. What each tier includes may change over time; you will be shown what a subscription includes before you purchase it.'**
-  String get termsSectionPremiumBody;
-
-  /// No description provided for @termsSectionWallet.
-  ///
-  /// In en, this message translates to:
-  /// **'Wallet & Payments'**
-  String get termsSectionWallet;
-
-  /// No description provided for @termsSectionWalletBody.
-  ///
-  /// In en, this message translates to:
-  /// **'Jma3a includes an in-app wallet that can be topped up using supported local payment methods. Creators may earn wallet balance from their content and request withdrawals, subject to Jma3a\'s review. Payments are also subject to the terms of the payment method provider you use.'**
-  String get termsSectionWalletBody;
-
   /// No description provided for @termsSectionModeration.
   ///
   /// In en, this message translates to:
@@ -10808,12 +9382,6 @@ abstract class AppLocalizations {
   /// **'Your account has been suspended from using Jma3a.'**
   String get accountBannedPermanently;
 
-  /// No description provided for @appUpdateAvailableTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Update Available'**
-  String get appUpdateAvailableTitle;
-
   /// No description provided for @appUpdateDefaultTitle.
   ///
   /// In en, this message translates to:
@@ -10831,12 +9399,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Update'**
   String get appUpdateNowButton;
-
-  /// No description provided for @appUpdateLaterButton.
-  ///
-  /// In en, this message translates to:
-  /// **'Later'**
-  String get appUpdateLaterButton;
 
   /// No description provided for @appUpdateBannerMessage.
   ///
@@ -10898,12 +9460,6 @@ abstract class AppLocalizations {
   /// **'Please tell us more (required)'**
   String get deleteAccountReasonOtherHint;
 
-  /// No description provided for @deleteAccountReasonValidation.
-  ///
-  /// In en, this message translates to:
-  /// **'Please select a reason'**
-  String get deleteAccountReasonValidation;
-
   /// No description provided for @deleteAccountOtherDescriptionValidation.
   ///
   /// In en, this message translates to:
@@ -10963,18 +9519,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Filter public rooms by game type to find one that\'s open to join.'**
   String get tutBrowserFilterBody;
-
-  /// No description provided for @tutCreateNameTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Name your room'**
-  String get tutCreateNameTitle;
-
-  /// No description provided for @tutCreateNameBody.
-  ///
-  /// In en, this message translates to:
-  /// **'Give your room a name so friends can recognise it.'**
-  String get tutCreateNameBody;
 
   /// No description provided for @tutCreateVisibilityTitle.
   ///
@@ -11474,24 +10018,6 @@ abstract class AppLocalizations {
   /// **'Reported a message'**
   String get reportTargetChatMessage;
 
-  /// No description provided for @walletDepositsUnavailable.
-  ///
-  /// In en, this message translates to:
-  /// **'Deposits are temporarily unavailable.'**
-  String get walletDepositsUnavailable;
-
-  /// No description provided for @walletWithdrawalsUnavailable.
-  ///
-  /// In en, this message translates to:
-  /// **'Withdrawals are temporarily unavailable.'**
-  String get walletWithdrawalsUnavailable;
-
-  /// No description provided for @walletFinanceServiceUnavailable.
-  ///
-  /// In en, this message translates to:
-  /// **'Finance service temporarily unavailable'**
-  String get walletFinanceServiceUnavailable;
-
   /// No description provided for @authIdentifierLabel.
   ///
   /// In en, this message translates to:
@@ -11744,12 +10270,6 @@ abstract class AppLocalizations {
   /// **'This account doesn\'t have a password yet. Verify with a one-time code to create one.'**
   String get authLegacyNoPasswordBody;
 
-  /// No description provided for @authVerifyWithOtp.
-  ///
-  /// In en, this message translates to:
-  /// **'Verify with OTP'**
-  String get authVerifyWithOtp;
-
   /// No description provided for @authDontHaveAccount.
   ///
   /// In en, this message translates to:
@@ -11768,18 +10288,6 @@ abstract class AppLocalizations {
   /// **'Password & Security'**
   String get passwordSettingsTitle;
 
-  /// No description provided for @passwordSettingsUpdateTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Update Password'**
-  String get passwordSettingsUpdateTitle;
-
-  /// No description provided for @passwordSettingsUpdateSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Change your password securely.'**
-  String get passwordSettingsUpdateSubtitle;
-
   /// No description provided for @passwordSettingsVerifyButton.
   ///
   /// In en, this message translates to:
@@ -11791,12 +10299,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Change Password'**
   String get passwordSettingsChangeButton;
-
-  /// No description provided for @passwordSettingsOtpNotice.
-  ///
-  /// In en, this message translates to:
-  /// **'We\'ll send a verification code to confirm it\'s you before applying this change.'**
-  String get passwordSettingsOtpNotice;
 
   /// No description provided for @passwordSettingsCurrentLabel.
   ///
@@ -11833,12 +10335,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Your password is set.'**
   String get passwordSettingsHasPasswordBody;
-
-  /// No description provided for @passwordSettingsSetButton.
-  ///
-  /// In en, this message translates to:
-  /// **'Set password with OTP'**
-  String get passwordSettingsSetButton;
 
   /// No description provided for @passwordSettingsChangeSuccess.
   ///
@@ -12163,6 +10659,204 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Other'**
   String get surveyChoiceOther;
+
+  /// No description provided for @voiceJoin.
+  ///
+  /// In en, this message translates to:
+  /// **'Join voice'**
+  String get voiceJoin;
+
+  /// No description provided for @voiceLeave.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave voice'**
+  String get voiceLeave;
+
+  /// No description provided for @voiceConnecting.
+  ///
+  /// In en, this message translates to:
+  /// **'Connecting to voice…'**
+  String get voiceConnecting;
+
+  /// No description provided for @voiceReconnecting.
+  ///
+  /// In en, this message translates to:
+  /// **'Reconnecting to voice…'**
+  String get voiceReconnecting;
+
+  /// No description provided for @voiceSpeaking.
+  ///
+  /// In en, this message translates to:
+  /// **'In voice · you can speak'**
+  String get voiceSpeaking;
+
+  /// No description provided for @voiceListening.
+  ///
+  /// In en, this message translates to:
+  /// **'In voice · listening'**
+  String get voiceListening;
+
+  /// No description provided for @voiceListenOnlyNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Spectators can listen but not speak.'**
+  String get voiceListenOnlyNotice;
+
+  /// No description provided for @voiceMicOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Microphone on — tap to mute'**
+  String get voiceMicOn;
+
+  /// No description provided for @voiceMicOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Microphone off — tap to talk'**
+  String get voiceMicOff;
+
+  /// No description provided for @voiceRejoin.
+  ///
+  /// In en, this message translates to:
+  /// **'Rejoin voice'**
+  String get voiceRejoin;
+
+  /// No description provided for @voiceUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice chat isn\'t available right now.'**
+  String get voiceUnavailable;
+
+  /// No description provided for @voiceErrorNotAllowed.
+  ///
+  /// In en, this message translates to:
+  /// **'You can\'t join voice in this room.'**
+  String get voiceErrorNotAllowed;
+
+  /// No description provided for @voiceErrorRateLimited.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many attempts. Wait a moment and try again.'**
+  String get voiceErrorRateLimited;
+
+  /// No description provided for @voiceMicPermissionDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Microphone unavailable. Check the microphone permission in Settings.'**
+  String get voiceMicPermissionDenied;
+
+  /// No description provided for @voiceDisconnectedElsewhere.
+  ///
+  /// In en, this message translates to:
+  /// **'You joined voice on another device.'**
+  String get voiceDisconnectedElsewhere;
+
+  /// No description provided for @voiceAwayPendingApproval.
+  ///
+  /// In en, this message translates to:
+  /// **'You can join voice once the host lets you back into the game.'**
+  String get voiceAwayPendingApproval;
+
+  /// No description provided for @voiceDisconnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice disconnected.'**
+  String get voiceDisconnected;
+
+  /// No description provided for @voiceErrorFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t connect to voice. Try again.'**
+  String get voiceErrorFailed;
+
+  /// No description provided for @voiceRoleChangedListenOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re now a spectator. Rejoin voice to listen.'**
+  String get voiceRoleChangedListenOnly;
+
+  /// No description provided for @voiceMuteFailedForRecording.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t turn off your voice chat microphone, so recording didn\'t start. Try again.'**
+  String get voiceMuteFailedForRecording;
+
+  /// No description provided for @voiceChatSetting.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice chat'**
+  String get voiceChatSetting;
+
+  /// No description provided for @voiceChatSettingOnSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'On — members join voice automatically; microphones start muted.'**
+  String get voiceChatSettingOnSubtitle;
+
+  /// No description provided for @voiceChatSettingOffSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Off — nobody can join voice in this room.'**
+  String get voiceChatSettingOffSubtitle;
+
+  /// No description provided for @voiceDailyLimitReached.
+  ///
+  /// In en, this message translates to:
+  /// **'Basic accounts can turn on voice chat in one room per day. Try again after midnight (Nouakchott time), or upgrade to Premium.'**
+  String get voiceDailyLimitReached;
+
+  /// No description provided for @voiceSettingFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t change voice chat. Try again.'**
+  String get voiceSettingFailed;
+
+  /// No description provided for @voiceRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry voice'**
+  String get voiceRetry;
+
+  /// No description provided for @voiceMutedByAdmin.
+  ///
+  /// In en, this message translates to:
+  /// **'A room admin muted your microphone.'**
+  String get voiceMutedByAdmin;
+
+  /// No description provided for @voiceMuteMember.
+  ///
+  /// In en, this message translates to:
+  /// **'Mute microphone'**
+  String get voiceMuteMember;
+
+  /// No description provided for @voiceUnmuteMember.
+  ///
+  /// In en, this message translates to:
+  /// **'Unmute microphone'**
+  String get voiceUnmuteMember;
+
+  /// No description provided for @voiceMemberMutedTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Microphone muted by an admin'**
+  String get voiceMemberMutedTooltip;
+
+  /// No description provided for @voiceMuteActionFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t change this member\'s microphone. Try again.'**
+  String get voiceMuteActionFailed;
+
+  /// No description provided for @voiceDisabledForRoom.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice chat is off in this room.'**
+  String get voiceDisabledForRoom;
+
+  /// No description provided for @roomsPermMuteVoice.
+  ///
+  /// In en, this message translates to:
+  /// **'Mute microphones'**
+  String get roomsPermMuteVoice;
 }
 
 class _AppLocalizationsDelegate

@@ -95,53 +95,21 @@ void main() {
     }
   });
 
-  group('19 — wallet localization audit: filter-chip labels and domain-enum '
-      'display labels (TransactionType/TransactionStatus/DepositStatus) '
-      'that were previously hardcoded English are present and translated '
-      'in all three languages', () {
-    const newKeys = [
-      'walletFilterAll',
-      'walletFilterDeposits',
-      'walletFilterWithdrawals',
-      'walletFilterPurchases',
-      'walletFilterEarnings',
-      'walletFilterRefunds',
-      'walletFilterPayouts',
-      'walletFilterBonuses',
-      'walletFilterAdjustments',
-      'walletFilterTransfers',
-      'walletTypeDeposit',
-      'walletTypeWithdrawal',
-      'walletTypePurchase',
-      'walletTypeRefund',
-      'walletTypeCommission',
-      'walletTypePayout',
-      'walletTypeAdjustment',
-      'walletTypeBonus',
-      'walletTypeTransfer',
-      'walletStatusPending',
-      'walletStatusProcessing',
-      'walletStatusCompleted',
-      'walletStatusFailed',
-      'walletStatusCancelled',
-      'walletStatusReversed',
-      'walletDepositStatusPending',
-      'walletDepositStatusUnderReview',
-      'walletDepositStatusApproved',
-      'walletDepositStatusRejected',
-    ];
-
-    for (final key in newKeys) {
-      test(key, () {
-        expect(en[key], isA<String>());
-        expect(fr[key], isA<String>());
-        expect(ar[key], isA<String>());
-        expect((en[key] as String).isNotEmpty, isTrue);
-        expect((fr[key] as String).isNotEmpty, isTrue);
-        expect((ar[key] as String).isNotEmpty, isTrue);
-      });
-    }
-
+  // Item 19's own wallet-localization-audit group (filter-chip labels and
+  // TransactionType/TransactionStatus display labels) was removed here —
+  // Stage 8 deleted the mobile wallet UI entirely (creator earnings,
+  // transaction history, and withdrawals now live exclusively in the
+  // Store Creator Portal), along with WalletEntity/TransactionType/
+  // TransactionStatus and every walletFilter*/walletType*/walletStatus*
+  // key those screens used. (This mirrors the same group's own earlier
+  // history: the deposit-specific keys it once also covered —
+  // walletFilterDeposits, walletTypeDeposit, the four
+  // walletDepositStatus* keys — were removed the same way when the
+  // customer-facing deposit system was deleted.) walletCurrencyShort
+  // remains in use (pack creation's price field) and is covered by the
+  // key-parity checks above like any other live key.
+  group('19b — room daily-limit messages carry the limit as a live '
+      'placeholder', () {
     test('roomsDailyLimitFreeBody/PremiumBody carry the daily-limit number '
         'as an ICU placeholder, not baked into the translated text, in all '
         'three languages', () {
@@ -150,11 +118,14 @@ void main() {
           (arb['roomsDailyLimitFreeBody'] as String).contains('{basicLimit}'),
           isTrue,
         );
+        // No {premiumLimit} in the free body — the free-tier message no
+        // longer mentions upgrading to Premium (no in-app purchase path
+        // exists), so there's nothing to interpolate there.
         expect(
           (arb['roomsDailyLimitFreeBody'] as String).contains(
             '{premiumLimit}',
           ),
-          isTrue,
+          isFalse,
         );
         expect(
           (arb['roomsDailyLimitPremiumBody'] as String).contains(

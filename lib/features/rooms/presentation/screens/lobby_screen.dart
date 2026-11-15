@@ -40,6 +40,9 @@ import '../widgets/moderation_sheet.dart';
 import '../widgets/room_share_card.dart';
 import '../../../../shared/widgets/qr/qr_reveal_sheets.dart';
 import '../../../../shared/widgets/join_requests_panel.dart';
+import '../../../voice/data/voice_repository.dart';
+import '../../../voice/presentation/voice_room_controller.dart';
+import '../../../voice/presentation/widgets/voice_control_bar.dart';
 
 String _permissionLabel(BuildContext context, String key) => switch (key) {
   ModeratorPermission.acceptJoins => context.l10n.roomsPermAcceptJoins,
@@ -53,6 +56,7 @@ String _permissionLabel(BuildContext context, String key) => switch (key) {
   ModeratorPermission.mutePlayers => context.l10n.roomsPermMutePlayers,
   ModeratorPermission.manageSettings => context.l10n.roomsPermManageSettings,
   ModeratorPermission.setSpectator => context.l10n.roomsPermSetSpectator,
+  ModeratorPermission.muteVoice => context.l10n.roomsPermMuteVoice,
   ModeratorPermission.endGame => context.l10n.roomsPermEndGame,
   ModeratorPermission.startGame => context.l10n.roomsPermStartGame,
   _ => key,
@@ -87,6 +91,11 @@ class _LobbyScreenState extends State<LobbyScreen>
   late final TabController _tabs;
 
   late final RoomProvider _provider;
+
+  // Opt-in LiveKit voice for this room. Owned here (not by RoomProvider) and
+  // fed RoomProvider's current member read-only; every way out of the room
+  // disposes this screen, which disconnects voice. Never connects on its own.
+  late final VoiceRoomController _voice;
   StreamSubscription<RoomLifecycleEvent>? _lifecycleSub;
   List<String>? _sessionPlayerIds;
   // True once we've observed THIS room OPEN (status != closed) while connected.
@@ -200,6 +209,19 @@ class _LobbyScreenState extends State<LobbyScreen>
       currentAvatarUrl: auth.currentUser!.avatarUrl,
     );
 
+    _voice = VoiceRoomController(
+      roomId: widget.roomId,
+      repository: VoiceRepository(),
+      membershipSource: _provider,
+      readMembership: () {
+        final me = _provider.currentMember;
+        return me == null ? null : VoiceMembership.fromMember(me);
+      },
+      // Auto mode: connect while the room's voice switch is on (read from the
+      // DB-backed settings; the broadcast only triggers a re-read).
+      readVoiceEnabled: () => _provider.settings.voiceEnabled,
+    );
+
     _initializeWithRoleCheck();
 
     _lifecycleSub = _provider.lifecycleEvents.listen(_onLifecycleEvent);
@@ -282,6 +304,8 @@ class _LobbyScreenState extends State<LobbyScreen>
     // screen is gone.
     context.read<NotificationProvider>().setActiveChatRoom(null);
     _tabs.dispose();
+    // Before _provider: the controller detaches its listener from it.
+    _voice.dispose();
     _provider.dispose();
     super.dispose();
   }
@@ -756,6 +780,7 @@ class _LobbyScreenState extends State<LobbyScreen>
         'gameType': gameType,
         'isNewGameStart': isNewGameStart,
         'roomProvider': room,
+        'voiceController': _voice,
       });
     });
   }
@@ -804,8 +829,11 @@ class _LobbyScreenState extends State<LobbyScreen>
   Widget build(BuildContext context) {
     return ChangeNotifierProvider.value(
       value: _provider,
-      child: Consumer<RoomProvider>(
-        builder: (ctx, room, _) => _build(ctx, room),
+      child: ChangeNotifierProvider<VoiceRoomController>.value(
+        value: _voice,
+        child: Consumer<RoomProvider>(
+          builder: (ctx, room, _) => _build(ctx, room),
+        ),
       ),
     );
   }
@@ -1017,6 +1045,7 @@ class _LobbyScreenState extends State<LobbyScreen>
                   ],
                 ),
               ),
+              VoiceControlBar(controller: _voice),
               _BottomActionBar(
                 room: room,
                 startShowcaseKey: _lobbyStartKey,
@@ -1622,6 +1651,10 @@ class _LobbyTab extends StatelessWidget {
               isWaitingForGameApproval: room.pendingRejoinUserIds.contains(
                 member.userId,
               ),
+              // LiveKit identity == Supabase user id == member.userId.
+              isSpeaking: context.select<VoiceRoomController, bool>(
+                (v) => v.activeSpeakerIds.contains(member.userId),
+              ),
               onKick:
                   room.canKickPlayers &&
                       member.userId != myId &&
@@ -1634,6 +1667,17 @@ class _LobbyTab extends StatelessWidget {
                       room,
                       member.userId,
                       muted: !member.isMuted,
+                    )
+                  : null,
+              onVoiceMute:
+                  room.canMuteVoice &&
+                      member.userId != myId &&
+                      !member.isOwner
+                  ? () => _toggleVoiceMute(
+                      context,
+                      room,
+                      member.userId,
+                      muted: !member.isVoiceMuted,
                     )
                   : null,
               onBan: room.isOwner && member.userId != myId && !member.isOwner
@@ -1802,6 +1846,29 @@ class _LobbyTab extends StatelessWidget {
       await room.mutePlayer(targetUserId, muted: muted);
     } on Failure catch (e) {
       if (ctx.mounted) ctx.showErrorSnackBar(e.message);
+    }
+  }
+
+  /// Admin voice mute (microphone only), via jma3a-api — which checks the
+  /// mute_voice permission and revokes publishing on the LIVE LiveKit
+  /// session. The member row (is_voice_muted) then arrives through the
+  /// existing room_members CDC; nothing is changed locally first.
+  Future<void> _toggleVoiceMute(
+    BuildContext ctx,
+    RoomProvider room,
+    String targetUserId, {
+    required bool muted,
+  }) async {
+    final roomId = room.room?.id;
+    if (roomId == null) return;
+    try {
+      await VoiceRepository().setMemberVoiceMuted(
+        roomId: roomId,
+        userId: targetUserId,
+        muted: muted,
+      );
+    } on Failure catch (_) {
+      if (ctx.mounted) ctx.showErrorSnackBar(ctx.l10n.voiceMuteActionFailed);
     }
   }
 

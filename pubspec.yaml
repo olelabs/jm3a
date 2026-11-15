@@ -109,8 +109,6 @@ flutter:
   assets:
     - .env
     - assets/images/
-    - assets/icons/
-    - assets/lottie/
     - assets/images/stickers/
     - assets/images/backgrounds/
     # MOUJ TECH app-ownership logo — see lib/core/constants/app_branding.dart.

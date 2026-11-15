@@ -107,7 +107,6 @@ flutter:
   generate: true # enables flutter gen-l10n
 
   assets:
-    - .env
     - assets/images/
     - assets/images/stickers/
     - assets/images/backgrounds/

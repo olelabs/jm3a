@@ -43,6 +43,7 @@ import '../../../../shared/widgets/join_requests_panel.dart';
 import '../../../voice/data/voice_repository.dart';
 import '../../../voice/presentation/voice_room_controller.dart';
 import '../../../voice/presentation/widgets/voice_control_bar.dart';
+import '../../../voice/voice_feature_flag.dart';
 
 String _permissionLabel(BuildContext context, String key) => switch (key) {
   ModeratorPermission.acceptJoins => context.l10n.roomsPermAcceptJoins,
@@ -219,7 +220,10 @@ class _LobbyScreenState extends State<LobbyScreen>
       },
       // Auto mode: connect while the room's voice switch is on (read from the
       // DB-backed settings; the broadcast only triggers a re-read).
-      readVoiceEnabled: () => _provider.settings.voiceEnabled,
+      // kVoiceChatEnabled=false (voice temporarily deactivated): voice reads
+      // as off, so the controller never fetches a token or connects.
+      readVoiceEnabled: () =>
+          kVoiceChatEnabled && _provider.settings.voiceEnabled,
     );
 
     _initializeWithRoleCheck();
@@ -780,7 +784,7 @@ class _LobbyScreenState extends State<LobbyScreen>
         'gameType': gameType,
         'isNewGameStart': isNewGameStart,
         'roomProvider': room,
-        'voiceController': _voice,
+        'voiceController': kVoiceChatEnabled ? _voice : null,
       });
     });
   }
@@ -1045,7 +1049,7 @@ class _LobbyScreenState extends State<LobbyScreen>
                   ],
                 ),
               ),
-              VoiceControlBar(controller: _voice),
+              if (kVoiceChatEnabled) VoiceControlBar(controller: _voice),
               _BottomActionBar(
                 room: room,
                 startShowcaseKey: _lobbyStartKey,
@@ -1670,7 +1674,8 @@ class _LobbyTab extends StatelessWidget {
                     )
                   : null,
               onVoiceMute:
-                  room.canMuteVoice &&
+                  kVoiceChatEnabled &&
+                      room.canMuteVoice &&
                       member.userId != myId &&
                       !member.isOwner
                   ? () => _toggleVoiceMute(

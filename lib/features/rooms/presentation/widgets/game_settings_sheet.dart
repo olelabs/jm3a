@@ -15,6 +15,7 @@ import '../../../packs/presentation/pack_provider.dart';
 import '../../../packs/presentation/widgets/pack_situation_tag_picker.dart';
 import '../room_provider.dart';
 import '../../../voice/presentation/widgets/voice_chat_setting_row.dart';
+import '../../../voice/voice_feature_flag.dart';
 
 /// The pack's own title in [lang] if available, else in the pack's
 /// declared language, else in whatever language it actually has —
@@ -787,7 +788,7 @@ class _GameSettingsSheetState extends State<GameSettingsSheet> {
                 ),
                 // Voice chat: server-enforced (permissions + Basic daily
                 // allowance) — not a plain updateSetting.
-                VoiceChatSettingRow(room: room),
+                if (kVoiceChatEnabled) VoiceChatSettingRow(room: room),
                 SettingsSwitchRow(
                   label: l10n.gameSettingsAllowSpectators,
                   icon: Icons.visibility_outlined,

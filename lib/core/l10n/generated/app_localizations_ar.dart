@@ -32,7 +32,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get introPage2Body =>
-      'حزم من إبداع المجتمع، حزم بريميوم، وحزم مطبوعة يمكنك طلبها واللعب بها.';
+      'حزم من إبداع المجتمع، حزم جماعة الرسمية، وحزم مطبوعة يمكنك طلبها واللعب بها.';
 
   @override
   String get introPage3Title => 'أنشئ غرفة أو انضم إليها';
@@ -42,7 +42,7 @@ class AppLocalizationsAr extends AppLocalizations {
       'غرف عامة، غرف خاصة، رموز دعوة — العب مع أصدقائك بالطريقة التي تفضلها.';
 
   @override
-  String get introPage4Title => 'مزايا بريميوم';
+  String get introPage4Title => 'جماعة بلس وإيليت';
 
   @override
   String get introPage4Body =>
@@ -217,7 +217,8 @@ class AppLocalizationsAr extends AppLocalizations {
   String get settingsOnlineStatus => 'حالة الاتصال';
 
   @override
-  String get settingsOnlineStatusPremiumHint => 'الحالة اليدوية ميزة بريميوم';
+  String get settingsOnlineStatusPremiumHint =>
+      'الحالة اليدوية ميزة من جماعة بلس';
 
   @override
   String get presenceModeAuto => 'تلقائي';
@@ -256,7 +257,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get premiumBackgroundChooseColor => 'اختر لون الخلفية';
 
   @override
-  String get premiumBackgroundUpgradeHint => 'ميزة بريميوم';
+  String get premiumBackgroundUpgradeHint => 'ميزة جماعة بلس';
 
   @override
   String get premiumBackgroundSaveFailed => 'تعذر حفظ لون الخلفية.';
@@ -1033,12 +1034,12 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String roomsDailyLimitFreeBody(int basicLimit) {
-    return 'تسمح الخطة المجانية بـ $basicLimit غرف يومياً. حاول مجدداً غداً.';
+    return 'يسمح الوصول الأساسي بـ $basicLimit غرف يومياً. حاول مجدداً غداً.';
   }
 
   @override
   String roomsDailyLimitPremiumBody(int premiumLimit) {
-    return 'تسمح الخطة المميزة بـ $premiumLimit غرفة يومياً. حاول مجدداً غداً.';
+    return 'يسمح لك مستوى وصولك في جماعة بـ $premiumLimit غرفة يومياً. حاول مجدداً غداً.';
   }
 
   @override
@@ -1069,7 +1070,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get roomsIconFree => 'مجاني';
 
   @override
-  String get roomsIconPremium => 'مميز ✦';
+  String get roomsIconPremium => 'جماعة بلس ✦';
 
   @override
   String get roomsLeaveForGood => 'المغادرة نهائياً';
@@ -1251,7 +1252,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get chatAudienceRequiresPremiumPlus =>
-      'يمكن لأعضاء بريميوم بلس فقط استهداف أشخاص محددين.';
+      'يمكن لأعضاء جماعة إيليت فقط مراسلة أشخاص محددين.';
 
   @override
   String get chatAudienceRecipientUnavailable =>
@@ -1268,7 +1269,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get photo => 'صورة';
 
   @override
-  String get premiumBadge => '✨ مميز';
+  String get premiumBadge => '✨ جماعة بلس';
 
   @override
   String get preview => 'معاينة';
@@ -2396,7 +2397,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get offlineSignInToDownload =>
-      'سجّل الدخول لتنزيل الحزم وفتح جميع الألعاب.';
+      'سجّل الدخول لتنزيل الحزم ولعب جميع الألعاب.';
 
   @override
   String get offlineSpicyContent => 'محتوى حار';
@@ -2410,7 +2411,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get offlineYourName => 'اسمك';
 
   @override
-  String get purchased => 'تم الشراء';
+  String get purchased => 'ضمن مجموعتك';
 
   @override
   String get signIn => 'تسجيل الدخول';
@@ -2629,28 +2630,28 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get premiumFeatureListDescription =>
-      'مظاهر وصور رمزية مخصصة، 15 غرفة يومياً، حتى 12 لاعباً لكل غرفة، 10 حزم دون اتصال (1 مجانية)، دردشة مجهولة، والمزيد.';
+      'مزايا إضافية يمنحها فريق جماعة — مظاهر وصور رمزية مخصصة، غرف أكثر يومياً، غرف أكبر، حزم أكثر دون اتصال، دردشة مجهولة، والمزيد.';
 
   @override
   String get premiumPageBackground => 'خلفية الصفحة';
 
   @override
-  String get premiumPlusLabel => 'مميز بلس';
+  String get premiumPlusLabel => 'جماعة إيليت';
 
   @override
-  String get premiumPremiumAvatars => 'صور رمزية مميزة';
+  String get premiumPremiumAvatars => 'صور رمزية لجماعة بلس وإيليت';
 
   @override
-  String get premiumPremiumThemes => 'مظاهر مميزة ✦';
+  String get premiumPremiumThemes => 'مظاهر جماعة بلس وإيليت ✦';
 
   @override
-  String get premiumTitle => 'مميز';
+  String get premiumTitle => 'جماعة بلس';
 
   @override
-  String get premiumUnlockTitle => 'افتح المميز';
+  String get premiumUnlockTitle => 'جماعة بلس وإيليت';
 
   @override
-  String get premiumUpgradeToUnlock => 'يتطلب مميز';
+  String get premiumUpgradeToUnlock => 'متاح مع جماعة بلس أو إيليت';
 
   @override
   String get premiumYourAvatars => 'صورك الرمزية';
@@ -3259,7 +3260,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get packFreeOfflineLimitNotice =>
-      'تسمح الخطة المجانية بحزمة واحدة دون اتصال.';
+      'يسمح الوصول الأساسي بحزمة واحدة دون اتصال.';
 
   @override
   String get packFullName => 'الاسم الكامل';
@@ -3547,7 +3548,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get avatarCustomAvatarsHint =>
-      'أنشئ صورتك الرمزية الخاصة على طراز Bitmoji واعرضها في التطبيق بأكمله مع بريميوم.';
+      'أنشئ صورتك الرمزية الخاصة على طراز Bitmoji واعرضها في التطبيق بأكمله مع جماعة بلس.';
 
   @override
   String get avatarCustomAvatarsTitle => 'صور رمزية مخصصة';
@@ -4231,10 +4232,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get notifTypePackApproved => 'تمت الموافقة على الحزمة';
 
   @override
-  String get notifTypePackGranted => 'حزمة جديدة';
+  String get notifTypePackGranted => 'إضافة حزمة جديدة';
 
   @override
-  String get notifTypePackExpired => 'انتهت صلاحية الحزمة';
+  String get notifTypePackExpired => 'انتهاء الوصول إلى الحزمة';
 
   @override
   String get notifTypePackRejected => 'تم رفض الحزمة';
@@ -4282,16 +4283,16 @@ class AppLocalizationsAr extends AppLocalizations {
   String get notifTypeCreatorRecoveryRejected => 'تم رفض طلب الاستعادة';
 
   @override
-  String get notifTypeSubscriptionExpired => 'انتهى الاشتراك';
+  String get notifTypeSubscriptionExpired => 'انتهاء مستوى الوصول';
 
   @override
-  String get notifTypeSubscriptionExpiring1d => 'الاشتراك ينتهي خلال يوم';
+  String get notifTypeSubscriptionExpiring1d => 'مستوى الوصول ينتهي خلال يوم';
 
   @override
-  String get notifTypeSubscriptionExpiring2d => 'الاشتراك ينتهي خلال يومين';
+  String get notifTypeSubscriptionExpiring2d => 'مستوى الوصول ينتهي خلال يومين';
 
   @override
-  String get notifTypeSubscriptionStarted => 'بدأ الاشتراك';
+  String get notifTypeSubscriptionStarted => 'منح مستوى وصول';
 
   @override
   String get notifTypeSystem => 'النظام';
@@ -4493,7 +4494,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get roomsRequestToRejoin => 'طلب إعادة الانضمام';
 
   @override
-  String get roomsSendAnonymouslyPremium => 'الإرسال بشكل مجهول (بريميوم)';
+  String get roomsSendAnonymouslyPremium => 'الإرسال بشكل مجهول (جماعة بلس)';
 
   @override
   String get roomsStatusClosed => 'مُغلقة';
@@ -4849,7 +4850,7 @@ class AppLocalizationsAr extends AppLocalizations {
       'استوفِ كل هذه المتطلبات للتقدم بطلب توثيق المنشئ.';
 
   @override
-  String get creatorReqPremiumPlus => 'مشترك في بريميوم بلس';
+  String get creatorReqPremiumPlus => 'وصول جماعة إيليت';
 
   @override
   String creatorReqGamesPlayed(int count) {
@@ -4901,7 +4902,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get creatorRecoveryBannerBody =>
-      'انتهت صلاحية اشتراكك في بريميوم بلس وتمت إزالة حالة المنشئ الموثق وامتيازاتك تلقائيًا. يمكنك تقديم طلب استعادة لمراجعة الإدارة.';
+      'انتهى وصولك إلى جماعة إيليت وتمت إزالة حالة المنشئ الموثق وامتيازاتك تلقائيًا. يمكنك تقديم طلب استعادة ليراجعه فريق جماعة.';
 
   @override
   String get creatorRecoveryBannerAction => 'تقديم طلب استعادة';
@@ -4918,19 +4919,19 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get creatorRecoveryReasonResubscribedLate =>
-      'جددت اشتراكي لكن بعد فوات فترة السماح';
+      'تمت استعادة وصولي إلى إيليت بعد فترة السماح';
 
   @override
   String get creatorRecoveryReasonPaymentIssue =>
-      'مشكلة في الدفع/الفوترة تسببت في انتهاء الاشتراك';
+      'مشكلة تقنية أو في الحساب أدت إلى انتهاء وصولي';
 
   @override
   String get creatorRecoveryReasonUnawareOfExpiry =>
-      'لم يتم إشعاري بانتهاء اشتراكي';
+      'لم يتم إشعاري بانتهاء وصولي';
 
   @override
   String get creatorRecoveryReasonExtenuatingCircumstances =>
-      'ظروف قاهرة منعت التجديد';
+      'ظروف قاهرة حالت دون احتفاظي بوصولي';
 
   @override
   String get creatorRecoveryReasonOther => 'أخرى';
@@ -4979,7 +4980,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get profileBecomeCreator => 'كن منشئ محتوى موثقًا';
 
   @override
-  String get profileBecomeCreatorHint => 'افتح أدوات المنشئين والأرباح';
+  String get profileBecomeCreatorHint => 'احصل على أدوات المنشئين والأرباح';
 
   @override
   String get friendsPlayingNow => 'يلعب الآن';
@@ -5948,7 +5949,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get surveyChoiceFriends => 'الأصدقاء والميزات الاجتماعية';
 
   @override
-  String get surveyChoicePremium => 'ميزات بريميوم';
+  String get surveyChoicePremium => 'ميزات جماعة بلس وإيليت';
 
   @override
   String get surveyChoiceReputation => 'نقاط الصدق والسمعة';
@@ -6086,7 +6087,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get voiceDailyLimitReached =>
-      'يمكن للحسابات الأساسية تفعيل المحادثة الصوتية في غرفة واحدة يوميًا. حاول مجددًا بعد منتصف الليل (بتوقيت نواكشوط) أو قم بالترقية إلى بريميوم.';
+      'يمكن للحسابات الأساسية تفعيل المحادثة الصوتية في غرفة واحدة يوميًا. حاول مجددًا بعد منتصف الليل (بتوقيت نواكشوط).';
 
   @override
   String get voiceSettingFailed =>
@@ -6116,4 +6117,129 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get roomsPermMuteVoice => 'كتم الميكروفونات';
+
+  @override
+  String friendRequestAlreadySent(String name) {
+    return 'لقد أرسلت بالفعل طلب صداقة إلى $name.';
+  }
+
+  @override
+  String friendRequestIncoming(String name) {
+    return 'أرسل إليك $name طلب صداقة بالفعل — يمكنك قبوله الآن.';
+  }
+
+  @override
+  String get accessLevelScreenTitle => 'مستوى وصولك في جماعة';
+
+  @override
+  String get accessLevelBasic => 'الوصول الأساسي';
+
+  @override
+  String accessLevelCurrent(String level) {
+    return 'مستوى وصولك الحالي: $level';
+  }
+
+  @override
+  String accessLevelActiveUntil(String date) {
+    return 'نشط حتى $date';
+  }
+
+  @override
+  String get accessLevelActiveNoEndDate => 'نشط — بدون تاريخ انتهاء';
+
+  @override
+  String get accessLevelsHeader => 'مستويات الوصول في جماعة';
+
+  @override
+  String get accessLevelsGrantedNote =>
+      'جماعة بلس وجماعة إيليت مستويان للوصول إلى المزايا يمنحهما فريق جماعة. يراجع الفريق الطلبات ويقرر من يحصل على كل مستوى.';
+
+  @override
+  String get accessLevelRequestConsideration =>
+      'اطلب من فريق جماعة النظر في طلبك';
+
+  @override
+  String get accessLevelWhatsAppMessage =>
+      'مرحباً فريق جماعة، أود أن يتم النظر في منحي وصول جماعة بلس أو جماعة إيليت.';
+
+  @override
+  String get accessLevelPlusSubtitle => 'وصول موسّع إلى المزايا';
+
+  @override
+  String get accessLevelEliteSubtitle => 'أعلى مستوى وصول لدينا';
+
+  @override
+  String get accessLevelHighestBadge => 'أعلى مستوى';
+
+  @override
+  String get accessLevelYourLevelBadge => 'مستواك';
+
+  @override
+  String get accessLevelEliteIncludesPlus =>
+      'كل مزايا جماعة بلس، بالإضافة إلى:';
+
+  @override
+  String get accessFeatPlusThemes =>
+      'مظاهر إضافية للتطبيق وألوان للخلفية وبطاقات اللعب';
+
+  @override
+  String get accessFeatPlusAvatars =>
+      'أنشئ صورتك الرمزية المخصصة واستخدم صوراً رمزية إضافية';
+
+  @override
+  String get accessFeatPlusManualStatus => 'اختر حالة اتصالك يدوياً';
+
+  @override
+  String accessFeatRoomsPerDay(String count) {
+    return 'أنشئ حتى $count غرفة يومياً';
+  }
+
+  @override
+  String accessFeatRoomPlayers(String count) {
+    return 'حتى $count لاعباً في الغرف التي تنشئها';
+  }
+
+  @override
+  String accessFeatOfflinePacks(String count) {
+    return 'احتفظ بما يصل إلى $count حزم متاحة دون اتصال';
+  }
+
+  @override
+  String get accessFeatPlusAnonymousChat => 'أرسل رسائل الدردشة بشكل مجهول';
+
+  @override
+  String get accessFeatPlusHiddenSpectating => 'شاهد الغرف كمتفرج مخفي';
+
+  @override
+  String get accessFeatPlusTransferOwnership => 'انقل ملكية غرفك';
+
+  @override
+  String get accessFeatPlusClosedRoomHistory => 'اعرض سجل الغرف المغلقة';
+
+  @override
+  String get accessFeatPlusCustomCards => 'أضف بطاقاتك الخاصة أثناء اللعب';
+
+  @override
+  String get accessFeatPlusProofs =>
+      'إعادة تشغيل إضافية لإثباتات التحدي وإجابات صوتية أطول';
+
+  @override
+  String get accessFeatEliteTargetedChat =>
+      'أرسل رسائل الدردشة إلى أشخاص محددين';
+
+  @override
+  String get accessFeatEliteThemesAvatars =>
+      'مظاهر وصور رمزية حصرية لجماعة إيليت';
+
+  @override
+  String get accessFeatEliteRevealSpectators =>
+      'اعرف هوية المتفرجين المخفيين في الغرف التي تشرف عليها';
+
+  @override
+  String get accessFeatEliteAwayStatus =>
+      'يرى اللاعبون الآخرون عندما تبتعد قليلاً أثناء اللعب';
+
+  @override
+  String get accessFeatEliteCreator =>
+      'يستوفي شرط الوصول للتقدم بطلب حالة المنشئ الموثق';
 }

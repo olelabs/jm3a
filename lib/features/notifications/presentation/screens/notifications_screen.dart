@@ -442,16 +442,32 @@ class NotificationTile extends StatelessWidget {
 }
 
 // ── Notification preferences screen ──────────────────────────────────────────
-// Wallet credit/debit and the subscription-expiring-soon reminders are not
-// customer-configurable here — excluded from the list below even though the
-// underlying NotificationType values, their delivery, and their deep links
-// are untouched; only their preference row is hidden.
-const Set<NotificationType> _hiddenPreferenceTypes = {
+// Types not customer-configurable here — excluded from the list below even
+// though the underlying NotificationType values, their delivery, their
+// stored preferences and their deep links are untouched; only their
+// preference row is hidden:
+//  • walletCredit / walletDebit — wallet money movements, not part of the
+//    in-app product experience.
+//  • subscriptionExpiring2d / 1d — access-level ending reminders.
+//  • packSale — "your pack was purchased for N MRU": only produced by the
+//    legacy POST /v1/packs/purchase wallet flow, which the app no longer
+//    calls (pack access now arrives as pack_granted).
+//  • achievement — no producer exists anywhere (no SQL trigger, RPC or
+//    jma3a-api code path emits it), so a toggle would control nothing.
+@visibleForTesting
+const Set<NotificationType> hiddenPreferenceTypes = {
   NotificationType.walletCredit,
   NotificationType.walletDebit,
   NotificationType.subscriptionExpiring2d,
   NotificationType.subscriptionExpiring1d,
+  NotificationType.packSale,
+  NotificationType.achievement,
 };
+
+/// The notification types shown on the preferences screen, in order.
+List<NotificationType> get visiblePreferenceTypes => NotificationType.values
+    .where((type) => !hiddenPreferenceTypes.contains(type))
+    .toList();
 
 class NotificationPreferencesScreen extends StatelessWidget {
   const NotificationPreferencesScreen({super.key});
@@ -493,9 +509,7 @@ class NotificationPreferencesScreen extends StatelessWidget {
                 ),
               ),
               const Divider(height: 1),
-              ...NotificationType.values
-                  .where((type) => !_hiddenPreferenceTypes.contains(type))
-                  .map((type) {
+              ...visiblePreferenceTypes.map((type) {
                 final pref =
                     notifs.preferences
                         .cast<NotificationPreference?>()
@@ -507,11 +521,16 @@ class NotificationPreferencesScreen extends StatelessWidget {
 
                 return _PrefRow(
                   pref: pref,
-                  onChanged: (inApp, push) => notifs.updatePreference(
-                    type: type,
-                    inApp: inApp,
-                    push: push,
-                  ),
+                  onChanged: (inApp, push) async {
+                    final ok = await notifs.updatePreference(
+                      type: type,
+                      inApp: inApp,
+                      push: push,
+                    );
+                    if (!ok && ctx.mounted) {
+                      ctx.showErrorSnackBar(ctx.l10n.errorUnexpected);
+                    }
+                  },
                 );
               }),
             ],

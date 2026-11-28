@@ -42,3 +42,12 @@ android {
 flutter {
     source = "../.."
 }
+
+// Privacy: Jma3a never uses location. Keep OneSignal's optional location
+// module (com.onesignal:location — FusedLocation/background location
+// capture) out of the APK. OneSignal core is designed to run without it
+// (it falls back to its built-in MisconfiguredLocationManager), and the app
+// never calls OneSignal.Location. Push, permissions and login are unaffected.
+configurations.all {
+    exclude(group = "com.onesignal", module = "location")
+}

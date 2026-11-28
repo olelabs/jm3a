@@ -3707,7 +3707,10 @@ class _FriendRequestButtonState extends State<_FriendRequestButton> {
       );
       if (mounted)
         setState(() {
-          if (friendship == null)
+          // A rejected row is re-requestable (sendFriendRequest clears
+          // it), so it must offer "Add as friend", not "pending".
+          if (friendship == null ||
+              friendship.status == FriendshipStatus.rejected)
             _status = 'none';
           else if (friendship.isAccepted)
             _status = 'friend';
@@ -3722,21 +3725,29 @@ class _FriendRequestButtonState extends State<_FriendRequestButton> {
   Future<void> _send() async {
     setState(() => _loading = true);
     try {
-      await sl.friendsRepository.sendFriendRequest(
+      final outcome = await sl.friendsRepository.sendFriendRequest(
         requesterId: widget.myId,
         addresseeId: widget.targetUserId,
       );
       if (mounted)
         setState(() {
-          _sent = true;
           _loading = false;
-          _status = 'pending';
+          if (outcome == FriendRequestOutcome.alreadyFriends) {
+            _status = 'friend';
+          } else {
+            _sent = true;
+            _status = 'pending';
+          }
         });
       if (mounted)
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              context.l10n.lobbyFriendRequestSent(widget.displayName),
+              friendRequestOutcomeMessage(
+                context.l10n,
+                outcome,
+                displayName: widget.displayName,
+              ),
             ),
           ),
         );

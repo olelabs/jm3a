@@ -162,7 +162,7 @@ class _ChatPanelState extends State<ChatPanel> {
   String _targetedFailureMessage(BuildContext context, Failure? failure) {
     final l10n = context.l10n;
     return switch (failure) {
-      ForbiddenFailure(:final message) when message.contains('Premium Plus') =>
+      ForbiddenFailure(:final message) when message.contains('Jma3a Elite') =>
         l10n.chatAudienceRequiresPremiumPlus,
       ForbiddenFailure() => l10n.chatAudienceNoLongerRoomMember,
       ValidationFailure() => l10n.chatAudienceRecipientUnavailable,

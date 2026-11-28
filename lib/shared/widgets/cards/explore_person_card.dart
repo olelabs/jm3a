@@ -21,12 +21,17 @@ class ExplorePersonCard extends StatelessWidget {
     required this.person,
     required this.hasSentRequest,
     required this.onAddFriend,
+    this.isSending = false,
     this.onTap,
   });
 
   final ExplorePerson person;
   final bool hasSentRequest;
   final VoidCallback onAddFriend;
+
+  /// True while this card's friend request is in flight — disables the
+  /// button so a double tap can't send twice.
+  final bool isSending;
 
   /// Opens this person's profile. Optional (defaults to no-op) only so
   /// existing tests/call sites that don't care about navigation don't
@@ -151,14 +156,20 @@ class ExplorePersonCard extends StatelessWidget {
                 : SizedBox(
                     height: 34,
                     child: FilledButton.tonal(
-                      onPressed: onAddFriend,
+                      onPressed: isSending ? null : onAddFriend,
                       style: FilledButton.styleFrom(
                         visualDensity: VisualDensity.compact,
                         padding: const EdgeInsets.symmetric(horizontal: 10),
                         minimumSize: Size.zero,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
-                      child: Text(context.l10n.exploreAddFriend),
+                      child: isSending
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Text(context.l10n.exploreAddFriend),
                     ),
                   ),
           ],

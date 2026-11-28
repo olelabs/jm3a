@@ -800,7 +800,24 @@ class _ExploreCard extends StatelessWidget {
     return ExplorePersonCard(
       person: person,
       hasSentRequest: friends.hasSentExploreRequest(person.userId),
-      onAddFriend: () => friends.sendExploreFriendRequest(person.userId),
+      isSending: friends.isSendingFriendRequest(person.userId),
+      onAddFriend: () async {
+        final messenger = ScaffoldMessenger.of(context);
+        final l10n = context.l10n;
+        final outcome = await friends.sendExploreFriendRequest(person.userId);
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              friendRequestOutcomeMessage(
+                l10n,
+                outcome,
+                displayName: person.displayName,
+                failure: friends.failure,
+              ),
+            ),
+          ),
+        );
+      },
       onTap: () => openUserProfile(
         context,
         person.userId,

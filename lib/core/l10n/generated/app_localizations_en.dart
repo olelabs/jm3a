@@ -32,7 +32,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get introPage2Body =>
-      'Community-created packs, premium packs, and physical packs you can order and play with.';
+      'Community-created packs, official Jma3a packs, and physical packs you can order and play with.';
 
   @override
   String get introPage3Title => 'Create or Join Rooms';
@@ -42,7 +42,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Public rooms, private rooms, invite codes — play with friends however you like.';
 
   @override
-  String get introPage4Title => 'Premium Features';
+  String get introPage4Title => 'Jma3a Plus & Elite';
 
   @override
   String get introPage4Body =>
@@ -221,7 +221,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsOnlineStatusPremiumHint =>
-      'Manual status is a Premium feature';
+      'Manual status is a Jma3a Plus feature';
 
   @override
   String get presenceModeAuto => 'Auto';
@@ -260,7 +260,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get premiumBackgroundChooseColor => 'Choose a background color';
 
   @override
-  String get premiumBackgroundUpgradeHint => 'Premium feature';
+  String get premiumBackgroundUpgradeHint => 'Jma3a Plus feature';
 
   @override
   String get premiumBackgroundSaveFailed => 'Could not save background color.';
@@ -1032,12 +1032,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String roomsDailyLimitFreeBody(int basicLimit) {
-    return 'Free plan allows $basicLimit rooms per day. Try again tomorrow.';
+    return 'Basic access allows $basicLimit rooms per day. Try again tomorrow.';
   }
 
   @override
   String roomsDailyLimitPremiumBody(int premiumLimit) {
-    return 'Premium plan allows $premiumLimit rooms per day. Try again tomorrow.';
+    return 'Your Jma3a access allows $premiumLimit rooms per day. Try again tomorrow.';
   }
 
   @override
@@ -1068,7 +1068,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get roomsIconFree => 'Free';
 
   @override
-  String get roomsIconPremium => 'Premium ✦';
+  String get roomsIconPremium => 'Jma3a Plus ✦';
 
   @override
   String get roomsLeaveForGood => 'Leave for good';
@@ -1249,7 +1249,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get chatAudienceRequiresPremiumPlus =>
-      'Only Premium Plus members can target specific people.';
+      'Only Jma3a Elite members can message specific people.';
 
   @override
   String get chatAudienceRecipientUnavailable =>
@@ -1266,7 +1266,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get photo => 'Photo';
 
   @override
-  String get premiumBadge => '✨ Premium';
+  String get premiumBadge => '✨ Jma3a Plus';
 
   @override
   String get preview => 'Preview';
@@ -2388,7 +2388,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get offlineSignInToDownload =>
-      'Sign in to download packs and unlock all games.';
+      'Sign in to download packs and play all games.';
 
   @override
   String get offlineSpicyContent => 'Spicy content';
@@ -2402,7 +2402,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get offlineYourName => 'Your name';
 
   @override
-  String get purchased => 'Purchased';
+  String get purchased => 'In your collection';
 
   @override
   String get signIn => 'Sign In';
@@ -2621,28 +2621,28 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get premiumFeatureListDescription =>
-      'Custom themes & avatars, 15 rooms/day, up to 12 players per room, 10 offline packs (1 free), anonymous chat, and more.';
+      'Extra features granted by the Jma3a team — custom themes and avatars, more rooms per day, bigger rooms, more offline packs, anonymous chat, and more.';
 
   @override
   String get premiumPageBackground => 'Page background';
 
   @override
-  String get premiumPlusLabel => 'Premium Plus';
+  String get premiumPlusLabel => 'Jma3a Elite';
 
   @override
-  String get premiumPremiumAvatars => 'Premium Avatars';
+  String get premiumPremiumAvatars => 'Jma3a Plus & Elite Avatars';
 
   @override
-  String get premiumPremiumThemes => 'Premium Themes ✦';
+  String get premiumPremiumThemes => 'Jma3a Plus & Elite Themes ✦';
 
   @override
-  String get premiumTitle => 'Premium';
+  String get premiumTitle => 'Jma3a Plus';
 
   @override
-  String get premiumUnlockTitle => 'Unlock Premium';
+  String get premiumUnlockTitle => 'Jma3a Plus & Elite';
 
   @override
-  String get premiumUpgradeToUnlock => 'Requires Premium';
+  String get premiumUpgradeToUnlock => 'Available with Jma3a Plus or Elite';
 
   @override
   String get premiumYourAvatars => 'Your Avatars';
@@ -3250,7 +3250,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get packFeaturedHeading => '⭐ Featured';
 
   @override
-  String get packFreeOfflineLimitNotice => 'Free plan allows 1 offline pack.';
+  String get packFreeOfflineLimitNotice =>
+      'Basic access allows 1 offline pack.';
 
   @override
   String get packFullName => 'Full name';
@@ -3542,7 +3543,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get avatarCustomAvatarsHint =>
-      'Create your own Bitmoji-style avatar and show it across the app with Premium.';
+      'Create your own Bitmoji-style avatar and show it across the app with Jma3a Plus.';
 
   @override
   String get avatarCustomAvatarsTitle => 'Custom Avatars';
@@ -4218,10 +4219,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get notifTypePackApproved => 'Pack Approved';
 
   @override
-  String get notifTypePackGranted => 'A New Pack';
+  String get notifTypePackGranted => 'New Pack Added';
 
   @override
-  String get notifTypePackExpired => 'Pack Expired';
+  String get notifTypePackExpired => 'Pack Access Ended';
 
   @override
   String get notifTypePackRejected => 'Pack Rejected';
@@ -4269,17 +4270,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get notifTypeCreatorRecoveryRejected => 'Recovery Request Rejected';
 
   @override
-  String get notifTypeSubscriptionExpired => 'Subscription Expired';
+  String get notifTypeSubscriptionExpired => 'Access Level Ended';
 
   @override
-  String get notifTypeSubscriptionExpiring1d => 'Subscription Expiring (1 Day)';
+  String get notifTypeSubscriptionExpiring1d => 'Access Level Ending (1 Day)';
 
   @override
-  String get notifTypeSubscriptionExpiring2d =>
-      'Subscription Expiring (2 Days)';
+  String get notifTypeSubscriptionExpiring2d => 'Access Level Ending (2 Days)';
 
   @override
-  String get notifTypeSubscriptionStarted => 'Subscription Started';
+  String get notifTypeSubscriptionStarted => 'Access Level Granted';
 
   @override
   String get notifTypeSystem => 'System';
@@ -4483,7 +4483,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get roomsRequestToRejoin => 'Request to Rejoin';
 
   @override
-  String get roomsSendAnonymouslyPremium => 'Send anonymously (Premium)';
+  String get roomsSendAnonymouslyPremium => 'Send anonymously (Jma3a Plus)';
 
   @override
   String get roomsStatusClosed => 'Closed';
@@ -4842,7 +4842,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Meet all of these requirements to apply for creator verification.';
 
   @override
-  String get creatorReqPremiumPlus => 'Premium Plus subscriber';
+  String get creatorReqPremiumPlus => 'Jma3a Elite access';
 
   @override
   String creatorReqGamesPlayed(int count) {
@@ -4895,7 +4895,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get creatorRecoveryBannerBody =>
-      'Your Premium Plus subscription lapsed and your verified creator status/privileges were automatically removed. You can submit a recovery request for admin review.';
+      'Your Jma3a Elite access ended and your verified creator status/privileges were automatically removed. You can submit a recovery request for the Jma3a team to review.';
 
   @override
   String get creatorRecoveryBannerAction => 'Submit a Recovery Request';
@@ -4912,19 +4912,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get creatorRecoveryReasonResubscribedLate =>
-      'I resubscribed but missed the grace period';
+      'My Elite access was restored after the grace period';
 
   @override
   String get creatorRecoveryReasonPaymentIssue =>
-      'A payment/billing issue caused the lapse';
+      'A technical or account issue caused my access to end';
 
   @override
   String get creatorRecoveryReasonUnawareOfExpiry =>
-      'I wasn\'t notified my subscription expired';
+      'I wasn\'t notified that my access was ending';
 
   @override
   String get creatorRecoveryReasonExtenuatingCircumstances =>
-      'Extenuating circumstances prevented renewal';
+      'Extenuating circumstances prevented me from keeping my access';
 
   @override
   String get creatorRecoveryReasonOther => 'Other';
@@ -4973,7 +4973,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profileBecomeCreator => 'Become a Verified Creator';
 
   @override
-  String get profileBecomeCreatorHint => 'Unlock creator tools and earnings';
+  String get profileBecomeCreatorHint =>
+      'Get access to creator tools and earnings';
 
   @override
   String get friendsPlayingNow => 'Playing now';
@@ -5947,7 +5948,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get surveyChoiceFriends => 'Friends & social features';
 
   @override
-  String get surveyChoicePremium => 'Premium features';
+  String get surveyChoicePremium => 'Jma3a Plus & Elite features';
 
   @override
   String get surveyChoiceReputation => 'Honesty points & reputation';
@@ -6082,7 +6083,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get voiceDailyLimitReached =>
-      'Basic accounts can turn on voice chat in one room per day. Try again after midnight (Nouakchott time), or upgrade to Premium.';
+      'Basic accounts can turn on voice chat in one room per day. Try again after midnight (Nouakchott time).';
 
   @override
   String get voiceSettingFailed => 'Couldn\'t change voice chat. Try again.';
@@ -6111,4 +6112,131 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get roomsPermMuteVoice => 'Mute microphones';
+
+  @override
+  String friendRequestAlreadySent(String name) {
+    return 'You\'ve already sent $name a friend request.';
+  }
+
+  @override
+  String friendRequestIncoming(String name) {
+    return '$name already sent you a friend request — you can accept it now.';
+  }
+
+  @override
+  String get accessLevelScreenTitle => 'Your Jma3a Access';
+
+  @override
+  String get accessLevelBasic => 'Basic access';
+
+  @override
+  String accessLevelCurrent(String level) {
+    return 'Your current access: $level';
+  }
+
+  @override
+  String accessLevelActiveUntil(String date) {
+    return 'Active until $date';
+  }
+
+  @override
+  String get accessLevelActiveNoEndDate => 'Active — no end date';
+
+  @override
+  String get accessLevelsHeader => 'Jma3a access levels';
+
+  @override
+  String get accessLevelsGrantedNote =>
+      'Jma3a Plus and Jma3a Elite are feature access levels granted by the Jma3a team. The team reviews requests and decides who receives each level.';
+
+  @override
+  String get accessLevelRequestConsideration =>
+      'Ask the Jma3a team to consider you';
+
+  @override
+  String get accessLevelWhatsAppMessage =>
+      'Hello Jma3a team, I\'d like to be considered for Jma3a Plus or Jma3a Elite access.';
+
+  @override
+  String get accessLevelPlusSubtitle => 'Enhanced feature access';
+
+  @override
+  String get accessLevelEliteSubtitle => 'Our highest access level';
+
+  @override
+  String get accessLevelHighestBadge => 'Highest level';
+
+  @override
+  String get accessLevelYourLevelBadge => 'Your level';
+
+  @override
+  String get accessLevelEliteIncludesPlus => 'Everything in Jma3a Plus, plus:';
+
+  @override
+  String get accessFeatPlusThemes =>
+      'Extra app themes, background colors, and game card colors';
+
+  @override
+  String get accessFeatPlusAvatars =>
+      'Create your own custom avatar and use extra avatars';
+
+  @override
+  String get accessFeatPlusManualStatus => 'Choose your online status manually';
+
+  @override
+  String accessFeatRoomsPerDay(String count) {
+    return 'Create up to $count rooms per day';
+  }
+
+  @override
+  String accessFeatRoomPlayers(String count) {
+    return 'Up to $count players in rooms you create';
+  }
+
+  @override
+  String accessFeatOfflinePacks(String count) {
+    return 'Keep up to $count packs available offline';
+  }
+
+  @override
+  String get accessFeatPlusAnonymousChat => 'Send chat messages anonymously';
+
+  @override
+  String get accessFeatPlusHiddenSpectating =>
+      'Watch rooms as a hidden spectator';
+
+  @override
+  String get accessFeatPlusTransferOwnership =>
+      'Transfer ownership of your rooms';
+
+  @override
+  String get accessFeatPlusClosedRoomHistory =>
+      'View the history of closed rooms';
+
+  @override
+  String get accessFeatPlusCustomCards => 'Add your own cards during a game';
+
+  @override
+  String get accessFeatPlusProofs =>
+      'Extra replays of dare proofs and longer voice answers';
+
+  @override
+  String get accessFeatEliteTargetedChat =>
+      'Send chat messages to specific people';
+
+  @override
+  String get accessFeatEliteThemesAvatars =>
+      'Exclusive Jma3a Elite themes and avatars';
+
+  @override
+  String get accessFeatEliteRevealSpectators =>
+      'See who hidden spectators are in rooms you moderate';
+
+  @override
+  String get accessFeatEliteAwayStatus =>
+      'Other players see when you briefly step away during a game';
+
+  @override
+  String get accessFeatEliteCreator =>
+      'Meets the access requirement to apply for Verified Creator status';
 }

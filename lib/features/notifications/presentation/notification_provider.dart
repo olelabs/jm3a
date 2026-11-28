@@ -355,22 +355,31 @@ class NotificationProvider extends BaseProvider {
 
   // ── Preferences ───────────────────────────────────────────────────────────
 
-  Future<void> updatePreference({
+  /// Saves a preference; local state only changes once the save succeeded,
+  /// so a toggle never shows a value the server didn't store. Returns false
+  /// on failure (previously the Failure escaped as an unhandled async error
+  /// from the Switch callback and the user got no feedback).
+  Future<bool> updatePreference({
     required NotificationType type,
     required bool inApp,
     required bool push,
   }) async {
-    if (currentUserId == null) return;
-    await _repo.updatePreference(
-      userId: currentUserId!,
-      type: type,
-      inApp: inApp,
-      push: push,
-    );
+    if (currentUserId == null) return false;
+    final saved = await runAsync(() async {
+      await _repo.updatePreference(
+        userId: currentUserId!,
+        type: type,
+        inApp: inApp,
+        push: push,
+      );
+      return true;
+    }, setLoading: false);
+    if (saved == null) return false;
     _preferences = _preferences
         .map((p) => p.type == type ? p.copyWith(inApp: inApp, push: push) : p)
         .toList();
     notifyListeners();
+    return true;
   }
 
   /// Test seam: preferences as _loadPreferences would have set them.

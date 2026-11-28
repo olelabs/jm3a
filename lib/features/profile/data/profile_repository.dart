@@ -243,6 +243,7 @@ import '../../../core/errors/failures.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/services/presence_service.dart';
 import '../../../core/utils/app_logger.dart';
+import '../../../core/utils/image_privacy.dart';
 import '../../../core/utils/streak_flame.dart';
 import '../../auth/domain/entities/user_entity.dart';
 import '../../notifications/domain/user_request_entity.dart';
@@ -340,7 +341,9 @@ class ProfileRepository extends BaseRepository {
   }) => guardedCall(
     operationName: 'uploadAvatar',
     operation: () async {
-      final fileSizeBytes = await imageFile.length();
+      // Privacy: strip GPS/EXIF metadata before the bytes leave the device.
+      final bytes = await removeImageMetadata(await imageFile.readAsBytes());
+      final fileSizeBytes = bytes.length;
       final urlResp = await _api.post<Map<String, dynamic>>(
         '/v1/storage/upload-url',
         data: {
@@ -354,7 +357,6 @@ class ProfileRepository extends BaseRepository {
       final uploadUrl = uploadData['upload_url'] as String;
       final publicUrl = uploadData['public_url'] as String;
 
-      final bytes = await imageFile.readAsBytes();
       final httpClient = HttpClient();
       try {
         final request = await httpClient.putUrl(Uri.parse(uploadUrl));

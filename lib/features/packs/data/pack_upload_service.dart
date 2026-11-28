@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 
 import '../../../core/utils/app_logger.dart';
+import '../../../core/utils/image_privacy.dart';
 import '../data/pack_repository.dart';
 
 class PackUploadService {
@@ -30,7 +31,9 @@ class PackUploadService {
       _upload(imageFile, 'sticker', 'image/jpeg');
 
   Future<String> _upload(File file, String fileType, String contentType) async {
-    final size = await file.length();
+    // Privacy: strip GPS/EXIF metadata before the bytes leave the device.
+    final bytes = await removeImageMetadata(await file.readAsBytes());
+    final size = bytes.length;
 
     // 1. Get presigned URL from our API
     final urls = await _repo.getUploadUrl(
@@ -41,10 +44,7 @@ class PackUploadService {
 
     AppLogger.debug('PackUploadService: uploading $fileType (${size}b)');
 
-    // 2. Read file bytes
-    final bytes = await file.readAsBytes();
-
-    // 3. PUT to Wasabi — must send Content-Type to match the presigned signature
+    // 2. PUT to Wasabi — must send Content-Type to match the presigned signature
     final dio = Dio(
       BaseOptions(
         connectTimeout: const Duration(seconds: 30),

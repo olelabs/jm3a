@@ -1140,28 +1140,28 @@ class _FriendshipAction extends StatelessWidget {
   final Future<void> Function(Future<void> Function()) onAct;
   @override
   Widget build(BuildContext context) {
-    final status = profile.friendshipStatus;
-    final isSentRequest = friends.sentRequests.any(
-      (r) => r.userId == profile.userId,
+    final state = resolveFriendshipButtonState(
+      status: profile.friendshipStatus,
+      isFriendshipRequester: profile.isFriendshipRequester,
+      inSentRequests: friends.sentRequests.any(
+        (r) => r.userId == profile.userId,
+      ),
+      inIncomingRequests: friends.pendingRequests.any(
+        (r) => r.userId == profile.userId,
+      ),
+      inFriends: friends.friends.any((f) => f.userId == profile.userId),
     );
-    if (status == FriendshipStatus.accepted) {
-      return OutlinedButton.icon(
-        onPressed: () => onAct(() => friends.removeFriend(profile.userId)),
-        icon: const Icon(Icons.person_remove_outlined),
-        label: Text(context.l10n.friendsRemoveFriend),
-        style: OutlinedButton.styleFrom(
-          minimumSize: const Size(double.infinity, 44),
-        ),
-      );
-    }
-    if (status == FriendshipStatus.pending) {
-      // profile.isFriendshipRequester (a live per-pair lookup) is the
-      // authoritative signal for who actually sent this request;
-      // isSentRequest (FriendsProvider's cached sentRequests list) is
-      // only consulted as an immediate-feedback fallback right after
-      // sending, before this profile has been re-fetched.
-      final iSentIt = profile.isFriendshipRequester || isSentRequest;
-      if (!iSentIt) {
+    switch (state) {
+      case FriendshipButtonState.friends:
+        return OutlinedButton.icon(
+          onPressed: () => onAct(() => friends.removeFriend(profile.userId)),
+          icon: const Icon(Icons.person_remove_outlined),
+          label: Text(context.l10n.friendsRemoveFriend),
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size(double.infinity, 44),
+          ),
+        );
+      case FriendshipButtonState.respondToRequest:
         // They sent it to me — offer Accept/Reject, not Cancel.
         return Row(
           children: [
@@ -1190,22 +1190,71 @@ class _FriendshipAction extends StatelessWidget {
             ),
           ],
         );
-      }
-      return OutlinedButton.icon(
-        onPressed: () => onAct(() => friends.cancelRequest(profile.userId)),
-        icon: const Icon(Icons.cancel_outlined),
-        label: Text(context.l10n.friendsCancelRequest),
-        style: OutlinedButton.styleFrom(
-          minimumSize: const Size(double.infinity, 44),
-        ),
-      );
+      case FriendshipButtonState.requestSent:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.hourglass_top_rounded,
+                  size: 18,
+                  color: context.colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  context.l10n.exploreRequestSent,
+                  style: context.textTheme.labelLarge?.copyWith(
+                    color: context.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: () =>
+                  onAct(() => friends.cancelRequest(profile.userId)),
+              icon: const Icon(Icons.cancel_outlined),
+              label: Text(context.l10n.friendsCancelRequest),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 44),
+              ),
+            ),
+          ],
+        );
+      case FriendshipButtonState.addFriend:
+        return JButton(
+          label: context.l10n.friendsAddFriend,
+          isLoading: friends.isSendingFriendRequest(profile.userId),
+          onPressed: friends.isSendingFriendRequest(profile.userId)
+              ? null
+              : () {
+                  // Captured up front: _act swaps the body for a spinner,
+                  // unmounting this widget before the request completes.
+                  final messenger = ScaffoldMessenger.of(context);
+                  final l10n = context.l10n;
+                  onAct(() async {
+                    final outcome = await friends.sendFriendRequest(
+                      profile.userId,
+                    );
+                    messenger.showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          friendRequestOutcomeMessage(
+                            l10n,
+                            outcome,
+                            displayName: profile.displayName,
+                            failure: friends.failure,
+                          ),
+                        ),
+                      ),
+                    );
+                  });
+                },
+          icon: Icons.person_add_outlined,
+        );
     }
-    return JButton(
-      label: context.l10n.friendsAddFriend,
-      onPressed: () =>
-          onAct(() => friends.sendFriendRequest(profile.userId).then((_) {})),
-      icon: Icons.person_add_outlined,
-    );
   }
 }
 

@@ -36,6 +36,139 @@ String localizedValue(Map<String, dynamic> json, String lang) {
   return '';
 }
 
+// ── Access-level / pack display copy ────────────────────────────────────────
+// Pre-release terminology pass. Jma3a Plus (tier `premium`) and Jma3a
+// Elite (tier `premium_plus`) are access levels granted by the Jma3a team,
+// not paid subscriptions, and packs are things a user gets access to, not
+// purchases. Some producers (SQL triggers/RPCs that can't be changed without
+// a production migration, and rows already stored in users' inboxes) still
+// carry "subscription / renew / repurchase" wording and raw tier ids, so for
+// these deterministic templates the app renders its own copy instead. The
+// stored row, its type, data payload and deep link are untouched — only
+// what is displayed changes. Returns null for every other notification.
+
+typedef NotificationCopy = ({
+  Map<String, String> title,
+  Map<String, String> body,
+});
+
+Map<String, String> _levelName(Object? tier) => tier == 'premium_plus'
+    ? const {'en': 'Jma3a Elite', 'ar': 'جماعة إيليت', 'fr': 'Jma3a Elite'}
+    : const {'en': 'Jma3a Plus', 'ar': 'جماعة بلس', 'fr': 'Jma3a Plus'};
+
+NotificationCopy? accessLevelNotificationCopy(
+  NotificationType type,
+  Map<String, dynamic> data,
+) {
+  final l = _levelName(data['tier']);
+  switch (type) {
+    case NotificationType.subscriptionStarted:
+      return (
+        title: {
+          'en': "✦ You've been granted ${l['en']} access!",
+          'ar': '✦ تم منحك وصول ${l['ar']}!',
+          'fr': '✦ Accès ${l['fr']} accordé !',
+        },
+        body: {
+          'en': 'The Jma3a team has granted you ${l['en']}. Enjoy your new features!',
+          'ar': 'منحك فريق جماعة ${l['ar']}. استمتع بمزاياك الجديدة!',
+          'fr': "L'équipe Jma3a vous a accordé ${l['fr']}. Profitez de vos nouvelles fonctionnalités !",
+        },
+      );
+    case NotificationType.subscriptionExpiring2d:
+      return (
+        title: {
+          'en': 'Your ${l['en']} access ends soon',
+          'ar': 'وصولك إلى ${l['ar']} ينتهي قريباً',
+          'fr': 'Votre accès ${l['fr']} prend bientôt fin',
+        },
+        body: {
+          'en': 'Your ${l['en']} access ends in 2 days.',
+          'ar': 'ينتهي وصولك إلى ${l['ar']} خلال يومين.',
+          'fr': 'Votre accès ${l['fr']} prend fin dans 2 jours.',
+        },
+      );
+    case NotificationType.subscriptionExpiring1d:
+      return (
+        title: {
+          'en': 'Your ${l['en']} access ends tomorrow',
+          'ar': 'وصولك إلى ${l['ar']} ينتهي غداً',
+          'fr': 'Votre accès ${l['fr']} prend fin demain',
+        },
+        body: {
+          'en': 'Your ${l['en']} access ends tomorrow.',
+          'ar': 'ينتهي وصولك إلى ${l['ar']} غداً.',
+          'fr': 'Votre accès ${l['fr']} prend fin demain.',
+        },
+      );
+    case NotificationType.subscriptionExpired:
+      return (
+        title: {
+          'en': '${l['en']} access ended',
+          'ar': 'انتهى وصول ${l['ar']}',
+          'fr': 'Fin de l\'accès ${l['fr']}',
+        },
+        body: {
+          'en': 'Your ${l['en']} access has ended, and your Jma3a privileges have been updated.',
+          'ar': 'انتهى وصولك إلى ${l['ar']}، وتم تحديث امتيازاتك في جماعة.',
+          'fr': 'Votre accès ${l['fr']} a pris fin et vos privilèges Jma3a ont été mis à jour.',
+        },
+      );
+    case NotificationType.creatorPacksTransferred:
+      return (
+        title: const {
+          'en': 'Your Packs Are Now Jma3a-Managed',
+          'ar': 'أصبحت حزمك الآن تحت إدارة جماعة',
+          'fr': 'Vos packs sont maintenant gérés par Jma3a',
+        },
+        body: const {
+          'en': "Your Jma3a Elite access ended, so Jma3a is now managing your packs. If your Elite access is restored within 2 days, you'll keep full creator privileges.",
+          'ar': 'انتهى وصولك إلى جماعة إيليت، لذا أصبحت جماعة تدير حزمك الآن. إذا تمت استعادة وصول إيليت خلال يومين، ستحتفظ بامتيازات المنشئ كاملة.',
+          'fr': "Votre accès Jma3a Elite a pris fin, Jma3a gère donc désormais vos packs. Si votre accès Elite est rétabli sous 2 jours, vous conserverez tous vos privilèges de créateur.",
+        },
+      );
+    case NotificationType.creatorPrivilegesRemoved:
+      return (
+        title: const {
+          'en': 'Verified Creator Status Removed',
+          'ar': 'تمت إزالة حالة المنشئ الموثق',
+          'fr': 'Statut de créateur vérifié retiré',
+        },
+        body: const {
+          'en': 'Your verified creator status and privileges were removed after your Jma3a Elite access ended. You can submit a recovery request from your profile.',
+          'ar': 'تمت إزالة حالة المنشئ الموثق وامتيازاتك بعد انتهاء وصولك إلى جماعة إيليت. يمكنك تقديم طلب استعادة من ملفك الشخصي.',
+          'fr': "Votre statut de créateur vérifié et vos privilèges ont été retirés après la fin de votre accès Jma3a Elite. Vous pouvez soumettre une demande de récupération depuis votre profil.",
+        },
+      );
+    case NotificationType.system when data['reason'] == 'packs_restored_grace':
+      return (
+        title: const {'en': 'Jma3a', 'ar': 'جماعة', 'fr': 'Jma3a'},
+        body: const {
+          'en': 'Your Jma3a Elite access was restored in time — full control of your packs is back.',
+          'ar': 'تمت استعادة وصولك إلى جماعة إيليت في الوقت المناسب — عاد إليك التحكم الكامل في حزمك.',
+          'fr': 'Votre accès Jma3a Elite a été rétabli à temps — vous avez retrouvé le contrôle total de vos packs.',
+        },
+      );
+    case NotificationType.packExpired:
+      final name = (data['pack_name'] as String?)?.trim();
+      final hasName = name != null && name.isNotEmpty;
+      return (
+        title: const {
+          'en': 'Pack Access Ended',
+          'ar': 'انتهى الوصول إلى الحزمة',
+          'fr': "Fin de l'accès au pack",
+        },
+        body: {
+          'en': hasName ? 'Your access to "$name" has ended.' : 'Your access to a pack has ended.',
+          'ar': hasName ? 'انتهى وصولك إلى "$name".' : 'انتهى وصولك إلى إحدى الحزم.',
+          'fr': hasName ? "Votre accès à « $name » a pris fin." : "Votre accès à un pack a pris fin.",
+        },
+      );
+    default:
+      return null;
+  }
+}
+
 // ── Notification type ─────────────────────────────────────────────────────────
 
 enum NotificationType {
@@ -199,8 +332,14 @@ class NotificationEntity extends Equatable {
   final DateTime createdAt;
   final DateTime? expiresAt;
 
-  String titleFor(String lang) => localizedValue(titleJson, lang);
-  String bodyFor(String lang) => localizedValue(bodyJson, lang);
+  String titleFor(String lang) => localizedValue(
+    accessLevelNotificationCopy(type, data)?.title ?? titleJson,
+    lang,
+  );
+  String bodyFor(String lang) => localizedValue(
+    accessLevelNotificationCopy(type, data)?.body ?? bodyJson,
+    lang,
+  );
 
   bool get isExpired =>
       expiresAt != null && expiresAt!.isBefore(DateTime.now());
@@ -273,8 +412,14 @@ class InAppToast extends Equatable {
   /// backend payload includes one. Falls back to a type icon when absent.
   final String? avatarUrl;
 
-  String titleFor(String lang) => localizedValue(titleJson, lang);
-  String bodyFor(String lang) => localizedValue(bodyJson, lang);
+  String titleFor(String lang) => localizedValue(
+    accessLevelNotificationCopy(type, data)?.title ?? titleJson,
+    lang,
+  );
+  String bodyFor(String lang) => localizedValue(
+    accessLevelNotificationCopy(type, data)?.body ?? bodyJson,
+    lang,
+  );
 
   @override
   List<Object?> get props => [id];

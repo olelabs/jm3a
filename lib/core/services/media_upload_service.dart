@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 
 import '../di/service_locator.dart';
 import '../utils/app_logger.dart';
+import '../utils/image_privacy.dart';
 
 /// Uploads ToD proof photos/videos to storage instead of embedding raw
 /// bytes in the realtime game-state broadcast/snapshot — videos in
@@ -23,6 +24,7 @@ class MediaUploadService {
     fileType: isVideo ? 'proof_video' : 'proof_image',
     bytes: bytes,
     contentType: contentType,
+    isImage: !isVideo,
   );
 
   /// Optional supporting evidence attached to an item-8 creator-recovery
@@ -34,14 +36,19 @@ class MediaUploadService {
     fileType: 'creator_recovery_evidence',
     bytes: bytes,
     contentType: contentType,
+    isImage: true,
   );
 
   Future<String?> _upload({
     required String fileType,
     required Uint8List bytes,
     required String contentType,
+    required bool isImage,
   }) async {
     try {
+      // Privacy: strip GPS/EXIF metadata from images before upload. If it
+      // can't be removed this throws and nothing is uploaded.
+      if (isImage) bytes = await removeImageMetadata(bytes);
       final res = await sl.apiClient.post<Map<String, dynamic>>(
         '/v1/storage/upload-url',
         data: {'file_type': fileType, 'content_type': contentType},

@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../../../core/config/platform_config_provider.dart';
 import '../../../../core/constants/social_links.dart';
 import '../../../../core/extensions/context_ext.dart';
 import '../../../../core/providers/auth_provider.dart';
 import '../../../../core/router/route_names.dart';
 import '../../../../shared/utils/external_link_launcher.dart';
+import '../../../premium/presentation/widgets/access_levels_section.dart';
 import '../../data/profile_repository.dart';
 
 /// "Become a verified creator" — shows live progress against the
@@ -62,6 +64,16 @@ class _CreatorVerificationScreenState
   /// or any other account detail.
   Future<void> _requestViaWhatsApp() async {
     final message = Uri.encodeComponent(context.l10n.creatorWhatsAppMessage);
+    await launchExternalUrl('${SocialLinks.whatsapp}?text=$message');
+  }
+
+  /// Same WhatsApp channel as [_requestViaWhatsApp], with a message asking
+  /// the team to consider the user for an access level. Like that message
+  /// it never includes any account detail. No in-app grant or payment.
+  Future<void> _requestAccessConsideration() async {
+    final message = Uri.encodeComponent(
+      context.l10n.accessLevelWhatsAppMessage,
+    );
     await launchExternalUrl('${SocialLinks.whatsapp}?text=$message');
   }
 
@@ -202,6 +214,21 @@ class _CreatorVerificationScreenState
               color: context.colorScheme.onSurfaceVariant,
             ),
           ),
+        const SizedBox(height: 28),
+        const Divider(),
+        const SizedBox(height: 16),
+        AccessLevelsSection(
+          current: accessLevelOf(user),
+          roomsPerDay: context
+              .watch<PlatformConfigProvider>()
+              .roomCreationDailyLimit(isPremium: true),
+          offlinePacks: context
+              .watch<PlatformConfigProvider>()
+              .offlinePackLimit(isPremium: true),
+          includeCreatorEligibility: p.requiresPremiumPlus,
+          onRequestConsideration: _requestAccessConsideration,
+        ),
+        const SizedBox(height: 16),
       ],
     );
   }

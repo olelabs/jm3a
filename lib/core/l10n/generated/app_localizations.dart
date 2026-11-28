@@ -145,7 +145,7 @@ abstract class AppLocalizations {
   /// No description provided for @introPage2Body.
   ///
   /// In en, this message translates to:
-  /// **'Community-created packs, premium packs, and physical packs you can order and play with.'**
+  /// **'Community-created packs, official Jma3a packs, and physical packs you can order and play with.'**
   String get introPage2Body;
 
   /// No description provided for @introPage3Title.
@@ -163,7 +163,7 @@ abstract class AppLocalizations {
   /// No description provided for @introPage4Title.
   ///
   /// In en, this message translates to:
-  /// **'Premium Features'**
+  /// **'Jma3a Plus & Elite'**
   String get introPage4Title;
 
   /// No description provided for @introPage4Body.
@@ -505,7 +505,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsOnlineStatusPremiumHint.
   ///
   /// In en, this message translates to:
-  /// **'Manual status is a Premium feature'**
+  /// **'Manual status is a Jma3a Plus feature'**
   String get settingsOnlineStatusPremiumHint;
 
   /// No description provided for @presenceModeAuto.
@@ -583,7 +583,7 @@ abstract class AppLocalizations {
   /// No description provided for @premiumBackgroundUpgradeHint.
   ///
   /// In en, this message translates to:
-  /// **'Premium feature'**
+  /// **'Jma3a Plus feature'**
   String get premiumBackgroundUpgradeHint;
 
   /// No description provided for @premiumBackgroundSaveFailed.
@@ -1921,13 +1921,13 @@ abstract class AppLocalizations {
   /// No description provided for @roomsDailyLimitFreeBody.
   ///
   /// In en, this message translates to:
-  /// **'Free plan allows {basicLimit} rooms per day. Try again tomorrow.'**
+  /// **'Basic access allows {basicLimit} rooms per day. Try again tomorrow.'**
   String roomsDailyLimitFreeBody(int basicLimit);
 
   /// No description provided for @roomsDailyLimitPremiumBody.
   ///
   /// In en, this message translates to:
-  /// **'Premium plan allows {premiumLimit} rooms per day. Try again tomorrow.'**
+  /// **'Your Jma3a access allows {premiumLimit} rooms per day. Try again tomorrow.'**
   String roomsDailyLimitPremiumBody(int premiumLimit);
 
   /// No description provided for @roomsDailyLimitTitle.
@@ -1975,7 +1975,7 @@ abstract class AppLocalizations {
   /// No description provided for @roomsIconPremium.
   ///
   /// In en, this message translates to:
-  /// **'Premium ✦'**
+  /// **'Jma3a Plus ✦'**
   String get roomsIconPremium;
 
   /// No description provided for @roomsLeaveForGood.
@@ -2281,7 +2281,7 @@ abstract class AppLocalizations {
   /// No description provided for @chatAudienceRequiresPremiumPlus.
   ///
   /// In en, this message translates to:
-  /// **'Only Premium Plus members can target specific people.'**
+  /// **'Only Jma3a Elite members can message specific people.'**
   String get chatAudienceRequiresPremiumPlus;
 
   /// No description provided for @chatAudienceRecipientUnavailable.
@@ -2311,7 +2311,7 @@ abstract class AppLocalizations {
   /// No description provided for @premiumBadge.
   ///
   /// In en, this message translates to:
-  /// **'✨ Premium'**
+  /// **'✨ Jma3a Plus'**
   String get premiumBadge;
 
   /// No description provided for @preview.
@@ -4171,7 +4171,7 @@ abstract class AppLocalizations {
   /// No description provided for @offlineSignInToDownload.
   ///
   /// In en, this message translates to:
-  /// **'Sign in to download packs and unlock all games.'**
+  /// **'Sign in to download packs and play all games.'**
   String get offlineSignInToDownload;
 
   /// No description provided for @offlineSpicyContent.
@@ -4195,7 +4195,7 @@ abstract class AppLocalizations {
   /// No description provided for @purchased.
   ///
   /// In en, this message translates to:
-  /// **'Purchased'**
+  /// **'In your collection'**
   String get purchased;
 
   /// No description provided for @signIn.
@@ -4627,7 +4627,7 @@ abstract class AppLocalizations {
   /// No description provided for @premiumFeatureListDescription.
   ///
   /// In en, this message translates to:
-  /// **'Custom themes & avatars, 15 rooms/day, up to 12 players per room, 10 offline packs (1 free), anonymous chat, and more.'**
+  /// **'Extra features granted by the Jma3a team — custom themes and avatars, more rooms per day, bigger rooms, more offline packs, anonymous chat, and more.'**
   String get premiumFeatureListDescription;
 
   /// No description provided for @premiumPageBackground.
@@ -4639,37 +4639,37 @@ abstract class AppLocalizations {
   /// No description provided for @premiumPlusLabel.
   ///
   /// In en, this message translates to:
-  /// **'Premium Plus'**
+  /// **'Jma3a Elite'**
   String get premiumPlusLabel;
 
   /// No description provided for @premiumPremiumAvatars.
   ///
   /// In en, this message translates to:
-  /// **'Premium Avatars'**
+  /// **'Jma3a Plus & Elite Avatars'**
   String get premiumPremiumAvatars;
 
   /// No description provided for @premiumPremiumThemes.
   ///
   /// In en, this message translates to:
-  /// **'Premium Themes ✦'**
+  /// **'Jma3a Plus & Elite Themes ✦'**
   String get premiumPremiumThemes;
 
   /// No description provided for @premiumTitle.
   ///
   /// In en, this message translates to:
-  /// **'Premium'**
+  /// **'Jma3a Plus'**
   String get premiumTitle;
 
   /// No description provided for @premiumUnlockTitle.
   ///
   /// In en, this message translates to:
-  /// **'Unlock Premium'**
+  /// **'Jma3a Plus & Elite'**
   String get premiumUnlockTitle;
 
   /// No description provided for @premiumUpgradeToUnlock.
   ///
   /// In en, this message translates to:
-  /// **'Requires Premium'**
+  /// **'Available with Jma3a Plus or Elite'**
   String get premiumUpgradeToUnlock;
 
   /// No description provided for @premiumYourAvatars.
@@ -5665,7 +5665,7 @@ abstract class AppLocalizations {
   /// No description provided for @packFreeOfflineLimitNotice.
   ///
   /// In en, this message translates to:
-  /// **'Free plan allows 1 offline pack.'**
+  /// **'Basic access allows 1 offline pack.'**
   String get packFreeOfflineLimitNotice;
 
   /// No description provided for @packFullName.
@@ -6211,7 +6211,7 @@ abstract class AppLocalizations {
   /// No description provided for @avatarCustomAvatarsHint.
   ///
   /// In en, this message translates to:
-  /// **'Create your own Bitmoji-style avatar and show it across the app with Premium.'**
+  /// **'Create your own Bitmoji-style avatar and show it across the app with Jma3a Plus.'**
   String get avatarCustomAvatarsHint;
 
   /// No description provided for @avatarCustomAvatarsTitle.
@@ -7507,13 +7507,13 @@ abstract class AppLocalizations {
   /// No description provided for @notifTypePackGranted.
   ///
   /// In en, this message translates to:
-  /// **'A New Pack'**
+  /// **'New Pack Added'**
   String get notifTypePackGranted;
 
   /// No description provided for @notifTypePackExpired.
   ///
   /// In en, this message translates to:
-  /// **'Pack Expired'**
+  /// **'Pack Access Ended'**
   String get notifTypePackExpired;
 
   /// No description provided for @notifTypePackRejected.
@@ -7609,25 +7609,25 @@ abstract class AppLocalizations {
   /// No description provided for @notifTypeSubscriptionExpired.
   ///
   /// In en, this message translates to:
-  /// **'Subscription Expired'**
+  /// **'Access Level Ended'**
   String get notifTypeSubscriptionExpired;
 
   /// No description provided for @notifTypeSubscriptionExpiring1d.
   ///
   /// In en, this message translates to:
-  /// **'Subscription Expiring (1 Day)'**
+  /// **'Access Level Ending (1 Day)'**
   String get notifTypeSubscriptionExpiring1d;
 
   /// No description provided for @notifTypeSubscriptionExpiring2d.
   ///
   /// In en, this message translates to:
-  /// **'Subscription Expiring (2 Days)'**
+  /// **'Access Level Ending (2 Days)'**
   String get notifTypeSubscriptionExpiring2d;
 
   /// No description provided for @notifTypeSubscriptionStarted.
   ///
   /// In en, this message translates to:
-  /// **'Subscription Started'**
+  /// **'Access Level Granted'**
   String get notifTypeSubscriptionStarted;
 
   /// No description provided for @notifTypeSystem.
@@ -7999,7 +7999,7 @@ abstract class AppLocalizations {
   /// No description provided for @roomsSendAnonymouslyPremium.
   ///
   /// In en, this message translates to:
-  /// **'Send anonymously (Premium)'**
+  /// **'Send anonymously (Jma3a Plus)'**
   String get roomsSendAnonymouslyPremium;
 
   /// No description provided for @roomsStatusClosed.
@@ -8629,7 +8629,7 @@ abstract class AppLocalizations {
   /// No description provided for @creatorReqPremiumPlus.
   ///
   /// In en, this message translates to:
-  /// **'Premium Plus subscriber'**
+  /// **'Jma3a Elite access'**
   String get creatorReqPremiumPlus;
 
   /// No description provided for @creatorReqGamesPlayed.
@@ -8701,7 +8701,7 @@ abstract class AppLocalizations {
   /// No description provided for @creatorRecoveryBannerBody.
   ///
   /// In en, this message translates to:
-  /// **'Your Premium Plus subscription lapsed and your verified creator status/privileges were automatically removed. You can submit a recovery request for admin review.'**
+  /// **'Your Jma3a Elite access ended and your verified creator status/privileges were automatically removed. You can submit a recovery request for the Jma3a team to review.'**
   String get creatorRecoveryBannerBody;
 
   /// No description provided for @creatorRecoveryBannerAction.
@@ -8731,25 +8731,25 @@ abstract class AppLocalizations {
   /// No description provided for @creatorRecoveryReasonResubscribedLate.
   ///
   /// In en, this message translates to:
-  /// **'I resubscribed but missed the grace period'**
+  /// **'My Elite access was restored after the grace period'**
   String get creatorRecoveryReasonResubscribedLate;
 
   /// No description provided for @creatorRecoveryReasonPaymentIssue.
   ///
   /// In en, this message translates to:
-  /// **'A payment/billing issue caused the lapse'**
+  /// **'A technical or account issue caused my access to end'**
   String get creatorRecoveryReasonPaymentIssue;
 
   /// No description provided for @creatorRecoveryReasonUnawareOfExpiry.
   ///
   /// In en, this message translates to:
-  /// **'I wasn\'t notified my subscription expired'**
+  /// **'I wasn\'t notified that my access was ending'**
   String get creatorRecoveryReasonUnawareOfExpiry;
 
   /// No description provided for @creatorRecoveryReasonExtenuatingCircumstances.
   ///
   /// In en, this message translates to:
-  /// **'Extenuating circumstances prevented renewal'**
+  /// **'Extenuating circumstances prevented me from keeping my access'**
   String get creatorRecoveryReasonExtenuatingCircumstances;
 
   /// No description provided for @creatorRecoveryReasonOther.
@@ -8833,7 +8833,7 @@ abstract class AppLocalizations {
   /// No description provided for @profileBecomeCreatorHint.
   ///
   /// In en, this message translates to:
-  /// **'Unlock creator tools and earnings'**
+  /// **'Get access to creator tools and earnings'**
   String get profileBecomeCreatorHint;
 
   /// No description provided for @friendsPlayingNow.
@@ -10549,7 +10549,7 @@ abstract class AppLocalizations {
   /// No description provided for @surveyChoicePremium.
   ///
   /// In en, this message translates to:
-  /// **'Premium features'**
+  /// **'Jma3a Plus & Elite features'**
   String get surveyChoicePremium;
 
   /// No description provided for @surveyChoiceReputation.
@@ -10801,7 +10801,7 @@ abstract class AppLocalizations {
   /// No description provided for @voiceDailyLimitReached.
   ///
   /// In en, this message translates to:
-  /// **'Basic accounts can turn on voice chat in one room per day. Try again after midnight (Nouakchott time), or upgrade to Premium.'**
+  /// **'Basic accounts can turn on voice chat in one room per day. Try again after midnight (Nouakchott time).'**
   String get voiceDailyLimitReached;
 
   /// No description provided for @voiceSettingFailed.
@@ -10857,6 +10857,204 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Mute microphones'**
   String get roomsPermMuteVoice;
+
+  /// No description provided for @friendRequestAlreadySent.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve already sent {name} a friend request.'**
+  String friendRequestAlreadySent(String name);
+
+  /// No description provided for @friendRequestIncoming.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} already sent you a friend request — you can accept it now.'**
+  String friendRequestIncoming(String name);
+
+  /// No description provided for @accessLevelScreenTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your Jma3a Access'**
+  String get accessLevelScreenTitle;
+
+  /// No description provided for @accessLevelBasic.
+  ///
+  /// In en, this message translates to:
+  /// **'Basic access'**
+  String get accessLevelBasic;
+
+  /// No description provided for @accessLevelCurrent.
+  ///
+  /// In en, this message translates to:
+  /// **'Your current access: {level}'**
+  String accessLevelCurrent(String level);
+
+  /// No description provided for @accessLevelActiveUntil.
+  ///
+  /// In en, this message translates to:
+  /// **'Active until {date}'**
+  String accessLevelActiveUntil(String date);
+
+  /// No description provided for @accessLevelActiveNoEndDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Active — no end date'**
+  String get accessLevelActiveNoEndDate;
+
+  /// No description provided for @accessLevelsHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'Jma3a access levels'**
+  String get accessLevelsHeader;
+
+  /// No description provided for @accessLevelsGrantedNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Jma3a Plus and Jma3a Elite are feature access levels granted by the Jma3a team. The team reviews requests and decides who receives each level.'**
+  String get accessLevelsGrantedNote;
+
+  /// No description provided for @accessLevelRequestConsideration.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask the Jma3a team to consider you'**
+  String get accessLevelRequestConsideration;
+
+  /// No description provided for @accessLevelWhatsAppMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Hello Jma3a team, I\'d like to be considered for Jma3a Plus or Jma3a Elite access.'**
+  String get accessLevelWhatsAppMessage;
+
+  /// No description provided for @accessLevelPlusSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enhanced feature access'**
+  String get accessLevelPlusSubtitle;
+
+  /// No description provided for @accessLevelEliteSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Our highest access level'**
+  String get accessLevelEliteSubtitle;
+
+  /// No description provided for @accessLevelHighestBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Highest level'**
+  String get accessLevelHighestBadge;
+
+  /// No description provided for @accessLevelYourLevelBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Your level'**
+  String get accessLevelYourLevelBadge;
+
+  /// No description provided for @accessLevelEliteIncludesPlus.
+  ///
+  /// In en, this message translates to:
+  /// **'Everything in Jma3a Plus, plus:'**
+  String get accessLevelEliteIncludesPlus;
+
+  /// No description provided for @accessFeatPlusThemes.
+  ///
+  /// In en, this message translates to:
+  /// **'Extra app themes, background colors, and game card colors'**
+  String get accessFeatPlusThemes;
+
+  /// No description provided for @accessFeatPlusAvatars.
+  ///
+  /// In en, this message translates to:
+  /// **'Create your own custom avatar and use extra avatars'**
+  String get accessFeatPlusAvatars;
+
+  /// No description provided for @accessFeatPlusManualStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose your online status manually'**
+  String get accessFeatPlusManualStatus;
+
+  /// No description provided for @accessFeatRoomsPerDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Create up to {count} rooms per day'**
+  String accessFeatRoomsPerDay(String count);
+
+  /// No description provided for @accessFeatRoomPlayers.
+  ///
+  /// In en, this message translates to:
+  /// **'Up to {count} players in rooms you create'**
+  String accessFeatRoomPlayers(String count);
+
+  /// No description provided for @accessFeatOfflinePacks.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep up to {count} packs available offline'**
+  String accessFeatOfflinePacks(String count);
+
+  /// No description provided for @accessFeatPlusAnonymousChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Send chat messages anonymously'**
+  String get accessFeatPlusAnonymousChat;
+
+  /// No description provided for @accessFeatPlusHiddenSpectating.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch rooms as a hidden spectator'**
+  String get accessFeatPlusHiddenSpectating;
+
+  /// No description provided for @accessFeatPlusTransferOwnership.
+  ///
+  /// In en, this message translates to:
+  /// **'Transfer ownership of your rooms'**
+  String get accessFeatPlusTransferOwnership;
+
+  /// No description provided for @accessFeatPlusClosedRoomHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'View the history of closed rooms'**
+  String get accessFeatPlusClosedRoomHistory;
+
+  /// No description provided for @accessFeatPlusCustomCards.
+  ///
+  /// In en, this message translates to:
+  /// **'Add your own cards during a game'**
+  String get accessFeatPlusCustomCards;
+
+  /// No description provided for @accessFeatPlusProofs.
+  ///
+  /// In en, this message translates to:
+  /// **'Extra replays of dare proofs and longer voice answers'**
+  String get accessFeatPlusProofs;
+
+  /// No description provided for @accessFeatEliteTargetedChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Send chat messages to specific people'**
+  String get accessFeatEliteTargetedChat;
+
+  /// No description provided for @accessFeatEliteThemesAvatars.
+  ///
+  /// In en, this message translates to:
+  /// **'Exclusive Jma3a Elite themes and avatars'**
+  String get accessFeatEliteThemesAvatars;
+
+  /// No description provided for @accessFeatEliteRevealSpectators.
+  ///
+  /// In en, this message translates to:
+  /// **'See who hidden spectators are in rooms you moderate'**
+  String get accessFeatEliteRevealSpectators;
+
+  /// No description provided for @accessFeatEliteAwayStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Other players see when you briefly step away during a game'**
+  String get accessFeatEliteAwayStatus;
+
+  /// No description provided for @accessFeatEliteCreator.
+  ///
+  /// In en, this message translates to:
+  /// **'Meets the access requirement to apply for Verified Creator status'**
+  String get accessFeatEliteCreator;
 }
 
 class _AppLocalizationsDelegate

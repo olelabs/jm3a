@@ -2709,7 +2709,7 @@ Failure? membershipRpcFailure(PostgrestException e) {
       code: code,
     ),
     'premium_required' => ForbiddenFailure(
-      message: 'Hidden spectating requires an active Premium subscription.',
+      message: 'Hidden spectating is a Jma3a Plus feature.',
       code: code,
     ),
     'spectators_not_allowed' => ForbiddenFailure(
@@ -2963,7 +2963,7 @@ class RoomRepository extends BaseRepository {
         }
         if (e.message.contains('max_players_exceeds_tier_cap')) {
           throw const ValidationFailure(
-            message: 'That many players requires a higher subscription tier.',
+            message: 'That many players requires a higher Jma3a access level.',
           );
         }
         if (e.message.contains('daily_room_limit_exceeded')) {
@@ -4675,7 +4675,7 @@ class RoomRepository extends BaseRepository {
       } on PostgrestException catch (e) {
         if (e.message.contains('premium_required')) {
           throw const ForbiddenFailure(
-            message: 'Transferring room ownership requires Premium.',
+            message: 'Transferring room ownership is a Jma3a Plus feature.',
           );
         }
         if (e.message.contains('transfer_limit_reached')) {
@@ -4944,7 +4944,7 @@ class RoomRepository extends BaseRepository {
       } on PostgrestException catch (e) {
         if (e.message.contains('not_premium_plus')) {
           throw const ForbiddenFailure(
-            message: 'Only Premium Plus members can target specific people.',
+            message: 'Only Jma3a Elite members can message specific people.',
           );
         }
         if (e.message.contains('not_room_member') ||
@@ -4982,7 +4982,7 @@ class RoomRepository extends BaseRepository {
       } on PostgrestException catch (e) {
         if (e.message.contains('premium_required')) {
           throw const ForbiddenFailure(
-            message: 'Closed room history requires Premium.',
+            message: 'Closed room history is a Jma3a Plus feature.',
           );
         }
         rethrow;
@@ -5028,7 +5028,7 @@ class RoomRepository extends BaseRepository {
           } on PostgrestException catch (e) {
             if (e.message.contains('premium_required')) {
               throw const ForbiddenFailure(
-                message: 'Closed room history requires Premium.',
+                message: 'Closed room history is a Jma3a Plus feature.',
               );
             }
             if (e.message.contains('room_not_found')) {

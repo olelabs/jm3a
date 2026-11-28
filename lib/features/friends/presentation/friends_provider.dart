@@ -12,6 +12,7 @@ import '../../rooms/data/room_repository.dart' show isDirectlyJoinableRoom;
 import '../data/friends_repository.dart';
 
 export '../data/friends_repository.dart';
+export 'friend_request_messages.dart';
 
 /// Complete social provider: friends, followers, blocks, search, presence.
 ///
@@ -175,6 +176,9 @@ class FriendsProvider extends BaseProvider {
     _searchResults = [];
     _searchStatuses = {};
     _presenceMap = {};
+    _explorePeople = [];
+    _exploreSentRequestIds.clear();
+    _sendingRequestIds.clear();
     super.onUserLoggedOut();
   }
 
@@ -424,27 +428,96 @@ class FriendsProvider extends BaseProvider {
 
   // ── Friend actions ────────────────────────────────────────────────────────
 
-  Future<bool> sendFriendRequest(String addresseeId) async {
-    if (currentUserId == null) return false;
-    final ok = await runAsync(() async {
-      await _repo.sendFriendRequest(
-        requesterId: currentUserId!,
-        addresseeId: addresseeId,
+  /// User ids with a friend request currently in flight — lets every Add
+  /// Friend control disable itself so a double tap can't fire twice.
+  final Set<String> _sendingRequestIds = {};
+  bool isSendingFriendRequest(String userId) =>
+      _sendingRequestIds.contains(userId);
+
+  /// Sends a friend request and updates local state to match what the
+  /// server now holds. Returns null on failure (see [failure] for why) —
+  /// including when a request to [addresseeId] is already in flight.
+  ///
+  /// Pre-release audit (Add Friend fix): this used to return
+  /// `runAsync(...) != null`, but runAsync's result for a closure with no
+  /// return value is always null, so it reported FALSE on every
+  /// successful send. sendExploreFriendRequest relied on that bool to
+  /// flip the Explore card to "Request Sent", so the card stayed "Add
+  /// Friend" after a successful request (and a second tap then failed
+  /// silently on the existing row).
+  Future<FriendRequestOutcome?> sendFriendRequest(String addresseeId) async {
+    final me = currentUserId;
+    if (me == null) return null;
+    if (!_sendingRequestIds.add(addresseeId)) return null;
+    notifyListeners();
+    try {
+      final outcome = await runAsync(
+        () => _repo.sendFriendRequest(requesterId: me, addresseeId: addresseeId),
+        setLoading: false,
       );
-      await _loadSentRequests(currentUserId!);
-      _searchStatuses = {
-        ..._searchStatuses,
-        addresseeId: FriendEntity(
-          userId: addresseeId,
-          displayName: '',
-          status: FriendshipStatus.pending,
-          isRequester: true,
-        ),
-      };
-      notifyListeners(); // update UI immediately
-    }, setLoading: false);
-    if (ok != null) notifyListeners();
-    return ok != null;
+      if (outcome != null) {
+        await _applyFriendRequestOutcome(me, addresseeId, outcome);
+      }
+      return outcome;
+    } finally {
+      _sendingRequestIds.remove(addresseeId);
+      notifyListeners();
+    }
+  }
+
+  Future<void> _applyFriendRequestOutcome(
+    String me,
+    String otherId,
+    FriendRequestOutcome outcome,
+  ) async {
+    switch (outcome) {
+      case FriendRequestOutcome.sent:
+      case FriendRequestOutcome.alreadySent:
+        _searchStatuses = {
+          ..._searchStatuses,
+          otherId: FriendEntity(
+            userId: otherId,
+            displayName: '',
+            status: FriendshipStatus.pending,
+            isRequester: true,
+          ),
+        };
+        _exploreSentRequestIds.add(otherId);
+        notifyListeners(); // update UI immediately
+        await _loadSentRequests(me);
+      case FriendRequestOutcome.incomingPending:
+        _searchStatuses = {
+          ..._searchStatuses,
+          otherId: FriendEntity(
+            userId: otherId,
+            displayName: '',
+            status: FriendshipStatus.pending,
+            isRequester: false,
+          ),
+        };
+        // explore_people() excludes pending pairs, so this card would not
+        // be returned on the next refresh anyway.
+        _explorePeople = _explorePeople
+            .where((p) => p.userId != otherId)
+            .toList();
+        notifyListeners();
+        await _loadPendingRequests(me);
+      case FriendRequestOutcome.alreadyFriends:
+        _searchStatuses = {
+          ..._searchStatuses,
+          otherId: FriendEntity(
+            userId: otherId,
+            displayName: '',
+            status: FriendshipStatus.accepted,
+            isRequester: false,
+          ),
+        };
+        _explorePeople = _explorePeople
+            .where((p) => p.userId != otherId)
+            .toList();
+        notifyListeners();
+        await _loadFriends(me);
+    }
   }
 
   // ── Explore People ──────────────────────────────────────────────────────
@@ -464,6 +537,11 @@ class FriendsProvider extends BaseProvider {
     if (result == null) {
       _exploreFailed = true;
     } else {
+      // A fresh first page is server-authoritative: explore_people()
+      // never returns anyone with a pending request either way, so a
+      // locally remembered "Request Sent" (e.g. for a request since
+      // rejected) must not linger onto a re-surfaced card.
+      _exploreSentRequestIds.clear();
       // Item 8 — never show an incomplete (non-official) account in
       // Discover Friends. Jma3a Official is always discoverable (see
       // ExplorePerson.isDiscoverable's own doc comment) but is filtered
@@ -518,52 +596,64 @@ class FriendsProvider extends BaseProvider {
   /// "Request Sent" locally without re-fetching the whole feed — reuses
   /// the exact same server-authoritative sendFriendRequest() above (never
   /// a separate/parallel friend-request path for Explore).
-  Future<bool> sendExploreFriendRequest(String userId) async {
-    final ok = await sendFriendRequest(userId);
-    if (ok) {
-      _exploreSentRequestIds.add(userId);
-      notifyListeners();
+  Future<FriendRequestOutcome?> sendExploreFriendRequest(String userId) =>
+      sendFriendRequest(userId);
+
+  Future<void> acceptRequest(String requesterId) async {
+    final done = await runAsync(() async {
+      await _repo.respondToRequest(
+        requesterId: requesterId,
+        addresseeId: currentUserId!,
+        accept: true,
+      );
+      _pendingRequests.removeWhere((r) => r.userId == requesterId);
+      _searchStatuses = {
+        ..._searchStatuses,
+        requesterId: FriendEntity(
+          userId: requesterId,
+          displayName: '',
+          status: FriendshipStatus.accepted,
+          isRequester: false,
+        ),
+      };
+      await _loadFriends(currentUserId!);
+      return true;
+    }, setLoading: false);
+    // The request may have been cancelled by its sender in the
+    // meantime (respondToRequest now reports that instead of silently
+    // updating zero rows) — resync so the stale entry disappears.
+    if (done == null && currentUserId != null) {
+      await _loadPendingRequests(currentUserId!);
     }
-    return ok;
   }
 
-  Future<void> acceptRequest(String requesterId) => runAsync(() async {
-    await _repo.respondToRequest(
-      requesterId: requesterId,
-      addresseeId: currentUserId!,
-      accept: true,
-    );
-    _pendingRequests.removeWhere((r) => r.userId == requesterId);
-    _searchStatuses = {
-      ..._searchStatuses,
-      requesterId: FriendEntity(
-        userId: requesterId,
-        displayName: '',
-        status: FriendshipStatus.accepted,
-        isRequester: false,
-      ),
-    };
-    await _loadFriends(currentUserId!);
-  }, setLoading: false);
-
-  Future<void> rejectRequest(String requesterId) => runAsync(() async {
-    await _repo.respondToRequest(
-      requesterId: requesterId,
-      addresseeId: currentUserId!,
-      accept: false,
-    );
-    _pendingRequests.removeWhere((r) => r.userId == requesterId);
-    _searchStatuses = {
-      ..._searchStatuses,
-      requesterId: FriendEntity(
-        userId: requesterId,
-        displayName: '',
-        status: FriendshipStatus.rejected,
-        isRequester: false,
-      ),
-    };
-    notifyListeners();
-  }, setLoading: false);
+  Future<void> rejectRequest(String requesterId) async {
+    final done = await runAsync(() async {
+      await _repo.respondToRequest(
+        requesterId: requesterId,
+        addresseeId: currentUserId!,
+        accept: false,
+      );
+      _pendingRequests.removeWhere((r) => r.userId == requesterId);
+      _searchStatuses = {
+        ..._searchStatuses,
+        requesterId: FriendEntity(
+          userId: requesterId,
+          displayName: '',
+          status: FriendshipStatus.rejected,
+          isRequester: false,
+        ),
+      };
+      notifyListeners();
+      return true;
+    }, setLoading: false);
+    // The request may have been cancelled by its sender in the
+    // meantime (respondToRequest now reports that instead of silently
+    // updating zero rows) — resync so the stale entry disappears.
+    if (done == null && currentUserId != null) {
+      await _loadPendingRequests(currentUserId!);
+    }
+  }
 
   Future<void> cancelRequest(String addresseeId) => runAsync(() async {
     await _repo.cancelRequest(
@@ -572,12 +662,14 @@ class FriendsProvider extends BaseProvider {
     );
     _sentRequests.removeWhere((r) => r.userId == addresseeId);
     _searchStatuses.remove(addresseeId);
+    _exploreSentRequestIds.remove(addresseeId);
     notifyListeners();
   }, setLoading: false);
 
   Future<void> removeFriend(String friendId) => runAsync(() async {
     await _repo.removeFriend(userId: currentUserId!, friendId: friendId);
     _friends.removeWhere((f) => f.userId == friendId);
+    _searchStatuses.remove(friendId);
     notifyListeners();
   }, setLoading: false);
 

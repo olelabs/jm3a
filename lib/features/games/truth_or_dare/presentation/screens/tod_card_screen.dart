@@ -15,6 +15,7 @@ import 'package:jma3a/Sticker.dart';
 import '../../../../../core/extensions/context_ext.dart';
 import '../../../../../core/providers/auth_provider.dart';
 import '../../../../../core/theme/app_colors.dart';
+import '../../../../../core/utils/image_privacy.dart';
 import '../../../../../core/theme/app_text_styles.dart';
 import '../../../../../core/utils/app_logger.dart';
 import '../../../../../shared/widgets/buttons/j_button.dart';
@@ -1267,8 +1268,12 @@ class _CardView extends StatelessWidget {
                                                   imageQuality: 40,
                                                 );
                                             if (picked != null) {
-                                              final bytes = await picked
-                                                  .readAsBytes();
+                                              // Privacy: strip GPS/EXIF
+                                              // before broadcasting.
+                                              final bytes =
+                                                  await removeImageMetadata(
+                                                    await picked.readAsBytes(),
+                                                  );
                                               setS(
                                                 () => imgB64 = base64Encode(
                                                   bytes,

@@ -7,10 +7,10 @@
   "introPage1Title": "Welcome to Jma3a",
   "introPage1Body": "Multiplayer party games — play with friends and family, anytime, anywhere.",
   "introPage2Title": "Discover Packs",
-  "introPage2Body": "Community-created packs, premium packs, and physical packs you can order and play with.",
+  "introPage2Body": "Community-created packs, official Jma3a packs, and physical packs you can order and play with.",
   "introPage3Title": "Create or Join Rooms",
   "introPage3Body": "Public rooms, private rooms, invite codes — play with friends however you like.",
-  "introPage4Title": "Premium Features",
+  "introPage4Title": "Jma3a Plus & Elite",
   "introPage4Body": "Custom themes, backgrounds, exclusive features, and tools built for creators.",
   "introPage5Title": "Ready to Play",
   "introPage5Body": "Everything's set. Let's get the party started.",
@@ -74,7 +74,7 @@
   "settingsThemeSystem": "System",
   "settingsLanguage": "Language",
   "settingsOnlineStatus": "Online Status",
-  "settingsOnlineStatusPremiumHint": "Manual status is a Premium feature",
+  "settingsOnlineStatusPremiumHint": "Manual status is a Jma3a Plus feature",
   "presenceModeAuto": "Auto",
   "presenceModeOnline": "Online",
   "presenceModeOffline": "Offline",
@@ -87,7 +87,7 @@
   "settingsSigningOut": "Signing out…",
   "premiumBackgroundCustomSet": "Custom background set",
   "premiumBackgroundChooseColor": "Choose a background color",
-  "premiumBackgroundUpgradeHint": "Premium feature",
+  "premiumBackgroundUpgradeHint": "Jma3a Plus feature",
   "premiumBackgroundSaveFailed": "Could not save background color.",
   "premiumBackgroundResetFailed": "Could not reset background color.",
   "roomsTitle": "Rooms",
@@ -530,7 +530,7 @@
   "roomsBrowsePacks": "Browse Packs",
   "roomsCloseAndCreateNew": "Close Existing Room and Create New Room",
   "roomsClosedSnackbar": "Room closed",
-  "roomsDailyLimitFreeBody": "Free plan allows {basicLimit} rooms per day. Try again tomorrow.",
+  "roomsDailyLimitFreeBody": "Basic access allows {basicLimit} rooms per day. Try again tomorrow.",
   "@roomsDailyLimitFreeBody": {
     "placeholders": {
       "basicLimit": {
@@ -538,7 +538,7 @@
       }
     }
   },
-  "roomsDailyLimitPremiumBody": "Premium plan allows {premiumLimit} rooms per day. Try again tomorrow.",
+  "roomsDailyLimitPremiumBody": "Your Jma3a access allows {premiumLimit} rooms per day. Try again tomorrow.",
   "@roomsDailyLimitPremiumBody": {
     "placeholders": {
       "premiumLimit": {
@@ -577,7 +577,7 @@
     }
   },
   "roomsIconFree": "Free",
-  "roomsIconPremium": "Premium ✦",
+  "roomsIconPremium": "Jma3a Plus ✦",
   "roomsLeaveForGood": "Leave for good",
   "roomsLeftTheGame": "Left the game",
   "roomsMutedInGame": "Muted — watching only",
@@ -699,12 +699,12 @@
     }
   },
   "chatTargetedIndicatorRecipient": "Sent only to you and select people",
-  "chatAudienceRequiresPremiumPlus": "Only Premium Plus members can target specific people.",
+  "chatAudienceRequiresPremiumPlus": "Only Jma3a Elite members can message specific people.",
   "chatAudienceRecipientUnavailable": "One of the selected people is no longer available.",
   "chatAudienceNoLongerRoomMember": "You are no longer part of this room/game.",
   "failed": "Failed",
   "photo": "Photo",
-  "premiumBadge": "✨ Premium",
+  "premiumBadge": "✨ Jma3a Plus",
   "preview": "Preview",
   "todActivityAnswering": "{name} is answering…",
   "@todActivityAnswering": {
@@ -1565,7 +1565,7 @@
   "offlineSameWifiHint": "Make sure host device is on the same WiFi.",
   "offlineScanningForRooms": "Scanning for rooms…",
   "offlineSetupFailed": "Setup failed.",
-  "offlineSignInToDownload": "Sign in to download packs and unlock all games.",
+  "offlineSignInToDownload": "Sign in to download packs and play all games.",
   "offlineSpicyContent": "Spicy content",
   "offlineTimerSecsLabel": "Timer: {secs}s",
   "@offlineTimerSecsLabel": {
@@ -1576,7 +1576,7 @@
     }
   },
   "offlineYourName": "Your name",
-  "purchased": "Purchased",
+  "purchased": "In your collection",
   "signIn": "Sign In",
   "tryAgain": "Try again",
   "amountLabel": "Amount",
@@ -1648,14 +1648,14 @@
   "premiumCardTextReadable": "Card text stays readable",
   "premiumChooseAvatar": "Choose Avatar",
   "premiumChooseBackground": "Choose a background",
-  "premiumFeatureListDescription": "Custom themes & avatars, 15 rooms/day, up to 12 players per room, 10 offline packs (1 free), anonymous chat, and more.",
+  "premiumFeatureListDescription": "Extra features granted by the Jma3a team — custom themes and avatars, more rooms per day, bigger rooms, more offline packs, anonymous chat, and more.",
   "premiumPageBackground": "Page background",
-  "premiumPlusLabel": "Premium Plus",
-  "premiumPremiumAvatars": "Premium Avatars",
-  "premiumPremiumThemes": "Premium Themes ✦",
-  "premiumTitle": "Premium",
-  "premiumUnlockTitle": "Unlock Premium",
-  "premiumUpgradeToUnlock": "Requires Premium",
+  "premiumPlusLabel": "Jma3a Elite",
+  "premiumPremiumAvatars": "Jma3a Plus & Elite Avatars",
+  "premiumPremiumThemes": "Jma3a Plus & Elite Themes ✦",
+  "premiumTitle": "Jma3a Plus",
+  "premiumUnlockTitle": "Jma3a Plus & Elite",
+  "premiumUpgradeToUnlock": "Available with Jma3a Plus or Elite",
   "premiumYourAvatars": "Your Avatars",
   "premiumYourThemes": "Your Themes",
   "resetToDefault": "Reset to Default",
@@ -2100,7 +2100,7 @@
   },
   "packFallbackTitle": "Pack",
   "packFeaturedHeading": "⭐ Featured",
-  "packFreeOfflineLimitNotice": "Free plan allows 1 offline pack.",
+  "packFreeOfflineLimitNotice": "Basic access allows 1 offline pack.",
   "packFullName": "Full name",
   "packLoadingPrice": "Loading price…",
   "packMinReviewLength": "Please write at least 10 characters.",
@@ -2249,7 +2249,7 @@
       }
     }
   },
-  "avatarCustomAvatarsHint": "Create your own Bitmoji-style avatar and show it across the app with Premium.",
+  "avatarCustomAvatarsHint": "Create your own Bitmoji-style avatar and show it across the app with Jma3a Plus.",
   "avatarCustomAvatarsTitle": "Custom Avatars",
   "avatarFeelingLucky": "Feeling lucky?",
   "avatarGenerateRandomHint": "Generate a random avatar instantly.",
@@ -2503,8 +2503,8 @@
   "notifTypeGameStarted": "Game Started",
   "notifTypeModeration": "Moderation",
   "notifTypePackApproved": "Pack Approved",
-  "notifTypePackGranted": "A New Pack",
-  "notifTypePackExpired": "Pack Expired",
+  "notifTypePackGranted": "New Pack Added",
+  "notifTypePackExpired": "Pack Access Ended",
   "notifTypePackRejected": "Pack Rejected",
   "notifTypePackReview": "Pack Review",
   "notifTypePackSale": "Pack Sale",
@@ -2520,10 +2520,10 @@
   "notifTypeCreatorPrivilegesRemoved": "Creator Status Removed",
   "notifTypeCreatorRecoveryApproved": "Recovery Request Approved",
   "notifTypeCreatorRecoveryRejected": "Recovery Request Rejected",
-  "notifTypeSubscriptionExpired": "Subscription Expired",
-  "notifTypeSubscriptionExpiring1d": "Subscription Expiring (1 Day)",
-  "notifTypeSubscriptionExpiring2d": "Subscription Expiring (2 Days)",
-  "notifTypeSubscriptionStarted": "Subscription Started",
+  "notifTypeSubscriptionExpired": "Access Level Ended",
+  "notifTypeSubscriptionExpiring1d": "Access Level Ending (1 Day)",
+  "notifTypeSubscriptionExpiring2d": "Access Level Ending (2 Days)",
+  "notifTypeSubscriptionStarted": "Access Level Granted",
   "notifTypeSystem": "System",
   "notifTypeWalletCredit": "Wallet Credit",
   "notifTypeWalletDebit": "Wallet Debit",
@@ -2635,7 +2635,7 @@
   "roomsRequestAgain": "Request Again",
   "roomsRequestSentWaiting": "Request sent — waiting for the host",
   "roomsRequestToRejoin": "Request to Rejoin",
-  "roomsSendAnonymouslyPremium": "Send anonymously (Premium)",
+  "roomsSendAnonymouslyPremium": "Send anonymously (Jma3a Plus)",
   "roomsStatusClosed": "Closed",
   "roomsStatusInGame": "In Game",
   "roomsStatusPaused": "Paused",
@@ -2817,7 +2817,7 @@
   },
   "creatorVerificationTitle": "Become a Verified Creator",
   "creatorVerificationSubtitle": "Meet all of these requirements to apply for creator verification.",
-  "creatorReqPremiumPlus": "Premium Plus subscriber",
+  "creatorReqPremiumPlus": "Jma3a Elite access",
   "creatorReqGamesPlayed": "Play at least {count} games",
   "@creatorReqGamesPlayed": {
     "placeholders": {
@@ -2874,15 +2874,15 @@
   "creatorWhatsAppMessage": "Hi, I'd like to request Verified Creator status on Jma3a.",
   "creatorKeepGoing": "Keep going — you'll be able to apply once every requirement above is met.",
   "creatorRecoveryBannerTitle": "Your verified creator status was removed",
-  "creatorRecoveryBannerBody": "Your Premium Plus subscription lapsed and your verified creator status/privileges were automatically removed. You can submit a recovery request for admin review.",
+  "creatorRecoveryBannerBody": "Your Jma3a Elite access ended and your verified creator status/privileges were automatically removed. You can submit a recovery request for the Jma3a team to review.",
   "creatorRecoveryBannerAction": "Submit a Recovery Request",
   "creatorRecoveryTitle": "Recovery Request",
   "creatorRecoveryIntro": "Tell us what happened. An admin will review your request and, if approved, your verified creator status, privileges, and packs will be fully restored.",
   "creatorRecoveryReasonLabel": "Reason",
-  "creatorRecoveryReasonResubscribedLate": "I resubscribed but missed the grace period",
-  "creatorRecoveryReasonPaymentIssue": "A payment/billing issue caused the lapse",
-  "creatorRecoveryReasonUnawareOfExpiry": "I wasn't notified my subscription expired",
-  "creatorRecoveryReasonExtenuatingCircumstances": "Extenuating circumstances prevented renewal",
+  "creatorRecoveryReasonResubscribedLate": "My Elite access was restored after the grace period",
+  "creatorRecoveryReasonPaymentIssue": "A technical or account issue caused my access to end",
+  "creatorRecoveryReasonUnawareOfExpiry": "I wasn't notified that my access was ending",
+  "creatorRecoveryReasonExtenuatingCircumstances": "Extenuating circumstances prevented me from keeping my access",
   "creatorRecoveryReasonOther": "Other",
   "creatorRecoveryExplanationLabel": "Explanation",
   "creatorRecoveryExplanationHint": "Explain what happened in at least 20 characters",
@@ -2896,7 +2896,7 @@
   "creatorRecoveryPendingBody": "Your recovery request is being reviewed by an admin. You'll be notified once a decision is made.",
   "creatorRecoveryRejectedTitle": "Your previous recovery request was rejected",
   "profileBecomeCreator": "Become a Verified Creator",
-  "profileBecomeCreatorHint": "Unlock creator tools and earnings",
+  "profileBecomeCreatorHint": "Get access to creator tools and earnings",
   "friendsPlayingNow": "Playing now",
   "friendsProfileNotFound": "Profile not found.",
   "friendsRemoveFriend": "Remove friend",
@@ -3245,7 +3245,7 @@
   "surveyChoiceMeme": "Meme Game",
   "surveyChoicePacks": "Packs marketplace",
   "surveyChoiceFriends": "Friends & social features",
-  "surveyChoicePremium": "Premium features",
+  "surveyChoicePremium": "Jma3a Plus & Elite features",
   "surveyChoiceReputation": "Honesty points & reputation",
   "surveyChoiceStreaks": "Streaks",
   "surveyChoiceOfficialContent": "Official Jma3a content",
@@ -3287,7 +3287,7 @@
   "voiceChatSetting": "Voice chat",
   "voiceChatSettingOnSubtitle": "On — members join voice automatically; microphones start muted.",
   "voiceChatSettingOffSubtitle": "Off — nobody can join voice in this room.",
-  "voiceDailyLimitReached": "Basic accounts can turn on voice chat in one room per day. Try again after midnight (Nouakchott time), or upgrade to Premium.",
+  "voiceDailyLimitReached": "Basic accounts can turn on voice chat in one room per day. Try again after midnight (Nouakchott time).",
   "voiceSettingFailed": "Couldn't change voice chat. Try again.",
   "voiceRetry": "Retry voice",
   "voiceMutedByAdmin": "A room admin muted your microphone.",
@@ -3296,5 +3296,87 @@
   "voiceMemberMutedTooltip": "Microphone muted by an admin",
   "voiceMuteActionFailed": "Couldn't change this member's microphone. Try again.",
   "voiceDisabledForRoom": "Voice chat is off in this room.",
-  "roomsPermMuteVoice": "Mute microphones"
+  "roomsPermMuteVoice": "Mute microphones",
+  "friendRequestAlreadySent": "You've already sent {name} a friend request.",
+  "@friendRequestAlreadySent": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "friendRequestIncoming": "{name} already sent you a friend request — you can accept it now.",
+  "@friendRequestIncoming": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "accessLevelScreenTitle": "Your Jma3a Access",
+  "accessLevelBasic": "Basic access",
+  "accessLevelCurrent": "Your current access: {level}",
+  "@accessLevelCurrent": {
+    "placeholders": {
+      "level": {
+        "type": "String"
+      }
+    }
+  },
+  "accessLevelActiveUntil": "Active until {date}",
+  "@accessLevelActiveUntil": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "accessLevelActiveNoEndDate": "Active — no end date",
+  "accessLevelsHeader": "Jma3a access levels",
+  "accessLevelsGrantedNote": "Jma3a Plus and Jma3a Elite are feature access levels granted by the Jma3a team. The team reviews requests and decides who receives each level.",
+  "accessLevelRequestConsideration": "Ask the Jma3a team to consider you",
+  "accessLevelWhatsAppMessage": "Hello Jma3a team, I'd like to be considered for Jma3a Plus or Jma3a Elite access.",
+  "accessLevelPlusSubtitle": "Enhanced feature access",
+  "accessLevelEliteSubtitle": "Our highest access level",
+  "accessLevelHighestBadge": "Highest level",
+  "accessLevelYourLevelBadge": "Your level",
+  "accessLevelEliteIncludesPlus": "Everything in Jma3a Plus, plus:",
+  "accessFeatPlusThemes": "Extra app themes, background colors, and game card colors",
+  "accessFeatPlusAvatars": "Create your own custom avatar and use extra avatars",
+  "accessFeatPlusManualStatus": "Choose your online status manually",
+  "accessFeatRoomsPerDay": "Create up to {count} rooms per day",
+  "@accessFeatRoomsPerDay": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "accessFeatRoomPlayers": "Up to {count} players in rooms you create",
+  "@accessFeatRoomPlayers": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "accessFeatOfflinePacks": "Keep up to {count} packs available offline",
+  "@accessFeatOfflinePacks": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "accessFeatPlusAnonymousChat": "Send chat messages anonymously",
+  "accessFeatPlusHiddenSpectating": "Watch rooms as a hidden spectator",
+  "accessFeatPlusTransferOwnership": "Transfer ownership of your rooms",
+  "accessFeatPlusClosedRoomHistory": "View the history of closed rooms",
+  "accessFeatPlusCustomCards": "Add your own cards during a game",
+  "accessFeatPlusProofs": "Extra replays of dare proofs and longer voice answers",
+  "accessFeatEliteTargetedChat": "Send chat messages to specific people",
+  "accessFeatEliteThemesAvatars": "Exclusive Jma3a Elite themes and avatars",
+  "accessFeatEliteRevealSpectators": "See who hidden spectators are in rooms you moderate",
+  "accessFeatEliteAwayStatus": "Other players see when you briefly step away during a game",
+  "accessFeatEliteCreator": "Meets the access requirement to apply for Verified Creator status"
 }

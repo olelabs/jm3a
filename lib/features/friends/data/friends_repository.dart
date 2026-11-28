@@ -8475,7 +8475,10 @@ class FriendsRepository extends BaseRepository {
     },
   );
 
-  Future<void> sendFriendRequest({
+  /// Sends a friend request, or reports the relationship that already
+  /// exists — see [FriendRequestOutcome]. Throws a [Failure] only when no
+  /// request was (or already is) in place.
+  Future<FriendRequestOutcome> sendFriendRequest({
     required String requesterId,
     required String addresseeId,
   }) => guardedCall(
@@ -8488,20 +8491,61 @@ class FriendsRepository extends BaseRepository {
       // update lands), so re-check the live relationship state right
       // before inserting rather than trusting only the caller's cache.
       // uq_friendship_unordered_pair backs this up server-side too.
+      //
+      // Pre-release audit (Add Friend fix): an existing row used to throw
+      // a generic ConflictFailure regardless of what it was. That made a
+      // previously REJECTED pair permanently un-requestable (the UI shows
+      // "Add Friend" for `rejected`, and explore_people() deliberately
+      // re-surfaces rejected pairs, but every tap failed silently), and
+      // reported "already pending"/"already friends" as an error instead
+      // of the real state. Each case now resolves to an explicit outcome.
+      final pairFilter =
+          'and(requester_id.eq.$requesterId,addressee_id.eq.$addresseeId),'
+          'and(requester_id.eq.$addresseeId,addressee_id.eq.$requesterId)';
       final existing = await getFriendshipStatus(
         userId: requesterId,
         otherId: addresseeId,
       );
-      if (existing != null) {
-        throw const ConflictFailure(
-          message: 'A friend request already exists between these users.',
+      final action = resolveFriendRequestAction(existing);
+      if (action == FriendRequestAction.blocked) {
+        throw const ForbiddenFailure(
+          message: 'Cannot interact with this user.',
         );
       }
-      await _supabase.from('friendships').insert({
-        'requester_id': requesterId,
-        'addressee_id': addresseeId,
-        'status': 'pending',
-      });
+      final precomputed = friendRequestOutcomeFor(action);
+      if (precomputed != null) return precomputed;
+      if (action == FriendRequestAction.replaceRejected) {
+        // The unordered-pair unique index allows one row per pair, so a
+        // stale `rejected` row must be cleared before a new request can
+        // exist. Uses the existing "friendships: participant delete" RLS
+        // policy (either participant may delete) — the same permission
+        // cancelRequest/removeFriend already rely on; no policy change.
+        await _supabase
+            .from('friendships')
+            .delete()
+            .or(pairFilter)
+            .eq('status', 'rejected');
+      }
+      try {
+        await _supabase.from('friendships').insert({
+          'requester_id': requesterId,
+          'addressee_id': addresseeId,
+          'status': 'pending',
+        });
+      } on PostgrestException catch (e) {
+        if (e.code != '23505') rethrow;
+        // Lost a race (double tap, or both users requesting at once):
+        // report the relationship that actually exists now rather than
+        // a generic error.
+        final now = await getFriendshipStatus(
+          userId: requesterId,
+          otherId: addresseeId,
+        );
+        final raced = friendRequestOutcomeFor(resolveFriendRequestAction(now));
+        if (raced != null) return raced;
+        rethrow;
+      }
+      return FriendRequestOutcome.sent;
     },
   );
 
@@ -8512,11 +8556,21 @@ class FriendsRepository extends BaseRepository {
   }) => guardedCall(
     operationName: 'respondToRequest',
     operation: () async {
-      await _supabase
+      // Scoped to a still-pending row and RETURNING it, so responding to
+      // a request the sender has since cancelled is reported instead of
+      // silently "succeeding" against zero rows.
+      final updated = await _supabase
           .from('friendships')
           .update({'status': accept ? 'accepted' : 'rejected'})
           .eq('requester_id', requesterId)
-          .eq('addressee_id', addresseeId);
+          .eq('addressee_id', addresseeId)
+          .eq('status', 'pending')
+          .select('id');
+      if ((updated as List).isEmpty) {
+        throw const NotFoundFailure(
+          message: 'This friend request is no longer available.',
+        );
+      }
     },
   );
 
@@ -9274,6 +9328,91 @@ class FriendsRepository extends BaseRepository {
       return applyOfficialIds(people, officialIds);
     },
   );
+}
+
+/// Result of [FriendsRepository.sendFriendRequest] when it did not fail.
+enum FriendRequestOutcome {
+  /// A new pending request now exists from the caller.
+  sent,
+
+  /// The caller had already sent a still-pending request (no duplicate
+  /// row was created).
+  alreadySent,
+
+  /// The other user had already sent the caller a pending request — the
+  /// caller should accept/reject it rather than send a second one.
+  incomingPending,
+
+  /// The two users are already friends.
+  alreadyFriends,
+}
+
+/// What [FriendsRepository.sendFriendRequest] must do given the live
+/// relationship row (if any) between the two users.
+enum FriendRequestAction {
+  insert,
+  replaceRejected,
+  alreadySent,
+  incomingPending,
+  alreadyFriends,
+  blocked,
+}
+
+/// Pure decision step of [FriendsRepository.sendFriendRequest], extracted
+/// so every existing-relationship case is unit-testable without Supabase.
+FriendRequestAction resolveFriendRequestAction(FriendEntity? existing) {
+  if (existing == null) return FriendRequestAction.insert;
+  return switch (existing.status) {
+    FriendshipStatus.rejected => FriendRequestAction.replaceRejected,
+    FriendshipStatus.accepted => FriendRequestAction.alreadyFriends,
+    FriendshipStatus.blocked => FriendRequestAction.blocked,
+    FriendshipStatus.pending =>
+      existing.isRequester
+          ? FriendRequestAction.alreadySent
+          : FriendRequestAction.incomingPending,
+  };
+}
+
+/// The outcome to report WITHOUT writing anything for [action], or null
+/// when a write (insert, possibly after clearing a rejected row) is needed.
+FriendRequestOutcome? friendRequestOutcomeFor(FriendRequestAction action) =>
+    switch (action) {
+      FriendRequestAction.alreadySent => FriendRequestOutcome.alreadySent,
+      FriendRequestAction.incomingPending =>
+        FriendRequestOutcome.incomingPending,
+      FriendRequestAction.alreadyFriends => FriendRequestOutcome.alreadyFriends,
+      FriendRequestAction.insert ||
+      FriendRequestAction.replaceRejected ||
+      FriendRequestAction.blocked => null,
+    };
+
+/// Which friendship control the profile screen shows. [status] and
+/// [isFriendshipRequester] come from the live per-pair lookup in
+/// [FriendsRepository.getSocialProfile] and win whenever they describe a
+/// live relationship (pending/accepted). When they don't (no row, a
+/// rejected row, or a profile built from list-row fallback data that never
+/// loaded the relationship), FriendsProvider's lists — which are updated
+/// immediately after a send/accept — decide, so a just-sent request can
+/// never fall back to showing "Add Friend".
+enum FriendshipButtonState { addFriend, requestSent, respondToRequest, friends }
+
+FriendshipButtonState resolveFriendshipButtonState({
+  required FriendshipStatus? status,
+  required bool isFriendshipRequester,
+  required bool inSentRequests,
+  required bool inIncomingRequests,
+  required bool inFriends,
+}) {
+  if (status == FriendshipStatus.accepted) return FriendshipButtonState.friends;
+  if (status == FriendshipStatus.pending) {
+    return isFriendshipRequester
+        ? FriendshipButtonState.requestSent
+        : FriendshipButtonState.respondToRequest;
+  }
+  if (inFriends) return FriendshipButtonState.friends;
+  if (inSentRequests) return FriendshipButtonState.requestSent;
+  if (inIncomingRequests) return FriendshipButtonState.respondToRequest;
+  return FriendshipButtonState.addFriend;
 }
 
 /// Item 1 (Discover-exclusion re-investigation pass) — corrects
